@@ -1,0 +1,10 @@
+X:\corrade\libopenmetaverse\bin\OpenMetaverse.dll
+X:\corrade\libopenmetaverse\bin\OpenMetaverse.pdb
+X:\corrade\libopenmetaverse\OpenMetaverse\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade\libopenmetaverse\OpenMetaverse\obj\Debug\OpenMetaverse.dll
+X:\corrade\libopenmetaverse\OpenMetaverse\obj\Debug\OpenMetaverse.pdb
+X:\corrade-service\Corrade\libopenmetaverse\bin\OpenMetaverse.dll
+X:\corrade-service\Corrade\libopenmetaverse\bin\OpenMetaverse.pdb
+X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverse\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverse\obj\Debug\OpenMetaverse.dll
+X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverse\obj\Debug\OpenMetaverse.pdb

@@ -1,0 +1,14 @@
+X:\corrade\libopenmetaverse\bin\Baker.exe
+X:\corrade\libopenmetaverse\bin\Baker.pdb
+X:\corrade\libopenmetaverse\Programs\Baker\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade\libopenmetaverse\Programs\Baker\obj\Debug\Baker.frmBaker.resources
+X:\corrade\libopenmetaverse\Programs\Baker\obj\Debug\Baker.csproj.GenerateResource.Cache
+X:\corrade\libopenmetaverse\Programs\Baker\obj\Debug\Baker.exe
+X:\corrade\libopenmetaverse\Programs\Baker\obj\Debug\Baker.pdb
+X:\corrade-service\Corrade\libopenmetaverse\bin\Baker.exe
+X:\corrade-service\Corrade\libopenmetaverse\bin\Baker.pdb
+X:\corrade-service\Corrade\libopenmetaverse\Programs\Baker\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade-service\Corrade\libopenmetaverse\Programs\Baker\obj\Debug\Baker.frmBaker.resources
+X:\corrade-service\Corrade\libopenmetaverse\Programs\Baker\obj\Debug\Baker.csproj.GenerateResource.Cache
+X:\corrade-service\Corrade\libopenmetaverse\Programs\Baker\obj\Debug\Baker.exe
+X:\corrade-service\Corrade\libopenmetaverse\Programs\Baker\obj\Debug\Baker.pdb

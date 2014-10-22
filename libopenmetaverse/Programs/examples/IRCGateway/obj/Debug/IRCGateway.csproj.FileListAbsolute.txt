@@ -1,0 +1,10 @@
+X:\corrade\libopenmetaverse\bin\IRCGateway.exe
+X:\corrade\libopenmetaverse\bin\IRCGateway.pdb
+X:\corrade\libopenmetaverse\Programs\examples\IRCGateway\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade\libopenmetaverse\Programs\examples\IRCGateway\obj\Debug\IRCGateway.exe
+X:\corrade\libopenmetaverse\Programs\examples\IRCGateway\obj\Debug\IRCGateway.pdb
+X:\corrade-service\Corrade\libopenmetaverse\bin\IRCGateway.exe
+X:\corrade-service\Corrade\libopenmetaverse\bin\IRCGateway.pdb
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\IRCGateway\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\IRCGateway\obj\Debug\IRCGateway.exe
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\IRCGateway\obj\Debug\IRCGateway.pdb

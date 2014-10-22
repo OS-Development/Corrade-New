@@ -1,0 +1,16 @@
+X:\corrade\libopenmetaverse\bin\GridImageUpload.exe
+X:\corrade\libopenmetaverse\bin\GridImageUpload.pdb
+X:\corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.frmGridImageUpload.resources
+X:\corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.Properties.Resources.resources
+X:\corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.csproj.GenerateResource.Cache
+X:\corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.exe
+X:\corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.pdb
+X:\corrade-service\Corrade\libopenmetaverse\bin\GridImageUpload.exe
+X:\corrade-service\Corrade\libopenmetaverse\bin\GridImageUpload.pdb
+X:\corrade-service\Corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade-service\Corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.frmGridImageUpload.resources
+X:\corrade-service\Corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.Properties.Resources.resources
+X:\corrade-service\Corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.csproj.GenerateResource.Cache
+X:\corrade-service\Corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.exe
+X:\corrade-service\Corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.pdb

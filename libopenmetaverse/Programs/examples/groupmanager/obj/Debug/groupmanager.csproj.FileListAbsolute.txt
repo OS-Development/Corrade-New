@@ -1,0 +1,16 @@
+X:\corrade\libopenmetaverse\bin\groupmanager.exe
+X:\corrade\libopenmetaverse\bin\groupmanager.pdb
+X:\corrade\libopenmetaverse\Programs\examples\groupmanager\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade\libopenmetaverse\Programs\examples\groupmanager\obj\Debug\groupmanager.frmGroupInfo.resources
+X:\corrade\libopenmetaverse\Programs\examples\groupmanager\obj\Debug\groupmanager.frmGroupManager.resources
+X:\corrade\libopenmetaverse\Programs\examples\groupmanager\obj\Debug\groupmanager.csproj.GenerateResource.Cache
+X:\corrade\libopenmetaverse\Programs\examples\groupmanager\obj\Debug\groupmanager.exe
+X:\corrade\libopenmetaverse\Programs\examples\groupmanager\obj\Debug\groupmanager.pdb
+X:\corrade-service\Corrade\libopenmetaverse\bin\groupmanager.exe
+X:\corrade-service\Corrade\libopenmetaverse\bin\groupmanager.pdb
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\groupmanager\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\groupmanager\obj\Debug\groupmanager.frmGroupInfo.resources
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\groupmanager\obj\Debug\groupmanager.frmGroupManager.resources
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\groupmanager\obj\Debug\groupmanager.csproj.GenerateResource.Cache
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\groupmanager\obj\Debug\groupmanager.exe
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\groupmanager\obj\Debug\groupmanager.pdb

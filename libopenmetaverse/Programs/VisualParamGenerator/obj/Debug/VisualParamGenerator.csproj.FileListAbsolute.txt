@@ -1,0 +1,10 @@
+X:\corrade\libopenmetaverse\bin\VisualParamGenerator.exe
+X:\corrade\libopenmetaverse\bin\VisualParamGenerator.pdb
+X:\corrade\libopenmetaverse\Programs\VisualParamGenerator\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade\libopenmetaverse\Programs\VisualParamGenerator\obj\Debug\VisualParamGenerator.exe
+X:\corrade\libopenmetaverse\Programs\VisualParamGenerator\obj\Debug\VisualParamGenerator.pdb
+X:\corrade-service\Corrade\libopenmetaverse\bin\VisualParamGenerator.exe
+X:\corrade-service\Corrade\libopenmetaverse\bin\VisualParamGenerator.pdb
+X:\corrade-service\Corrade\libopenmetaverse\Programs\VisualParamGenerator\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade-service\Corrade\libopenmetaverse\Programs\VisualParamGenerator\obj\Debug\VisualParamGenerator.exe
+X:\corrade-service\Corrade\libopenmetaverse\Programs\VisualParamGenerator\obj\Debug\VisualParamGenerator.pdb

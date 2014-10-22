@@ -1,0 +1,14 @@
+X:\corrade\libopenmetaverse\bin\Heightmap.exe
+X:\corrade\libopenmetaverse\bin\Heightmap.pdb
+X:\corrade\libopenmetaverse\Programs\examples\Heightmap\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade\libopenmetaverse\Programs\examples\Heightmap\obj\Debug\Heightmap.frmHeightmap.resources
+X:\corrade\libopenmetaverse\Programs\examples\Heightmap\obj\Debug\Heightmap.csproj.GenerateResource.Cache
+X:\corrade\libopenmetaverse\Programs\examples\Heightmap\obj\Debug\Heightmap.exe
+X:\corrade\libopenmetaverse\Programs\examples\Heightmap\obj\Debug\Heightmap.pdb
+X:\corrade-service\Corrade\libopenmetaverse\bin\Heightmap.exe
+X:\corrade-service\Corrade\libopenmetaverse\bin\Heightmap.pdb
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\Heightmap\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\Heightmap\obj\Debug\Heightmap.frmHeightmap.resources
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\Heightmap\obj\Debug\Heightmap.csproj.GenerateResource.Cache
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\Heightmap\obj\Debug\Heightmap.exe
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\Heightmap\obj\Debug\Heightmap.pdb
