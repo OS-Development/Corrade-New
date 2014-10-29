@@ -8,3 +8,8 @@ X:\corrade-service\Corrade\libopenmetaverse\bin\OpenMetaverse.Utilities.pdb
 X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverse.Utilities\obj\Debug\ResolveAssemblyReference.cache
 X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverse.Utilities\obj\Debug\OpenMetaverse.Utilities.dll
 X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverse.Utilities\obj\Debug\OpenMetaverse.Utilities.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\OpenMetaverse.Utilities.dll
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\OpenMetaverse.Utilities.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\OpenMetaverse.Utilities\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\OpenMetaverse.Utilities\obj\Debug\OpenMetaverse.Utilities.dll
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\OpenMetaverse.Utilities\obj\Debug\OpenMetaverse.Utilities.pdb

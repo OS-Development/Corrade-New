@@ -8,3 +8,8 @@ X:\corrade-service\Corrade\libopenmetaverse\bin\OpenMetaverse.Rendering.Meshmeri
 X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverse.Rendering.Meshmerizer\obj\Debug\ResolveAssemblyReference.cache
 X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverse.Rendering.Meshmerizer\obj\Debug\OpenMetaverse.Rendering.Meshmerizer.dll
 X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverse.Rendering.Meshmerizer\obj\Debug\OpenMetaverse.Rendering.Meshmerizer.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\OpenMetaverse.Rendering.Meshmerizer.dll
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\OpenMetaverse.Rendering.Meshmerizer.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\OpenMetaverse.Rendering.Meshmerizer\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\OpenMetaverse.Rendering.Meshmerizer\obj\Debug\OpenMetaverse.Rendering.Meshmerizer.dll
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\OpenMetaverse.Rendering.Meshmerizer\obj\Debug\OpenMetaverse.Rendering.Meshmerizer.pdb

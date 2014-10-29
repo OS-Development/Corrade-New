@@ -12,3 +12,10 @@ X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\GridAccountant\obj
 X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\GridAccountant\obj\Debug\GridAccountant.csproj.GenerateResource.Cache
 X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\GridAccountant\obj\Debug\GridAccountant.exe
 X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\GridAccountant\obj\Debug\GridAccountant.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\GridAccountant.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\GridAccountant.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\examples\GridAccountant\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\examples\GridAccountant\obj\Debug\GridAccountant.frmGridAccountant.resources
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\examples\GridAccountant\obj\Debug\GridAccountant.csproj.GenerateResource.Cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\examples\GridAccountant\obj\Debug\GridAccountant.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\examples\GridAccountant\obj\Debug\GridAccountant.pdb

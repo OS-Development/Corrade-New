@@ -12,3 +12,10 @@ X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\Dashboard\obj\Debu
 X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\Dashboard\obj\Debug\Dashboard.csproj.GenerateResource.Cache
 X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\Dashboard\obj\Debug\Dashboard.exe
 X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\Dashboard\obj\Debug\Dashboard.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\Dashboard.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\Dashboard.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\examples\Dashboard\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\examples\Dashboard\obj\Debug\Dashboard.Dashboard.resources
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\examples\Dashboard\obj\Debug\Dashboard.csproj.GenerateResource.Cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\examples\Dashboard\obj\Debug\Dashboard.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\examples\Dashboard\obj\Debug\Dashboard.pdb

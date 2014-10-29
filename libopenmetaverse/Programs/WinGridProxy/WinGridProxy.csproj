@@ -1,4 +1,4 @@
-<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
+﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
   <PropertyGroup>
     <ProjectType>Local</ProjectType>
     <ProductVersion>9.0.21022</ProductVersion>
@@ -6,7 +6,8 @@
     <ProjectGuid>{C339A58C-10EB-4512-9235-AC3CEEF211E4}</ProjectGuid>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ApplicationIcon></ApplicationIcon>
+    <ApplicationIcon>
+    </ApplicationIcon>
     <AssemblyKeyContainerName>
     </AssemblyKeyContainerName>
     <AssemblyName>WinGridProxy</AssemblyName>
@@ -16,9 +17,11 @@
     <DelaySign>false</DelaySign>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <OutputType>WinExe</OutputType>
-    <AppDesignerFolder></AppDesignerFolder>
+    <AppDesignerFolder>
+    </AppDesignerFolder>
     <RootNamespace>WinGridProxy</RootNamespace>
-    <StartupObject></StartupObject>
+    <StartupObject>
+    </StartupObject>
     <FileUpgradeFlags>
     </FileUpgradeFlags>
   </PropertyGroup>
@@ -29,7 +32,8 @@
     <ConfigurationOverrideFile>
     </ConfigurationOverrideFile>
     <DefineConstants>TRACE;VISUAL_STUDIO</DefineConstants>
-    <DocumentationFile></DocumentationFile>
+    <DocumentationFile>
+    </DocumentationFile>
     <DebugSymbols>False</DebugSymbols>
     <FileAlignment>4096</FileAlignment>
     <Optimize>True</Optimize>
@@ -48,7 +52,8 @@
     <ConfigurationOverrideFile>
     </ConfigurationOverrideFile>
     <DefineConstants>TRACE;DEBUG;VISUAL_STUDIO</DefineConstants>
-    <DocumentationFile></DocumentationFile>
+    <DocumentationFile>
+    </DocumentationFile>
     <DebugSymbols>True</DebugSymbols>
     <FileAlignment>4096</FileAlignment>
     <Optimize>False</Optimize>
@@ -62,33 +67,33 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System">
-        <Name>System</Name>
+      <Name>System</Name>
     </Reference>
     <Reference Include="System.Core">
-        <Name>System.Core</Name>
+      <Name>System.Core</Name>
     </Reference>
     <Reference Include="System.Xml">
-        <Name>System.Xml</Name>
+      <Name>System.Xml</Name>
     </Reference>
     <Reference Include="System.Data">
-        <Name>System.Data</Name>
+      <Name>System.Data</Name>
     </Reference>
     <Reference Include="System.Drawing">
-        <Name>System.Drawing</Name>
+      <Name>System.Drawing</Name>
     </Reference>
     <Reference Include="System.Windows.Forms">
-        <Name>System.Windows.Forms</Name>
+      <Name>System.Windows.Forms</Name>
     </Reference>
     <Reference Include="XMLRPC">
-        <Name>XMLRPC</Name>
+      <Name>XMLRPC</Name>
       <HintPath>X:\corrade-service\Corrade\libopenmetaverse\bin\XMLRPC.dll</HintPath>
     </Reference>
     <Reference Include="Be.Windows.Forms.HexBox">
-        <Name>Be.Windows.Forms.HexBox</Name>
+      <Name>Be.Windows.Forms.HexBox</Name>
       <HintPath>X:\corrade-service\Corrade\libopenmetaverse\bin\Be.Windows.Forms.HexBox.dll</HintPath>
     </Reference>
     <Reference Include="log4net">
-        <Name>log4net</Name>
+      <Name>log4net</Name>
       <HintPath>X:\corrade-service\Corrade\libopenmetaverse\bin\log4net.dll</HintPath>
     </Reference>
   </ItemGroup>
@@ -116,10 +121,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ListViewNoFlicker.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="FormWinGridProxy.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Include="AboutBox1.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Include="FormSessionSearch.Designer.cs">
       <DependentUpon>FormSessionSearch.cs</DependentUpon>
@@ -134,8 +142,10 @@
     <Compile Include="SessionTypes.cs">
     </Compile>
     <Compile Include="FormSessionSearch.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Include="FormPluginManager.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Include="FormWinGridProxy.Designer.cs">
       <DependentUpon>FormWinGridProxy.cs</DependentUpon>

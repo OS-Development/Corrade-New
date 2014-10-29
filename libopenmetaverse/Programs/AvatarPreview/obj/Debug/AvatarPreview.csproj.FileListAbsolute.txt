@@ -14,3 +14,11 @@ X:\corrade-service\Corrade\libopenmetaverse\Programs\AvatarPreview\obj\Debug\Ava
 X:\corrade-service\Corrade\libopenmetaverse\Programs\AvatarPreview\obj\Debug\AvatarPreview.csproj.GenerateResource.Cache
 X:\corrade-service\Corrade\libopenmetaverse\Programs\AvatarPreview\obj\Debug\AvatarPreview.exe
 X:\corrade-service\Corrade\libopenmetaverse\Programs\AvatarPreview\obj\Debug\AvatarPreview.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\AvatarPreview\obj\Debug\AvatarPreview.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\AvatarPreview\obj\Debug\AvatarPreview.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\AvatarPreview.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\AvatarPreview.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\AvatarPreview\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\AvatarPreview\obj\Debug\AvatarPreview.frmAvatar.resources
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\AvatarPreview\obj\Debug\AvatarPreview.Properties.Resources.resources
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\AvatarPreview\obj\Debug\AvatarPreview.csproj.GenerateResource.Cache

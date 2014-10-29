@@ -18,3 +18,13 @@ X:\corrade-service\Corrade\libopenmetaverse\Programs\WinGridProxy\obj\Debug\WinG
 X:\corrade-service\Corrade\libopenmetaverse\Programs\WinGridProxy\obj\Debug\WinGridProxy.csproj.GenerateResource.Cache
 X:\corrade-service\Corrade\libopenmetaverse\Programs\WinGridProxy\obj\Debug\WinGridProxy.exe
 X:\corrade-service\Corrade\libopenmetaverse\Programs\WinGridProxy\obj\Debug\WinGridProxy.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\WinGridProxy.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\WinGridProxy.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\WinGridProxy\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\WinGridProxy\obj\Debug\WinGridProxy.FormWinGridProxy.resources
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\WinGridProxy\obj\Debug\WinGridProxy.FormSessionSearch.resources
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\WinGridProxy\obj\Debug\WinGridProxy.FormPluginManager.resources
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\WinGridProxy\obj\Debug\WinGridProxy.AboutBox1.resources
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\WinGridProxy\obj\Debug\WinGridProxy.csproj.GenerateResource.Cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\WinGridProxy\obj\Debug\WinGridProxy.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\WinGridProxy\obj\Debug\WinGridProxy.pdb

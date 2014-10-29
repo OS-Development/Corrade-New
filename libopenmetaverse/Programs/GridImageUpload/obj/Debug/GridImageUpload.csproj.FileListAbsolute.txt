@@ -14,3 +14,11 @@ X:\corrade-service\Corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\G
 X:\corrade-service\Corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.csproj.GenerateResource.Cache
 X:\corrade-service\Corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.exe
 X:\corrade-service\Corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\GridImageUpload.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\GridImageUpload.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.frmGridImageUpload.resources
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.Properties.Resources.resources
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.csproj.GenerateResource.Cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\GridImageUpload\obj\Debug\GridImageUpload.pdb

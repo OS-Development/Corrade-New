@@ -8,3 +8,8 @@ X:\corrade-service\Corrade\libopenmetaverse\bin\OpenMetaverseTypes.pdb
 X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverseTypes\obj\Debug\ResolveAssemblyReference.cache
 X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverseTypes\obj\Debug\OpenMetaverseTypes.dll
 X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverseTypes\obj\Debug\OpenMetaverseTypes.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\OpenMetaverseTypes.dll
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\OpenMetaverseTypes.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\OpenMetaverseTypes\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\OpenMetaverseTypes\obj\Debug\OpenMetaverseTypes.dll
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\OpenMetaverseTypes\obj\Debug\OpenMetaverseTypes.pdb

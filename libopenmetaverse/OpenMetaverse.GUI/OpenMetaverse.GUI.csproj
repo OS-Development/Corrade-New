@@ -1,4 +1,4 @@
-<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
+﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
   <PropertyGroup>
     <ProjectType>Local</ProjectType>
     <ProductVersion>9.0.21022</ProductVersion>
@@ -6,7 +6,8 @@
     <ProjectGuid>{5A3845FD-7BF9-4324-9710-E4FCE351405D}</ProjectGuid>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ApplicationIcon></ApplicationIcon>
+    <ApplicationIcon>
+    </ApplicationIcon>
     <AssemblyKeyContainerName>
     </AssemblyKeyContainerName>
     <AssemblyName>OpenMetaverse.GUI</AssemblyName>
@@ -16,9 +17,11 @@
     <DelaySign>false</DelaySign>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <OutputType>Library</OutputType>
-    <AppDesignerFolder></AppDesignerFolder>
+    <AppDesignerFolder>
+    </AppDesignerFolder>
     <RootNamespace>OpenMetaverse.GUI</RootNamespace>
-    <StartupObject></StartupObject>
+    <StartupObject>
+    </StartupObject>
     <FileUpgradeFlags>
     </FileUpgradeFlags>
   </PropertyGroup>
@@ -48,7 +51,8 @@
     <ConfigurationOverrideFile>
     </ConfigurationOverrideFile>
     <DefineConstants>TRACE;DEBUG;VISUAL_STUDIO</DefineConstants>
-    <DocumentationFile></DocumentationFile>
+    <DocumentationFile>
+    </DocumentationFile>
     <DebugSymbols>True</DebugSymbols>
     <FileAlignment>4096</FileAlignment>
     <Optimize>False</Optimize>
@@ -62,16 +66,16 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System">
-        <Name>System</Name>
+      <Name>System</Name>
     </Reference>
     <Reference Include="System.Data">
-        <Name>System.Data</Name>
+      <Name>System.Data</Name>
     </Reference>
     <Reference Include="System.Drawing">
-        <Name>System.Drawing</Name>
+      <Name>System.Drawing</Name>
     </Reference>
     <Reference Include="System.Windows.Forms">
-        <Name>System.Windows.Forms</Name>
+      <Name>System.Windows.Forms</Name>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -88,22 +92,31 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="MessageBar.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="LocalChat.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="GroupList.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="StatusOutput.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="InventoryTree.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="LoginPanel.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="AvatarList.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="MiniMap.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="FriendList.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="ListColumnSorter.cs">
     </Compile>
