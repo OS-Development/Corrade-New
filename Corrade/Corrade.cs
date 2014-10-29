@@ -43,7 +43,7 @@ namespace Corrade
         /// <summary>
         ///     Corrade version sent to the simulator.
         /// </summary>
-        private const string CORRADE_VERSION = @"7.15.1";
+        private const string CORRADE_VERSION = @"7.15.2";
 
         private const string CORRADE_COMPILE_DATE = @"21st of October 2014";
 
@@ -75,6 +75,8 @@ namespace Corrade
 
         private static readonly HashSet<Notification> GroupNotifications =
             new HashSet<Notification>();
+
+        private static readonly object TeleportLock = new object();
 
         public static EventHandler ConsoleEventHandler;
 
@@ -1719,29 +1721,32 @@ namespace Corrade
                         // Send group notice notifications.
                         SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, args);
                         // Log group messages
-                        Parallel.ForEach(Configuration.GROUPS.Where(o => o.Name.Equals(messageGroup.Name, StringComparison.Ordinal)), o =>
-                        {
-                            // Attempt to write to log file,
-                            try
+                        Parallel.ForEach(
+                            Configuration.GROUPS.Where(o => o.Name.Equals(messageGroup.Name, StringComparison.Ordinal)),
+                            o =>
                             {
-                                lock (FileLock)
+                                // Attempt to write to log file,
+                                try
                                 {
-                                    using (StreamWriter logWriter = File.AppendText(o.ChatLog))
+                                    lock (FileLock)
                                     {
-                                        logWriter.WriteLine("[{0}] {1} : {2}", DateTime.Now.ToString("MM-dd-yyyy HH:mm",
-                                            DateTimeFormatInfo.InvariantInfo), args.IM.FromAgentName, message);
-                                        logWriter.Flush();
-                                        //logWriter.Close();
+                                        using (StreamWriter logWriter = File.AppendText(o.ChatLog))
+                                        {
+                                            logWriter.WriteLine("[{0}] {1} : {2}",
+                                                DateTime.Now.ToString("MM-dd-yyyy HH:mm",
+                                                    DateTimeFormatInfo.InvariantInfo), args.IM.FromAgentName, message);
+                                            logWriter.Flush();
+                                            //logWriter.Close();
+                                        }
                                     }
                                 }
-                            }
-                            catch (Exception e)
-                            {
-                                // or fail and append the fail message.
-                                Feedback(GetEnumDescription(ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOGFILE),
-                                    e.Message);
-                            }
-                        });
+                                catch (Exception e)
+                                {
+                                    // or fail and append the fail message.
+                                    Feedback(GetEnumDescription(ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOGFILE),
+                                        e.Message);
+                                }
+                            });
                         return;
                     }
                     // Check if this is an instant message.
@@ -2988,7 +2993,7 @@ namespace Corrade
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
                                 out position))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_POSITION_SPECIFIED));
+                            position = Client.Self.SimPosition;
                         }
                         ManualResetEvent TeleportEvent = new ManualResetEvent(false);
                         bool succeeded = false;
@@ -3008,14 +3013,18 @@ namespace Corrade
                         }
                         Client.Self.SignaledAnimations.ForEach(
                             animation => Client.Self.AnimationStop(animation.Key, true));
-                        Client.Self.TeleportProgress += TeleportEventHandler;
-                        Client.Self.Teleport(region, position);
-                        if (!TeleportEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                        lock (TeleportLock)
                         {
+                            Client.Self.TeleportProgress += TeleportEventHandler;
+                            Client.Self.Teleport(region, position);
+
+                            if (!TeleportEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            {
+                                Client.Self.TeleportProgress -= TeleportEventHandler;
+                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_DURING_TELEPORT));
+                            }
                             Client.Self.TeleportProgress -= TeleportEventHandler;
-                            throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_DURING_TELEPORT));
                         }
-                        Client.Self.TeleportProgress -= TeleportEventHandler;
                         if (!succeeded)
                         {
                             throw new Exception(GetEnumDescription(ScriptError.TELEPORT_FAILED));
@@ -8817,73 +8826,39 @@ namespace Corrade
         private enum ConsoleError
         {
             [Description("access denied")] ACCESS_DENIED = 1,
-
             [Description("invalid configuration file")] INVALID_CONFIGURATION_FILE,
-
             [Description("the Terms of Service (TOS) have not been accepted, please check your configuration file")] TOS_NOT_ACCEPTED,
-
             [Description("teleport failed")] TELEPORT_FAILED,
-
             [Description("teleport succeeded")] TELEPORT_SUCCEEDED,
-
             [Description("accepting teleport lure")] ACCEPTING_TELEPORT_LURE,
-
             [Description("got server message")] GOT_SERVER_MESSAGE,
-
             [Description("accepted friendship")] ACCEPTED_FRIENDSHIP,
-
             [Description("login failed")] LOGIN_FAILED,
-
             [Description("login succeeded")] LOGIN_SUCCEEDED,
-
             [Description("failed to set appearance")] APPEARANCE_SET_FAILED,
-
             [Description("appearance set")] APPEARANCE_SET_SUCCEEDED,
-
             [Description("all simulators disconnected")] ALL_SIMULATORS_DISCONNECTED,
-
             [Description("simulator connected")] SIMULATOR_CONNECTED,
-
             [Description("event queue started")] EVENT_QUEUE_STARTED,
-
             [Description("disconnected")] DISCONNECTED,
-
             [Description("logging out")] LOGGING_OUT,
-
             [Description("logging in")] LOGGING_IN,
-
             [Description("could not write to group chat logfile")] COULD_NOT_WRITE_TO_GROUP_CHAT_LOGFILE,
-
             [Description("got inventory offer")] GOT_INVENTORY_OFFER,
-
             [Description("acceping group invite")] ACCEPTING_GROUP_INVITE,
-
             [Description("agent not found")] AGENT_NOT_FOUND,
-
             [Description("got group message")] GOT_GROUP_MESSAGE,
-
             [Description("got teleport lure")] GOT_TELEPORT_LURE,
-
             [Description("got group invite")] GOT_GROUP_INVITE,
-
             [Description("read configuration file")] READ_CONFIGURATION_FILE,
-
             [Description("configuration file modified")] CONFIGURATION_FILE_MODIFIED,
-
             [Description("notification could not be sent")] NOTIFICATION_COULD_NOT_BE_SENT,
-
             [Description("got region message")] GOT_REGION_MESSAGE,
-
             [Description("got group message")] GOT_GROUP_NOTICE,
-
             [Description("got insant message")] GOT_INSTANT_MESSAGE,
-
             [Description("HTTP server error")] HTTP_SERVER_ERROR,
-
             [Description("HTTP server not supported")] HTTP_SERVER_NOT_SUPPORTED,
-
             [Description("starting HTTP server")] STARTING_HTTP_SERVER,
-
             [Description("stopping HTTP server")] STOPPING_HTTP_SERVER
         }
 
@@ -9111,7 +9086,6 @@ namespace Corrade
             [Description("empty attachments")] EMPTY_ATTACHMENTS,
             [Description("could not get land users")] COULD_NOT_GET_LAND_USERS,
             [Description("no region specified")] NO_REGION_SPECIFIED,
-            [Description("no position specified")] NO_POSITION_SPECIFIED,
             [Description("empty pick name")] EMPTY_PICK_NAME,
             [Description("unable to join group chat")] UNABLE_TO_JOIN_GROUP_CHAT,
             [Description("invalid position")] INVALID_POSITION,
@@ -9197,7 +9171,7 @@ namespace Corrade
             [Description("unknown access list type")] UNKNOWN_ACCESS_LIST_TYPE,
             [Description("no task specified")] NO_TASK_SPECIFIED,
             [Description("timeout getting group members")] TIMEOUT_GETTING_GROUP_MEMBERS,
-            [Description("group not open")] GROUP_NOT_OPEN,
+            [Description("group not open")] GROUP_NOT_OPEN
         }
 
         /// <summary>
