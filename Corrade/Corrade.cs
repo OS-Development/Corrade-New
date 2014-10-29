@@ -80,6 +80,18 @@ namespace Corrade
 
         public static EventHandler ConsoleEventHandler;
 
+        private static readonly System.Action ActivateCurrentLandGroup = () => new Thread(() =>
+        {
+            Thread.Sleep(Client.Network.CurrentSim.Stats.LastLag);
+            Parcel parcel = null;
+            if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel)) return;
+            UUID groupUUID = Configuration.GROUPS.FirstOrDefault(o => o.UUID.Equals(parcel.GroupID)).UUID;
+            if (!groupUUID.Equals(UUID.Zero))
+            {
+                Client.Groups.ActivateGroup(groupUUID);
+            }
+        }).Start();
+
         public Corrade()
         {
             if (!Environment.UserInteractive)
@@ -518,10 +530,9 @@ namespace Corrade
         /// </summary>
         /// <param name="simulator">the simulator containing the parcel</param>
         /// <param name="position">a position within the parcel</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="parcel">a parcel object where to store the found parcel</param>
         /// <returns>true if the parcel could be found</returns>
-        private static bool GetParcelAtPosition(Simulator simulator, Vector3 position, int millisecondsTimeout,
+        private static bool GetParcelAtPosition(Simulator simulator, Vector3 position,
             ref Parcel parcel)
         {
             Parcel localParcel = null;
@@ -529,8 +540,10 @@ namespace Corrade
             EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedDelegate =
                 (sender, args) => RequestAllSimParcelsEvent.Set();
             Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedDelegate;
-            Client.Parcels.RequestAllSimParcels(simulator, true, simulator.Stats.LastLag);
-            if (!RequestAllSimParcelsEvent.WaitOne(millisecondsTimeout*simulator.Stats.LastLag, false))
+            int delay = simulator.Stats.LastLag != 0 ? simulator.Stats.LastLag : 100;
+            Client.Parcels.RequestAllSimParcels(simulator, true, delay);
+            // 65536 1x1 parcels in 256x256 region times the last lag 
+            if (!RequestAllSimParcelsEvent.WaitOne(65536*delay, false))
             {
                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;
                 return false;
@@ -1539,6 +1552,7 @@ namespace Corrade
 
         private static void HandleSimulatorDisconnected(object sender, SimDisconnectedEventArgs e)
         {
+            // if any simulators are still connected, we are not disconnected
             if (Client.Network.Simulators.Any())
                 return;
             Feedback(GetEnumDescription(ConsoleError.ALL_SIMULATORS_DISCONNECTED));
@@ -1561,6 +1575,10 @@ namespace Corrade
             {
                 case LoginStatus.Success:
                     Feedback(GetEnumDescription(ConsoleError.LOGIN_SUCCEEDED));
+                    if (Configuration.AUTO_ACTIVATE_GROUP)
+                    {
+                        ActivateCurrentLandGroup.Invoke();
+                    }
                     break;
                 case LoginStatus.Failed:
                     Feedback(GetEnumDescription(ConsoleError.LOGIN_FAILED), e.FailReason);
@@ -1604,20 +1622,9 @@ namespace Corrade
             {
                 case TeleportStatus.Finished:
                     Feedback(GetEnumDescription(ConsoleError.TELEPORT_SUCCEEDED));
-                    // Now try to activate the group
                     if (Configuration.AUTO_ACTIVATE_GROUP)
                     {
-                        Parcel parcel = null;
-                        if (GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition,
-                            Configuration.SERVICES_TIMEOUT, ref parcel))
-                        {
-                            UUID groupUUID = Configuration.GROUPS.FirstOrDefault(
-                                o => o.UUID.Equals(parcel.GroupID)).UUID;
-                            if (!groupUUID.Equals(UUID.Zero))
-                            {
-                                Client.Groups.ActivateGroup(groupUUID);
-                            }
-                        }
+                        ActivateCurrentLandGroup.Invoke();
                     }
                     break;
                 case TeleportStatus.Failed:
@@ -3227,8 +3234,7 @@ namespace Corrade
                         }
                         Parcel parcel = null;
                         if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position,
-                                Configuration.SERVICES_TIMEOUT, ref parcel))
+                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
@@ -3341,8 +3347,7 @@ namespace Corrade
                         }
                         Parcel parcel = null;
                         if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position,
-                                Configuration.SERVICES_TIMEOUT, ref parcel))
+                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
@@ -3378,8 +3383,7 @@ namespace Corrade
                         }
                         Parcel parcel = null;
                         if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position,
-                                Configuration.SERVICES_TIMEOUT, ref parcel))
+                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
@@ -3427,8 +3431,7 @@ namespace Corrade
                         }
                         Parcel parcel = null;
                         if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position,
-                                Configuration.SERVICES_TIMEOUT, ref parcel))
+                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
@@ -3476,8 +3479,7 @@ namespace Corrade
                         }
                         Parcel parcel = null;
                         if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position,
-                                Configuration.SERVICES_TIMEOUT, ref parcel))
+                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
@@ -3601,8 +3603,7 @@ namespace Corrade
                         }
                         Parcel parcel = null;
                         if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position,
-                                Configuration.SERVICES_TIMEOUT, ref parcel))
+                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
@@ -3667,8 +3668,7 @@ namespace Corrade
                         }
                         Parcel parcel = null;
                         if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position,
-                                Configuration.SERVICES_TIMEOUT, ref parcel))
+                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
@@ -3733,8 +3733,7 @@ namespace Corrade
                         }
                         Parcel parcel = null;
                         if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position,
-                                Configuration.SERVICES_TIMEOUT, ref parcel))
+                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
@@ -4550,8 +4549,7 @@ namespace Corrade
                                         break;
                                     case true:
                                         Parcel parcel = null;
-                                        if (!GetParcelAtPosition(Client.Network.CurrentSim, position,
-                                            Configuration.SERVICES_TIMEOUT, ref parcel))
+                                        if (!GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                                         {
                                             throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
                                         }
@@ -4683,8 +4681,7 @@ namespace Corrade
                                 break;
                             case true:
                                 Parcel parcel = null;
-                                if (!GetParcelAtPosition(Client.Network.CurrentSim, position,
-                                    Configuration.SERVICES_TIMEOUT, ref parcel))
+                                if (!GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
                                 }
@@ -4842,8 +4839,7 @@ namespace Corrade
                         }
                         Parcel parcel = null;
                         if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position,
-                                Configuration.SERVICES_TIMEOUT, ref parcel))
+                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
@@ -4895,8 +4891,7 @@ namespace Corrade
                             throw new Exception(GetEnumDescription(ScriptError.INVALID_ROTATION));
                         }
                         Parcel parcel = null;
-                        if (!GetParcelAtPosition(Client.Network.CurrentSim, position,
-                            Configuration.SERVICES_TIMEOUT, ref parcel))
+                        if (!GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
@@ -6503,8 +6498,7 @@ namespace Corrade
                                 break;
                             case Entity.PARCEL:
                                 if (
-                                    !GetParcelAtPosition(Client.Network.CurrentSim, position,
-                                        Configuration.SERVICES_TIMEOUT, ref parcel))
+                                    !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
                                 }
@@ -6558,8 +6552,8 @@ namespace Corrade
                                 case Entity.PARCEL:
                                     if (parcel == null) continue;
                                     Parcel primitiveParcel = null;
-                                    if (!GetParcelAtPosition(Client.Network.CurrentSim, p.Position,
-                                        Configuration.SERVICES_TIMEOUT, ref primitiveParcel)) continue;
+                                    if (!GetParcelAtPosition(Client.Network.CurrentSim, p.Position, ref primitiveParcel))
+                                        continue;
                                     if (!primitiveParcel.LocalID.Equals(parcel.LocalID)) continue;
                                     break;
                             }
@@ -6602,8 +6596,7 @@ namespace Corrade
                                 break;
                             case Entity.PARCEL:
                                 if (
-                                    !GetParcelAtPosition(Client.Network.CurrentSim, position,
-                                        Configuration.SERVICES_TIMEOUT, ref parcel))
+                                    !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
                                 }
@@ -6626,8 +6619,8 @@ namespace Corrade
                                 case Entity.PARCEL:
                                     if (parcel == null) return;
                                     Parcel avatarParcel = null;
-                                    if (!GetParcelAtPosition(Client.Network.CurrentSim, p.Value,
-                                        Configuration.SERVICES_TIMEOUT, ref avatarParcel)) continue;
+                                    if (!GetParcelAtPosition(Client.Network.CurrentSim, p.Value, ref avatarParcel))
+                                        continue;
                                     if (!avatarParcel.LocalID.Equals(parcel.LocalID)) continue;
                                     break;
                             }
