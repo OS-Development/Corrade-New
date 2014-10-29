@@ -45,7 +45,7 @@ namespace Corrade
         /// </summary>
         private const string CORRADE_VERSION = @"7.15.2";
 
-        private const string CORRADE_COMPILE_DATE = @"21st of October 2014";
+        private const string CORRADE_COMPILE_DATE = @"29th of October 2014";
 
         /// <summary>
         ///     Semaphores that sense the state of the connection. When any of these semaphores fail,
