@@ -3255,7 +3255,7 @@ namespace Corrade
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
-                                if (!parcel.IsGroupOwned || !parcel.GroupID.Equals(groupUUID))
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
@@ -3391,7 +3391,7 @@ namespace Corrade
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
-                                if (!parcel.IsGroupOwned || !parcel.GroupID.Equals(groupUUID))
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
@@ -3439,7 +3439,7 @@ namespace Corrade
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
-                                if (!parcel.IsGroupOwned || !parcel.GroupID.Equals(groupUUID))
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
@@ -3611,7 +3611,7 @@ namespace Corrade
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
-                                if (!parcel.IsGroupOwned || !parcel.GroupID.Equals(groupUUID))
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
@@ -3676,7 +3676,7 @@ namespace Corrade
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
-                                if (!parcel.IsGroupOwned || !parcel.GroupID.Equals(groupUUID))
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
@@ -3741,7 +3741,7 @@ namespace Corrade
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
-                                if (!parcel.IsGroupOwned || !parcel.GroupID.Equals(groupUUID))
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
@@ -4901,7 +4901,7 @@ namespace Corrade
                             {
                                 if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                                 {
-                                    if (!parcel.IsGroupOwned || !parcel.GroupID.Equals(groupUUID))
+                                    if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
                                     {
                                         throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                     }
@@ -5205,6 +5205,76 @@ namespace Corrade
                                 GetStructuredData(item,
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)))
                                     .ToArray()));
+                    };
+                    break;
+                case ScriptKeys.UPDATEPRIMITIVEINVENTORY:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(
+                                GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                out range))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                range,
+                                Configuration.SERVICES_TIMEOUT,
+                                ref primitive))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        string entity =
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ENTITY), message));
+                        UUID entityUUID;
+                        if (!UUID.TryParse(entity, out entityUUID))
+                        {
+                            if (string.IsNullOrEmpty(entity))
+                            {
+                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ENTITY));
+                            }
+                            entityUUID = UUID.Zero;
+                        }
+                        switch (
+                            (Action)
+                                wasGetEnumValueFromDescription<Action>(
+                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION),
+                                        message)).ToLower(CultureInfo.InvariantCulture)))
+                        {
+                            case Action.ADD:
+                                InventoryItem inventoryItem =
+                                    SearchInventoryItem(Client.Inventory.Store.RootFolder,
+                                        !entityUUID.Equals(UUID.Zero) ? entityUUID.ToString() : entity,
+                                        Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                                if (inventoryItem == null)
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                }
+                                Client.Inventory.UpdateTaskInventory(primitive.LocalID, inventoryItem);
+                                break;
+                            case Action.REMOVE:
+                                if (entityUUID.Equals(UUID.Zero))
+                                {
+                                    entityUUID = Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
+                                        Configuration.SERVICES_TIMEOUT).FirstOrDefault(o => o.Name.Equals(entity)).UUID;
+                                    if (entityUUID.Equals(UUID.Zero))
+                                    {
+                                        throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                    }
+                                }
+                                Client.Inventory.RemoveTaskInventory(primitive.LocalID, entityUUID,
+                                    Client.Network.CurrentSim);
+                                break;
+                        }
                     };
                     break;
                 case ScriptKeys.GETINVENTORYDATA:
@@ -9198,6 +9268,7 @@ namespace Corrade
         /// </summary>
         private enum ScriptKeys : uint
         {
+            [Description("updateprimitiveinventory")] UPDATEPRIMITIVEINVENTORY,
             [Description("version")] VERSION,
             [Description("playsound")] PLAYSOUND,
             [Description("gain")] GAIN,
