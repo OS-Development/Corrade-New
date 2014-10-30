@@ -36,16 +36,16 @@ namespace Corrade
         public delegate bool EventHandler(NativeMethods.CtrlType ctrlType);
 
         /// <summary>
-        ///     Corrade channel sent to the simulator.
-        /// </summary>
-        private const string CLIENT_CHANNEL = @"[Wizardry and Steamworks]:Corrade";
-
-        /// <summary>
         ///     Corrade version sent to the simulator.
         /// </summary>
-        private const string CORRADE_VERSION = @"7.15.2";
+        private static readonly string CORRADE_VERSION = Assembly.GetEntryAssembly().GetName().Version.ToString();
 
-        private const string CORRADE_COMPILE_DATE = @"29th of October 2014";
+        /// <summary>
+        ///     Corrade compile date.
+        /// </summary>
+        private static readonly string CORRADE_COMPILE_DATE = new DateTime(2000, 1, 1).Add(new TimeSpan(
+            TimeSpan.TicksPerDay*Assembly.GetEntryAssembly().GetName().Version.Build + // days since 1 January 2000
+            TimeSpan.TicksPerSecond*2*Assembly.GetEntryAssembly().GetName().Version.Revision)).ToLongDateString();
 
         /// <summary>
         ///     Semaphores that sense the state of the connection. When any of these semaphores fail,
@@ -1120,14 +1120,14 @@ namespace Corrade
                 Configuration.FIRST_NAME,
                 Configuration.LAST_NAME,
                 Configuration.PASSWORD,
-                CLIENT_CHANNEL,
+                CORRADE_CONSTANTS.CLIENT_CHANNEL,
                 CORRADE_VERSION.ToString(CultureInfo.InvariantCulture),
                 Configuration.LOGIN_URL)
             {
-                Author = "Wizardry and Steamworks",
+                Author = @"Wizardry and Steamworks",
                 AgreeToTos = Configuration.TOS_ACCEPTED,
                 Start = Configuration.START_LOCATION,
-                UserAgent = "libopenmetaverse"
+                UserAgent = @"libopenmetaverse"
             };
             // Set the MAC if specified in the configuration file.
             if (!string.IsNullOrEmpty(Configuration.NETWORK_CARD_MAC))
@@ -1215,18 +1215,18 @@ namespace Corrade
             HttpListenerContext httpContext = httpListener.EndGetContext(ar);
             HttpListenerRequest httpRequest = httpContext.Request;
             // only accept POST requests
-            if (!httpRequest.HttpMethod.Equals("POST", StringComparison.OrdinalIgnoreCase)) return;
+            if (!httpRequest.HttpMethod.Equals(CORRADE_CONSTANTS.POST, StringComparison.OrdinalIgnoreCase)) return;
             Stream body = httpRequest.InputStream;
             Encoding encoding = httpRequest.ContentEncoding;
             StreamReader reader = new StreamReader(body, encoding);
-            Dictionary<string, string> result = HandleCorradeCommand(reader.ReadToEnd(), "Web Request",
+            Dictionary<string, string> result = HandleCorradeCommand(reader.ReadToEnd(), CORRADE_CONSTANTS.WEB_REQUEST,
                 httpRequest.RemoteEndPoint.ToString());
             if (result == null) return;
             HttpListenerResponse response = httpContext.Response;
-            response.ContentType = "text/html";
+            response.ContentType = CORRADE_CONSTANTS.TEXT_HTML;
             byte[] data = Encoding.UTF8.GetBytes(wasKeyValueEncode(wasKeyValueEscape(result)));
             response.ContentLength64 = data.Length;
-            response.StatusCode = 200; // HTTP OK
+            response.StatusCode = CORRADE_CONSTANTS.HTTP_CODES.OK; // HTTP OK
             Stream responseStream = response.OutputStream;
             if (responseStream == null) return;
             responseStream.Write(data, 0, data.Length);
@@ -1801,7 +1801,7 @@ namespace Corrade
              * args.IM.FromAgentID to a name, which is what Second Life does, otherwise it just sets the name 
              * to the name of the primitive sending the message.
              */
-            if (Client.Network.CurrentSim.SimVersion.Contains("Second Life"))
+            if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE))
             {
                 UUID fromAgentID;
                 if (UUID.TryParse(identifier, out fromAgentID))
@@ -7426,6 +7426,9 @@ namespace Corrade
                         ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
                     };
                     break;
+                case ScriptKeys.VERSION:
+                    execute = () => result.Add(GetEnumDescription(ResultKeys.VERSION), CORRADE_VERSION);
+                    break;
                 case ScriptKeys.DIRECTORYSEARCH:
                     execute = () =>
                     {
@@ -8433,7 +8436,24 @@ namespace Corrade
         /// </summary>
         private struct CORRADE_CONSTANTS
         {
+            /// <summary>
+            ///     Censor characters for passwords.
+            /// </summary>
             public const string PASSWORD_CENSOR = "***";
+
+            /// <summary>
+            ///     Corrade channel sent to the simulator.
+            /// </summary>
+            public const string CLIENT_CHANNEL = @"[Wizardry and Steamworks]:Corrade";
+
+            public const string WEB_REQUEST = @"Web Request";
+            public const string POST = @"POST";
+            public const string TEXT_HTML = "text/html";
+
+            public struct HTTP_CODES
+            {
+                public const int OK = 200;
+            }
         }
 
         private struct Configuration
@@ -8934,6 +8954,11 @@ namespace Corrade
                 }
             }
 
+            public struct GRID
+            {
+                public const string SECOND_LIFE = @"Second Life";
+            }
+
             public struct GROUPS
             {
                 public const int MAXIMUM_NUMBER_OF_ROLES = 10;
@@ -9010,6 +9035,7 @@ namespace Corrade
         /// </summary>
         private enum ResultKeys : uint
         {
+            [Description("version")] VERSION,
             [Description("positions")] POSITIONS,
             [Description("primitives")] PRIMITIVES,
             [Description("avatars")] AVATARS,
@@ -9172,6 +9198,7 @@ namespace Corrade
         /// </summary>
         private enum ScriptKeys : uint
         {
+            [Description("version")] VERSION,
             [Description("playsound")] PLAYSOUND,
             [Description("gain")] GAIN,
             [Description("getrolemembers")] GETROLEMEMBERS,
