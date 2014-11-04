@@ -848,7 +848,7 @@ namespace Corrade
             {
                 "Corrade",
                 string.Format(CultureInfo.InvariantCulture, "[{0}]",
-                    DateTime.Now.ToString("dd-MM-yyyy HH:mm", DateTimeFormatInfo.InvariantInfo)),
+                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP, DateTimeFormatInfo.InvariantInfo)),
             };
 
             output.AddRange(messages.Select(message => message));
@@ -1018,7 +1018,7 @@ namespace Corrade
         public void Program()
         {
             // Create a thread for signals.
-            Thread TrapSignalsThread = null;
+            Thread BindSignalsThread = null;
             // Branch on platform and set-up termination handlers.
             switch (Environment.OSVersion.Platform)
             {
@@ -1037,7 +1037,7 @@ namespace Corrade
                     }
                     break;
                 case PlatformID.Unix:
-                    TrapSignalsThread = new Thread(() =>
+                    BindSignalsThread = new Thread(() =>
                     {
                         UnixSignal[] signals =
                         {
@@ -1047,18 +1047,18 @@ namespace Corrade
                         UnixSignal.WaitAny(signals, -1);
                         ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
                     });
-                    TrapSignalsThread.Start();
+                    BindSignalsThread.Start();
                     break;
             }
             // Set the current directory to the service directory.
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
             // Load the configuration file.
-            Configuration.Load("Corrade.ini");
+            Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
             // Set-up watcher for dynamically reading the configuration file.
             FileSystemWatcher configurationWatcher = new FileSystemWatcher
             {
                 Path = Directory.GetCurrentDirectory(),
-                Filter = "Corrade.ini",
+                Filter = CORRADE_CONSTANTS.CONFIGURATION_FILE,
                 NotifyFilter = NotifyFilters.LastWrite
             };
             configurationWatcher.Changed += HandleConfigurationFileChanged;
@@ -1138,7 +1138,7 @@ namespace Corrade
             Client.Network.Login(login);
             // Start the HTTP Server if it is supported
             Thread HTTPListenerThread = null;
-            HttpListener httpListener = null;
+            HttpListener HTTPListener = null;
             if (Configuration.HTTP_SERVER && !HttpListener.IsSupported)
             {
                 Feedback(GetEnumDescription(ConsoleError.HTTP_SERVER_ERROR),
@@ -1151,13 +1151,15 @@ namespace Corrade
                 {
                     try
                     {
-                        httpListener = new HttpListener();
-                        httpListener.Prefixes.Add(Configuration.HTTP_SERVER_PREFIX);
-                        httpListener.Start();
-                        while (httpListener.IsListening)
+                        using (HTTPListener = new HttpListener())
                         {
-                            IAsyncResult result = httpListener.BeginGetContext(ProcesHTTPRequest, httpListener);
-                            result.AsyncWaitHandle.WaitOne(Configuration.CALLBACK_TIMEOUT, false);
+                            HTTPListener.Prefixes.Add(Configuration.HTTP_SERVER_PREFIX);
+                            HTTPListener.Start();
+                            while (HTTPListener.IsListening)
+                            {
+                                IAsyncResult result = HTTPListener.BeginGetContext(ProcesHTTPRequest, HTTPListener);
+                                result.AsyncWaitHandle.WaitOne(Configuration.CALLBACK_TIMEOUT, false);
+                            }
                         }
                     }
                     catch (Exception e)
@@ -1183,16 +1185,9 @@ namespace Corrade
             if (Configuration.HTTP_SERVER && HttpListener.IsSupported)
             {
                 Feedback(GetEnumDescription(ConsoleError.STOPPING_HTTP_SERVER));
-                if (httpListener != null && httpListener.IsListening)
-                {
-                    httpListener.Stop();
-                }
-                if (httpListener != null && httpListener.IsListening)
-                {
-                    httpListener.Abort();
-                }
                 if (HTTPListenerThread != null)
                 {
+                    HTTPListener.Stop();
                     HTTPListenerThread.Join(Configuration.SERVICES_TIMEOUT);
                 }
             }
@@ -1200,37 +1195,45 @@ namespace Corrade
             Client.Network.Logout();
             Client.Network.Shutdown(NetworkManager.DisconnectType.ClientInitiated);
             // Close signals
-            if (Environment.OSVersion.Platform.Equals(PlatformID.Unix) && TrapSignalsThread != null)
+            if (Environment.OSVersion.Platform.Equals(PlatformID.Unix) && BindSignalsThread != null)
             {
-                TrapSignalsThread.Abort();
+                BindSignalsThread.Abort();
             }
             Environment.Exit(0);
         }
 
         private static void ProcesHTTPRequest(IAsyncResult ar)
         {
-            HttpListener httpListener = ar.AsyncState as HttpListener;
-            // bail if we are not listening
-            if (httpListener == null || !httpListener.IsListening) return;
-            HttpListenerContext httpContext = httpListener.EndGetContext(ar);
-            HttpListenerRequest httpRequest = httpContext.Request;
-            // only accept POST requests
-            if (!httpRequest.HttpMethod.Equals(CORRADE_CONSTANTS.POST, StringComparison.OrdinalIgnoreCase)) return;
-            Stream body = httpRequest.InputStream;
-            Encoding encoding = httpRequest.ContentEncoding;
-            StreamReader reader = new StreamReader(body, encoding);
-            Dictionary<string, string> result = HandleCorradeCommand(reader.ReadToEnd(), CORRADE_CONSTANTS.WEB_REQUEST,
-                httpRequest.RemoteEndPoint.ToString());
-            if (result == null) return;
-            HttpListenerResponse response = httpContext.Response;
-            response.ContentType = CORRADE_CONSTANTS.TEXT_HTML;
-            byte[] data = Encoding.UTF8.GetBytes(wasKeyValueEncode(wasKeyValueEscape(result)));
-            response.ContentLength64 = data.Length;
-            response.StatusCode = CORRADE_CONSTANTS.HTTP_CODES.OK; // HTTP OK
-            Stream responseStream = response.OutputStream;
-            if (responseStream == null) return;
-            responseStream.Write(data, 0, data.Length);
-            responseStream.Close();
+            try
+            {
+                HttpListener httpListener = ar.AsyncState as HttpListener;
+                // bail if we are not listening
+                if (httpListener == null || !httpListener.IsListening) return;
+                HttpListenerContext httpContext = httpListener.EndGetContext(ar);
+                HttpListenerRequest httpRequest = httpContext.Request;
+                // only accept POST requests
+                if (!httpRequest.HttpMethod.Equals(CORRADE_CONSTANTS.POST, StringComparison.OrdinalIgnoreCase)) return;
+                Stream body = httpRequest.InputStream;
+                Encoding encoding = httpRequest.ContentEncoding;
+                StreamReader reader = new StreamReader(body, encoding);
+                Dictionary<string, string> result = HandleCorradeCommand(reader.ReadToEnd(),
+                    CORRADE_CONSTANTS.WEB_REQUEST,
+                    httpRequest.RemoteEndPoint.ToString());
+                if (result == null) return;
+                HttpListenerResponse response = httpContext.Response;
+                response.ContentType = CORRADE_CONSTANTS.TEXT_HTML;
+                byte[] data = Encoding.UTF8.GetBytes(wasKeyValueEncode(wasKeyValueEscape(result)));
+                response.ContentLength64 = data.Length;
+                response.StatusCode = CORRADE_CONSTANTS.HTTP_CODES.OK; // HTTP OK
+                Stream responseStream = response.OutputStream;
+                if (responseStream == null) return;
+                responseStream.Write(data, 0, data.Length);
+                responseStream.Close();
+            }
+            catch (Exception)
+            {
+                Feedback(GetEnumDescription(ConsoleError.HTTP_SERVER_PROCESSING_ABORTED));
+            }
         }
 
         private static void SendNotification(Notifications notification, object e)
@@ -1740,7 +1743,7 @@ namespace Corrade
                                         using (StreamWriter logWriter = File.AppendText(o.ChatLog))
                                         {
                                             logWriter.WriteLine("[{0}] {1} : {2}",
-                                                DateTime.Now.ToString("MM-dd-yyyy HH:mm",
+                                                DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
                                                     DateTimeFormatInfo.InvariantInfo), args.IM.FromAgentName, message);
                                             logWriter.Flush();
                                             //logWriter.Close();
@@ -3103,7 +3106,12 @@ namespace Corrade
                         }
                         Client.Self.SignaledAnimations.ForEach(
                             animation => Client.Self.AnimationStop(animation.Key, true));
-                        if (!Client.Self.GoHome())
+                        bool succeeded;
+                        lock (TeleportLock)
+                        {
+                            succeeded = Client.Self.GoHome();
+                        }
+                        if (!succeeded)
                         {
                             throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_GO_HOME));
                         }
@@ -8518,7 +8526,9 @@ namespace Corrade
 
             public const string WEB_REQUEST = @"Web Request";
             public const string POST = @"POST";
-            public const string TEXT_HTML = "text/html";
+            public const string TEXT_HTML = @"text/html";
+            public const string CONFIGURATION_FILE = @"Corrade.ini";
+            public const string DATE_TIME_STAMP = @"dd-MM-yyyy HH:mm";
 
             public struct HTTP_CODES
             {
@@ -8529,35 +8539,20 @@ namespace Corrade
         private struct Configuration
         {
             public static string FIRST_NAME;
-
             public static string LAST_NAME;
-
             public static string PASSWORD;
-
             public static string LOGIN_URL;
-
             public static bool HTTP_SERVER;
-
             public static string HTTP_SERVER_PREFIX;
-
             public static int CALLBACK_TIMEOUT;
-
             public static int SERVICES_TIMEOUT;
-
             public static bool TOS_ACCEPTED;
-
             public static string START_LOCATION;
-
             public static string NETWORK_CARD_MAC;
-
             public static string LOG_FILE;
-
             public static bool AUTO_ACTIVATE_GROUP;
-
             public static int GROUP_CREATE_FEE;
-
             public static HashSet<Group> GROUPS;
-
             public static HashSet<Master> MASTERS;
 
             public static void Load(string file)
@@ -8942,7 +8937,8 @@ namespace Corrade
             [Description("HTTP server error")] HTTP_SERVER_ERROR,
             [Description("HTTP server not supported")] HTTP_SERVER_NOT_SUPPORTED,
             [Description("starting HTTP server")] STARTING_HTTP_SERVER,
-            [Description("stopping HTTP server")] STOPPING_HTTP_SERVER
+            [Description("stopping HTTP server")] STOPPING_HTTP_SERVER,
+            [Description("http server processing aborted")] HTTP_SERVER_PROCESSING_ABORTED
         }
 
         /// <summary>
