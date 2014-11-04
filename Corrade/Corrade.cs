@@ -917,7 +917,7 @@ namespace Corrade
                     Environment.NewLine + "Version: {0} Compiled: {1}" + Environment.NewLine, CORRADE_VERSION,
                     CORRADE_COMPILE_DATE),
                 string.Format(CultureInfo.InvariantCulture,
-                    "(c) Copyright 2013 Wizardry and Steamworks" + Environment.NewLine),
+                    CORRADE_CONSTANTS.COPYRIGHT + Environment.NewLine),
             };
             foreach (string line in logo)
             {
@@ -967,9 +967,9 @@ namespace Corrade
             {
                 if (e.InnerException != null && e.InnerException.GetType() == typeof (Win32Exception))
                 {
-                    Win32Exception wex = (Win32Exception) e.InnerException;
-                    Console.WriteLine("Error(0x{0:X}): Service already installed!", wex.ErrorCode);
-                    return wex.ErrorCode;
+                    Win32Exception we = (Win32Exception) e.InnerException;
+                    Console.WriteLine("Error(0x{0:X}): Service already installed!", we.ErrorCode);
+                    return we.ErrorCode;
                 }
                 Console.WriteLine(e.ToString());
                 return -1;
@@ -989,9 +989,9 @@ namespace Corrade
             {
                 if (e.InnerException.GetType() == typeof (Win32Exception))
                 {
-                    Win32Exception wex = (Win32Exception) e.InnerException;
-                    Console.WriteLine("Error(0x{0:X}): Service not installed!", wex.ErrorCode);
-                    return wex.ErrorCode;
+                    Win32Exception we = (Win32Exception) e.InnerException;
+                    Console.WriteLine("Error(0x{0:X}): Service not installed!", we.ErrorCode);
+                    return we.ErrorCode;
                 }
                 Console.WriteLine(e.ToString());
                 return -1;
@@ -7545,30 +7545,27 @@ namespace Corrade
                                     new Dictionary<DirectoryManager.Classified, int>();
                                 ManualResetEvent DirClassifiedsEvent = new ManualResetEvent(false);
                                 EventHandler<DirClassifiedsReplyEventArgs> DirClassifiedsEventHandler =
-                                    (sender, args) =>
+                                    (sender, args) => Parallel.ForEach(args.Classifieds, o =>
                                     {
-                                        Parallel.ForEach(args.Classifieds, o =>
+                                        int score = !string.IsNullOrEmpty(fields)
+                                            ? wasGetFields(searchClassified, searchClassified.GetType().Name)
+                                                .Sum(
+                                                    p =>
+                                                        (from q in
+                                                            wasGetFields(o,
+                                                                o.GetType().Name)
+                                                            let r = wasGetInfoValue(p.Key, p.Value)
+                                                            where r != null
+                                                            let s = wasGetInfoValue(q.Key, q.Value)
+                                                            where s != null
+                                                            where r.Equals(s)
+                                                            select r).Count())
+                                            : 0;
+                                        lock (LockObject)
                                         {
-                                            int score = !string.IsNullOrEmpty(fields)
-                                                ? wasGetFields(searchClassified, searchClassified.GetType().Name)
-                                                    .Sum(
-                                                        p =>
-                                                            (from q in
-                                                                wasGetFields(o,
-                                                                    o.GetType().Name)
-                                                                let r = wasGetInfoValue(p.Key, p.Value)
-                                                                where r != null
-                                                                let s = wasGetInfoValue(q.Key, q.Value)
-                                                                where s != null
-                                                                where r.Equals(s)
-                                                                select r).Count())
-                                                : 0;
-                                            lock (LockObject)
-                                            {
-                                                classifieds.Add(o, score);
-                                            }
-                                        });
-                                    };
+                                            classifieds.Add(o, score);
+                                        }
+                                    });
                                 Client.Directory.DirClassifiedsReply += DirClassifiedsEventHandler;
                                 Client.Directory.StartClassifiedSearch(name);
                                 DirClassifiedsEvent.WaitOne(timeout, false);
@@ -7833,29 +7830,26 @@ namespace Corrade
                                     new Dictionary<DirectoryManager.PlacesSearchData, int>();
                                 ManualResetEvent DirPlacesReplyEvent = new ManualResetEvent(false);
                                 EventHandler<PlacesReplyEventArgs> DirPlacesReplyEventHandler =
-                                    (sender, args) =>
+                                    (sender, args) => Parallel.ForEach(args.MatchedPlaces, o =>
                                     {
-                                        Parallel.ForEach(args.MatchedPlaces, o =>
+                                        int score = !string.IsNullOrEmpty(fields)
+                                            ? wasGetFields(searchPlaces, searchPlaces.GetType().Name)
+                                                .Sum(
+                                                    p =>
+                                                        (from q in
+                                                            wasGetFields(o, o.GetType().Name)
+                                                            let r = wasGetInfoValue(p.Key, p.Value)
+                                                            where r != null
+                                                            let s = wasGetInfoValue(q.Key, q.Value)
+                                                            where s != null
+                                                            where r.Equals(s)
+                                                            select r).Count())
+                                            : 0;
+                                        lock (LockObject)
                                         {
-                                            int score = !string.IsNullOrEmpty(fields)
-                                                ? wasGetFields(searchPlaces, searchPlaces.GetType().Name)
-                                                    .Sum(
-                                                        p =>
-                                                            (from q in
-                                                                wasGetFields(o, o.GetType().Name)
-                                                                let r = wasGetInfoValue(p.Key, p.Value)
-                                                                where r != null
-                                                                let s = wasGetInfoValue(q.Key, q.Value)
-                                                                where s != null
-                                                                where r.Equals(s)
-                                                                select r).Count())
-                                                : 0;
-                                            lock (LockObject)
-                                            {
-                                                places.Add(o, score);
-                                            }
-                                        });
-                                    };
+                                            places.Add(o, score);
+                                        }
+                                    });
                                 Client.Directory.PlacesReply += DirPlacesReplyEventHandler;
                                 Client.Directory.StartPlacesSearch(name);
                                 DirPlacesReplyEvent.WaitOne(timeout, false);
@@ -8515,6 +8509,10 @@ namespace Corrade
         private struct CORRADE_CONSTANTS
         {
             /// <summary>
+            ///     Copyright.
+            /// </summary>
+            public const string COPYRIGHT = @"(c) Copyright 2013 Wizardry and Steamworks";
+            /// <summary>
             ///     Censor characters for passwords.
             /// </summary>
             public const string PASSWORD_CENSOR = "***";
@@ -8601,6 +8599,7 @@ namespace Corrade
                     Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE));
                     Environment.Exit(1);
                 }
+
                 if (root != null)
                 {
                     XmlNodeList nodeList = root.SelectNodes("/config/client/*");
@@ -9016,7 +9015,7 @@ namespace Corrade
 
                 public struct MESSAGES
                 {
-                    public const string REGION_RESTART_MESSAGE = "restart";
+                    public const string REGION_RESTART_MESSAGE = @"restart";
                 }
             }
 
