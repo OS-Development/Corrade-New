@@ -59,6 +59,8 @@ namespace Corrade
             {'u', new ManualResetEvent(false)}
         };
 
+        public static string CorradeServiceName;
+
         private static Thread programThread;
 
         private static readonly EventLog CorradeLog = new EventLog();
@@ -96,9 +98,9 @@ namespace Corrade
         {
             if (!Environment.UserInteractive)
             {
-                ServiceName = "Corrade";
-                CorradeLog.Source = ServiceName;
-                CorradeLog.Log = "Application";
+                CorradeServiceName = ServiceName;
+                CorradeLog.Source = CorradeServiceName;
+                CorradeLog.Log = CORRADE_CONSTANTS.LOG_FACILITY;
                 ((ISupportInitialize) (CorradeLog)).BeginInit();
                 if (!EventLog.SourceExists(CorradeLog.Source))
                 {
@@ -932,18 +934,32 @@ namespace Corrade
             {
                 if (args.Length != 0)
                 {
-                    switch (args[0].ToLowerInvariant())
+                }
+                string action = string.Empty;
+                for (int i = 0; i < args.Length; ++i)
+                {
+                    switch (args[i].ToUpper())
                     {
-                        case "/install": // install Corrade as a service
-                            return InstallService();
-
-                        case "/uninstall": // uninstall the Corrade service
-                            return UninstallService();
-
-                        default: // unknown option
-                            Console.WriteLine("Argument not recognized: {0}", args[0]);
-                            return 1;
+                        case "/INSTALL":
+                            action = "INSTALL";
+                            break;
+                        case "/UNINSTALL":
+                            action = "UNINSTALL";
+                            break;
+                        case "/NAME":
+                            if (args.Length > i + 1)
+                            {
+                                CorradeServiceName = args[++i];
+                            }
+                            break;
                     }
+                }
+                switch (action)
+                {
+                    case "INSTALL":
+                        return InstallService();
+                    case "UNINSTALL":
+                        return UninstallService();
                 }
                 // run interactively and log to console
                 Corrade corrade = new Corrade();
@@ -1101,6 +1117,9 @@ namespace Corrade
             Client.Self.ScriptDialog += HandleScriptDialog;
             Client.Objects.AvatarUpdate += HandleAvatarUpdate;
             Client.Objects.TerseObjectUpdate += HandleTerseObjectUpdate;
+            Client.Avatars.ViewerEffect += HandleViewerEffect;
+            Client.Avatars.ViewerEffectPointAt += HandleViewerEffect;
+            Client.Avatars.ViewerEffectLookAt += HandleViewerEffect;
             // Each Instant Message is processed in its own thread.
             Client.Self.IM += HandleSelfIM;
             // Write the logo in interactive mode.
@@ -1202,6 +1221,11 @@ namespace Corrade
             Environment.Exit(0);
         }
 
+        private void HandleViewerEffect(object sender, object e)
+        {
+            SendNotification(Notifications.NOTIFICATION_VIEWER_EFFECT, e);
+        }
+
         private static void ProcesHTTPRequest(IAsyncResult ar)
         {
             try
@@ -1236,7 +1260,7 @@ namespace Corrade
             }
         }
 
-        private static void SendNotification(Notifications notification, object e)
+        private static void SendNotification(Notifications notification, object args)
         {
             // First check if the group is able to receive dialog notifications.
             Parallel.ForEach(
@@ -1260,7 +1284,7 @@ namespace Corrade
                             switch (notification)
                             {
                                 case Notifications.NOTIFICATION_SCRIPT_DIALOG:
-                                    ScriptDialogEventArgs scriptDialogEventArgs = (ScriptDialogEventArgs) e;
+                                    ScriptDialogEventArgs scriptDialogEventArgs = (ScriptDialogEventArgs) args;
                                     notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
                                         scriptDialogEventArgs.Message);
                                     notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
@@ -1280,7 +1304,7 @@ namespace Corrade
                                             scriptDialogEventArgs.ButtonLabels.ToArray()));
                                     break;
                                 case Notifications.NOTIFICATION_LOCAL_CHAT:
-                                    ChatEventArgs chatEventArgs = (ChatEventArgs) e;
+                                    ChatEventArgs chatEventArgs = (ChatEventArgs) args;
                                     List<string> chatName =
                                         new List<string>(chatEventArgs.FromName.Split(new[] {' ', '.'},
                                             StringSplitOptions.RemoveEmptyEntries));
@@ -1293,18 +1317,18 @@ namespace Corrade
                                         chatEventArgs.SourceID.ToString());
                                     break;
                                 case Notifications.NOTIFICATION_BALANCE:
-                                    BalanceEventArgs balanceEventArgs = (BalanceEventArgs) e;
+                                    BalanceEventArgs balanceEventArgs = (BalanceEventArgs) args;
                                     notificationData.Add(GetEnumDescription(ScriptKeys.BALANCE),
                                         balanceEventArgs.Balance.ToString(CultureInfo.InvariantCulture));
                                     break;
                                 case Notifications.NOTIFICATION_ALERT_MESSAGE:
-                                    AlertMessageEventArgs alertMessageEventArgs = (AlertMessageEventArgs) e;
+                                    AlertMessageEventArgs alertMessageEventArgs = (AlertMessageEventArgs) args;
                                     notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
                                         alertMessageEventArgs.Message);
                                     break;
                                 case Notifications.NOTIFICATION_INVENTORY_OFFER:
                                     InventoryObjectOfferedEventArgs inventoryObjectOfferedEventArgs =
-                                        (InventoryObjectOfferedEventArgs) e;
+                                        (InventoryObjectOfferedEventArgs) args;
                                     List<string> inventoryObjectOfferedName =
                                         new List<string>(
                                             inventoryObjectOfferedEventArgs.Offer.FromAgentName.Split(new[] {' ', '.'},
@@ -1317,7 +1341,7 @@ namespace Corrade
                                         inventoryObjectOfferedEventArgs.AssetType.ToString());
                                     break;
                                 case Notifications.NOTIFICATION_SCRIPT_PERMISSION:
-                                    ScriptQuestionEventArgs scriptQuestionEventArgs = (ScriptQuestionEventArgs) e;
+                                    ScriptQuestionEventArgs scriptQuestionEventArgs = (ScriptQuestionEventArgs) args;
                                     notificationData.Add(GetEnumDescription(ScriptKeys.ITEM),
                                         scriptQuestionEventArgs.ItemID.ToString());
                                     notificationData.Add(GetEnumDescription(ScriptKeys.TASK),
@@ -1333,10 +1357,10 @@ namespace Corrade
                                                 .Select(o => o.Name).ToArray()));
                                     break;
                                 case Notifications.NOTIFICATION_FRIENDSHIP:
-                                    System.Type friendshipNotificationType = e.GetType();
+                                    System.Type friendshipNotificationType = args.GetType();
                                     if (friendshipNotificationType == typeof (FriendInfoEventArgs))
                                     {
-                                        FriendInfoEventArgs friendInfoEventArgs = (FriendInfoEventArgs) e;
+                                        FriendInfoEventArgs friendInfoEventArgs = (FriendInfoEventArgs) args;
                                         List<string> name =
                                             new List<string>(friendInfoEventArgs.Friend.Name.Split(new[] {' ', '.'},
                                                 StringSplitOptions.RemoveEmptyEntries));
@@ -1363,7 +1387,7 @@ namespace Corrade
                                     if (friendshipNotificationType == typeof (FriendshipResponseEventArgs))
                                     {
                                         FriendshipResponseEventArgs friendshipResponseEventArgs =
-                                            (FriendshipResponseEventArgs) e;
+                                            (FriendshipResponseEventArgs) args;
                                         List<string> friendshipResponseName =
                                             new List<string>(
                                                 friendshipResponseEventArgs.AgentName.Split(new[] {' ', '.'},
@@ -1379,7 +1403,7 @@ namespace Corrade
                                     if (friendshipNotificationType == typeof (FriendshipOfferedEventArgs))
                                     {
                                         FriendshipOfferedEventArgs friendshipOfferedEventArgs =
-                                            (FriendshipOfferedEventArgs) e;
+                                            (FriendshipOfferedEventArgs) args;
                                         List<string> friendshipOfferedName =
                                             new List<string>(friendshipOfferedEventArgs.AgentName.Split(
                                                 new[] {' ', '.'},
@@ -1393,7 +1417,7 @@ namespace Corrade
                                     }
                                     break;
                                 case Notifications.NOTIFICATION_TELEPORT_LURE:
-                                    InstantMessageEventArgs teleportLureEventArgs = (InstantMessageEventArgs) e;
+                                    InstantMessageEventArgs teleportLureEventArgs = (InstantMessageEventArgs) args;
                                     List<string> teleportLureName =
                                         new List<string>(teleportLureEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
                                             StringSplitOptions.RemoveEmptyEntries));
@@ -1406,7 +1430,7 @@ namespace Corrade
                                     break;
                                 case Notifications.NOTIFICATION_GROUP_NOTICE:
                                     InstantMessageEventArgs notificationGroupNoticEventArgs =
-                                        (InstantMessageEventArgs) e;
+                                        (InstantMessageEventArgs) args;
                                     List<string> notificationGroupNoticeName =
                                         new List<string>(
                                             notificationGroupNoticEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
@@ -1426,7 +1450,7 @@ namespace Corrade
                                     }
                                     break;
                                 case Notifications.NOTIFICATION_INSTANT_MESSAGE:
-                                    InstantMessageEventArgs notificationInstantMessage = (InstantMessageEventArgs) e;
+                                    InstantMessageEventArgs notificationInstantMessage = (InstantMessageEventArgs) args;
                                     List<string> notificationInstantMessageName =
                                         new List<string>(
                                             notificationInstantMessage.IM.FromAgentName.Split(new[] {' ', '.'},
@@ -1439,7 +1463,7 @@ namespace Corrade
                                         notificationInstantMessage.IM.Message);
                                     break;
                                 case Notifications.NOTIFICATION_REGION_MESSAGE:
-                                    InstantMessageEventArgs notificationRegionMessage = (InstantMessageEventArgs) e;
+                                    InstantMessageEventArgs notificationRegionMessage = (InstantMessageEventArgs) args;
                                     List<string> notificationRegionMessageName =
                                         new List<string>(
                                             notificationRegionMessage.IM.FromAgentName.Split(new[] {' ', '.'},
@@ -1452,7 +1476,7 @@ namespace Corrade
                                         notificationRegionMessage.IM.Message);
                                     break;
                                 case Notifications.NOTIFICATION_GROUP_MESSAGE:
-                                    InstantMessageEventArgs notificationGroupMessage = (InstantMessageEventArgs) e;
+                                    InstantMessageEventArgs notificationGroupMessage = (InstantMessageEventArgs) args;
                                     List<string> notificationGroupMessageName =
                                         new List<string>(
                                             notificationGroupMessage.IM.FromAgentName.Split(new[] {' ', '.'},
@@ -1465,11 +1489,69 @@ namespace Corrade
                                     notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
                                         notificationGroupMessage.IM.Message);
                                     break;
+                                case Notifications.NOTIFICATION_VIEWER_EFFECT:
+                                    System.Type viewerEffectType = args.GetType();
+                                    if (viewerEffectType == typeof (ViewerEffectEventArgs))
+                                    {
+                                        ViewerEffectEventArgs notificationViewerEffectEventArgs =
+                                            (ViewerEffectEventArgs) args;
+                                        notificationData.Add(GetEnumDescription(ScriptKeys.EFFECT),
+                                            notificationViewerEffectEventArgs.Type.ToString());
+                                        notificationData.Add(GetEnumDescription(ScriptKeys.SOURCE),
+                                            notificationViewerEffectEventArgs.SourceID.ToString());
+                                        notificationData.Add(GetEnumDescription(ScriptKeys.TARGET),
+                                            notificationViewerEffectEventArgs.TargetID.ToString());
+                                        notificationData.Add(GetEnumDescription(ScriptKeys.POSITION),
+                                            notificationViewerEffectEventArgs.TargetPosition.ToString());
+                                        notificationData.Add(GetEnumDescription(ScriptKeys.DURATION),
+                                            notificationViewerEffectEventArgs.Duration.ToString(
+                                                CultureInfo.InvariantCulture));
+                                        notificationData.Add(GetEnumDescription(ScriptKeys.ID),
+                                            notificationViewerEffectEventArgs.EffectID.ToString());
+                                        break;
+                                    }
+                                    if (viewerEffectType == typeof (ViewerEffectPointAtEventArgs))
+                                    {
+                                        ViewerEffectPointAtEventArgs notificationViewerPointAtEventArgs =
+                                            (ViewerEffectPointAtEventArgs) args;
+                                        notificationData.Add(GetEnumDescription(ScriptKeys.SOURCE),
+                                            notificationViewerPointAtEventArgs.SourceID.ToString());
+                                        notificationData.Add(GetEnumDescription(ScriptKeys.TARGET),
+                                            notificationViewerPointAtEventArgs.TargetID.ToString());
+                                        notificationData.Add(GetEnumDescription(ScriptKeys.POSITION),
+                                            notificationViewerPointAtEventArgs.TargetPosition.ToString());
+                                        notificationData.Add(GetEnumDescription(ScriptKeys.DURATION),
+                                            notificationViewerPointAtEventArgs.Duration.ToString(
+                                                CultureInfo.InvariantCulture));
+                                        notificationData.Add(GetEnumDescription(ScriptKeys.ID),
+                                            notificationViewerPointAtEventArgs.EffectID.ToString());
+                                        break;
+                                    }
+                                    if (viewerEffectType == typeof (ViewerEffectLookAtEventArgs))
+                                    {
+                                        ViewerEffectLookAtEventArgs notificationViewerLookAtEventArgs =
+                                            (ViewerEffectLookAtEventArgs) args;
+                                        notificationData.Add(GetEnumDescription(ScriptKeys.SOURCE),
+                                            notificationViewerLookAtEventArgs.SourceID.ToString());
+                                        notificationData.Add(GetEnumDescription(ScriptKeys.TARGET),
+                                            notificationViewerLookAtEventArgs.TargetID.ToString());
+                                        notificationData.Add(GetEnumDescription(ScriptKeys.POSITION),
+                                            notificationViewerLookAtEventArgs.TargetPosition.ToString());
+                                        notificationData.Add(GetEnumDescription(ScriptKeys.DURATION),
+                                            notificationViewerLookAtEventArgs.Duration.ToString(
+                                                CultureInfo.InvariantCulture));
+                                        notificationData.Add(GetEnumDescription(ScriptKeys.ID),
+                                            notificationViewerLookAtEventArgs.EffectID.ToString());
+                                    }
+                                    break;
                             }
-                            string error = wasPOST(p.URL, wasKeyValueEscape(notificationData));
-                            if (!string.IsNullOrEmpty(error))
+                            try
                             {
-                                Feedback(GetEnumDescription(ConsoleError.NOTIFICATION_COULD_NOT_BE_SENT), error);
+                                wasPOST(p.URL, wasKeyValueEscape(notificationData));
+                            }
+                            catch (Exception e)
+                            {
+                                Feedback(GetEnumDescription(ConsoleError.NOTIFICATION_COULD_NOT_BE_SENT), e.Message);
                             }
                         }).Start();
                     });
@@ -4378,7 +4460,7 @@ namespace Corrade
                                         return;
                                     if (!wearable.WearableType.Equals((WearableType) q.GetValue(null)))
                                         return;
-                                    Client.Appearance.AddToOutfit(item);
+                                    Client.Appearance.AddToOutfit(wearable, true);
                                 }));
                     };
                     break;
@@ -7494,6 +7576,112 @@ namespace Corrade
                         Client.Sound.SendSoundTrigger(itemUUID, position, gain);
                     };
                     break;
+                case ScriptKeys.TERRAIN:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        string url =
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.CALLBACK), message));
+                        if (string.IsNullOrEmpty(url))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.INVALID_URL_PROVIDED));
+                        }
+                        switch ((Action) wasGetEnumValueFromDescription<Action>(
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
+                                .ToLower(CultureInfo.InvariantCulture)))
+                        {
+                            case Action.GET:
+                                ManualResetEvent[] DownloadTerrainEvents =
+                                {
+                                    new ManualResetEvent(false),
+                                    new ManualResetEvent(false)
+                                };
+                                EventHandler<InitiateDownloadEventArgs> InitiateDownloadEventHandler =
+                                    (sender, args) =>
+                                    {
+                                        Client.Assets.RequestAssetXfer(args.SimFileName, false, false, UUID.Zero,
+                                            AssetType.Unknown, false);
+                                        DownloadTerrainEvents[0].Set();
+                                    };
+                                byte[] assetData = null;
+                                EventHandler<XferReceivedEventArgs> XferReceivedEventHandler = (sender, args) =>
+                                {
+                                    assetData = args.Xfer.AssetData;
+                                    DownloadTerrainEvents[1].Set();
+                                };
+                                Client.Assets.InitiateDownload += InitiateDownloadEventHandler;
+                                Client.Assets.XferReceived += XferReceivedEventHandler;
+                                Client.Estate.EstateOwnerMessage("terrain", new List<string>
+                                {
+                                    "download filename",
+                                    Client.Network.CurrentSim.Name
+                                });
+                                if (!WaitHandle.WaitAll(DownloadTerrainEvents.Select(o => (WaitHandle) o).ToArray(),
+                                    Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
+                                    Client.Assets.XferReceived -= XferReceivedEventHandler;
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_DOWNLOADING_TERRAIN));
+                                }
+                                Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
+                                Client.Assets.XferReceived -= XferReceivedEventHandler;
+                                if (assetData == null || assetData.Length != 0)
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.EMPTY_TERRAIN_DATA));
+                                }
+                                try
+                                {
+                                    wasPOST(url, new Dictionary<string, string>
+                                    {
+                                        {GetEnumDescription(ScriptKeys.REGION), Client.Network.CurrentSim.Name},
+                                        {GetEnumDescription(ScriptKeys.TERRAIN), Convert.ToBase64String(assetData)}
+                                    });
+                                }
+                                catch (Exception)
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.TERRAIN_UPLOAD_FAILED));
+                                }
+                                break;
+                            case Action.SET:
+                                byte[] terrainData;
+                                try
+                                {
+                                    terrainData = wasPOST(url, new Dictionary<string, string>
+                                    {
+                                        {GetEnumDescription(ScriptKeys.REGION), Client.Network.CurrentSim.Name}
+                                    });
+                                }
+                                catch (Exception)
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.TERRAIN_DOWNLOAD_FAILED));
+                                }
+                                if (terrainData == null || terrainData.Length != 0)
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.EMPTY_TERRAIN_DATA));
+                                }
+                                ManualResetEvent AssetUploadEvent = new ManualResetEvent(false);
+                                EventHandler<AssetUploadEventArgs> AssetUploadEventHandler = (sender, args) =>
+                                {
+                                    if (args.Upload.Transferred.Equals(args.Upload.Size))
+                                    {
+                                        AssetUploadEvent.Set();
+                                    }
+                                };
+                                Client.Assets.UploadProgress += AssetUploadEventHandler;
+                                Client.Estate.UploadTerrain(terrainData, Client.Network.CurrentSim.Name);
+                                if (!AssetUploadEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    Client.Assets.UploadProgress -= AssetUploadEventHandler;
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPLOADING_TERRAIN));
+                                }
+                                Client.Assets.UploadProgress -= AssetUploadEventHandler;
+                                break;
+                        }
+                    };
+                    break;
                 case ScriptKeys.LOGOUT:
                     execute = () =>
                     {
@@ -7918,10 +8106,15 @@ namespace Corrade
             {
                 string url = wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.CALLBACK), message));
                 if (string.IsNullOrEmpty(url)) return;
-                string error = wasPOST(url, wasKeyValueEscape(result));
-                if (string.IsNullOrEmpty(error)) return;
-                result.Add(GetEnumDescription(ScriptKeys.CALLBACK), url);
-                result.Add(GetEnumDescription(ResultKeys.CALLBACKERROR), error);
+                try
+                {
+                    wasPOST(url, wasKeyValueEscape(result));
+                }
+                catch (Exception e)
+                {
+                    result.Add(GetEnumDescription(ScriptKeys.CALLBACK), url);
+                    result.Add(GetEnumDescription(ResultKeys.CALLBACKERROR), e.Message);
+                }
             };
             callback.Invoke();
 
@@ -8023,39 +8216,38 @@ namespace Corrade
         /// </summary>
         /// <param name="URL">the url to send the message to</param>
         /// <param name="message">key-value pairs to send</param>
-        /// <returns>the error message in case the request fails.</returns>
-        private static string wasPOST(string URL, Dictionary<string, string> message)
+        /// <returns>a byte array containing the response</returns>
+        private static byte[] wasPOST(string URL, Dictionary<string, string> message)
         {
-            try
+            byte[] byteArray =
+                Encoding.UTF8.GetBytes(string.Format(CultureInfo.InvariantCulture, "{0}", wasKeyValueEncode(message)));
+            WebRequest request = WebRequest.Create(URL);
+            request.Timeout = Configuration.CALLBACK_TIMEOUT;
+            request.Method = "POST";
+            request.ContentType = "application/x-www-form-urlencoded";
+            request.ContentLength = byteArray.Length;
+            using (Stream dataStream = request.GetRequestStream())
             {
-                byte[] byteArray =
-                    Encoding.UTF8.GetBytes(string.Format(CultureInfo.InvariantCulture, "{0}",
-                        wasKeyValueEncode(message)));
-                WebRequest request = WebRequest.Create(URL);
-                request.Timeout = Configuration.CALLBACK_TIMEOUT;
-                request.Method = "POST";
-                request.ContentType = "application/x-www-form-urlencoded";
-                request.ContentLength = byteArray.Length;
-                Stream dataStream = request.GetRequestStream();
                 dataStream.Write(byteArray, 0, byteArray.Length);
                 dataStream.Flush();
                 dataStream.Close();
-                WebResponse response = request.GetResponse();
-                dataStream = response.GetResponseStream();
-                if (dataStream != null)
-                {
-                    StreamReader reader = new StreamReader(dataStream);
-                    reader.ReadToEnd();
-                    reader.Close();
-                    //dataStream.Close();
-                }
-                response.Close();
-                return string.Empty;
             }
-            catch (Exception e)
+            WebResponse response = request.GetResponse();
+            byteArray = new byte[(int) response.ContentLength];
+            using (Stream dataStream = response.GetResponseStream())
             {
-                return e.Message;
+                int seek = 0;
+                do
+                {
+                    int bytesRead = dataStream.Read(byteArray, seek, byteArray.Length - seek);
+                    if (bytesRead.Equals(0))
+                    {
+                        throw new IOException("Premature end of data");
+                    }
+                    seek += bytesRead;
+                } while (seek < byteArray.Length);
             }
+            return byteArray;
         }
 
         private static void HandleTerseObjectUpdate(object sender, TerseObjectUpdateEventArgs e)
@@ -8512,6 +8704,7 @@ namespace Corrade
             ///     Copyright.
             /// </summary>
             public const string COPYRIGHT = @"(c) Copyright 2013 Wizardry and Steamworks";
+
             /// <summary>
             ///     Censor characters for passwords.
             /// </summary>
@@ -8522,6 +8715,7 @@ namespace Corrade
             /// </summary>
             public const string CLIENT_CHANNEL = @"[Wizardry and Steamworks]:Corrade";
 
+            public const string LOG_FACILITY = @"Application";
             public const string WEB_REQUEST = @"Web Request";
             public const string POST = @"POST";
             public const string TEXT_HTML = @"text/html";
@@ -9071,7 +9265,8 @@ namespace Corrade
             [Description("friendship")] NOTIFICATION_FRIENDSHIP = 256,
             [Description("inventory")] NOTIFICATION_INVENTORY_OFFER = 512,
             [Description("permission")] NOTIFICATION_SCRIPT_PERMISSION = 1024,
-            [Description("lure")] NOTIFICATION_TELEPORT_LURE = 2048
+            [Description("lure")] NOTIFICATION_TELEPORT_LURE = 2048,
+            [Description("effect")] NOTIFICATION_VIEWER_EFFECT = 4096
         }
 
         /// <summary>
@@ -9255,7 +9450,12 @@ namespace Corrade
             [Description("unknown access list type")] UNKNOWN_ACCESS_LIST_TYPE,
             [Description("no task specified")] NO_TASK_SPECIFIED,
             [Description("timeout getting group members")] TIMEOUT_GETTING_GROUP_MEMBERS,
-            [Description("group not open")] GROUP_NOT_OPEN
+            [Description("group not open")] GROUP_NOT_OPEN,
+            [Description("terrain download failed")] TERRAIN_DOWNLOAD_FAILED,
+            [Description("terrain upload failed")] TERRAIN_UPLOAD_FAILED,
+            [Description("timeout downloading terrain")] TIMEOUT_DOWNLOADING_TERRAIN,
+            [Description("timeout uploading terrain")] TIMEOUT_UPLOADING_TERRAIN,
+            [Description("empty terrain data")] EMPTY_TERRAIN_DATA
         }
 
         /// <summary>
@@ -9439,7 +9639,11 @@ namespace Corrade
             [Description("settitle")] SETTITLE,
             [Description("mute")] MUTE,
             [Description("getmutes")] GETMUTES,
-            [Description("notify")] NOTIFY
+            [Description("notify")] NOTIFY,
+            [Description("source")] SOURCE,
+            [Description("effect")] EFFECT,
+            [Description("id")] ID,
+            [Description("terrain")] TERRAIN
         }
 
         /// <summary>

@@ -10,6 +10,10 @@ namespace Corrade
         public ProjectInstaller()
         {
             InitializeComponent();
+            // Set the service name.
+            string serviceName = string.IsNullOrEmpty(Corrade.CorradeServiceName) ? CorradeInstaller.ServiceName : Corrade.CorradeServiceName;
+            CorradeInstaller.ServiceName = serviceName;
+            CorradeInstaller.DisplayName = serviceName;
         }
     }
 }
