@@ -7681,7 +7681,6 @@ namespace Corrade
                                 break;
                             default:
                                 throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ACTION));
-                                break;
                         }
                     };
                     break;
