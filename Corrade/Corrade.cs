@@ -7584,7 +7584,7 @@ namespace Corrade
                             throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string url =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.CALLBACK), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.URL), message));
                         if (string.IsNullOrEmpty(url))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.INVALID_URL_PROVIDED));
