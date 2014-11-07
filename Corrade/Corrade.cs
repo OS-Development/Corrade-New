@@ -7679,6 +7679,9 @@ namespace Corrade
                                 }
                                 Client.Assets.UploadProgress -= AssetUploadEventHandler;
                                 break;
+                            default:
+                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ACTION));
+                                break;
                         }
                     };
                     break;
