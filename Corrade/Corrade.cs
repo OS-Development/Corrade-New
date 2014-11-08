@@ -84,7 +84,8 @@ namespace Corrade
 
         private static readonly System.Action ActivateCurrentLandGroup = () => new Thread(() =>
         {
-            Thread.Sleep(Client.Network.CurrentSim.Stats.LastLag);
+            // relax 5 seconds
+            Thread.Sleep(5000 + Client.Network.CurrentSim.Stats.LastLag);
             Parcel parcel = null;
             if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel)) return;
             UUID groupUUID = Configuration.GROUPS.FirstOrDefault(o => o.UUID.Equals(parcel.GroupID)).UUID;
@@ -92,6 +93,13 @@ namespace Corrade
             {
                 Client.Groups.ActivateGroup(groupUUID);
             }
+        }).Start();
+
+        private static readonly System.Action Rebake = () => new Thread(() =>
+        {
+            // relax 5 seconds
+            Thread.Sleep(5000 + Client.Network.CurrentSim.Stats.LastLag);
+            Client.Appearance.RequestSetAppearance(true);
         }).Start();
 
         public Corrade()
@@ -155,6 +163,246 @@ namespace Corrade
             return (from fi in typeof (T).GetFields(BindingFlags.Static | BindingFlags.Public)
                 where GetEnumDescription((Enum) fi.GetValue(null)).Equals(description)
                 select (uint) fi.GetValue(null)).FirstOrDefault();
+        }
+
+        /// <summary>
+        ///     Gets or creates the outfit folder.
+        /// </summary>
+        /// <returns>the outfit folder or null if the folder did not exist and could not be created</returns>
+        private static InventoryFolder GetOrCreateOutfitFolder()
+        {
+            InventoryBase item =
+                Client.Inventory.Store.GetContents(Client.Inventory.Store.RootFolder.UUID)
+                    .FirstOrDefault(
+                        o =>
+                            o is InventoryFolder &&
+                            ((InventoryFolder) o).PreferredType == AssetType.CurrentOutfitFolder);
+            if (item != null)
+            {
+                return (InventoryFolder) item;
+            }
+            UUID currentOutfitFolderUUID = Client.Inventory.CreateFolder(Client.Inventory.Store.RootFolder.UUID,
+                CORRADE_CONSTANTS.CURRENT_OUTFIT_FOLDER_NAME, AssetType.CurrentOutfitFolder);
+            if (Client.Inventory.Store.Items.ContainsKey(currentOutfitFolderUUID) &&
+                Client.Inventory.Store.Items[currentOutfitFolderUUID].Data is InventoryFolder)
+            {
+                return (InventoryFolder) Client.Inventory.Store.Items[currentOutfitFolderUUID].Data;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        ///     Can an inventory item be worn?
+        /// </summary>
+        /// <param name="item">item to check</param>
+        /// <returns>true if the inventory item can be worn</returns>
+        public static bool CanBeWorn(InventoryBase item)
+        {
+            return item is InventoryWearable || item is InventoryAttachment || item is InventoryObject;
+        }
+
+        /// <summary>
+        ///     Resolves inventory links and returns a real inventory item that
+        ///     the link is pointing to
+        /// </summary>
+        /// <param name="item">a link or inventory item</param>
+        /// <returns>the real inventory item</returns>
+        public static InventoryItem ResolveItemLink(InventoryItem item)
+        {
+            if (item.IsLink() && Client.Inventory.Store.Contains(item.AssetUUID) &&
+                Client.Inventory.Store[item.AssetUUID] is InventoryItem)
+            {
+                return (InventoryItem) Client.Inventory.Store[item.AssetUUID];
+            }
+
+            return item;
+        }
+
+        /// <summary>
+        ///     Get current outfit folder links.
+        /// </summary>
+        /// <returns>a list of inventory items that can be part of appearance (attachments, wearables)</returns>
+        public static List<InventoryItem> GetCurrentOutfitFolderLinks()
+        {
+            List<InventoryItem> ret = new List<InventoryItem>();
+            InventoryFolder COF = GetOrCreateOutfitFolder();
+            if (COF == null) return ret;
+
+            Client.Inventory.Store.GetContents(GetOrCreateOutfitFolder())
+                .FindAll(b => CanBeWorn(b) && ((InventoryItem) b).AssetType == AssetType.Link)
+                .ForEach(item => ret.Add((InventoryItem) item));
+
+            return ret;
+        }
+
+        private static void Attach(InventoryItem item, AttachmentPoint point, bool replace)
+        {
+            Client.Appearance.Attach(item, point, replace);
+            AddLink(item);
+        }
+
+        private static void Detach(InventoryItem item)
+        {
+            RemoveLink(item);
+            Client.Appearance.Detach(item);
+        }
+
+        private static void Wear(InventoryItem item, bool replace)
+        {
+            List<InventoryItem> currentOutfit = GetCurrentOutfitFolderLinks();
+            HashSet<InventoryItem> removeItems = new HashSet<InventoryItem>();
+            object RemoveItemsLock = new object();
+
+            InventoryItem realItem = ResolveItemLink(item);
+            InventoryWearable inventoryWearable = realItem as InventoryWearable;
+            if (inventoryWearable != null)
+            {
+                Parallel.ForEach(currentOutfit, link =>
+                {
+                    InventoryItem currentItem = ResolveItemLink(link);
+                    if (link.AssetUUID.Equals(item.UUID))
+                    {
+                        lock (RemoveItemsLock)
+                        {
+                            removeItems.Add(currentItem);
+                        }
+                        return;
+                    }
+                    InventoryWearable wearable = currentItem as InventoryWearable;
+                    if (wearable == null || !wearable.WearableType.Equals(inventoryWearable.WearableType)) return;
+                    lock (RemoveItemsLock)
+                    {
+                        removeItems.Add(currentItem);
+                    }
+                });
+            }
+
+            RemoveLink(removeItems);
+
+            AddLink(item);
+            Client.Appearance.AddToOutfit(item, replace);
+        }
+
+        private static void UnWear(InventoryItem item)
+        {
+            List<InventoryItem> currentOutfit = GetCurrentOutfitFolderLinks();
+            HashSet<InventoryItem> removeItems = new HashSet<InventoryItem>();
+            object RemoveItemsLock = new object();
+
+            InventoryItem realItem = ResolveItemLink(item);
+            InventoryWearable inventoryWearable = realItem as InventoryWearable;
+            if (inventoryWearable != null)
+            {
+                Parallel.ForEach(currentOutfit, link =>
+                {
+                    InventoryItem currentItem = ResolveItemLink(link);
+                    if (link.AssetUUID.Equals(item.UUID))
+                    {
+                        lock (RemoveItemsLock)
+                        {
+                            removeItems.Add(currentItem);
+                        }
+                        return;
+                    }
+                    InventoryWearable wearable = currentItem as InventoryWearable;
+                    if (wearable == null || !wearable.WearableType.Equals(inventoryWearable.WearableType)) return;
+                    lock (RemoveItemsLock)
+                    {
+                        removeItems.Add(currentItem);
+                    }
+                });
+            }
+            Client.Appearance.RemoveFromOutfit(item);
+            RemoveLink(removeItems);
+        }
+
+        /// <summary>
+        ///     Is the item a body part?
+        /// </summary>
+        /// <param name="item">the item to check</param>
+        /// <returns>true if the item is a body part</returns>
+        private static bool IsBodyPart(InventoryItem item)
+        {
+            InventoryItem realItem = ResolveItemLink(item);
+            if (!(realItem is InventoryWearable)) return false;
+            WearableType t = ((InventoryWearable) realItem).WearableType;
+            return t == WearableType.Shape ||
+                   t == WearableType.Skin ||
+                   t == WearableType.Eyes ||
+                   t == WearableType.Hair;
+        }
+
+        /// <summary>
+        ///     Creates a new current outfit folder link.
+        /// </summary>
+        /// <param name="item">Original item to be linked from COF</param>
+        public static void AddLink(InventoryItem item)
+        {
+            if (item.InventoryType == InventoryType.Wearable && !IsBodyPart(item))
+            {
+                AddLink(item, string.Format("@{0}{1:00}", (int) ((InventoryWearable) item).WearableType, 0));
+                return;
+            }
+            AddLink(item, string.Empty);
+        }
+
+        /// <summary>
+        ///     Creates a new current outfit folder link.
+        /// </summary>
+        /// <param name="item">item to be linked</param>
+        /// <param name="description">description for the link</param>
+        public static void AddLink(InventoryItem item, string description)
+        {
+            InventoryFolder COF = GetOrCreateOutfitFolder();
+            if (GetOrCreateOutfitFolder() == null) return;
+
+            bool linkExists = null != GetCurrentOutfitFolderLinks().Find(itemLink => itemLink.AssetUUID == item.UUID);
+
+            if (!linkExists)
+            {
+                Client.Inventory.CreateLink(COF.UUID, item.UUID, item.Name, description, AssetType.Link,
+                    item.InventoryType, UUID.Random(), (success, newItem) =>
+                    {
+                        if (success)
+                        {
+                            Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
+                        }
+                    });
+            }
+        }
+
+        /// <summary>
+        ///     Remove a current outfit folder link of the specified inventory item.
+        /// </summary>
+        /// <param name="item">the inventory item for which to remove the link</param>
+        public static void RemoveLink(InventoryItem item)
+        {
+            RemoveLink(new HashSet<InventoryItem> {item});
+        }
+
+        /// <summary>
+        ///     Remove current outfit folder links for multiple specified inventory item.
+        /// </summary>
+        /// <param name="items">list of items whose links should be removed</param>
+        public static void RemoveLink(IEnumerable<InventoryItem> items)
+        {
+            InventoryFolder COF = GetOrCreateOutfitFolder();
+            if (COF == null) return;
+
+            List<UUID> removeItems = new List<UUID>();
+            object LockObject = new object();
+            Parallel.ForEach(items,
+                item =>
+                    GetCurrentOutfitFolderLinks().FindAll(itemLink => itemLink.AssetUUID == item.UUID).ForEach(link =>
+                    {
+                        lock (LockObject)
+                        {
+                            removeItems.Add(link.UUID);
+                        }
+                    }));
+
+            Client.Inventory.Remove(removeItems, null);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -4405,7 +4653,7 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Client.Appearance.RequestSetAppearance(true);
+                        Rebake.Invoke();
                     };
                     break;
                 case ScriptKeys.GETWEARABLES:
@@ -4438,30 +4686,29 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.EMPTY_WEARABLES));
                         }
-                        Parallel.ForEach(Regex.Matches(wearables,
-                            @"\s*(?<key>.+?)\s*,\s*(?<value>.+?)\s*(,|$)",
-                            RegexOptions.Compiled)
-                            .Cast<Match>()
-                            .ToDictionary(o => o.Groups["key"].Value, o => o.Groups["value"].Value),
-                            o => Parallel.ForEach(
-                                typeof (WearableType).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .Where(
-                                        q =>
-                                            q.Name.Equals(o.Key, StringComparison.Ordinal)),
-                                q =>
+                        bool replace;
+                        if (
+                            !bool.TryParse(
+                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.REPLACE), message)),
+                                out replace))
+                        {
+                            replace = true;
+                        }
+                        Parallel.ForEach(
+                            wearables.Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER},
+                                StringSplitOptions.RemoveEmptyEntries), o =>
                                 {
                                     InventoryItem item =
-                                        SearchInventoryItem(Client.Inventory.Store.RootFolder, o.Value,
+                                        SearchInventoryItem(Client.Inventory.Store.RootFolder, o,
                                             Configuration.SERVICES_TIMEOUT).FirstOrDefault();
                                     if (item == null)
                                         return;
                                     InventoryWearable wearable = item as InventoryWearable;
                                     if (wearable == null)
                                         return;
-                                    if (!wearable.WearableType.Equals((WearableType) q.GetValue(null)))
-                                        return;
-                                    Client.Appearance.AddToOutfit(wearable, true);
-                                }));
+                                    Wear(item, replace);
+                                });
+                        Rebake.Invoke();
                     };
                     break;
                 case ScriptKeys.UNWEAR:
@@ -4489,8 +4736,9 @@ namespace Corrade
                                     InventoryWearable wearable = item as InventoryWearable;
                                     if (wearable == null)
                                         return;
-                                    Client.Appearance.RemoveFromOutfit(item);
+                                    UnWear(item);
                                 });
+                        Rebake.Invoke();
                     };
                     break;
                 case ScriptKeys.GETATTACHMENTS:
@@ -4502,13 +4750,17 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        result.Add(GetEnumDescription(ResultKeys.ATTACHMENTS),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                GetAttachments(Configuration.SERVICES_TIMEOUT).Select(o => new[]
-                                {
-                                    o.Key.ToString(),
-                                    o.Value.Properties.Name
-                                }).SelectMany(o => o).ToArray()));
+                        List<string> attachments = GetAttachments(
+                            Configuration.SERVICES_TIMEOUT).Select(o => new[]
+                            {
+                                o.Key.ToString(),
+                                o.Value.Properties.Name
+                            }).SelectMany(o => o).ToList();
+                        if (!attachments.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.ATTACHMENTS),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, attachments.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.ATTACH:
@@ -4525,6 +4777,14 @@ namespace Corrade
                         if (string.IsNullOrEmpty(attachments))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.EMPTY_ATTACHMENTS));
+                        }
+                        bool replace;
+                        if (
+                            !bool.TryParse(
+                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.REPLACE), message)),
+                                out replace))
+                        {
+                            replace = true;
                         }
                         Parallel.ForEach(Regex.Matches(attachments, @"\s*(?<key>.+?)\s*,\s*(?<value>.+?)\s*(,|$)",
                             RegexOptions.Compiled)
@@ -4543,9 +4803,10 @@ namespace Corrade
                                                 Configuration.SERVICES_TIMEOUT).FirstOrDefault();
                                         if (item == null)
                                             return;
-                                        Client.Appearance.Attach(item, (AttachmentPoint) q.GetValue(null),
-                                            true);
+                                        Attach(item, (AttachmentPoint) q.GetValue(null),
+                                            replace);
                                     }));
+                        Rebake.Invoke();
                     };
                     break;
                 case ScriptKeys.DETACH:
@@ -4572,9 +4833,10 @@ namespace Corrade
                                             Configuration.SERVICES_TIMEOUT).FirstOrDefault();
                                     if (item != null)
                                     {
-                                        Client.Appearance.Detach(item);
+                                        Detach(item);
                                     }
                                 });
+                        Rebake.Invoke();
                     };
                     break;
                 case ScriptKeys.RETURNPRIMITIVES:
@@ -7510,7 +7772,7 @@ namespace Corrade
                         Client.Objects.SetDescription(Client.Network.CurrentSim, primitive.LocalID, description);
                     };
                     break;
-                case ScriptKeys.WEARFOLDER:
+                case ScriptKeys.CHANGEAPPEARANCE:
                     execute = () =>
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
@@ -7523,18 +7785,59 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_FOLDER_SPECIFIED));
                         }
-                        bool replace;
-                        if (
-                            !bool.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.REPLACE), message)),
-                                out replace))
-                        {
-                            replace = true;
-                        }
+                        // Check for items that can be worn.
                         List<InventoryBase> items =
                             GetInventoryFolderContents(Client.Inventory.Store.RootFolder, folder,
-                                Configuration.SERVICES_TIMEOUT).Cast<InventoryBase>().ToList();
-                        Client.Appearance.WearOutfit(items, replace);
+                                Configuration.SERVICES_TIMEOUT).Cast<InventoryBase>().Where(CanBeWorn).ToList();
+                        if (items.Count.Equals(0))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_EQUIPABLE_ITEMS));
+                        }
+                        // Now remove the current outfit items.
+                        Client.Inventory.Store.GetContents(GetOrCreateOutfitFolder())
+                            .FindAll(o => CanBeWorn(o) && ((InventoryItem) o).AssetType == AssetType.Link)
+                            .ForEach(p =>
+                            {
+                                InventoryItem item = ResolveItemLink(p as InventoryItem);
+                                if (item as InventoryWearable != null)
+                                {
+                                    if (!IsBodyPart(item))
+                                    {
+                                        UnWear(item);
+                                        return;
+                                    }
+                                    if (items.Any(q =>
+                                    {
+                                        InventoryWearable i = q as InventoryWearable;
+                                        if (i != null && ((InventoryWearable) item).WearableType == i.WearableType)
+                                        {
+                                            return true;
+                                        }
+                                        return false;
+                                    })) UnWear(item);
+                                    return;
+                                }
+                                if (item as InventoryAttachment != null || item as InventoryObject != null)
+                                {
+                                    Detach(item);
+                                }
+                            });
+                        // And equip the specified folder.
+                        Parallel.ForEach(items, o =>
+                        {
+                            InventoryItem item = o as InventoryItem;
+                            if (item as InventoryWearable != null)
+                            {
+                                Wear(item, true);
+                                return;
+                            }
+                            if (item as InventoryAttachment != null || item as InventoryObject != null)
+                            {
+                                Attach(item, AttachmentPoint.Default, true);
+                            }
+                        });
+                        // And rebake.
+                        Rebake.Invoke();
                     };
                     break;
                 case ScriptKeys.PLAYSOUND:
@@ -8717,6 +9020,8 @@ namespace Corrade
             /// </summary>
             public const string CLIENT_CHANNEL = @"[Wizardry and Steamworks]:Corrade";
 
+            public const string CURRENT_OUTFIT_FOLDER_NAME = @"Current Outfit";
+
             public const string LOG_FACILITY = @"Application";
             public const string WEB_REQUEST = @"Web Request";
             public const string POST = @"POST";
@@ -9457,7 +9762,8 @@ namespace Corrade
             [Description("terrain upload failed")] TERRAIN_UPLOAD_FAILED,
             [Description("timeout downloading terrain")] TIMEOUT_DOWNLOADING_TERRAIN,
             [Description("timeout uploading terrain")] TIMEOUT_UPLOADING_TERRAIN,
-            [Description("empty terrain data")] EMPTY_TERRAIN_DATA
+            [Description("empty terrain data")] EMPTY_TERRAIN_DATA,
+            [Description("the specified folder contains no equipable items")] NO_EQUIPABLE_ITEMS
         }
 
         /// <summary>
@@ -9487,7 +9793,7 @@ namespace Corrade
             [Description("wear")] WEAR,
             [Description("wearables")] WEARABLES,
             [Description("getwearables")] GETWEARABLES,
-            [Description("wearfolder")] WEARFOLDER,
+            [Description("changeappearance")] CHANGEAPPEARANCE,
             [Description("folder")] FOLDER,
             [Description("replace")] REPLACE,
             [Description("setobjectrotation")] SETOBJECTROTATION,

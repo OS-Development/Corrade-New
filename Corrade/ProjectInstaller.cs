@@ -1,6 +1,9 @@
-﻿using System.ComponentModel;
+﻿#region
+
+using System.ComponentModel;
 using System.Configuration.Install;
 
+#endregion
 
 namespace Corrade
 {
@@ -11,7 +14,9 @@ namespace Corrade
         {
             InitializeComponent();
             // Set the service name.
-            string serviceName = string.IsNullOrEmpty(Corrade.CorradeServiceName) ? CorradeInstaller.ServiceName : Corrade.CorradeServiceName;
+            string serviceName = string.IsNullOrEmpty(Corrade.CorradeServiceName)
+                ? CorradeInstaller.ServiceName
+                : Corrade.CorradeServiceName;
             CorradeInstaller.ServiceName = serviceName;
             CorradeInstaller.DisplayName = serviceName;
         }
