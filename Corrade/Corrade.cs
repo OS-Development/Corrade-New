@@ -106,7 +106,9 @@ namespace Corrade
         {
             if (!Environment.UserInteractive)
             {
-                CorradeServiceName = ServiceName;
+                CorradeServiceName = !string.IsNullOrEmpty(ServiceName)
+                    ? ServiceName
+                    : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME;
                 CorradeLog.Source = CorradeServiceName;
                 CorradeLog.Log = CORRADE_CONSTANTS.LOG_FACILITY;
                 ((ISupportInitialize) (CorradeLog)).BeginInit();
@@ -1182,32 +1184,32 @@ namespace Corrade
             {
                 if (args.Length != 0)
                 {
-                }
-                string action = string.Empty;
-                for (int i = 0; i < args.Length; ++i)
-                {
-                    switch (args[i].ToUpper())
+                    string action = string.Empty;
+                    for (int i = 0; i < args.Length; ++i)
                     {
-                        case "/INSTALL":
-                            action = "INSTALL";
-                            break;
-                        case "/UNINSTALL":
-                            action = "UNINSTALL";
-                            break;
-                        case "/NAME":
-                            if (args.Length > i + 1)
-                            {
-                                CorradeServiceName = args[++i];
-                            }
-                            break;
+                        switch (args[i].ToUpper())
+                        {
+                            case "/INSTALL":
+                                action = "INSTALL";
+                                break;
+                            case "/UNINSTALL":
+                                action = "UNINSTALL";
+                                break;
+                            case "/NAME":
+                                if (args.Length > i + 1)
+                                {
+                                    CorradeServiceName = args[++i];
+                                }
+                                break;
+                        }
                     }
-                }
-                switch (action)
-                {
-                    case "INSTALL":
-                        return InstallService();
-                    case "UNINSTALL":
-                        return UninstallService();
+                    switch (action)
+                    {
+                        case "INSTALL":
+                            return InstallService();
+                        case "UNINSTALL":
+                            return UninstallService();
+                    }
                 }
                 // run interactively and log to console
                 Corrade corrade = new Corrade();
@@ -9021,7 +9023,7 @@ namespace Corrade
             public const string CLIENT_CHANNEL = @"[Wizardry and Steamworks]:Corrade";
 
             public const string CURRENT_OUTFIT_FOLDER_NAME = @"Current Outfit";
-
+            public const string DEFAULT_SERVICE_NAME = @"Corrade";
             public const string LOG_FACILITY = @"Application";
             public const string WEB_REQUEST = @"Web Request";
             public const string POST = @"POST";
