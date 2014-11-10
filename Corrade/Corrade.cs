@@ -7787,14 +7787,6 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_FOLDER_SPECIFIED));
                         }
-                        bool replace;
-                        if (
-                            !bool.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.REPLACE), message)),
-                                out replace))
-                        {
-                            replace = true;
-                        }
                         // Check for items that can be worn.
                         List<InventoryBase> items =
                             GetInventoryFolderContents(Client.Inventory.Store.RootFolder, folder,
@@ -7838,12 +7830,12 @@ namespace Corrade
                             InventoryItem item = o as InventoryItem;
                             if (item as InventoryWearable != null)
                             {
-                                Wear(item, replace);
+                                Wear(item, false);
                                 return;
                             }
                             if (item as InventoryAttachment != null || item as InventoryObject != null)
                             {
-                                Attach(item, AttachmentPoint.Default, replace);
+                                Attach(item, AttachmentPoint.Default, false);
                             }
                         });
                         // And rebake.
