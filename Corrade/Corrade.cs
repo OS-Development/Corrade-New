@@ -80,6 +80,11 @@ namespace Corrade
 
         private static readonly object TeleportLock = new object();
 
+        private static readonly Dictionary<InventoryObjectOfferedEventArgs, ManualResetEvent> InventoryOffers =
+            new Dictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>();
+
+        private static readonly object InventoryOffersLock = new object();
+
         public static EventHandler ConsoleEventHandler;
 
         private static readonly System.Action ActivateCurrentLandGroup = () => new Thread(() =>
@@ -586,9 +591,9 @@ namespace Corrade
                     UUID UUIDData;
                     if (!UUID.TryParse(setting, out UUIDData))
                     {
-                        InventoryItem item = SearchInventoryItem(Client.Inventory.Store.RootFolder,
+                        InventoryItem item = FindInventoryBase(Client.Inventory.Store.RootFolder,
                             setting,
-                            Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                            Configuration.SERVICES_TIMEOUT).FirstOrDefault() as InventoryItem;
                         if (item == null)
                         {
                             throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
@@ -703,44 +708,56 @@ namespace Corrade
         /// <summary>
         ///     Used to check whether a group name matches a group password.
         /// </summary>
-        /// <param name="groupName">the name of the group</param>
+        /// <param name="group">the name of the group</param>
         /// <param name="password">the password for the group</param>
         /// <returns>true if the agent has authenticated</returns>
-        private static bool Authenticate(string groupName, string password)
+        private static bool Authenticate(string group, string password)
         {
-            return Configuration.GROUPS.Any(
-                o =>
-                    o.Name.Equals(groupName, StringComparison.Ordinal) &&
-                    password.Equals(o.Password, StringComparison.Ordinal));
+            UUID groupUUID;
+            return UUID.TryParse(group, out groupUUID)
+                ? Configuration.GROUPS.Any(
+                    o =>
+                        groupUUID.Equals(o.UUID) &&
+                        password.Equals(o.Password, StringComparison.Ordinal))
+                : Configuration.GROUPS.Any(
+                    o =>
+                        o.Name.Equals(group, StringComparison.Ordinal) &&
+                        password.Equals(o.Password, StringComparison.Ordinal));
         }
 
         /// <summary>
         ///     Used to check whether a group has certain permissions for Corrade.
         /// </summary>
-        /// <param name="groupName">the name of the group</param>
+        /// <param name="group">the name of the group</param>
         /// <param name="permission">the numeric Corrade permission</param>
         /// <returns>true if the group has permission</returns>
-        private static bool HasCorradePermission(string groupName, int permission)
+        private static bool HasCorradePermission(string group, int permission)
         {
-            return permission != 0 &&
-                   Configuration.GROUPS.Any(
-                       o =>
-                           o.Name.Equals(groupName, StringComparison.Ordinal) &&
-                           (o.PermissionMask & permission) != 0);
+            UUID groupUUID;
+            return permission != 0 && UUID.TryParse(group, out groupUUID)
+                ? Configuration.GROUPS.Any(o => groupUUID.Equals(o.UUID) && (o.PermissionMask & permission) != 0)
+                : Configuration.GROUPS.Any(
+                    o =>
+                        o.Name.Equals(group, StringComparison.Ordinal) &&
+                        (o.PermissionMask & permission) != 0);
         }
 
         /// <summary>
         ///     Used to check whether a group has a certain notification for Corrade.
         /// </summary>
-        /// <param name="groupName">the name of the group</param>
+        /// <param name="group">the name of the group</param>
         /// <param name="notification">the numeric Corrade notification</param>
         /// <returns>true if the group has the notification</returns>
-        private static bool HasCorradeNotification(string groupName, int notification)
+        private static bool HasCorradeNotification(string group, int notification)
         {
-            return notification != 0 &&
-                   Configuration.GROUPS.Any(
-                       o => o.Name.Equals(groupName, StringComparison.Ordinal) &&
-                            (o.NotificationMask & notification) != 0);
+            UUID groupUUID;
+            return notification != 0 && UUID.TryParse(group, out groupUUID)
+                ? Configuration.GROUPS.Any(
+                    o => groupUUID.Equals(o.UUID) &&
+                         (o.NotificationMask & notification) != 0)
+                : Configuration.GROUPS.Any(
+                    o => o.Name.Equals(group, StringComparison.Ordinal) &&
+                         (o.NotificationMask & notification) != 0);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1019,37 +1036,41 @@ namespace Corrade
         ///     returns all the items that match the item name.
         /// </summary>
         /// <param name="rootFolder">a folder from which to search</param>
-        /// <param name="item">the name  or UUID of the item to be found</param>
+        /// <param name="itemBase">the name  or UUID of the item to be found</param>
         /// <param name="millisecondsTimeout">timeout for the search</param>
         /// <returns>a list of items matching the item name</returns>
-        private static IEnumerable<InventoryItem> SearchInventoryItem(InventoryBase rootFolder, string item,
+        private static IEnumerable<InventoryBase> FindInventoryBase(InventoryBase rootFolder, string itemBase,
             int millisecondsTimeout)
         {
             HashSet<InventoryBase> contents =
                 new HashSet<InventoryBase>(Client.Inventory.FolderContents(rootFolder.UUID, Client.Self.AgentID,
                     true, true, InventorySortOrder.ByName, millisecondsTimeout));
-            UUID itemUUID;
-            UUID.TryParse(item, out itemUUID);
             foreach (InventoryBase inventory in contents)
             {
-                InventoryItem i = inventory as InventoryItem;
-                if (i != null)
+                InventoryFolder inventoryFolder = inventory as InventoryFolder;
+                if (inventoryFolder != null)
                 {
-                    if (inventory.Name.Equals(item, StringComparison.Ordinal) ||
-                        (!itemUUID.Equals(UUID.Zero) &&
-                         (inventory.UUID.Equals(itemUUID) || i.AssetUUID.Equals(itemUUID))))
+                    if (inventoryFolder.Name.Equals(itemBase, StringComparison.Ordinal) ||
+                        inventoryFolder.UUID.ToString().ToLowerInvariant().Equals(itemBase))
                     {
-                        yield return i;
+                        yield return inventoryFolder;
                     }
                 }
-                if (contents.Count == 0)
-                    continue;
-                InventoryFolder inventoryFolder = inventory as InventoryFolder;
-                if (inventoryFolder == null)
-                    continue;
-                foreach (InventoryItem inventoryItem in SearchInventoryItem(inventoryFolder, item, millisecondsTimeout))
+                InventoryItem inventoryItem = inventory as InventoryItem;
+                if (inventoryItem != null)
                 {
-                    yield return inventoryItem;
+                    if (inventory.Name.Equals(itemBase, StringComparison.Ordinal) ||
+                        inventoryItem.UUID.ToString().ToLowerInvariant().Equals(itemBase))
+                    {
+                        yield return inventoryItem;
+                    }
+                }
+                if (contents.Count == 0 || inventoryFolder == null)
+                    continue;
+                foreach (
+                    InventoryBase inventoryBase in FindInventoryBase(inventoryFolder, itemBase, millisecondsTimeout))
+                {
+                    yield return inventoryBase;
                 }
             }
         }
@@ -1460,6 +1481,15 @@ namespace Corrade
                     HTTPListenerThread.Join(Configuration.SERVICES_TIMEOUT);
                 }
             }
+            // Reject any inventory that has not been accepted.
+            Parallel.ForEach(InventoryOffers, o =>
+            {
+                lock (InventoryOffersLock)
+                {
+                    o.Key.Accept = false;
+                    o.Value.Set();
+                }
+            });
             // Logout
             Client.Network.Logout();
             Client.Network.Shutdown(NetworkManager.DisconnectType.ClientInitiated);
@@ -1589,6 +1619,10 @@ namespace Corrade
                                         inventoryObjectOfferedName.Last());
                                     notificationData.Add(GetEnumDescription(ScriptKeys.ASSET),
                                         inventoryObjectOfferedEventArgs.AssetType.ToString());
+                                    notificationData.Add(GetEnumDescription(ScriptKeys.NAME),
+                                        inventoryObjectOfferedEventArgs.Offer.Message);
+                                    notificationData.Add(GetEnumDescription(ScriptKeys.SESSION),
+                                        inventoryObjectOfferedEventArgs.Offer.IMSessionID.ToString());
                                     break;
                                 case Notifications.NOTIFICATION_SCRIPT_PERMISSION:
                                     ScriptQuestionEventArgs scriptQuestionEventArgs = (ScriptQuestionEventArgs) args;
@@ -1846,16 +1880,60 @@ namespace Corrade
 
         private static void HandleInventoryObjectOffered(object sender, InventoryObjectOfferedEventArgs e)
         {
+            // Accept anything from master avatars.
+            if (
+                Configuration.MASTERS.Select(
+                    o => string.Format(CultureInfo.InvariantCulture, "{0} {1}", o.FirstName, o.LastName))
+                    .Any(p => p.Equals(e.Offer.FromAgentName, StringComparison.OrdinalIgnoreCase)))
+            {
+                e.Accept = true;
+                return;
+            }
+            // We need to block until we get a reply from a script.
+            // First create 
+            ManualResetEvent wait = new ManualResetEvent(false);
+            // Add the inventory offer to the list of inventory items.
+            lock (InventoryOffersLock)
+            {
+                InventoryOffers.Add(e, wait);
+            }
             // Send notification
             SendNotification(Notifications.NOTIFICATION_INVENTORY_OFFER, e);
-            // Accept inventory only from masters (for the time being)
-            if (
-                !Configuration.MASTERS.Select(
-                    o => string.Format(CultureInfo.InvariantCulture, "{0} {1}", o.FirstName, o.LastName))
-                    .
-                    Any(p => p.Equals(e.Offer.FromAgentName, StringComparison.OrdinalIgnoreCase)))
-                return;
-            e.Accept = true;
+
+            // Find the item in the inventory.
+            InventoryBase inventoryBaseItem =
+                FindInventoryBase(Client.Inventory.Store.RootFolder, e.Offer.Message,
+                    Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+
+            // Assume we do not want the item.
+            Client.Inventory.Move(
+                inventoryBaseItem,
+                (InventoryFolder)
+                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)].Data);
+
+            // Wait for a reply.
+            wait.WaitOne(Timeout.Infinite);
+
+            if (e.Accept)
+            {
+                // If no folder UUID was specified, move it to the default folder for the asset type.
+                if (e.FolderID.Equals(UUID.Zero))
+                {
+                    Client.Inventory.Move(
+                        inventoryBaseItem,
+                        (InventoryFolder)
+                            Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data);
+                    return;
+                }
+                // Otherwise, locate the folder and move.
+                InventoryBase inventoryBaseFolder =
+                    FindInventoryBase(Client.Inventory.Store.RootFolder, e.FolderID.ToString(),
+                        Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                if (inventoryBaseFolder != null)
+                {
+                    Client.Inventory.Move(inventoryBaseItem, inventoryBaseFolder as InventoryFolder);
+                }
+            }
         }
 
         private static void HandleScriptQuestion(object sender, ScriptQuestionEventArgs e)
@@ -1983,6 +2061,7 @@ namespace Corrade
                 case InstantMessageDialog.StartTyping:
                 case InstantMessageDialog.StopTyping:
                     return;
+                case InstantMessageDialog.TaskInventoryOffered:
                 case InstantMessageDialog.InventoryOffered:
                     Feedback(GetEnumDescription(ConsoleError.GOT_INVENTORY_OFFER),
                         message.Replace(Environment.NewLine, " : "));
@@ -3190,15 +3269,15 @@ namespace Corrade
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message));
                         if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out notice.AttachmentID))
                         {
-                            InventoryItem inventoryItem =
-                                SearchInventoryItem(Client.Inventory.Store.RootFolder, item,
+                            InventoryBase inventoryBaseItem =
+                                FindInventoryBase(Client.Inventory.Store.RootFolder, item,
                                     Configuration.SERVICES_TIMEOUT).FirstOrDefault();
-                            if (inventoryItem == null)
+                            if (inventoryBaseItem == null)
                             {
                                 throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                             }
                             notice.OwnerID = Client.Self.AgentID;
-                            notice.AttachmentID = inventoryItem.UUID;
+                            notice.AttachmentID = inventoryBaseItem.UUID;
                         }
                         Client.Groups.SendGroupNotice(groupUUID, notice);
                     };
@@ -4214,11 +4293,11 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        InventoryItem item =
-                            SearchInventoryItem(Client.Inventory.Store.RootFolder,
+                        InventoryBase inventoryBaseItem =
+                            FindInventoryBase(Client.Inventory.Store.RootFolder,
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
                                 Configuration.SERVICES_TIMEOUT).FirstOrDefault();
-                        if (item == null)
+                        if (inventoryBaseItem == null)
                         {
                             throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                         }
@@ -4240,7 +4319,8 @@ namespace Corrade
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                                 }
-                                Client.Inventory.GiveItem(item.UUID, item.Name, item.AssetType, agentUUID, true);
+                                Client.Inventory.GiveItem(inventoryBaseItem.UUID, inventoryBaseItem.Name,
+                                    (inventoryBaseItem as InventoryItem).AssetType, agentUUID, true);
                                 break;
                             case Entity.OBJECT:
                                 float range;
@@ -4263,7 +4343,8 @@ namespace Corrade
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
                                 }
-                                Client.Inventory.UpdateTaskInventory(primitive.LocalID, item);
+                                Client.Inventory.UpdateTaskInventory(primitive.LocalID,
+                                    inventoryBaseItem as InventoryItem);
                                 break;
                             default:
                                 throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ENTITY));
@@ -4280,9 +4361,9 @@ namespace Corrade
                             throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         HashSet<InventoryItem> items =
-                            new HashSet<InventoryItem>(SearchInventoryItem(Client.Inventory.Store.RootFolder,
+                            new HashSet<InventoryItem>(FindInventoryBase(Client.Inventory.Store.RootFolder,
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
-                                Configuration.SERVICES_TIMEOUT));
+                                Configuration.SERVICES_TIMEOUT).Cast<InventoryItem>());
                         if (items.Count == 0)
                         {
                             throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
@@ -4359,14 +4440,14 @@ namespace Corrade
                         UUID textureUUID = UUID.Zero;
                         if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out textureUUID))
                         {
-                            InventoryItem inventoryItem =
-                                SearchInventoryItem(Client.Inventory.Store.RootFolder, item,
+                            InventoryBase inventoryBaseItem =
+                                FindInventoryBase(Client.Inventory.Store.RootFolder, item,
                                     Configuration.SERVICES_TIMEOUT).FirstOrDefault();
-                            if (inventoryItem == null)
+                            if (inventoryBaseItem == null)
                             {
                                 throw new Exception(GetEnumDescription(ScriptError.TEXTURE_NOT_FOUND));
                             }
-                            textureUUID = inventoryItem.UUID;
+                            textureUUID = inventoryBaseItem.UUID;
                         }
                         ManualResetEvent AvatarPicksReplyEvent = new ManualResetEvent(false);
                         UUID pickUUID = UUID.Zero;
@@ -4451,14 +4532,14 @@ namespace Corrade
                         UUID textureUUID = UUID.Zero;
                         if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out textureUUID))
                         {
-                            InventoryItem inventoryItem =
-                                SearchInventoryItem(Client.Inventory.Store.RootFolder, item,
+                            InventoryBase inventoryBaseItem =
+                                FindInventoryBase(Client.Inventory.Store.RootFolder, item,
                                     Configuration.SERVICES_TIMEOUT).FirstOrDefault();
-                            if (inventoryItem == null)
+                            if (inventoryBaseItem == null)
                             {
                                 throw new Exception(GetEnumDescription(ScriptError.TEXTURE_NOT_FOUND));
                             }
-                            textureUUID = inventoryItem.UUID;
+                            textureUUID = inventoryBaseItem.UUID;
                         }
                         string classifiedName =
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message));
@@ -4700,15 +4781,15 @@ namespace Corrade
                             wearables.Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER},
                                 StringSplitOptions.RemoveEmptyEntries), o =>
                                 {
-                                    InventoryItem item =
-                                        SearchInventoryItem(Client.Inventory.Store.RootFolder, o,
+                                    InventoryBase inventoryBaseItem =
+                                        FindInventoryBase(Client.Inventory.Store.RootFolder, o,
                                             Configuration.SERVICES_TIMEOUT).FirstOrDefault();
-                                    if (item == null)
+                                    if (inventoryBaseItem == null)
                                         return;
-                                    InventoryWearable wearable = item as InventoryWearable;
+                                    InventoryWearable wearable = inventoryBaseItem as InventoryWearable;
                                     if (wearable == null)
                                         return;
-                                    Wear(item, replace);
+                                    Wear(inventoryBaseItem as InventoryItem, replace);
                                 });
                         Rebake.Invoke();
                     };
@@ -4730,15 +4811,15 @@ namespace Corrade
                             wearables.Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER},
                                 StringSplitOptions.RemoveEmptyEntries), o =>
                                 {
-                                    InventoryItem item =
-                                        SearchInventoryItem(Client.Inventory.Store.RootFolder, o,
+                                    InventoryBase inventoryBaseItem =
+                                        FindInventoryBase(Client.Inventory.Store.RootFolder, o,
                                             Configuration.SERVICES_TIMEOUT).FirstOrDefault();
-                                    if (item == null)
+                                    if (inventoryBaseItem == null)
                                         return;
-                                    InventoryWearable wearable = item as InventoryWearable;
+                                    InventoryWearable wearable = inventoryBaseItem as InventoryWearable;
                                     if (wearable == null)
                                         return;
-                                    UnWear(item);
+                                    UnWear(inventoryBaseItem as InventoryItem);
                                 });
                         Rebake.Invoke();
                     };
@@ -4800,12 +4881,12 @@ namespace Corrade
                                                 p.Name.Equals(o.Key, StringComparison.Ordinal)),
                                     q =>
                                     {
-                                        InventoryItem item =
-                                            SearchInventoryItem(Client.Inventory.Store.RootFolder, o.Value,
+                                        InventoryBase inventoryBaseItem =
+                                            FindInventoryBase(Client.Inventory.Store.RootFolder, o.Value,
                                                 Configuration.SERVICES_TIMEOUT).FirstOrDefault();
-                                        if (item == null)
+                                        if (inventoryBaseItem == null)
                                             return;
-                                        Attach(item, (AttachmentPoint) q.GetValue(null),
+                                        Attach(inventoryBaseItem as InventoryItem, (AttachmentPoint) q.GetValue(null),
                                             replace);
                                     }));
                         Rebake.Invoke();
@@ -4830,12 +4911,12 @@ namespace Corrade
                             attachments.Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER},
                                 StringSplitOptions.RemoveEmptyEntries), o =>
                                 {
-                                    InventoryItem item =
-                                        SearchInventoryItem(Client.Inventory.Store.RootFolder, o,
+                                    InventoryBase inventoryBaseItem =
+                                        FindInventoryBase(Client.Inventory.Store.RootFolder, o,
                                             Configuration.SERVICES_TIMEOUT).FirstOrDefault();
-                                    if (item != null)
+                                    if (inventoryBaseItem != null)
                                     {
-                                        Detach(item);
+                                        Detach(inventoryBaseItem as InventoryItem);
                                     }
                                 });
                         Rebake.Invoke();
@@ -5220,11 +5301,11 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
                         }
-                        InventoryItem item =
-                            SearchInventoryItem(Client.Inventory.Store.RootFolder,
+                        InventoryBase inventoryBaseItem =
+                            FindInventoryBase(Client.Inventory.Store.RootFolder,
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
                                 Configuration.SERVICES_TIMEOUT).FirstOrDefault();
-                        if (item == null)
+                        if (inventoryBaseItem == null)
                         {
                             throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                         }
@@ -5267,7 +5348,8 @@ namespace Corrade
                                 }
                             }
                         }
-                        Client.Inventory.RequestRezFromInventory(Client.Network.CurrentSim, rotation, position, item,
+                        Client.Inventory.RequestRezFromInventory(Client.Network.CurrentSim, rotation, position,
+                            inventoryBaseItem as InventoryItem,
                             groupUUID);
                     };
                     break;
@@ -5605,15 +5687,16 @@ namespace Corrade
                                         message)).ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Action.ADD:
-                                InventoryItem inventoryItem =
-                                    SearchInventoryItem(Client.Inventory.Store.RootFolder,
+                                InventoryBase inventoryBaseItem =
+                                    FindInventoryBase(Client.Inventory.Store.RootFolder,
                                         !entityUUID.Equals(UUID.Zero) ? entityUUID.ToString() : entity,
                                         Configuration.SERVICES_TIMEOUT).FirstOrDefault();
-                                if (inventoryItem == null)
+                                if (inventoryBaseItem == null)
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                                 }
-                                Client.Inventory.UpdateTaskInventory(primitive.LocalID, inventoryItem);
+                                Client.Inventory.UpdateTaskInventory(primitive.LocalID,
+                                    inventoryBaseItem as InventoryItem);
                                 break;
                             case Action.REMOVE:
                                 if (entityUUID.Equals(UUID.Zero))
@@ -5639,17 +5722,17 @@ namespace Corrade
                             throw new Exception(
                                 GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        InventoryItem item =
-                            SearchInventoryItem(Client.Inventory.Store.RootFolder,
+                        InventoryBase inventoryBaseItem =
+                            FindInventoryBase(Client.Inventory.Store.RootFolder,
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
                                 Configuration.SERVICES_TIMEOUT).FirstOrDefault();
-                        if (item == null)
+                        if (inventoryBaseItem == null)
                         {
                             throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                         }
                         result.Add(GetEnumDescription(ResultKeys.DATA),
                             string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                GetStructuredData(item,
+                                GetStructuredData(inventoryBaseItem as InventoryItem,
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)))
                                     .ToArray()));
                     };
@@ -6388,14 +6471,14 @@ namespace Corrade
                         UUID itemUUID;
                         if (!UUID.TryParse(item, out itemUUID))
                         {
-                            InventoryItem inventoryItem =
-                                SearchInventoryItem(Client.Inventory.Store.RootFolder, item,
+                            InventoryBase inventoryBaseItem =
+                                FindInventoryBase(Client.Inventory.Store.RootFolder, item,
                                     Configuration.SERVICES_TIMEOUT).FirstOrDefault();
-                            if (inventoryItem == null)
+                            if (inventoryBaseItem == null)
                             {
                                 throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                             }
-                            itemUUID = inventoryItem.UUID;
+                            itemUUID = inventoryBaseItem.UUID;
                         }
                         switch (
                             (Action)
@@ -7184,6 +7267,86 @@ namespace Corrade
                         }
                     };
                     break;
+                case ScriptKeys.GETINVENTORYOFFERS:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        object LockObject = new object();
+                        List<string> csv = new List<string>();
+                        Parallel.ForEach(InventoryOffers, o =>
+                        {
+                            lock (LockObject)
+                            {
+                                csv.Add(o.Key.Offer.FromAgentName);
+                                csv.Add(o.Key.AssetType.ToString());
+                                csv.Add(o.Key.Offer.Message);
+                                csv.Add(o.Key.Offer.IMSessionID.ToString());
+                            }
+                        });
+                        if (!csv.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.OFFERS),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                        }
+                    };
+                    break;
+                case ScriptKeys.REPLYTOINVENTORYOFFER:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        UUID session;
+                        if (
+                            !UUID.TryParse(
+                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.SESSION), message)),
+                                out session))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_SESSION_SPECIFIED));
+                        }
+                        if (!InventoryOffers.Any(o => o.Key.Offer.IMSessionID.Equals(session)))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.INVENTORY_OFFER_NOT_FOUND));
+                        }
+                        KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent> offer =
+                            InventoryOffers.FirstOrDefault(o => o.Key.Offer.IMSessionID.Equals(session));
+                        switch (
+                            (Action)
+                                wasGetEnumValueFromDescription<Action>(
+                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION),
+                                        message)).ToLower(CultureInfo.InvariantCulture)))
+                        {
+                            case Action.ACCEPT:
+                                lock (InventoryOffersLock)
+                                {
+                                    offer.Key.Accept = true;
+                                    offer.Value.Set();
+                                    if (InventoryOffers.ContainsKey(offer.Key))
+                                    {
+                                        InventoryOffers.Remove(offer.Key);
+                                    }
+                                }
+                                break;
+                            case Action.DECLINE:
+                                lock (InventoryOffersLock)
+                                {
+                                    offer.Key.Accept = false;
+                                    offer.Value.Set();
+                                    if (InventoryOffers.ContainsKey(offer.Key))
+                                    {
+                                        InventoryOffers.Remove(offer.Key);
+                                    }
+                                }
+                                break;
+                            default:
+                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ACTION));
+                        }
+                    };
+                    break;
                 case ScriptKeys.GETFRIENDSLIST:
                     execute = () =>
                     {
@@ -7229,7 +7392,7 @@ namespace Corrade
                         }
                     };
                     break;
-                case ScriptKeys.FRIENDSHIPREQUEST:
+                case ScriptKeys.REPLYTOFRIENDSHIPREQUEST:
                     execute = () =>
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FRIENDSHIP))
@@ -7869,14 +8032,14 @@ namespace Corrade
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message));
                         if (!UUID.TryParse(item, out itemUUID))
                         {
-                            InventoryItem inventoryItem =
-                                SearchInventoryItem(Client.Inventory.Store.RootFolder, item,
+                            InventoryBase inventoryBaseItem =
+                                FindInventoryBase(Client.Inventory.Store.RootFolder, item,
                                     Configuration.SERVICES_TIMEOUT).FirstOrDefault();
-                            if (inventoryItem == null)
+                            if (inventoryBaseItem == null)
                             {
                                 throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                             }
-                            itemUUID = inventoryItem.UUID;
+                            itemUUID = inventoryBaseItem.UUID;
                         }
                         Client.Sound.SendSoundTrigger(itemUUID, position, gain);
                     };
@@ -9630,7 +9793,8 @@ namespace Corrade
             [Description("success")] SUCCESS,
             [Description("mutes")] MUTES,
             [Description("notifications")] NOTIFICATIONS,
-            [Description("wearables")] WEARABLES
+            [Description("wearables")] WEARABLES,
+            [Description("offers")] OFFERS
         }
 
         /// <summary>
@@ -9638,7 +9802,7 @@ namespace Corrade
         /// </summary>
         private enum ScriptError
         {
-            [Description("could not join group")] COULD_NOT_JOIN_GROUP = 1,
+            [Description("could not join group")] COULD_NOT_JOIN_GROUP,
             [Description("could not leave group")] COULD_NOT_LEAVE_GROUP,
             [Description("agent not found")] AGENT_NOT_FOUND,
             [Description("group not found")] GROUP_NOT_FOUND,
@@ -9765,7 +9929,9 @@ namespace Corrade
             [Description("timeout downloading terrain")] TIMEOUT_DOWNLOADING_TERRAIN,
             [Description("timeout uploading terrain")] TIMEOUT_UPLOADING_TERRAIN,
             [Description("empty terrain data")] EMPTY_TERRAIN_DATA,
-            [Description("the specified folder contains no equipable items")] NO_EQUIPABLE_ITEMS
+            [Description("the specified folder contains no equipable items")] NO_EQUIPABLE_ITEMS,
+            [Description("inventory offer not found")] INVENTORY_OFFER_NOT_FOUND,
+            [Description("no session specified")] NO_SESSION_SPECIFIED
         }
 
         /// <summary>
@@ -9773,6 +9939,8 @@ namespace Corrade
         /// </summary>
         private enum ScriptKeys : uint
         {
+            [Description("replytoinventoryoffer")] REPLYTOINVENTORYOFFER,
+            [Description("getinventoryoffers")] GETINVENTORYOFFERS,
             [Description("updateprimitiveinventory")] UPDATEPRIMITIVEINVENTORY,
             [Description("version")] VERSION,
             [Description("playsound")] PLAYSOUND,
@@ -9818,7 +9986,7 @@ namespace Corrade
             [Description("physics")] PHYSICS,
             [Description("getmapavatarpositions")] GETMAPAVATARPOSITIONS,
             [Description("mapfriend")] MAPFRIEND,
-            [Description("friendshiprequest")] FRIENDSHIPREQUEST,
+            [Description("replytofriendshiprequest")] REPLYTOFRIENDSHIPREQUEST,
             [Description("getfriendshiprequests")] GETFRIENDSHIPREQUESTS,
             [Description("grantfriendrights")] GRANTFRIENDRIGHTS,
             [Description("rights")] RIGHTS,
@@ -9953,7 +10121,7 @@ namespace Corrade
             [Description("source")] SOURCE,
             [Description("effect")] EFFECT,
             [Description("id")] ID,
-            [Description("terrain")] TERRAIN
+            [Description("terrain")] TERRAIN,
         }
 
         /// <summary>
