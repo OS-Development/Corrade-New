@@ -5436,7 +5436,7 @@ namespace Corrade
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ROTATION), message)),
                                 out rotation))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_ROTATION));
+                            rotation = Quaternion.CreateFromEulers(0, 0, 0);
                         }
                         Parcel parcel = null;
                         if (!GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
@@ -5482,6 +5482,38 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
                         }
+                        UUID folderUUID;
+                        string folder =
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FOLDER), message));
+                        if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
+                        {
+                            folderUUID =
+                                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.Object)].Data
+                                    .UUID;
+                        }
+                        if (folderUUID.Equals(UUID.Zero))
+                        {
+                            InventoryBase inventoryBaseItem =
+                                FindInventoryBase(Client.Inventory.Store.RootFolder, folder,
+                                    Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                            if (inventoryBaseItem != null)
+                            {
+                                InventoryItem item = inventoryBaseItem as InventoryItem;
+                                if (item == null || !item.AssetType.Equals(AssetType.Folder))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.FOLDER_NOT_FOUND));
+                                }
+                                folderUUID = inventoryBaseItem.UUID;
+                            }
+                        }
+                        FieldInfo deRezDestionationTypeInfo = typeof (DeRezDestination).GetFields(BindingFlags.Public |
+                                                                                                  BindingFlags.Static)
+                            .FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message)),
+                                        StringComparison.Ordinal));
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
@@ -5492,7 +5524,11 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
-                        Client.Inventory.RequestDeRezToInventory(primitive.LocalID);
+                        Client.Inventory.RequestDeRezToInventory(primitive.LocalID, deRezDestionationTypeInfo != null
+                            ? (DeRezDestination)
+                                deRezDestionationTypeInfo
+                                    .GetValue(null)
+                            : DeRezDestination.AgentInventoryTake, folderUUID, UUID.Random());
                     };
                     break;
                 case ScriptKeys.SETSCRIPTRUNNING:
@@ -7467,16 +7503,31 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.INVENTORY_OFFER_NOT_FOUND));
                         }
-                        UUID folder;
-                        if (
-                            !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FOLDER), message)),
-                                out folder))
-                        {
-                            folder = UUID.Zero;
-                        }
                         KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent> offer =
                             InventoryOffers.FirstOrDefault(o => o.Key.Offer.IMSessionID.Equals(session));
+                        UUID folderUUID;
+                        string folder =
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FOLDER), message));
+                        if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
+                        {
+                            folderUUID =
+                                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(offer.Key.AssetType)]
+                                    .Data.UUID;
+                        }
+                        if (folderUUID.Equals(UUID.Zero))
+                        {
+                            InventoryBase inventoryBaseItem =
+                                FindInventoryBase(Client.Inventory.Store.RootFolder, folder,
+                                    Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                            if (inventoryBaseItem != null)
+                            {
+                                InventoryItem item = inventoryBaseItem as InventoryItem;
+                                if (item != null && item.AssetType.Equals(AssetType.Folder))
+                                {
+                                    folderUUID = inventoryBaseItem.UUID;
+                                }
+                            }
+                        }
                         switch (
                             (Action)
                                 wasGetEnumValueFromDescription<Action>(
@@ -7486,9 +7537,9 @@ namespace Corrade
                             case Action.ACCEPT:
                                 lock (InventoryOffersLock)
                                 {
-                                    if (!folder.Equals(UUID.Zero))
+                                    if (!folderUUID.Equals(UUID.Zero))
                                     {
-                                        offer.Key.FolderID = folder;
+                                        offer.Key.FolderID = folderUUID;
                                     }
                                     offer.Key.Accept = true;
                                     offer.Value.Set();
@@ -10140,7 +10191,8 @@ namespace Corrade
             [Description("empty terrain data")] EMPTY_TERRAIN_DATA,
             [Description("the specified folder contains no equipable items")] NO_EQUIPABLE_ITEMS,
             [Description("inventory offer not found")] INVENTORY_OFFER_NOT_FOUND,
-            [Description("no session specified")] NO_SESSION_SPECIFIED
+            [Description("no session specified")] NO_SESSION_SPECIFIED,
+            [Description("folder not found")] FOLDER_NOT_FOUND
         }
 
         /// <summary>
