@@ -1932,9 +1932,8 @@ namespace Corrade
                 e.Accept = true;
                 return;
             }
-            
+
             // We need to block until we get a reply from a script.
-            // First create 
             ManualResetEvent wait = new ManualResetEvent(false);
             // Add the inventory offer to the list of inventory items.
             lock (InventoryOffersLock)
@@ -1944,7 +1943,7 @@ namespace Corrade
 
             // Find the item in the inventory.
             InventoryBase inventoryBaseItem =
-                FindInventoryBase(Client.Inventory.Store.RootFolder, ((Func<string>)(() =>
+                FindInventoryBase(Client.Inventory.Store.RootFolder, ((Func<string>) (() =>
                 {
                     GroupCollection groups = Regex.Match(e.Offer.Message, @"'{0,1}(.+)'{0,1}").Groups;
                     return groups.Count >= 1 ? groups[1].Value : string.Empty;
