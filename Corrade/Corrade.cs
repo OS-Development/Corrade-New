@@ -1468,6 +1468,40 @@ namespace Corrade
             WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => (WaitHandle) o).ToArray());
             // Now log-out.
             Feedback(GetEnumDescription(ConsoleError.LOGGING_OUT));
+            // Uninstall all installed handlers
+            Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
+            Client.Appearance.AppearanceSet -= HandleAppearanceSet;
+            Client.Network.LoginProgress -= HandleLoginProgress;
+            Client.Network.SimConnected -= HandleSimulatorConnected;
+            Client.Network.Disconnected -= HandleDisconnected;
+            Client.Network.SimDisconnected -= HandleSimulatorDisconnected;
+            Client.Network.EventQueueRunning -= HandleEventQueueRunning;
+            Client.Network.SimChanged -= HandleSimChanged;
+            Client.Friends.FriendshipOffered -= HandleFriendshipOffered;
+            Client.Friends.FriendshipResponse -= HandleFriendShipResponse;
+            Client.Friends.FriendOnline -= HandleFriendOnlineStatus;
+            Client.Friends.FriendOffline -= HandleFriendOnlineStatus;
+            Client.Friends.FriendRightsUpdate -= HandleFriendRightsUpdate;
+            Client.Self.TeleportProgress -= HandleTeleportProgress;
+            Client.Self.ScriptQuestion -= HandleScriptQuestion;
+            Client.Self.AlertMessage -= HandleAlertMessage;
+            Client.Self.MoneyBalance -= HandleMoneyBalance;
+            Client.Self.ChatFromSimulator -= HandleChatFromSimulator;
+            Client.Self.ScriptDialog -= HandleScriptDialog;
+            Client.Objects.AvatarUpdate -= HandleAvatarUpdate;
+            Client.Objects.TerseObjectUpdate -= HandleTerseObjectUpdate;
+            Client.Avatars.ViewerEffect -= HandleViewerEffect;
+            Client.Avatars.ViewerEffectPointAt -= HandleViewerEffect;
+            Client.Avatars.ViewerEffectLookAt -= HandleViewerEffect;
+            // Reject any inventory that has not been accepted.
+            Parallel.ForEach(InventoryOffers, o =>
+            {
+                lock (InventoryOffersLock)
+                {
+                    o.Key.Accept = false;
+                    o.Value.Set();
+                }
+            });
             // Disable the watcher.
             configurationWatcher.EnableRaisingEvents = false;
             configurationWatcher.Dispose();
@@ -1481,15 +1515,6 @@ namespace Corrade
                     HTTPListenerThread.Join(Configuration.SERVICES_TIMEOUT);
                 }
             }
-            // Reject any inventory that has not been accepted.
-            Parallel.ForEach(InventoryOffers, o =>
-            {
-                lock (InventoryOffersLock)
-                {
-                    o.Key.Accept = false;
-                    o.Value.Set();
-                }
-            });
             // Logout
             Client.Network.Logout();
             Client.Network.Shutdown(NetworkManager.DisconnectType.ClientInitiated);
@@ -1907,6 +1932,7 @@ namespace Corrade
                 e.Accept = true;
                 return;
             }
+            
             // We need to block until we get a reply from a script.
             // First create 
             ManualResetEvent wait = new ManualResetEvent(false);
@@ -1915,26 +1941,35 @@ namespace Corrade
             {
                 InventoryOffers.Add(e, wait);
             }
-            // Send notification
-            SendNotification(Notifications.NOTIFICATION_INVENTORY_OFFER, e);
 
             // Find the item in the inventory.
             InventoryBase inventoryBaseItem =
-                FindInventoryBase(Client.Inventory.Store.RootFolder, e.Offer.Message,
+                FindInventoryBase(Client.Inventory.Store.RootFolder, ((Func<string>)(() =>
+                {
+                    GroupCollection groups = Regex.Match(e.Offer.Message, @"'{0,1}(.+)'{0,1}").Groups;
+                    return groups.Count >= 1 ? groups[1].Value : string.Empty;
+                }))(),
                     Configuration.SERVICES_TIMEOUT).FirstOrDefault();
 
-            // Assume we do not want the item.
-            Client.Inventory.Move(
-                inventoryBaseItem,
-                (InventoryFolder)
-                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)].Data);
+            if (inventoryBaseItem != null)
+            {
+                // Assume we do not want the item.
+                Client.Inventory.Move(
+                    inventoryBaseItem,
+                    (InventoryFolder)
+                        Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)].Data);
+            }
 
+            // Send notification
+            SendNotification(Notifications.NOTIFICATION_INVENTORY_OFFER, e);
             // Wait for a reply.
             wait.WaitOne(Timeout.Infinite);
 
-            if (e.Accept)
+            if (!e.Accept) return;
+
+            // If no folder UUID was specified, move it to the default folder for the asset type.
+            if (inventoryBaseItem != null)
             {
-                // If no folder UUID was specified, move it to the default folder for the asset type.
                 if (e.FolderID.Equals(UUID.Zero))
                 {
                     Client.Inventory.Move(
@@ -1951,6 +1986,11 @@ namespace Corrade
                 {
                     Client.Inventory.Move(inventoryBaseItem, inventoryBaseFolder as InventoryFolder);
                 }
+            }
+
+            lock (InventoryOffersLock)
+            {
+                InventoryOffers.Remove(e);
             }
         }
 
@@ -7543,10 +7583,6 @@ namespace Corrade
                                     }
                                     offer.Key.Accept = true;
                                     offer.Value.Set();
-                                    if (InventoryOffers.ContainsKey(offer.Key))
-                                    {
-                                        InventoryOffers.Remove(offer.Key);
-                                    }
                                 }
                                 break;
                             case Action.DECLINE:
@@ -7554,10 +7590,6 @@ namespace Corrade
                                 {
                                     offer.Key.Accept = false;
                                     offer.Value.Set();
-                                    if (InventoryOffers.ContainsKey(offer.Key))
-                                    {
-                                        InventoryOffers.Remove(offer.Key);
-                                    }
                                 }
                                 break;
                             default:
