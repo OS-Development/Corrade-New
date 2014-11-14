@@ -245,14 +245,14 @@ namespace Corrade
 
         private static void Attach(InventoryItem item, AttachmentPoint point, bool replace)
         {
-            Client.Appearance.Attach(item, point, replace);
+            Client.Appearance.Attach(ResolveItemLink(item), point, replace);
             AddLink(item);
         }
 
         private static void Detach(InventoryItem item)
         {
             RemoveLink(item);
-            Client.Appearance.Detach(item);
+            Client.Appearance.Detach(ResolveItemLink(item));
         }
 
         private static void Wear(InventoryItem item, bool replace)
