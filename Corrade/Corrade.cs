@@ -183,7 +183,7 @@ namespace Corrade
                     .FirstOrDefault(
                         o =>
                             o is InventoryFolder &&
-                            ((InventoryFolder) o).PreferredType == AssetType.CurrentOutfitFolder);
+                            ((InventoryFolder) o).PreferredType.Equals(AssetType.CurrentOutfitFolder));
             if (item != null)
             {
                 return (InventoryFolder) item;
@@ -237,7 +237,7 @@ namespace Corrade
             if (COF == null) return ret;
 
             Client.Inventory.Store.GetContents(GetOrCreateOutfitFolder())
-                .FindAll(b => CanBeWorn(b) && ((InventoryItem) b).AssetType == AssetType.Link)
+                .FindAll(b => CanBeWorn(b) && ((InventoryItem) b).AssetType.Equals(AssetType.Link))
                 .ForEach(item => ret.Add((InventoryItem) item));
 
             return ret;
@@ -334,10 +334,10 @@ namespace Corrade
             InventoryItem realItem = ResolveItemLink(item);
             if (!(realItem is InventoryWearable)) return false;
             WearableType t = ((InventoryWearable) realItem).WearableType;
-            return t == WearableType.Shape ||
-                   t == WearableType.Skin ||
-                   t == WearableType.Eyes ||
-                   t == WearableType.Hair;
+            return t.Equals(WearableType.Shape) ||
+                   t.Equals(WearableType.Skin) ||
+                   t.Equals(WearableType.Eyes) ||
+                   t.Equals(WearableType.Hair);
         }
 
         /// <summary>
@@ -346,7 +346,7 @@ namespace Corrade
         /// <param name="item">Original item to be linked from COF</param>
         public static void AddLink(InventoryItem item)
         {
-            if (item.InventoryType == InventoryType.Wearable && !IsBodyPart(item))
+            if (item.InventoryType.Equals(InventoryType.Wearable) && !IsBodyPart(item))
             {
                 AddLink(item, string.Format("@{0}{1:00}", (int) ((InventoryWearable) item).WearableType, 0));
                 return;
@@ -364,7 +364,8 @@ namespace Corrade
             InventoryFolder COF = GetOrCreateOutfitFolder();
             if (GetOrCreateOutfitFolder() == null) return;
 
-            bool linkExists = null != GetCurrentOutfitFolderLinks().Find(itemLink => itemLink.AssetUUID == item.UUID);
+            bool linkExists = null !=
+                              GetCurrentOutfitFolderLinks().Find(itemLink => itemLink.AssetUUID.Equals(item.UUID));
 
             if (!linkExists)
             {
@@ -401,13 +402,15 @@ namespace Corrade
             object LockObject = new object();
             Parallel.ForEach(items,
                 item =>
-                    GetCurrentOutfitFolderLinks().FindAll(itemLink => itemLink.AssetUUID == item.UUID).ForEach(link =>
-                    {
-                        lock (LockObject)
+                    GetCurrentOutfitFolderLinks()
+                        .FindAll(itemLink => itemLink.AssetUUID.Equals(item.UUID))
+                        .ForEach(link =>
                         {
-                            removeItems.Add(link.UUID);
-                        }
-                    }));
+                            lock (LockObject)
+                            {
+                                removeItems.Add(link.UUID);
+                            }
+                        }));
 
             Client.Inventory.Remove(removeItems, null);
         }
@@ -660,7 +663,8 @@ namespace Corrade
             EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
             {
                 hasPowers =
-                    args.Groups.Any(o => o.GroupID.Equals(groupUUID) && (o.GroupPowers & powers) != GroupPowers.None);
+                    args.Groups.Any(
+                        o => o.GroupID.Equals(groupUUID) && !(o.GroupPowers & powers).Equals(GroupPowers.None));
                 avatarGroupsEvent.Set();
             };
             Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
@@ -734,12 +738,12 @@ namespace Corrade
         private static bool HasCorradePermission(string group, int permission)
         {
             UUID groupUUID;
-            return permission != 0 && UUID.TryParse(group, out groupUUID)
-                ? Configuration.GROUPS.Any(o => groupUUID.Equals(o.UUID) && (o.PermissionMask & permission) != 0)
+            return !permission.Equals(0) && UUID.TryParse(group, out groupUUID)
+                ? Configuration.GROUPS.Any(o => groupUUID.Equals(o.UUID) && !(o.PermissionMask & permission).Equals(0))
                 : Configuration.GROUPS.Any(
                     o =>
                         o.Name.Equals(group, StringComparison.Ordinal) &&
-                        (o.PermissionMask & permission) != 0);
+                        !(o.PermissionMask & permission).Equals(0));
         }
 
         /// <summary>
@@ -751,13 +755,13 @@ namespace Corrade
         private static bool HasCorradeNotification(string group, int notification)
         {
             UUID groupUUID;
-            return notification != 0 && UUID.TryParse(group, out groupUUID)
+            return !notification.Equals(0) && UUID.TryParse(group, out groupUUID)
                 ? Configuration.GROUPS.Any(
                     o => groupUUID.Equals(o.UUID) &&
-                         (o.NotificationMask & notification) != 0)
+                         !(o.NotificationMask & notification).Equals(0))
                 : Configuration.GROUPS.Any(
                     o => o.Name.Equals(group, StringComparison.Ordinal) &&
-                         (o.NotificationMask & notification) != 0);
+                         !(o.NotificationMask & notification).Equals(0));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -809,7 +813,7 @@ namespace Corrade
             EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedDelegate =
                 (sender, args) => RequestAllSimParcelsEvent.Set();
             Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedDelegate;
-            int delay = simulator.Stats.LastLag != 0 ? simulator.Stats.LastLag : 100;
+            int delay = !simulator.Stats.LastLag.Equals(0) ? simulator.Stats.LastLag : 100;
             Client.Parcels.RequestAllSimParcels(simulator, true, delay);
             // 65536 1x1 parcels in 256x256 region times the last lag 
             if (!RequestAllSimParcelsEvent.WaitOne(65536*delay, false))
@@ -1065,7 +1069,7 @@ namespace Corrade
                         yield return inventoryItem;
                     }
                 }
-                if (contents.Count == 0 || inventoryFolder == null)
+                if (contents.Count.Equals(0) || inventoryFolder == null)
                     continue;
                 foreach (
                     InventoryBase inventoryBase in FindInventoryBase(inventoryFolder, itemBase, millisecondsTimeout))
@@ -1203,7 +1207,7 @@ namespace Corrade
         {
             if (Environment.UserInteractive)
             {
-                if (args.Length != 0)
+                if (!args.Length.Equals(0))
                 {
                     string action = string.Empty;
                     for (int i = 0; i < args.Length; ++i)
@@ -1573,7 +1577,7 @@ namespace Corrade
                     o => HasCorradeNotification(o.GROUP, (int) notification)), p =>
                     {
                         // Next, check if the group has registered to receive dialog notifications.
-                        if ((p.NOTIFICATION_MASK & (int) notification) == 0)
+                        if ((p.NOTIFICATION_MASK & (int) notification).Equals(0))
                         {
                             return;
                         }
@@ -1663,8 +1667,8 @@ namespace Corrade
                                                                                 BindingFlags.Static)
                                                 .Where(
                                                     o =>
-                                                        ((int) o.GetValue(null) &
-                                                         (int) scriptQuestionEventArgs.Questions) != 0)
+                                                        !(((int) o.GetValue(null) &
+                                                           (int) scriptQuestionEventArgs.Questions)).Equals(0))
                                                 .Select(o => o.Name).ToArray()));
                                     break;
                                 case Notifications.NOTIFICATION_FRIENDSHIP:
@@ -1690,9 +1694,9 @@ namespace Corrade
                                                                                 BindingFlags.Static)
                                                     .Where(
                                                         o =>
-                                                            ((int) o.GetValue(null) &
-                                                             (int) friendInfoEventArgs.Friend.MyFriendRights) !=
-                                                            0)
+                                                            !(((int) o.GetValue(null) &
+                                                               (int) friendInfoEventArgs.Friend.MyFriendRights)).Equals(
+                                                                   0))
                                                     .Select(o => o.Name)
                                                     .ToArray()));
                                         break;
@@ -2140,7 +2144,7 @@ namespace Corrade
                         Any(p => p.Equals(args.IM.FromAgentName, StringComparison.OrdinalIgnoreCase)))
                     {
                         Feedback(GetEnumDescription(ConsoleError.ACCEPTING_TELEPORT_LURE), args.IM.FromAgentName);
-                        if (Client.Self.Movement.SitOnGround || Client.Self.SittingOn != 0)
+                        if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                         {
                             Client.Self.Stand();
                         }
@@ -2597,11 +2601,16 @@ namespace Corrade
                             throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_GROUP_ACCOUNT_SUMMARY));
                         }
                         Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
-                        result.Add(GetEnumDescription(ResultKeys.DATA),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                GetStructuredData(summary,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)))
-                                    .ToArray()));
+
+                        List<string> data = new List<string>(GetStructuredData(summary,
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)))
+                            );
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.UPDATEGROUPDATA:
@@ -2730,7 +2739,7 @@ namespace Corrade
                                     typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                                         .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                     q => { powers |= ((ulong) q.GetValue(null)); }));
-                        if (powers != 0 &&
+                        if (!powers.Equals(0) &&
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ChangeActions,
                                 Configuration.SERVICES_TIMEOUT))
                         {
@@ -3002,8 +3011,8 @@ namespace Corrade
                             csv.AddRange(typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .Where(
                                     o =>
-                                        ((ulong) o.GetValue(null) &
-                                         (ulong) queryRole.Powers) != 0)
+                                        !(((ulong) o.GetValue(null) &
+                                           (ulong) queryRole.Powers)).Equals(0))
                                 .Select(o => o.Name));
                             GroupRoleDataReplyEvent.Set();
                         };
@@ -3527,7 +3536,7 @@ namespace Corrade
                             }
                             TeleportEvent.Set();
                         };
-                        if (Client.Self.Movement.SitOnGround || Client.Self.SittingOn != 0)
+                        if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                         {
                             Client.Self.Stand();
                         }
@@ -3617,7 +3626,7 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        if (Client.Self.Movement.SitOnGround || Client.Self.SittingOn != 0)
+                        if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                         {
                             Client.Self.Stand();
                         }
@@ -3641,11 +3650,15 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        result.Add(GetEnumDescription(ResultKeys.DATA),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                GetStructuredData(Client.Network.CurrentSim,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)))
-                                    .ToArray()));
+                        List<string> data = new List<string>(GetStructuredData(Client.Network.CurrentSim,
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)))
+                            );
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.SIT:
@@ -3693,7 +3706,7 @@ namespace Corrade
                             }
                             SitEvent.Set();
                         };
-                        if (Client.Self.Movement.SitOnGround || Client.Self.SittingOn != 0)
+                        if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                         {
                             Client.Self.Stand();
                         }
@@ -3726,7 +3739,7 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        if (Client.Self.Movement.SitOnGround || Client.Self.SittingOn != 0)
+                        if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                         {
                             Client.Self.Stand();
                         }
@@ -4061,8 +4074,8 @@ namespace Corrade
                                         DirLandReplyEvent.Set();
                                     }
                                 });
-                                if ((handledEvents - counter)%
-                                    LINDEN_CONSTANTS.DIRECTORY.LAND.SEARCH_RESULTS_COUNT == 0)
+                                if (((handledEvents - counter)%
+                                     LINDEN_CONSTANTS.DIRECTORY.LAND.SEARCH_RESULTS_COUNT).Equals(0))
                                 {
                                     ++counter;
                                     Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
@@ -4502,7 +4515,7 @@ namespace Corrade
                             new HashSet<InventoryItem>(FindInventoryBase(Client.Inventory.Store.RootFolder,
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
                                 Configuration.SERVICES_TIMEOUT).Cast<InventoryItem>());
-                        if (items.Count == 0)
+                        if (items.Count.Equals(0))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                         }
@@ -4551,7 +4564,7 @@ namespace Corrade
                         {
                             case Action.START:
                             case Action.STOP:
-                                if (Client.Self.Movement.SitOnGround || Client.Self.SittingOn != 0)
+                                if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                                 {
                                     Client.Self.Stand();
                                 }
@@ -4891,14 +4904,20 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        result.Add(GetEnumDescription(ResultKeys.WEARABLES),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                GetWearables(Client.Inventory.Store.RootFolder, Configuration.SERVICES_TIMEOUT)
-                                    .Select(o => new[]
-                                    {
-                                        o.Key.ToString(),
-                                        o.Value
-                                    }).SelectMany(o => o).ToArray()));
+                        List<string> data =
+                            new List<string>(GetWearables(Client.Inventory.Store.RootFolder,
+                                Configuration.SERVICES_TIMEOUT)
+                                .Select(o => new[]
+                                {
+                                    o.Key.ToString(),
+                                    o.Value
+                                }).SelectMany(o => o));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.WEARABLES),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.WEAR:
@@ -5338,18 +5357,21 @@ namespace Corrade
                             }
                             Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
                         }
-                        if (primitives.Count == 0)
+                        if (primitives.Count.Equals(0))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_GET_LAND_USERS));
                         }
-                        result.Add(GetEnumDescription(ResultKeys.OWNERS),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                primitives.Select(
-                                    p =>
-                                        string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                            new[] {p.Key, p.Value.ToString(CultureInfo.InvariantCulture)}))
-                                    .ToArray()
-                                ));
+                        List<string> data = new List<string>(primitives.Select(
+                            p =>
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    new[] {p.Key, p.Value.ToString(CultureInfo.InvariantCulture)})));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.OWNERS),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.ToArray()
+                                    ));
+                        }
                     };
                     break;
                 case ScriptKeys.GETGROUPDATA:
@@ -5368,11 +5390,14 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
                         }
-                        result.Add(GetEnumDescription(ResultKeys.DATA),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                GetStructuredData(dataGroup,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)))
-                                    .ToArray()));
+                        List<string> data = new List<string>(GetStructuredData(dataGroup,
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.GETPRIMITIVEDATA:
@@ -5402,11 +5427,14 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
-                        result.Add(GetEnumDescription(ResultKeys.DATA),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                GetStructuredData(primitive,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)))
-                                    .ToArray()));
+                        List<string> data = new List<string>(GetStructuredData(primitive,
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.GETPARCELDATA:
@@ -5430,11 +5458,14 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
-                        result.Add(GetEnumDescription(ResultKeys.DATA),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                GetStructuredData(parcel,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)))
-                                    .ToArray()));
+                        List<string> data = new List<string>(GetStructuredData(parcel,
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.REZ:
@@ -5482,7 +5513,7 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
-                        if ((parcel.Flags & ParcelFlags.CreateObjects) == 0)
+                        if (((uint) parcel.Flags & (uint) ParcelFlags.CreateObjects).Equals(0))
                         {
                             if (!Client.Network.CurrentSim.IsEstateManager)
                             {
@@ -5767,14 +5798,19 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
-                        result.Add(GetEnumDescription(ResultKeys.INVENTORY),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                    Configuration.SERVICES_TIMEOUT).Select(o => new[]
-                                    {
-                                        o.Name,
-                                        o.UUID.ToString()
-                                    }).SelectMany(o => o).ToArray()));
+                        List<string> data =
+                            new List<string>(Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
+                                Configuration.SERVICES_TIMEOUT).Select(o => new[]
+                                {
+                                    o.Name,
+                                    o.UUID.ToString()
+                                }).SelectMany(o => o));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.INVENTORY),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.GETPRIMITIVEINVENTORYDATA:
@@ -5824,11 +5860,14 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                         }
-                        result.Add(GetEnumDescription(ResultKeys.DATA),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                GetStructuredData(item,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)))
-                                    .ToArray()));
+                        List<string> data = new List<string>(GetStructuredData(item,
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.UPDATEPRIMITIVEINVENTORY:
@@ -5918,11 +5957,14 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                         }
-                        result.Add(GetEnumDescription(ResultKeys.DATA),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                GetStructuredData(inventoryBaseItem as InventoryItem,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)))
-                                    .ToArray()));
+                        List<string> data = new List<string>(GetStructuredData(inventoryBaseItem as InventoryItem,
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.GETPARTICLESYSTEM:
@@ -5952,48 +5994,56 @@ namespace Corrade
                         }
                         StringBuilder particleSystem = new StringBuilder();
                         particleSystem.Append("PSYS_PART_FLAGS, 0");
-                        if ((primitive.ParticleSys.PartDataFlags &
-                             Primitive.ParticleSystem.ParticleDataFlags.InterpColor) != 0)
+                        if (!((long) primitive.ParticleSys.PartDataFlags &
+                              (long) Primitive.ParticleSystem.ParticleDataFlags.InterpColor).Equals(0))
                             particleSystem.Append(" | PSYS_PART_INTERP_COLOR_MASK");
-                        if ((primitive.ParticleSys.PartDataFlags &
-                             Primitive.ParticleSystem.ParticleDataFlags.InterpScale) != 0)
+                        if (!((long) primitive.ParticleSys.PartDataFlags &
+                              (long) Primitive.ParticleSystem.ParticleDataFlags.InterpScale).Equals(0))
                             particleSystem.Append(" | PSYS_PART_INTERP_SCALE_MASK");
-                        if ((primitive.ParticleSys.PartDataFlags & Primitive.ParticleSystem.ParticleDataFlags.Bounce) !=
-                            0)
+                        if (
+                            !((long) primitive.ParticleSys.PartDataFlags &
+                              (long) Primitive.ParticleSystem.ParticleDataFlags.Bounce).Equals(0))
                             particleSystem.Append(" | PSYS_PART_BOUNCE_MASK");
-                        if ((primitive.ParticleSys.PartDataFlags & Primitive.ParticleSystem.ParticleDataFlags.Wind) != 0)
+                        if (
+                            !((long) primitive.ParticleSys.PartDataFlags &
+                              (long) Primitive.ParticleSystem.ParticleDataFlags.Wind).Equals(0))
                             particleSystem.Append(" | PSYS_PART_WIND_MASK");
-                        if ((primitive.ParticleSys.PartDataFlags & Primitive.ParticleSystem.ParticleDataFlags.FollowSrc) !=
-                            0)
+                        if (
+                            !((long) primitive.ParticleSys.PartDataFlags &
+                              (long) Primitive.ParticleSystem.ParticleDataFlags.FollowSrc).Equals(0))
                             particleSystem.Append(" | PSYS_PART_FOLLOW_SRC_MASK");
-                        if ((primitive.ParticleSys.PartDataFlags &
-                             Primitive.ParticleSystem.ParticleDataFlags.FollowVelocity) != 0)
+                        if (!((long) primitive.ParticleSys.PartDataFlags &
+                              (long) Primitive.ParticleSystem.ParticleDataFlags.FollowVelocity).Equals(0))
                             particleSystem.Append(" | PSYS_PART_FOLLOW_VELOCITY_MASK");
-                        if ((primitive.ParticleSys.PartDataFlags & Primitive.ParticleSystem.ParticleDataFlags.TargetPos) !=
-                            0)
+                        if (
+                            !((long) primitive.ParticleSys.PartDataFlags &
+                              (long) Primitive.ParticleSystem.ParticleDataFlags.TargetPos).Equals(0))
                             particleSystem.Append(" | PSYS_PART_TARGET_POS_MASK");
-                        if ((primitive.ParticleSys.PartDataFlags &
-                             Primitive.ParticleSystem.ParticleDataFlags.TargetLinear) != 0)
+                        if (!((long) primitive.ParticleSys.PartDataFlags &
+                              (long) Primitive.ParticleSystem.ParticleDataFlags.TargetLinear).Equals(0))
                             particleSystem.Append(" | PSYS_PART_TARGET_LINEAR_MASK");
-                        if ((primitive.ParticleSys.PartDataFlags & Primitive.ParticleSystem.ParticleDataFlags.Emissive) !=
-                            0)
+                        if (
+                            !((long) primitive.ParticleSys.PartDataFlags &
+                              (long) Primitive.ParticleSystem.ParticleDataFlags.Emissive).Equals(0))
                             particleSystem.Append(" | PSYS_PART_EMISSIVE_MASK");
                         particleSystem.Append(LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
                         particleSystem.Append("PSYS_SRC_PATTERN, 0");
-                        if (((long) primitive.ParticleSys.Pattern & (long) Primitive.ParticleSystem.SourcePattern.Drop) !=
-                            0)
+                        if (
+                            !((long) primitive.ParticleSys.Pattern & (long) Primitive.ParticleSystem.SourcePattern.Drop)
+                                .Equals(0))
                             particleSystem.Append(" | PSYS_SRC_PATTERN_DROP");
-                        if (((long) primitive.ParticleSys.Pattern &
-                             (long) Primitive.ParticleSystem.SourcePattern.Explode) != 0)
+                        if (!((long) primitive.ParticleSys.Pattern &
+                              (long) Primitive.ParticleSystem.SourcePattern.Explode).Equals(0))
                             particleSystem.Append(" | PSYS_SRC_PATTERN_EXPLODE");
-                        if (((long) primitive.ParticleSys.Pattern & (long) Primitive.ParticleSystem.SourcePattern.Angle) !=
-                            0)
+                        if (
+                            !((long) primitive.ParticleSys.Pattern & (long) Primitive.ParticleSystem.SourcePattern.Angle)
+                                .Equals(0))
                             particleSystem.Append(" | PSYS_SRC_PATTERN_ANGLE");
-                        if (((long) primitive.ParticleSys.Pattern &
-                             (long) Primitive.ParticleSystem.SourcePattern.AngleCone) != 0)
+                        if (!((long) primitive.ParticleSys.Pattern &
+                              (long) Primitive.ParticleSystem.SourcePattern.AngleCone).Equals(0))
                             particleSystem.Append(" | PSYS_SRC_PATTERN_ANGLE_CONE");
-                        if (((long) primitive.ParticleSys.Pattern &
-                             (long) Primitive.ParticleSystem.SourcePattern.AngleConeEmpty) != 0)
+                        if (!((long) primitive.ParticleSys.Pattern &
+                              (long) Primitive.ParticleSystem.SourcePattern.AngleConeEmpty).Equals(0))
                             particleSystem.Append(" | PSYS_SRC_PATTERN_ANGLE_CONE_EMPTY");
                         particleSystem.Append(LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
                         particleSystem.Append("PSYS_PART_START_ALPHA, " +
@@ -6168,7 +6218,7 @@ namespace Corrade
                             case Action.START:
                                 uint moveRegionX, moveRegionY;
                                 Utils.LongToUInts(Client.Network.CurrentSim.Handle, out moveRegionX, out moveRegionY);
-                                if (Client.Self.Movement.SitOnGround || Client.Self.SittingOn != 0)
+                                if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                                 {
                                     Client.Self.Stand();
                                 }
@@ -6310,13 +6360,17 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        result.Add(GetEnumDescription(ResultKeys.MUTES),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                Client.Self.MuteList.Copy().Select(o => new[]
-                                {
-                                    o.Value.Name,
-                                    o.Value.ID.ToString()
-                                }).SelectMany(o => o).ToArray()));
+                        List<string> data = new List<string>(Client.Self.MuteList.Copy().Select(o => new[]
+                        {
+                            o.Value.Name,
+                            o.Value.ID.ToString()
+                        }).SelectMany(o => o));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.MUTES),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.DATABASE:
@@ -6523,14 +6577,19 @@ namespace Corrade
                                 {
                                     break;
                                 }
-                                result.Add(GetEnumDescription(ResultKeys.NOTIFICATIONS),
-                                    string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                List<string> data =
+                                    new List<string>(
                                         wasGetEnumDescriptions<Notifications>().Where(o => !GroupNotifications.Any(
                                             p =>
                                                 p.GROUP.Equals(group, StringComparison.Ordinal) &&
                                                 (p.NOTIFICATION_MASK &
-                                                 wasGetEnumValueFromDescription<Notifications>(o)) == 0))
-                                            .ToArray()));
+                                                 wasGetEnumValueFromDescription<Notifications>(o)).Equals(0))));
+                                if (!data.Count.Equals(0))
+                                {
+                                    result.Add(GetEnumDescription(ResultKeys.NOTIFICATIONS),
+                                        string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                            data.ToArray()));
+                                }
                                 break;
                             default:
                                 throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_NOTIFICATIONS_ACTION));
@@ -6858,15 +6917,19 @@ namespace Corrade
                             default:
                                 throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_TOP_TYPE));
                         }
-                        result.Add(GetEnumDescription(ResultKeys.TOP),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, topTasks.Take(amount).Select(o => new[]
-                            {
-                                o.Value.TaskName,
-                                o.Key.ToString(),
-                                o.Value.Score.ToString(CultureInfo.InvariantCulture),
-                                o.Value.OwnerName,
-                                o.Value.Position.ToString()
-                            }).SelectMany(o => o).ToArray()));
+                        List<string> data = new List<string>(topTasks.Take(amount).Select(o => new[]
+                        {
+                            o.Value.TaskName,
+                            o.Key.ToString(),
+                            o.Value.Score.ToString(CultureInfo.InvariantCulture),
+                            o.Value.OwnerName,
+                            o.Value.Position.ToString()
+                        }).SelectMany(o => o));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.TOP),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, data.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.SETESTATELIST:
@@ -7069,7 +7132,7 @@ namespace Corrade
                             case Type.BAN:
                                 EventHandler<EstateBansReplyEventArgs> EstateBansReplyEventHandler = (sender, args) =>
                                 {
-                                    if (args.Count == 0)
+                                    if (args.Count.Equals(0))
                                     {
                                         EstateListReplyEvent.Set();
                                         return;
@@ -7088,7 +7151,7 @@ namespace Corrade
                                 EventHandler<EstateGroupsReplyEventArgs> EstateGroupsReplyEvenHandler =
                                     (sender, args) =>
                                     {
-                                        if (args.Count == 0)
+                                        if (args.Count.Equals(0))
                                         {
                                             EstateListReplyEvent.Set();
                                             return;
@@ -7107,7 +7170,7 @@ namespace Corrade
                                 EventHandler<EstateManagersReplyEventArgs> EstateManagersReplyEventHandler =
                                     (sender, args) =>
                                     {
-                                        if (args.Count == 0)
+                                        if (args.Count.Equals(0))
                                         {
                                             EstateListReplyEvent.Set();
                                             return;
@@ -7126,7 +7189,7 @@ namespace Corrade
                                 EventHandler<EstateUsersReplyEventArgs> EstateUsersReplyEventHandler =
                                     (sender, args) =>
                                     {
-                                        if (args.Count == 0)
+                                        if (args.Count.Equals(0))
                                         {
                                             EstateListReplyEvent.Set();
                                             return;
@@ -7144,12 +7207,15 @@ namespace Corrade
                             default:
                                 throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ESTATE_LIST));
                         }
-                        if (estateList.Count == 0) return;
                         lock (LockObject)
                         {
-                            result.Add(GetEnumDescription(ResultKeys.LIST),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    estateList.ConvertAll(o => o.ToString()).ToArray()));
+                            List<string> data = new List<string>(estateList.ConvertAll(o => o.ToString()));
+                            if (!data.Count.Equals(0))
+                            {
+                                result.Add(GetEnumDescription(ResultKeys.LIST),
+                                    string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                        data.ToArray()));
+                            }
                         }
                     };
                     break;
@@ -7182,11 +7248,14 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.AVATAR_NOT_IN_RANGE));
                         }
-                        result.Add(GetEnumDescription(ResultKeys.DATA),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                GetStructuredData(avatar,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)))
-                                    .ToArray()));
+                        List<string> data = new List<string>(GetStructuredData(avatar,
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.GETPRIMITIVES:
@@ -7411,13 +7480,18 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_MAP_ITEMS_FOUND));
                         }
-                        result.Add(GetEnumDescription(ResultKeys.AVATARS),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                mapItems.Where(o => (o as MapAgentLocation) != null).Select(o => new[]
-                                {
-                                    ((MapAgentLocation) o).AvatarCount.ToString(CultureInfo.InvariantCulture),
-                                    new Vector3(o.LocalX, o.LocalY, 0).ToString()
-                                }).SelectMany(o => o).ToArray()));
+                        List<string> data =
+                            new List<string>(mapItems.Where(o => (o as MapAgentLocation) != null).Select(o => new[]
+                            {
+                                ((MapAgentLocation) o).AvatarCount.ToString(CultureInfo.InvariantCulture),
+                                new Vector3(o.LocalX, o.LocalY, 0).ToString()
+                            }).SelectMany(o => o));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.AVATARS),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.GETSELFDATA:
@@ -7427,11 +7501,14 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        result.Add(GetEnumDescription(ResultKeys.DATA),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                GetStructuredData(Client.Self,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)))
-                                    .ToArray()));
+                        List<string> data = new List<string>(GetStructuredData(Client.Self,
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.DISPLAYNAME:
@@ -7723,11 +7800,14 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.FRIEND_NOT_FOUND));
                         }
-                        result.Add(GetEnumDescription(ResultKeys.DATA),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                GetStructuredData(friend,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)))
-                                    .ToArray()));
+                        List<string> data = new List<string>(GetStructuredData(friend,
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.OFFERFRIENDSHIP:
@@ -8251,7 +8331,7 @@ namespace Corrade
                         }
                         // Now remove the current outfit items.
                         Client.Inventory.Store.GetContents(GetOrCreateOutfitFolder())
-                            .FindAll(o => CanBeWorn(o) && ((InventoryItem) o).AssetType == AssetType.Link)
+                            .FindAll(o => CanBeWorn(o) && ((InventoryItem) o).AssetType.Equals(AssetType.Link))
                             .ForEach(p =>
                             {
                                 InventoryItem item = ResolveItemLink(p as InventoryItem);
@@ -8265,7 +8345,7 @@ namespace Corrade
                                     if (items.Any(q =>
                                     {
                                         InventoryWearable i = q as InventoryWearable;
-                                        if (i != null && ((InventoryWearable) item).WearableType == i.WearableType)
+                                        if (i != null && ((InventoryWearable) item).WearableType.Equals(i.WearableType))
                                         {
                                             return true;
                                         }
@@ -8387,7 +8467,7 @@ namespace Corrade
                                 }
                                 Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
                                 Client.Assets.XferReceived -= XferReceivedEventHandler;
-                                if (assetData == null || assetData.Length != 0)
+                                if (assetData == null || !assetData.Length.Equals(0))
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.EMPTY_TERRAIN_DATA));
                                 }
@@ -8417,7 +8497,7 @@ namespace Corrade
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.TERRAIN_DOWNLOAD_FAILED));
                                 }
-                                if (terrainData == null || terrainData.Length != 0)
+                                if (terrainData == null || !terrainData.Length.Equals(0))
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.EMPTY_TERRAIN_DATA));
                                 }
@@ -8565,8 +8645,8 @@ namespace Corrade
                                                 events.Add(o, score);
                                             }
                                         });
-                                        if ((handledEvents - counter)%
-                                            LINDEN_CONSTANTS.DIRECTORY.EVENT.SEARCH_RESULTS_COUNT == 0)
+                                        if (((handledEvents - counter)%
+                                             LINDEN_CONSTANTS.DIRECTORY.EVENT.SEARCH_RESULTS_COUNT).Equals(0))
                                         {
                                             ++counter;
                                             Client.Directory.StartEventsSearch(name, (uint) handledEvents);
@@ -8626,8 +8706,8 @@ namespace Corrade
                                                 groups.Add(o, score);
                                             }
                                         });
-                                        if ((handledEvents - counter)%
-                                            LINDEN_CONSTANTS.DIRECTORY.GROUP.SEARCH_RESULTS_COUNT == 0)
+                                        if (((handledEvents - counter)%
+                                             LINDEN_CONSTANTS.DIRECTORY.GROUP.SEARCH_RESULTS_COUNT).Equals(0))
                                         {
                                             ++counter;
                                             Client.Directory.StartGroupSearch(name, handledEvents);
@@ -8682,8 +8762,8 @@ namespace Corrade
                                                 lands.Add(o, score);
                                             }
                                         });
-                                        if ((handledEvents - counter)%
-                                            LINDEN_CONSTANTS.DIRECTORY.LAND.SEARCH_RESULTS_COUNT == 0)
+                                        if (((handledEvents - counter)%
+                                             LINDEN_CONSTANTS.DIRECTORY.LAND.SEARCH_RESULTS_COUNT).Equals(0))
                                         {
                                             ++counter;
                                             Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
@@ -8742,8 +8822,8 @@ namespace Corrade
                                                 agents.Add(o, score);
                                             }
                                         });
-                                        if ((handledEvents - counter)%
-                                            LINDEN_CONSTANTS.DIRECTORY.PEOPLE.SEARCH_RESULTS_COUNT == 0)
+                                        if (((handledEvents - counter)%
+                                             LINDEN_CONSTANTS.DIRECTORY.PEOPLE.SEARCH_RESULTS_COUNT).Equals(0))
                                         {
                                             ++counter;
                                             Client.Directory.StartPeopleSearch(name, handledEvents);
@@ -9013,7 +9093,7 @@ namespace Corrade
 
         private static void HandleTerseObjectUpdate(object sender, TerseObjectUpdateEventArgs e)
         {
-            if (e.Prim.LocalID == Client.Self.LocalID)
+            if (e.Prim.LocalID.Equals(Client.Self.LocalID))
             {
                 SetDefaultCamera();
             }
@@ -9021,7 +9101,7 @@ namespace Corrade
 
         private static void HandleAvatarUpdate(object sender, AvatarUpdateEventArgs e)
         {
-            if (e.Avatar.LocalID == Client.Self.LocalID)
+            if (e.Avatar.LocalID.Equals(Client.Self.LocalID))
             {
                 SetDefaultCamera();
             }
