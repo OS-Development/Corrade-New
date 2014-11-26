@@ -26,6 +26,7 @@ using System.Xml;
 using Mono.Unix;
 using Mono.Unix.Native;
 using OpenMetaverse;
+using OpenMetaverse.Assets;
 
 #endregion
 
@@ -6117,6 +6118,92 @@ namespace Corrade
                         result.Add(GetEnumDescription(ResultKeys.PARTICLESYSTEM), particleSystem.ToString());
                     };
                     break;
+                case ScriptKeys.CREATENOTECARD:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                        {
+                            throw new Exception(
+                                GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        string name =
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message))
+                                .ToLower(CultureInfo.InvariantCulture);
+                        if (string.IsNullOrEmpty(name))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_NAME_PROVIDED));
+                        }
+                        ManualResetEvent CreateNotecardEvent = new ManualResetEvent(false);
+                        bool succeeded = false;
+                        InventoryItem newItem = null;
+                        Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(AssetType.Notecard),
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message)),
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION), message)),
+                            AssetType.Notecard,
+                            UUID.Random(), InventoryType.Notecard, PermissionMask.All,
+                            delegate(bool completed, InventoryItem createdItem)
+                            {
+                                succeeded = completed;
+                                newItem = createdItem;
+                                CreateNotecardEvent.Set();
+                            });
+                        if (!CreateNotecardEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_CREATING_ITEM));
+                        }
+                        if (!succeeded)
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_CREATE_ITEM));
+                        }
+                        AssetNotecard blank = new AssetNotecard
+                        {
+                            BodyText = LINDEN_CONSTANTS.ASSETS.NOTECARD.NEWLINE
+                        };
+                        blank.Encode();
+                        ManualResetEvent UploadBlankNotecardEvent = new ManualResetEvent(false);
+                        succeeded = false;
+                        Client.Inventory.RequestUploadNotecardAsset(blank.AssetData, newItem.UUID,
+                            delegate(bool completed, string status, UUID itemUUID, UUID assetUUID)
+                            {
+                                succeeded = completed;
+                                UploadBlankNotecardEvent.Set();
+                            });
+                        if (!UploadBlankNotecardEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPLOADING_ITEM));
+                        }
+                        if (!succeeded)
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_UPLOAD_ITEM));
+                        }
+                        string text =
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TEXT), message));
+                        if (!string.IsNullOrEmpty(text))
+                        {
+                            AssetNotecard notecard = new AssetNotecard
+                            {
+                                BodyText = text
+                            };
+                            notecard.Encode();
+                            ManualResetEvent UploadNotecardDataEvent = new ManualResetEvent(false);
+                            succeeded = false;
+                            Client.Inventory.RequestUploadNotecardAsset(notecard.AssetData, newItem.UUID,
+                                delegate(bool completed, string status, UUID itemUUID, UUID assetUUID)
+                                {
+                                    succeeded = completed;
+                                    UploadNotecardDataEvent.Set();
+                                });
+                            if (!UploadNotecardDataEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            {
+                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPLOADING_ITEM_DATA));
+                            }
+                            if (!succeeded)
+                            {
+                                throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_UPLOAD_ITEM_DATA));
+                            }
+                        }
+                    };
+                    break;
                 case ScriptKeys.ACTIVATE:
                     execute = () =>
                     {
@@ -6233,6 +6320,99 @@ namespace Corrade
                                 break;
                             default:
                                 throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_MOVE_ACTION));
+                        }
+                    };
+                    break;
+                case ScriptKeys.TURNTO:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(group,
+                                (int) Permissions.PERMISSION_MOVEMENT))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        Vector3 position;
+                        if (
+                            !Vector3.TryParse(
+                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                out position))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.INVALID_POSITION));
+                        }
+                        Client.Self.Movement.TurnToward(position, true);
+                    };
+                    break;
+                case ScriptKeys.NUDGE:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(group,
+                                (int) Permissions.PERMISSION_MOVEMENT))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        switch ((Direction)
+                            wasGetEnumValueFromDescription<Direction>(
+                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DIRECTION),
+                                    message))
+                                    .ToLower(CultureInfo.InvariantCulture)))
+                        {
+                            case Direction.BACK:
+                                Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.AGENT_CONTROL_AT_NEG,
+                                    Client.Self.Movement.Camera.Position,
+                                    Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
+                                    Client.Self.Movement.Camera.UpAxis,
+                                    Client.Self.Movement.BodyRotation, Client.Self.Movement.HeadRotation,
+                                    Client.Self.Movement.Camera.Far, AgentFlags.None, AgentState.None, true);
+                                break;
+                            case Direction.FORWARD:
+                                Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.AGENT_CONTROL_AT_POS,
+                                    Client.Self.Movement.Camera.Position,
+                                    Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
+                                    Client.Self.Movement.Camera.UpAxis,
+                                    Client.Self.Movement.BodyRotation, Client.Self.Movement.HeadRotation,
+                                    Client.Self.Movement.Camera.Far, AgentFlags.None,
+                                    AgentState.None, true);
+                                break;
+                            case Direction.LEFT:
+                                Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.
+                                    AGENT_CONTROL_LEFT_POS, Client.Self.Movement.Camera.Position,
+                                    Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
+                                    Client.Self.Movement.Camera.UpAxis,
+                                    Client.Self.Movement.BodyRotation, Client.Self.Movement.HeadRotation,
+                                    Client.Self.Movement.Camera.Far, AgentFlags.None,
+                                    AgentState.None, true);
+                                break;
+                            case Direction.RIGHT:
+                                Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.
+                                    AGENT_CONTROL_LEFT_NEG, Client.Self.Movement.Camera.Position,
+                                    Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
+                                    Client.Self.Movement.Camera.UpAxis,
+                                    Client.Self.Movement.BodyRotation, Client.Self.Movement.HeadRotation,
+                                    Client.Self.Movement.Camera.Far, AgentFlags.None,
+                                    AgentState.None, true);
+                                break;
+                            case Direction.UP:
+                                Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.AGENT_CONTROL_UP_POS,
+                                    Client.Self.Movement.Camera.Position,
+                                    Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
+                                    Client.Self.Movement.Camera.UpAxis,
+                                    Client.Self.Movement.BodyRotation, Client.Self.Movement.HeadRotation,
+                                    Client.Self.Movement.Camera.Far, AgentFlags.None,
+                                    AgentState.None, true);
+                                break;
+                            case Direction.DOWN:
+                                Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.AGENT_CONTROL_UP_NEG,
+                                    Client.Self.Movement.Camera.Position,
+                                    Client.Self.Movement.Camera.AtAxis, Client.Self.Movement.Camera.LeftAxis,
+                                    Client.Self.Movement.Camera.UpAxis,
+                                    Client.Self.Movement.BodyRotation, Client.Self.Movement.HeadRotation,
+                                    Client.Self.Movement.Camera.Far, AgentFlags.None,
+                                    AgentState.None, true);
+                                break;
+                            default:
+                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_DIRECTION));
                         }
                     };
                     break;
@@ -6749,6 +6929,34 @@ namespace Corrade
                             default:
                                 throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ANIMATION_ACTION));
                         }
+                    };
+                    break;
+                case ScriptKeys.PLAYGESTURE:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        string item =
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message));
+                        if (string.IsNullOrEmpty(item))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_ITEM_SPECIFIED));
+                        }
+                        UUID itemUUID;
+                        if (!UUID.TryParse(item, out itemUUID))
+                        {
+                            InventoryBase inventoryBaseItem =
+                                FindInventoryBase(Client.Inventory.Store.RootFolder, item,
+                                    Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                            if (inventoryBaseItem == null)
+                            {
+                                throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                            }
+                            itemUUID = inventoryBaseItem.UUID;
+                        }
+                        Client.Self.PlayGesture(itemUUID);
                     };
                     break;
                 case ScriptKeys.GETANIMATIONS:
@@ -8523,6 +8731,62 @@ namespace Corrade
                         }
                     };
                     break;
+                case ScriptKeys.CROUCH:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MOVEMENT))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        uint action =
+                            wasGetEnumValueFromDescription<Action>(
+                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
+                                    .ToLower(CultureInfo.InvariantCulture));
+                        switch ((Action) action)
+                        {
+                            case Action.START:
+                            case Action.STOP:
+                                if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
+                                {
+                                    Client.Self.Stand();
+                                }
+                                Client.Self.SignaledAnimations.ForEach(
+                                    o => Client.Self.AnimationStop(o.Key, true));
+                                Client.Self.Crouch(action.Equals((uint) Action.START));
+                                break;
+                            default:
+                                throw new Exception(GetEnumDescription(ScriptError.FLY_ACTION_START_OR_STOP));
+                        }
+                    };
+                    break;
+                case ScriptKeys.JUMP:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MOVEMENT))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        uint action =
+                            wasGetEnumValueFromDescription<Action>(wasUriUnescapeDataString(
+                                wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
+                                .ToLower(CultureInfo.InvariantCulture));
+                        switch ((Action) action)
+                        {
+                            case Action.START:
+                            case Action.STOP:
+                                if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
+                                {
+                                    Client.Self.Stand();
+                                }
+                                Client.Self.SignaledAnimations.ForEach(
+                                    o => Client.Self.AnimationStop(o.Key, true));
+                                Client.Self.Jump(action.Equals((uint) Action.START));
+                                break;
+                            default:
+                                throw new Exception(GetEnumDescription(ScriptError.FLY_ACTION_START_OR_STOP));
+                        }
+                    };
+                    break;
                 case ScriptKeys.LOGOUT:
                     execute = () =>
                     {
@@ -10018,6 +10282,14 @@ namespace Corrade
                     @"You can only set your 'Home Location' on your land or at a mainland Infohub.";
             }
 
+            public struct ASSETS
+            {
+                public struct NOTECARD
+                {
+                    public const string NEWLINE = "\n";
+                }
+            }
+
             public struct AVATARS
             {
                 public const int SET_DISPLAY_NAME_SUCCESS = 200;
@@ -10303,7 +10575,14 @@ namespace Corrade
             [Description("the specified folder contains no equipable items")] NO_EQUIPABLE_ITEMS,
             [Description("inventory offer not found")] INVENTORY_OFFER_NOT_FOUND,
             [Description("no session specified")] NO_SESSION_SPECIFIED,
-            [Description("folder not found")] FOLDER_NOT_FOUND
+            [Description("folder not found")] FOLDER_NOT_FOUND,
+            [Description("timeout creating item")] TIMEOUT_CREATING_ITEM,
+            [Description("timeout uploading item")] TIMEOUT_UPLOADING_ITEM,
+            [Description("unable to upload item")] UNABLE_TO_UPLOAD_ITEM,
+            [Description("unable to create item")] UNABLE_TO_CREATE_ITEM,
+            [Description("timeout uploading item data")] TIMEOUT_UPLOADING_ITEM_DATA,
+            [Description("unable to upload item data")] UNABLE_TO_UPLOAD_ITEM_DATA,
+            [Description("unknown direction")] UNKNOWN_DIRECTION
         }
 
         /// <summary>
@@ -10311,6 +10590,13 @@ namespace Corrade
         /// </summary>
         private enum ScriptKeys : uint
         {
+            [Description("playgesture")] PLAYGESTURE,
+            [Description("jump")] JUMP,
+            [Description("crouch")] CROUCH,
+            [Description("turnto")] TURNTO,
+            [Description("nudge")] NUDGE,
+            [Description("createnotecard")] CREATENOTECARD,
+            [Description("direction")] DIRECTION,
             [Description("agent")] AGENT,
             [Description("replytoinventoryoffer")] REPLYTOINVENTORYOFFER,
             [Description("getinventoryoffers")] GETINVENTORYOFFERS,
@@ -10515,6 +10801,19 @@ namespace Corrade
             [Description("land")] LAND,
             [Description("people")] PEOPLE,
             [Description("place")] PLACE
+        }
+
+        /// <summary>
+        ///     Directions in 3D cartesian.
+        /// </summary>
+        private enum Direction : uint
+        {
+            [Description("back")] BACK,
+            [Description("forward")] FORWARD,
+            [Description("left")] LEFT,
+            [Description("right")] RIGHT,
+            [Description("up")] UP,
+            [Description("down")] DOWN
         }
     }
 
