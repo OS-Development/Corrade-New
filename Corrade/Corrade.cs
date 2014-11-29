@@ -1396,6 +1396,8 @@ namespace Corrade
             Client.Avatars.ViewerEffect += HandleViewerEffect;
             Client.Avatars.ViewerEffectPointAt += HandleViewerEffect;
             Client.Avatars.ViewerEffectLookAt += HandleViewerEffect;
+            Client.Self.MeanCollision += HandleMeanCollision;
+            Client.Self.RegionCrossed += HandleRegionCrossed;
             // Each Instant Message is processed in its own thread.
             Client.Self.IM += HandleSelfIM;
             // Write the logo in interactive mode.
@@ -1498,6 +1500,8 @@ namespace Corrade
             Client.Avatars.ViewerEffect -= HandleViewerEffect;
             Client.Avatars.ViewerEffectPointAt -= HandleViewerEffect;
             Client.Avatars.ViewerEffectLookAt -= HandleViewerEffect;
+            Client.Self.MeanCollision -= HandleMeanCollision;
+            Client.Self.RegionCrossed -= HandleRegionCrossed;
             // Reject any inventory that has not been accepted.
             Parallel.ForEach(InventoryOffers, o =>
             {
@@ -1531,7 +1535,17 @@ namespace Corrade
             Environment.Exit(0);
         }
 
-        private void HandleViewerEffect(object sender, object e)
+        private static void HandleRegionCrossed(object sender, RegionCrossedEventArgs e)
+        {
+            SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e);
+        }
+
+        private static void HandleMeanCollision(object sender, MeanCollisionEventArgs e)
+        {
+            SendNotification(Notifications.NOTIFICATION_MEAN_COLLISION, e);
+        }
+
+        private static void HandleViewerEffect(object sender, object e)
         {
             SendNotification(Notifications.NOTIFICATION_VIEWER_EFFECT, e);
         }
@@ -1875,6 +1889,28 @@ namespace Corrade
                                         notificationData.Add(GetEnumDescription(ScriptKeys.ID),
                                             notificationViewerLookAtEventArgs.EffectID.ToString());
                                     }
+                                    break;
+                                case Notifications.NOTIFICATION_MEAN_COLLISION:
+                                    MeanCollisionEventArgs meanCollisionEventArgs =
+                                        (MeanCollisionEventArgs) args;
+                                    notificationData.Add(GetEnumDescription(ScriptKeys.AGGRESSOR),
+                                        meanCollisionEventArgs.Aggressor.ToString());
+                                    notificationData.Add(GetEnumDescription(ScriptKeys.MAGNITUDE),
+                                        meanCollisionEventArgs.Magnitude.ToString(CultureInfo.InvariantCulture));
+                                    notificationData.Add(GetEnumDescription(ScriptKeys.TIME),
+                                        meanCollisionEventArgs.Time.ToLongDateString());
+                                    notificationData.Add(GetEnumDescription(ScriptKeys.TYPE),
+                                        meanCollisionEventArgs.Type.ToString());
+                                    notificationData.Add(GetEnumDescription(ScriptKeys.VICTIM),
+                                        meanCollisionEventArgs.Victim.ToString());
+                                    break;
+                                case Notifications.NOTIFICATION_REGION_CROSSED:
+                                    RegionCrossedEventArgs regionCrossedEventArgs =
+                                        (RegionCrossedEventArgs) args;
+                                    notificationData.Add(GetEnumDescription(ScriptKeys.OLD),
+                                        regionCrossedEventArgs.OldSimulator.Name);
+                                    notificationData.Add(GetEnumDescription(ScriptKeys.NEW),
+                                        regionCrossedEventArgs.NewSimulator.Name);
                                     break;
                             }
                             try
@@ -10381,7 +10417,9 @@ namespace Corrade
             [Description("inventory")] NOTIFICATION_INVENTORY_OFFER = 512,
             [Description("permission")] NOTIFICATION_SCRIPT_PERMISSION = 1024,
             [Description("lure")] NOTIFICATION_TELEPORT_LURE = 2048,
-            [Description("effect")] NOTIFICATION_VIEWER_EFFECT = 4096
+            [Description("effect")] NOTIFICATION_VIEWER_EFFECT = 4096,
+            [Description("collision")] NOTIFICATION_MEAN_COLLISION = 8192,
+            [Description("crossing")] NOTIFICATION_REGION_CROSSED = 16384
         }
 
         /// <summary>
@@ -10590,6 +10628,12 @@ namespace Corrade
         /// </summary>
         private enum ScriptKeys : uint
         {
+            [Description("new")] NEW,
+            [Description("old")] OLD,
+            [Description("aggressor")] AGGRESSOR,
+            [Description("magnitude")] MAGNITUDE,
+            [Description("time")] TIME,
+            [Description("victim")] VICTIM,
             [Description("playgesture")] PLAYGESTURE,
             [Description("jump")] JUMP,
             [Description("crouch")] CROUCH,
