@@ -1899,7 +1899,7 @@ namespace Corrade
                                         meanCollisionEventArgs.Magnitude.ToString(CultureInfo.InvariantCulture));
                                     notificationData.Add(GetEnumDescription(ScriptKeys.TIME),
                                         meanCollisionEventArgs.Time.ToLongDateString());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.TYPE),
+                                    notificationData.Add(GetEnumDescription(ScriptKeys.COLLISION),
                                         meanCollisionEventArgs.Type.ToString());
                                     notificationData.Add(GetEnumDescription(ScriptKeys.VICTIM),
                                         meanCollisionEventArgs.Victim.ToString());
@@ -10628,6 +10628,7 @@ namespace Corrade
         /// </summary>
         private enum ScriptKeys : uint
         {
+            [Description("collision")] COLLISION,
             [Description("new")] NEW,
             [Description("old")] OLD,
             [Description("aggressor")] AGGRESSOR,
