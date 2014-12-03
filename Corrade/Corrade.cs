@@ -6324,14 +6324,6 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Vector3 position;
-                        if (
-                            !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
-                                out position))
-                        {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_POSITION));
-                        }
                         switch (
                             (Action)
                                 wasGetEnumValueFromDescription<Action>(
@@ -6339,6 +6331,14 @@ namespace Corrade
                                         message)).ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Action.START:
+                                Vector3 position;
+                                if (
+                                    !Vector3.TryParse(
+                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                        out position))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.INVALID_POSITION));
+                                }
                                 uint moveRegionX, moveRegionY;
                                 Utils.LongToUInts(Client.Network.CurrentSim.Handle, out moveRegionX, out moveRegionY);
                                 if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
