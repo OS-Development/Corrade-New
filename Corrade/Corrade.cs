@@ -2296,6 +2296,7 @@ namespace Corrade
             string group = wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.GROUP), message));
             // Bail if no group set.
             if (string.IsNullOrEmpty(group)) return null;
+            // Get password.
             string password = wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.PASSWORD), message));
             // Bail if no password set.
             if (string.IsNullOrEmpty(password)) return null;
@@ -2429,10 +2430,7 @@ namespace Corrade
                         ManualResetEvent GroupCreatedReplyEvent = new ManualResetEvent(false);
                         EventHandler<GroupCreatedReplyEventArgs> GroupCreatedEventHandler = (sender, args) =>
                         {
-                            if (args.Success)
-                            {
-                                succeeded = true;
-                            }
+                            succeeded = args.Success;
                             GroupCreatedReplyEvent.Set();
                         };
                         Client.Groups.GroupCreatedReply += GroupCreatedEventHandler;
@@ -2470,33 +2468,28 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         if (AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.ALREADY_IN_GROUP));
                         }
-                        // role UUID is optional
-                        UUID roleUUID = UUID.Zero;
+                        // role is optional
                         string role =
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ROLE), message));
-                        if (!string.IsNullOrEmpty(role))
+                        UUID roleUUID = UUID.Zero;
+                        if (!string.IsNullOrEmpty(role) && !UUID.TryParse(role, out roleUUID) &&
+                            !RoleNameToRoleUUID(role, groupUUID,
+                                Configuration.SERVICES_TIMEOUT, ref roleUUID))
                         {
-                            if (!RoleNameToRoleUUID(role, groupUUID, Configuration.SERVICES_TIMEOUT, ref roleUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.ROLE_NOT_FOUND));
-                            }
+                            throw new Exception(GetEnumDescription(ScriptError.ROLE_NOT_FOUND));
                         }
                         Client.Groups.Invite(groupUUID, new List<UUID> {roleUUID}, agentUUID);
                     };
@@ -2524,18 +2517,14 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         if (!AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
@@ -2575,10 +2564,7 @@ namespace Corrade
                         bool succeeded = false;
                         EventHandler<GroupOperationEventArgs> GroupOperationEventHandler = (sender, args) =>
                         {
-                            if (args.Success)
-                            {
-                                succeeded = true;
-                            }
+                            succeeded = args.Success;
                             GroupEjectEvent.Set();
                         };
                         Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
@@ -2701,10 +2687,7 @@ namespace Corrade
                         bool succeeded = false;
                         EventHandler<GroupOperationEventArgs> GroupOperationEventHandler = (sender, args) =>
                         {
-                            if (args.Success)
-                            {
-                                succeeded = true;
-                            }
+                            succeeded = args.Success;
                             GroupLeaveReplyEvent.Set();
                         };
                         Client.Groups.GroupLeaveReply += GroupOperationEventHandler;
@@ -2776,9 +2759,8 @@ namespace Corrade
                                     typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                                         .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                     q => { powers |= ((ulong) q.GetValue(null)); }));
-                        if (!powers.Equals(0) &&
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ChangeActions,
-                                Configuration.SERVICES_TIMEOUT))
+                        if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ChangeActions,
+                            Configuration.SERVICES_TIMEOUT))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -3031,14 +3013,10 @@ namespace Corrade
                         string role =
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ROLE), message));
                         UUID roleUUID;
-                        if (!UUID.TryParse(role, out roleUUID))
+                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
+                            Configuration.SERVICES_TIMEOUT, ref roleUUID))
                         {
-                            if (
-                                !RoleNameToRoleUUID(role, groupUUID,
-                                    Configuration.SERVICES_TIMEOUT, ref roleUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.ROLE_NOT_FOUND));
-                            }
+                            throw new Exception(GetEnumDescription(ScriptError.ROLE_NOT_FOUND));
                         }
                         List<string> csv = new List<string>();
                         ManualResetEvent GroupRoleDataReplyEvent = new ManualResetEvent(false);
@@ -3154,18 +3132,14 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         string role =
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ROLE), message));
@@ -3208,18 +3182,14 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         string role =
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ROLE), message));
@@ -3265,19 +3235,15 @@ namespace Corrade
                                 if (
                                     !UUID.TryParse(
                                         wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT),
-                                            message)), out agentUUID))
+                                            message)), out agentUUID) && !AgentNameToUUID(
+                                                wasUriUnescapeDataString(
+                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                                        message)),
+                                                wasUriUnescapeDataString(
+                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
+                                                Configuration.SERVICES_TIMEOUT, ref agentUUID))
                                 {
-                                    if (
-                                        !AgentNameToUUID(
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                                    message)),
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
-                                            Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                                    {
-                                        throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                                    }
+                                    throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                                 }
                                 Client.Self.InstantMessage(agentUUID,
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.MESSAGE),
@@ -3309,10 +3275,7 @@ namespace Corrade
                                     EventHandler<GroupChatJoinedEventArgs> GroupChatJoinedEventHandler =
                                         (sender, args) =>
                                         {
-                                            if (args.Success)
-                                            {
-                                                succeeded = true;
-                                            }
+                                            succeeded = args.Success;
                                             GroupChatJoinedEvent.Set();
                                         };
                                     Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
@@ -3479,19 +3442,15 @@ namespace Corrade
                                 if (
                                     !UUID.TryParse(
                                         wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT),
-                                            message)), out targetUUID))
+                                            message)), out targetUUID) && !AgentNameToUUID(
+                                                wasUriUnescapeDataString(
+                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                                        message)),
+                                                wasUriUnescapeDataString(
+                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
+                                                Configuration.SERVICES_TIMEOUT, ref targetUUID))
                                 {
-                                    if (
-                                        !AgentNameToUUID(
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                                    message)),
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
-                                            Configuration.SERVICES_TIMEOUT, ref targetUUID))
-                                    {
-                                        throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                                    }
+                                    throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                                 }
                                 Client.Self.GiveAvatarMoney(targetUUID, amount,
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.REASON),
@@ -3565,13 +3524,13 @@ namespace Corrade
                         bool succeeded = false;
                         EventHandler<TeleportEventArgs> TeleportEventHandler = (sender, args) =>
                         {
-                            if (!args.Status.Equals(TeleportStatus.Finished))
-                                return;
-                            if (Client.Network.CurrentSim.Name.Equals(region, StringComparison.Ordinal))
+                            switch (args.Status)
                             {
-                                succeeded = true;
+                                case TeleportStatus.Finished:
+                                    succeeded = Client.Network.CurrentSim.Name.Equals(region, StringComparison.Ordinal);
+                                    TeleportEvent.Set();
+                                    break;
                             }
-                            TeleportEvent.Set();
                         };
                         if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                         {
@@ -3610,18 +3569,14 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         Client.Self.SendTeleportLure(agentUUID,
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.MESSAGE), message)));
@@ -3637,21 +3592,33 @@ namespace Corrade
                             throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         bool succeeded = true;
+                        ManualResetEvent AlertMessageEvent = new ManualResetEvent(false);
                         EventHandler<AlertMessageEventArgs> AlertMessageEventHandler = (sender, args) =>
                         {
-                            if (args.Message.Equals(LINDEN_CONSTANTS.ALERTS.UNABLE_TO_SET_HOME))
+                            switch (args.Message)
                             {
-                                succeeded = false;
+                                case LINDEN_CONSTANTS.ALERTS.UNABLE_TO_SET_HOME:
+                                    succeeded = false;
+                                    AlertMessageEvent.Set();
+                                    break;
+                                case LINDEN_CONSTANTS.ALERTS.HOME_SET:
+                                    succeeded = true;
+                                    AlertMessageEvent.Set();
+                                    break;
                             }
                         };
                         Client.Self.AlertMessage += AlertMessageEventHandler;
                         Client.Self.SetHome();
-                        if (!succeeded)
+                        if (!AlertMessageEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
                             Client.Self.AlertMessage -= AlertMessageEventHandler;
-                            throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_SET_HOME));
+                            throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_REQUESTING_TO_SET_HOME));
                         }
                         Client.Self.AlertMessage -= AlertMessageEventHandler;
+                        if (!succeeded)
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_SET_HOME));
+                        }
                     };
                     break;
                 case ScriptKeys.GOHOME:
@@ -3729,10 +3696,7 @@ namespace Corrade
                         bool succeeded = false;
                         EventHandler<AvatarSitResponseEventArgs> AvatarSitEventHandler = (sender, args) =>
                         {
-                            if (!args.ObjectID.Equals(UUID.Zero))
-                            {
-                                succeeded = true;
-                            }
+                            succeeded = !args.ObjectID.Equals(UUID.Zero);
                             SitEvent.Set();
                         };
                         EventHandler<AlertMessageEventArgs> AlertMessageEventHandler = (sender, args) =>
@@ -4201,18 +4165,14 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         bool alsoban;
                         if (
@@ -4273,18 +4233,14 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         bool freeze;
                         if (
@@ -4406,18 +4362,14 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         ManualResetEvent[] AvatarProfileDataEvent =
                         {
@@ -4489,19 +4441,15 @@ namespace Corrade
                                 if (
                                     !UUID.TryParse(
                                         wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT),
-                                            message)), out agentUUID))
+                                            message)), out agentUUID) && !AgentNameToUUID(
+                                                wasUriUnescapeDataString(
+                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                                        message)),
+                                                wasUriUnescapeDataString(
+                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
+                                                Configuration.SERVICES_TIMEOUT, ref agentUUID))
                                 {
-                                    if (
-                                        !AgentNameToUUID(
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                                    message)),
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
-                                            Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                                    {
-                                        throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                                    }
+                                    throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                                 }
                                 InventoryItem inventoryItem = inventoryBaseItem as InventoryItem;
                                 if (inventoryItem != null)
@@ -4881,18 +4829,14 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         if (!AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
@@ -5142,18 +5086,14 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         string type =
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message));
@@ -5214,42 +5154,40 @@ namespace Corrade
                                     : ObjectReturnType.Other;
                                 if (!Client.Network.CurrentSim.IsEstateManager)
                                 {
-                                    Parallel.ForEach(parcels, o =>
+                                    Parallel.ForEach(parcels.Where(o => !o.OwnerID.Equals(Client.Self.AgentID)), o =>
                                     {
-                                        if (!o.OwnerID.Equals(Client.Self.AgentID))
+                                        if (!o.IsGroupOwned || !o.GroupID.Equals(groupUUID))
                                         {
-                                            if (!o.IsGroupOwned || !o.GroupID.Equals(groupUUID))
-                                            {
-                                                throw new Exception(
-                                                    GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
-                                            }
-                                            GroupPowers power = new GroupPowers();
-                                            switch (returnType)
-                                            {
-                                                case ObjectReturnType.Other:
-                                                    power = GroupPowers.ReturnNonGroup;
-                                                    break;
-                                                case ObjectReturnType.Group:
-                                                    power = GroupPowers.ReturnGroupSet;
-                                                    break;
-                                                case ObjectReturnType.Owner:
-                                                    power = GroupPowers.ReturnGroupOwned;
-                                                    break;
-                                            }
-                                            if (!HasGroupPowers(Client.Self.AgentID, groupUUID, power,
-                                                Configuration.SERVICES_TIMEOUT))
-                                            {
-                                                throw new Exception(
-                                                    GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
-                                            }
+                                            throw new Exception(
+                                                GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                        }
+                                        GroupPowers power = new GroupPowers();
+                                        switch (returnType)
+                                        {
+                                            case ObjectReturnType.Other:
+                                                power = GroupPowers.ReturnNonGroup;
+                                                break;
+                                            case ObjectReturnType.Group:
+                                                power = GroupPowers.ReturnGroupSet;
+                                                break;
+                                            case ObjectReturnType.Owner:
+                                                power = GroupPowers.ReturnGroupOwned;
+                                                break;
+                                        }
+                                        if (!HasGroupPowers(Client.Self.AgentID, groupUUID, power,
+                                            Configuration.SERVICES_TIMEOUT))
+                                        {
+                                            throw new Exception(
+                                                GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                         }
                                     });
-                                    Parallel.ForEach(parcels,
-                                        o =>
-                                            Client.Parcels.ReturnObjects(Client.Network.CurrentSim, o.LocalID,
-                                                returnType
-                                                , new List<UUID> {agentUUID}));
                                 }
+                                Parallel.ForEach(parcels,
+                                    o =>
+                                        Client.Parcels.ReturnObjects(Client.Network.CurrentSim, o.LocalID,
+                                            returnType
+                                            , new List<UUID> {agentUUID}));
+
                                 break;
                             case Entity.ESTATE:
                                 if (!Client.Network.CurrentSim.IsEstateManager)
@@ -5333,33 +5271,30 @@ namespace Corrade
                         }
                         if (!Client.Network.CurrentSim.IsEstateManager)
                         {
-                            Parallel.ForEach(parcels, o =>
+                            Parallel.ForEach(parcels.Where(o => !o.OwnerID.Equals(Client.Self.AgentID)), o =>
                             {
-                                if (!o.OwnerID.Equals(Client.Self.AgentID))
+                                if (!o.IsGroupOwned || !o.GroupID.Equals(groupUUID))
                                 {
-                                    if (!o.IsGroupOwned || !o.GroupID.Equals(groupUUID))
+                                    throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                }
+                                bool permissions = false;
+                                Parallel.ForEach(
+                                    new HashSet<GroupPowers>
                                     {
-                                        throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
-                                    }
-                                    bool permissions = false;
-                                    Parallel.ForEach(
-                                        new HashSet<GroupPowers>
-                                        {
-                                            GroupPowers.ReturnGroupSet,
-                                            GroupPowers.ReturnGroupOwned,
-                                            GroupPowers.ReturnNonGroup
-                                        }, p =>
-                                        {
-                                            if (HasGroupPowers(Client.Self.AgentID, groupUUID, p,
-                                                Configuration.SERVICES_TIMEOUT))
-                                            {
-                                                permissions = true;
-                                            }
-                                        });
-                                    if (!permissions)
+                                        GroupPowers.ReturnGroupSet,
+                                        GroupPowers.ReturnGroupOwned,
+                                        GroupPowers.ReturnNonGroup
+                                    }, p =>
                                     {
-                                        throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
-                                    }
+                                        if (HasGroupPowers(Client.Self.AgentID, groupUUID, p,
+                                            Configuration.SERVICES_TIMEOUT))
+                                        {
+                                            permissions = true;
+                                        }
+                                    });
+                                if (!permissions)
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                             });
                         }
@@ -6334,7 +6269,8 @@ namespace Corrade
                                 Vector3 position;
                                 if (
                                     !Vector3.TryParse(
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                        wasUriUnescapeDataString(wasKeyValueGet(
+                                            GetEnumDescription(ScriptKeys.POSITION), message)),
                                         out position))
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.INVALID_POSITION));
@@ -6823,18 +6759,14 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         UUID sessionUUID;
                         if (
@@ -7206,19 +7138,15 @@ namespace Corrade
                                 if (
                                     !UUID.TryParse(
                                         wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT),
-                                            message)), out targetUUID))
+                                            message)), out targetUUID) && !AgentNameToUUID(
+                                                wasUriUnescapeDataString(
+                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                                        message)),
+                                                wasUriUnescapeDataString(
+                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
+                                                Configuration.SERVICES_TIMEOUT, ref targetUUID))
                                 {
-                                    if (
-                                        !AgentNameToUUID(
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                                    message)),
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
-                                            Configuration.SERVICES_TIMEOUT, ref targetUUID))
-                                    {
-                                        throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                                    }
+                                    throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                                 }
                                 switch (
                                     (Action)
@@ -7274,19 +7202,15 @@ namespace Corrade
                                 if (
                                     !UUID.TryParse(
                                         wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT),
-                                            message)), out targetUUID))
+                                            message)), out targetUUID) && !AgentNameToUUID(
+                                                wasUriUnescapeDataString(
+                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                                        message)),
+                                                wasUriUnescapeDataString(
+                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
+                                                Configuration.SERVICES_TIMEOUT, ref targetUUID))
                                 {
-                                    if (
-                                        !AgentNameToUUID(
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                                    message)),
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
-                                            Configuration.SERVICES_TIMEOUT, ref targetUUID))
-                                    {
-                                        throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                                    }
+                                    throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                                 }
                                 switch (
                                     (Action)
@@ -7309,19 +7233,15 @@ namespace Corrade
                                 if (
                                     !UUID.TryParse(
                                         wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT),
-                                            message)), out targetUUID))
+                                            message)), out targetUUID) && !AgentNameToUUID(
+                                                wasUriUnescapeDataString(
+                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                                        message)),
+                                                wasUriUnescapeDataString(
+                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
+                                                Configuration.SERVICES_TIMEOUT, ref targetUUID))
                                 {
-                                    if (
-                                        !AgentNameToUUID(
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                                    message)),
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
-                                            Configuration.SERVICES_TIMEOUT, ref targetUUID))
-                                    {
-                                        throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                                    }
+                                    throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                                 }
                                 switch (
                                     (Action)
@@ -7474,18 +7394,14 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         Avatar avatar = Client.Network.CurrentSim.ObjectsAvatars.Find(o => o.ID.Equals(agentUUID));
                         if (avatar == null)
@@ -7531,19 +7447,15 @@ namespace Corrade
                                 if (
                                     !UUID.TryParse(
                                         wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT),
-                                            message)), out agentUUID))
+                                            message)), out agentUUID) && !AgentNameToUUID(
+                                                wasUriUnescapeDataString(
+                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                                        message)),
+                                                wasUriUnescapeDataString(
+                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
+                                                Configuration.SERVICES_TIMEOUT, ref agentUUID))
                                 {
-                                    if (
-                                        !AgentNameToUUID(
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                                    message)),
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
-                                            Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                                    {
-                                        throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                                    }
+                                    throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                                 }
                                 break;
                             case Entity.PARCEL:
@@ -7794,10 +7706,7 @@ namespace Corrade
                                 EventHandler<SetDisplayNameReplyEventArgs> SetDisplayNameEventHandler =
                                     (sender, args) =>
                                     {
-                                        if (!args.Status.Equals(LINDEN_CONSTANTS.AVATARS.SET_DISPLAY_NAME_SUCCESS))
-                                        {
-                                            succeeded = false;
-                                        }
+                                        succeeded = args.Status.Equals(LINDEN_CONSTANTS.AVATARS.SET_DISPLAY_NAME_SUCCESS);
                                         SetDisplayNameEvent.Set();
                                     };
                                 Client.Self.SetDisplayNameReply += SetDisplayNameEventHandler;
@@ -7973,18 +7882,14 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         UUID session = UUID.Zero;
                         Client.Friends.FriendRequests.ForEach(o =>
@@ -8026,18 +7931,14 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         FriendInfo friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
                         if (friend == null)
@@ -8065,18 +7966,14 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         FriendInfo friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
                         if (friend != null)
@@ -8098,18 +7995,14 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         FriendInfo friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
                         if (friend == null)
@@ -8130,18 +8023,14 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         FriendInfo friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
                         if (friend == null)
@@ -8171,18 +8060,14 @@ namespace Corrade
                         if (
                             !UUID.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
-                                out agentUUID))
-                        {
-                            if (
-                                !AgentNameToUUID(
+                                out agentUUID) && !AgentNameToUUID(
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
                                         message)),
                                     wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
                                         message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
-                            {
-                                throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
-                            }
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
                         }
                         FriendInfo friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
                         if (friend == null)
@@ -10278,6 +10163,19 @@ namespace Corrade
         }
 
         /// <summary>
+        ///     Directions in 3D cartesian.
+        /// </summary>
+        private enum Direction : uint
+        {
+            [Description("back")] BACK,
+            [Description("forward")] FORWARD,
+            [Description("left")] LEFT,
+            [Description("right")] RIGHT,
+            [Description("up")] UP,
+            [Description("down")] DOWN
+        }
+
+        /// <summary>
         ///     Possible entities.
         /// </summary>
         private enum Entity : uint
@@ -10316,6 +10214,8 @@ namespace Corrade
 
                 public const string UNABLE_TO_SET_HOME =
                     @"You can only set your 'Home Location' on your land or at a mainland Infohub.";
+
+                public const string HOME_SET = @"Home position set.";
             }
 
             public struct ASSETS
@@ -10620,7 +10520,8 @@ namespace Corrade
             [Description("unable to create item")] UNABLE_TO_CREATE_ITEM,
             [Description("timeout uploading item data")] TIMEOUT_UPLOADING_ITEM_DATA,
             [Description("unable to upload item data")] UNABLE_TO_UPLOAD_ITEM_DATA,
-            [Description("unknown direction")] UNKNOWN_DIRECTION
+            [Description("unknown direction")] UNKNOWN_DIRECTION,
+            [Description("timeout requesting to set home")] TIMEOUT_REQUESTING_TO_SET_HOME
         }
 
         /// <summary>
@@ -10846,19 +10747,6 @@ namespace Corrade
             [Description("land")] LAND,
             [Description("people")] PEOPLE,
             [Description("place")] PLACE
-        }
-
-        /// <summary>
-        ///     Directions in 3D cartesian.
-        /// </summary>
-        private enum Direction : uint
-        {
-            [Description("back")] BACK,
-            [Description("forward")] FORWARD,
-            [Description("left")] LEFT,
-            [Description("right")] RIGHT,
-            [Description("up")] UP,
-            [Description("down")] DOWN
         }
     }
 
