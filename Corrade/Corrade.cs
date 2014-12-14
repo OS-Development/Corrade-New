@@ -5668,6 +5668,7 @@ namespace Corrade
                                     throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPLOADING_ASSET));
                                 }
                                 break;
+                            case AssetType.Bodypart:
                             case AssetType.Clothing:
                                 FieldInfo wearTypeInfo = typeof (MuteType).GetFields(BindingFlags.Public |
                                                                                      BindingFlags.Static)
