@@ -5501,6 +5501,11 @@ namespace Corrade
                                 // All of these can only be fetched if they exist locally.
                             case AssetType.LSLText:
                             case AssetType.Notecard:
+                                if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                                {
+                                    throw new Exception(
+                                        GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                                }
                                 Client.Assets.RequestInventoryAsset(inventoryItem, true,
                                     delegate(AssetDownload transfer, Asset asset)
                                     {
