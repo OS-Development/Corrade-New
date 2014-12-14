@@ -5579,7 +5579,7 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_NAME_PROVIDED));
                         }
-                        int permissions = 0;
+                        uint permissions = 0;
                         Parallel.ForEach(
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.PERMISSIONS), message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
@@ -5587,7 +5587,7 @@ namespace Corrade
                                 Parallel.ForEach(
                                     typeof (PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
                                         .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
-                                    q => { permissions |= ((int) q.GetValue(null)); }));
+                                    q => { permissions |= ((uint) q.GetValue(null)); }));
                         FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
                                                                                BindingFlags.Static)
                             .FirstOrDefault(o =>
@@ -8452,7 +8452,7 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.FRIEND_NOT_FOUND));
                         }
-                        ulong rights = 0;
+                        int rights = 0;
                         Parallel.ForEach(
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RIGHTS), message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
@@ -8460,7 +8460,7 @@ namespace Corrade
                                 Parallel.ForEach(
                                     typeof (FriendRights).GetFields(BindingFlags.Public | BindingFlags.Static)
                                         .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
-                                    q => { rights |= ((ulong) q.GetValue(null)); }));
+                                    q => { rights |= ((int) q.GetValue(null)); }));
                         Client.Friends.GrantRights(agentUUID, (FriendRights) rights);
                     };
                     break;
@@ -8568,7 +8568,7 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
-                        int who = 0;
+                        byte who = 0;
                         Parallel.ForEach(
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.WHO), message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
@@ -8576,8 +8576,8 @@ namespace Corrade
                                 Parallel.ForEach(
                                     typeof (PermissionWho).GetFields(BindingFlags.Public | BindingFlags.Static)
                                         .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
-                                    q => { who |= ((int) q.GetValue(null)); }));
-                        int permissions = 0;
+                                    q => { who |= ((byte) q.GetValue(null)); }));
+                        uint permissions = 0;
                         Parallel.ForEach(
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.PERMISSIONS), message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
@@ -8585,7 +8585,7 @@ namespace Corrade
                                 Parallel.ForEach(
                                     typeof (PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
                                         .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
-                                    q => { permissions |= ((int) q.GetValue(null)); }));
+                                    q => { permissions |= ((uint) q.GetValue(null)); }));
                         Client.Objects.SetPermissions(Client.Network.CurrentSim, new List<uint> {primitive.LocalID},
                             (PermissionWho) who, (PermissionMask) permissions, true);
                     };
@@ -9123,6 +9123,8 @@ namespace Corrade
                                         Convert.FromBase64String(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA),
                                             message))));
                                 break;
+                            default:
+                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ACTION));
                         }
                     };
                     break;
