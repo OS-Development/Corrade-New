@@ -68,9 +68,11 @@ namespace Corrade
 
         private static readonly GridClient Client = new GridClient();
 
-        private static readonly object FileLock = new object();
+        private static readonly object ConfigurationFileLock = new object();
 
-        private static readonly object DatabaseLock = new object();
+        private static readonly object LogFileLock = new object();
+
+        private static readonly object DatabaseFileLock = new object();
 
         private static readonly Dictionary<string, object> DatabaseLocks = new Dictionary<string, object>();
 
@@ -1134,7 +1136,7 @@ namespace Corrade
             // Attempt to write to log file,
             try
             {
-                lock (FileLock)
+                lock (LogFileLock)
                 {
                     using (
                         StreamWriter logWriter =
@@ -1502,6 +1504,7 @@ namespace Corrade
             Client.Avatars.ViewerEffectLookAt -= HandleViewerEffect;
             Client.Self.MeanCollision -= HandleMeanCollision;
             Client.Self.RegionCrossed -= HandleRegionCrossed;
+            Client.Self.IM -= HandleSelfIM;
             // Reject any inventory that has not been accepted.
             Parallel.ForEach(InventoryOffers, o =>
             {
@@ -1586,25 +1589,21 @@ namespace Corrade
 
         private static void SendNotification(Notifications notification, object args)
         {
-            // First check if the group is able to receive dialog notifications.
+            // Only send notifications for groups that have bound to the notification to send.
             Parallel.ForEach(
                 GroupNotifications.Where(
-                    o => HasCorradeNotification(o.GROUP, (int) notification)), p =>
-                    {
-                        // Next, check if the group has registered to receive dialog notifications.
-                        if ((p.NOTIFICATION_MASK & (int) notification).Equals(0))
+                    o =>
+                        HasCorradeNotification(o.GROUP, (int) notification) &&
+                        !(o.NOTIFICATION_MASK & (int) notification).Equals(0)), p => new Thread(() =>
                         {
-                            return;
-                        }
-                        Dictionary<string, string> notificationData = new Dictionary<string, string>
-                        {
+                            // Set the notification type
+                            Dictionary<string, string> notificationData = new Dictionary<string, string>
                             {
-                                GetEnumDescription(ScriptKeys.TYPE),
-                                GetEnumDescription(notification)
-                            }
-                        };
-                        new Thread(() =>
-                        {
+                                {
+                                    GetEnumDescription(ScriptKeys.TYPE),
+                                    GetEnumDescription(notification)
+                                }
+                            };
                             switch (notification)
                             {
                                 case Notifications.NOTIFICATION_SCRIPT_DIALOG:
@@ -1899,7 +1898,7 @@ namespace Corrade
                                         meanCollisionEventArgs.Magnitude.ToString(CultureInfo.InvariantCulture));
                                     notificationData.Add(GetEnumDescription(ScriptKeys.TIME),
                                         meanCollisionEventArgs.Time.ToLongDateString());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.COLLISION),
+                                    notificationData.Add(GetEnumDescription(ScriptKeys.ENTITY),
                                         meanCollisionEventArgs.Type.ToString());
                                     notificationData.Add(GetEnumDescription(ScriptKeys.VICTIM),
                                         meanCollisionEventArgs.Victim.ToString());
@@ -1921,8 +1920,7 @@ namespace Corrade
                             {
                                 Feedback(GetEnumDescription(ConsoleError.NOTIFICATION_COULD_NOT_BE_SENT), e.Message);
                             }
-                        }).Start();
-                    });
+                        }).Start());
         }
 
         private static void HandleScriptDialog(object sender, ScriptDialogEventArgs e)
@@ -2247,7 +2245,7 @@ namespace Corrade
                                 // Attempt to write to log file,
                                 try
                                 {
-                                    lock (FileLock)
+                                    lock (LogFileLock)
                                     {
                                         using (StreamWriter logWriter = File.AppendText(o.ChatLog))
                                         {
@@ -2286,6 +2284,8 @@ namespace Corrade
                     }
                     break;
             }
+
+            // Everything else, must be a command.
             HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString());
         }
 
@@ -2317,13 +2317,11 @@ namespace Corrade
             if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE))
             {
                 UUID fromAgentID;
-                if (UUID.TryParse(identifier, out fromAgentID))
+                if (UUID.TryParse(identifier, out fromAgentID) &&
+                    !AgentUUIDToName(fromAgentID, Configuration.SERVICES_TIMEOUT, ref sender))
                 {
-                    if (!AgentUUIDToName(fromAgentID, Configuration.SERVICES_TIMEOUT, ref sender))
-                    {
-                        Feedback(GetEnumDescription(ConsoleError.AGENT_NOT_FOUND), fromAgentID.ToString());
-                        return null;
-                    }
+                    Feedback(GetEnumDescription(ConsoleError.AGENT_NOT_FOUND), fromAgentID.ToString());
+                    return null;
                 }
             }
             Feedback(string.Format(CultureInfo.InvariantCulture, "{0} ({1}) : {2}", sender,
@@ -2543,13 +2541,10 @@ namespace Corrade
                             {
                                 throw new Exception(GetEnumDescription(ScriptError.CANNOT_EJECT_OWNERS));
                             }
-                            foreach (KeyValuePair<UUID, UUID> pair in args.RolesMembers)
-                            {
-                                if (pair.Value.Equals(agentUUID))
-                                {
-                                    Client.Groups.RemoveFromRole(groupUUID, pair.Key, agentUUID);
-                                }
-                            }
+                            Parallel.ForEach(
+                                args.RolesMembers.Where(
+                                    o => o.Value.Equals(agentUUID)),
+                                o => Client.Groups.RemoveFromRole(groupUUID, o.Key, agentUUID));
                             GroupRoleMembersReplyEvent.Set();
                         };
                         Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
@@ -3063,6 +3058,8 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.DeleteRole,
+                                Configuration.SERVICES_TIMEOUT) ||
+                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RemoveMember,
                                 Configuration.SERVICES_TIMEOUT))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -3364,7 +3361,8 @@ namespace Corrade
                             Message =
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.MESSAGE), message)),
                             Subject =
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.SUBJECT), message))
+                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.SUBJECT), message)),
+                            OwnerID = Client.Self.AgentID
                         };
                         string item =
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message));
@@ -3377,7 +3375,6 @@ namespace Corrade
                             {
                                 throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                             }
-                            notice.OwnerID = Client.Self.AgentID;
                             notice.AttachmentID = inventoryBaseItem.UUID;
                         }
                         Client.Groups.SendGroupNotice(groupUUID, notice);
@@ -4251,55 +4248,6 @@ namespace Corrade
                             freeze = false;
                         }
                         Client.Parcels.FreezeUser(agentUUID, freeze);
-                    };
-                    break;
-                case ScriptKeys.PARCELMUSIC:
-                    execute = () =>
-                    {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
-                        {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
-                        }
-                        UUID groupUUID =
-                            Configuration.GROUPS.FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
-                        if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
-                        {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
-                        }
-                        Vector3 position;
-                        if (
-                            !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
-                                out position))
-                        {
-                            position = Client.Self.SimPosition;
-                        }
-                        Parcel parcel = null;
-                        if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
-                        {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
-                        }
-                        if (!Client.Network.CurrentSim.IsEstateManager)
-                        {
-                            if (!parcel.OwnerID.Equals(Client.Self.AgentID))
-                            {
-                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
-                                {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
-                                }
-                                if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ChangeMedia,
-                                    Configuration.SERVICES_TIMEOUT))
-                                {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
-                                }
-                            }
-                        }
-                        parcel.MusicURL =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.URL), message));
-                        parcel.Update(Client.Network.CurrentSim, true);
                     };
                     break;
                 case ScriptKeys.SETPROFILEDATA:
@@ -5440,6 +5388,454 @@ namespace Corrade
                         }
                     };
                     break;
+                case ScriptKeys.SETPARCELDATA:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        UUID groupUUID =
+                            Configuration.GROUPS.FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
+                        if (groupUUID.Equals(UUID.Zero) &&
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                        }
+                        Vector3 position;
+                        if (
+                            !Vector3.TryParse(
+                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                out position))
+                        {
+                            position = Client.Self.SimPosition;
+                        }
+                        Parcel parcel = null;
+                        if (
+                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
+                        }
+                        if (!Client.Network.CurrentSim.IsEstateManager)
+                        {
+                            if (!parcel.OwnerID.Equals(Client.Self.AgentID))
+                            {
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                }
+                            }
+                        }
+                        string fields =
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message));
+                        wasCSVToStructure(fields, ref parcel);
+                        parcel.Update(Client.Network.CurrentSim, true);
+                    };
+                    break;
+                case ScriptKeys.DOWNLOAD:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(
+                                GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        string item =
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message));
+                        if (string.IsNullOrEmpty(item))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_ITEM_SPECIFIED));
+                        }
+                        UUID itemUUID;
+                        InventoryItem inventoryItem = null;
+                        if (!UUID.TryParse(item, out itemUUID))
+                        {
+                            InventoryBase inventoryBase = FindInventoryBase(Client.Inventory.Store.RootFolder, item,
+                                Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                            if (inventoryBase == null)
+                            {
+                                throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                            }
+                            inventoryItem = inventoryBase as InventoryItem;
+                            if (inventoryItem == null)
+                            {
+                                throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                            }
+                            itemUUID = inventoryItem.AssetUUID;
+                        }
+                        FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
+                                                                               BindingFlags.Static)
+                            .FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message)),
+                                        StringComparison.Ordinal));
+                        if (assetTypeInfo == null)
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ASSET_TYPE));
+                        }
+                        AssetType assetType = (AssetType) assetTypeInfo.GetValue(null);
+                        ManualResetEvent RequestAssetEvent = new ManualResetEvent(false);
+                        bool succeeded = false;
+                        byte[] assetData = null;
+                        switch (assetType)
+                        {
+                            case AssetType.Mesh:
+                                Client.Assets.RequestMesh(itemUUID, delegate(bool completed, AssetMesh asset)
+                                {
+                                    if (!asset.AssetID.Equals(itemUUID)) return;
+                                    succeeded = completed;
+                                    if (succeeded)
+                                    {
+                                        assetData = asset.MeshData.AsBinary();
+                                    }
+                                    RequestAssetEvent.Set();
+                                });
+                                if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
+                                }
+                                break;
+                                // All of these can only be fetched if they exist locally.
+                            case AssetType.LSLText:
+                            case AssetType.Notecard:
+                                Client.Assets.RequestInventoryAsset(inventoryItem, true,
+                                    delegate(AssetDownload transfer, Asset asset)
+                                    {
+                                        succeeded = transfer.Success;
+                                        if (transfer.Success)
+                                        {
+                                            assetData = asset.AssetData;
+                                        }
+                                        RequestAssetEvent.Set();
+                                    });
+                                if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
+                                }
+                                break;
+                                // All images go through RequestImage and can be fetched directly from the asset server.
+                            case AssetType.Texture:
+                                Client.Assets.RequestImage(itemUUID, ImageType.Normal,
+                                    delegate(TextureRequestState state, AssetTexture asset)
+                                    {
+                                        if (!asset.AssetID.Equals(itemUUID)) return;
+                                        if (!state.Equals(TextureRequestState.Finished)) return;
+                                        assetData = asset.AssetData;
+                                        succeeded = true;
+                                        RequestAssetEvent.Set();
+                                    });
+                                if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
+                                }
+                                break;
+                                // All of these can be fetched directly from the asset server.
+                            case AssetType.Landmark:
+                            case AssetType.Gesture:
+                            case AssetType.Animation: // Animatn
+                            case AssetType.Sound: // Ogg Vorbis
+                            case AssetType.Clothing:
+                            case AssetType.Bodypart:
+                                Client.Assets.RequestAsset(itemUUID, assetType, true,
+                                    delegate(AssetDownload transfer, Asset asset)
+                                    {
+                                        if (!transfer.AssetID.Equals(itemUUID)) return;
+                                        succeeded = transfer.Success;
+                                        if (transfer.Success)
+                                        {
+                                            assetData = asset.AssetData;
+                                        }
+                                        RequestAssetEvent.Set();
+                                    });
+                                if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
+                                }
+                                break;
+                            default:
+                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ASSET_TYPE));
+                        }
+                        if (!succeeded)
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.FAILED_TO_DOWNLOAD_ASSET));
+                        }
+                        result.Add(GetEnumDescription(ScriptKeys.DATA), Convert.ToBase64String(assetData));
+                    };
+                    break;
+                case ScriptKeys.UPLOAD:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                        {
+                            throw new Exception(
+                                GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        string name =
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message));
+                        if (string.IsNullOrEmpty(name))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_NAME_PROVIDED));
+                        }
+                        int permissions = 0;
+                        Parallel.ForEach(
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.PERMISSIONS), message))
+                                .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
+                            o =>
+                                Parallel.ForEach(
+                                    typeof (PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                        .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                    q => { permissions |= ((int) q.GetValue(null)); }));
+                        FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
+                                                                               BindingFlags.Static)
+                            .FirstOrDefault(o =>
+                                o.Name.Equals(
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(
+                                            GetEnumDescription(
+                                                ScriptKeys.TYPE),
+                                            message)),
+                                    StringComparison.Ordinal));
+                        if (assetTypeInfo == null)
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ASSET_TYPE));
+                        }
+                        AssetType assetType = (AssetType) assetTypeInfo.GetValue(null);
+                        byte[] data;
+                        try
+                        {
+                            data = Convert.FromBase64String(
+                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA),
+                                    message)));
+                        }
+                        catch (Exception)
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.INVALID_ASSET_DATA));
+                        }
+                        bool succeeded = false;
+                        switch (assetType)
+                        {
+                            case AssetType.Texture:
+                            case AssetType.Sound:
+                            case AssetType.Animation:
+                                // the holy asset trinity is charged money
+                                if (!HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
+                                {
+                                    throw new Exception(
+                                        GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                                }
+                                ManualResetEvent MoneyBalanceEvent = new ManualResetEvent(false);
+                                EventHandler<MoneyBalanceReplyEventArgs> MoneyBalanceEventHandler =
+                                    (sender, args) => MoneyBalanceEvent.Set();
+                                Client.Self.MoneyBalanceReply += MoneyBalanceEventHandler;
+                                Client.Self.RequestBalance();
+                                if (!MoneyBalanceEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    Client.Self.MoneyBalanceReply -= MoneyBalanceEventHandler;
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_WAITING_FOR_BALANCE));
+                                }
+                                Client.Self.MoneyBalanceReply -= MoneyBalanceEventHandler;
+                                if (Client.Self.Balance < Client.Settings.UPLOAD_COST)
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.INSUFFICIENT_FUNDS));
+                                }
+                                // now create and upload the asset
+                                ManualResetEvent CreateItemFromAssetEvent = new ManualResetEvent(false);
+                                Client.Inventory.RequestCreateItemFromAsset(data, name,
+                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION),
+                                        message)),
+                                    assetType,
+                                    (InventoryType)
+                                        (typeof (InventoryType).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                            .FirstOrDefault(
+                                                o => o.Name.Equals(Enum.GetName(typeof (AssetType), assetType),
+                                                    StringComparison.Ordinal))).GetValue(null),
+                                    Client.Inventory.FindFolderForType(assetType),
+                                    delegate(bool completed, string status, UUID itemID, UUID assetID)
+                                    {
+                                        succeeded = completed;
+                                        CreateItemFromAssetEvent.Set();
+                                    });
+                                if (!CreateItemFromAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPLOADING_ASSET));
+                                }
+                                break;
+                            case AssetType.Clothing:
+                                FieldInfo wearTypeInfo = typeof (MuteType).GetFields(BindingFlags.Public |
+                                                                                     BindingFlags.Static)
+                                    .FirstOrDefault(
+                                        o =>
+                                            o.Name.Equals(
+                                                wasUriUnescapeDataString(
+                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.WEAR), message)),
+                                                StringComparison.Ordinal));
+                                if (wearTypeInfo == null)
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_WEARABLE_TYPE));
+                                }
+                                UUID wearableUUID = Client.Assets.RequestUpload(assetType, data, false);
+                                if (wearableUUID.Equals(UUID.Zero))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.ASSET_UPLOAD_FAILED));
+                                }
+                                ManualResetEvent CreateWearableEvent = new ManualResetEvent(false);
+                                Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
+                                    name,
+                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION),
+                                        message)),
+                                    assetType,
+                                    wearableUUID, InventoryType.Wearable, (WearableType) wearTypeInfo.GetValue(null),
+                                    permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
+                                    delegate(bool completed, InventoryItem createdItem)
+                                    {
+                                        succeeded = completed;
+                                        CreateWearableEvent.Set();
+                                    });
+                                if (!CreateWearableEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_CREATING_ITEM));
+                                }
+                                break;
+                            case AssetType.Landmark:
+                                UUID landmarkUUID = Client.Assets.RequestUpload(assetType, data, false);
+                                if (landmarkUUID.Equals(UUID.Zero))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.ASSET_UPLOAD_FAILED));
+                                }
+                                ManualResetEvent CreateLandmarkEvent = new ManualResetEvent(false);
+                                Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
+                                    name,
+                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION),
+                                        message)),
+                                    assetType,
+                                    landmarkUUID, InventoryType.Landmark, PermissionMask.All,
+                                    delegate(bool completed, InventoryItem createdItem)
+                                    {
+                                        succeeded = completed;
+                                        CreateLandmarkEvent.Set();
+                                    });
+                                if (!CreateLandmarkEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_CREATING_ITEM));
+                                }
+                                break;
+                            case AssetType.Gesture:
+                                ManualResetEvent CreateGestureEvent = new ManualResetEvent(false);
+                                InventoryItem newGesture = null;
+                                Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
+                                    name,
+                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION),
+                                        message)),
+                                    assetType,
+                                    UUID.Random(), InventoryType.Gesture,
+                                    permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
+                                    delegate(bool completed, InventoryItem createdItem)
+                                    {
+                                        succeeded = completed;
+                                        newGesture = createdItem;
+                                        CreateGestureEvent.Set();
+                                    });
+                                if (!CreateGestureEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_CREATING_ITEM));
+                                }
+                                if (!succeeded)
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_CREATE_ITEM));
+                                }
+                                ManualResetEvent UploadGestureAssetEvent = new ManualResetEvent(false);
+                                Client.Inventory.RequestUploadGestureAsset(data, newGesture.UUID,
+                                    delegate(bool completed, string status, UUID itemUUID, UUID assetUUID)
+                                    {
+                                        succeeded = completed;
+                                        UploadGestureAssetEvent.Set();
+                                    });
+                                if (!UploadGestureAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPLOADING_ASSET));
+                                }
+                                break;
+                            case AssetType.Notecard:
+                                ManualResetEvent CreateNotecardEvent = new ManualResetEvent(false);
+                                InventoryItem newNotecard = null;
+                                Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
+                                    name,
+                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION),
+                                        message)),
+                                    assetType,
+                                    UUID.Random(), InventoryType.Notecard,
+                                    permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
+                                    delegate(bool completed, InventoryItem createdItem)
+                                    {
+                                        succeeded = completed;
+                                        newNotecard = createdItem;
+                                        CreateNotecardEvent.Set();
+                                    });
+                                if (!CreateNotecardEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_CREATING_ITEM));
+                                }
+                                if (!succeeded)
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_CREATE_ITEM));
+                                }
+                                ManualResetEvent UploadNotecardAssetEvent = new ManualResetEvent(false);
+                                Client.Inventory.RequestUploadNotecardAsset(data, newNotecard.UUID,
+                                    delegate(bool completed, string status, UUID itemUUID, UUID assetUUID)
+                                    {
+                                        succeeded = completed;
+                                        UploadNotecardAssetEvent.Set();
+                                    });
+                                if (!UploadNotecardAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPLOADING_ASSET));
+                                }
+                                break;
+                            case AssetType.LSLText:
+                                ManualResetEvent CreateScriptEvent = new ManualResetEvent(false);
+                                InventoryItem newScript = null;
+                                Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
+                                    name,
+                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION),
+                                        message)),
+                                    assetType,
+                                    UUID.Random(), InventoryType.LSL,
+                                    permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
+                                    delegate(bool completed, InventoryItem createdItem)
+                                    {
+                                        succeeded = completed;
+                                        newScript = createdItem;
+                                        CreateScriptEvent.Set();
+                                    });
+                                if (!CreateScriptEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_CREATING_ITEM));
+                                }
+                                ManualResetEvent UpdateScriptEvent = new ManualResetEvent(false);
+                                Client.Inventory.RequestUpdateScriptAgentInventory(data, newScript.UUID, true,
+                                    delegate(bool completed, string status, bool compiled, List<string> messages,
+                                        UUID itemID, UUID assetID)
+                                    {
+                                        succeeded = completed;
+                                        UpdateScriptEvent.Set();
+                                    });
+                                if (!UpdateScriptEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPLOADING_ASSET));
+                                }
+                                break;
+                            default:
+                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_INVENTORY_TYPE));
+                        }
+                        if (!succeeded)
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.ASSET_UPLOAD_FAILED));
+                        }
+                    };
+                    break;
                 case ScriptKeys.REZ:
                     execute = () =>
                     {
@@ -5910,6 +6306,33 @@ namespace Corrade
                                 Client.Inventory.RemoveTaskInventory(primitive.LocalID, entityUUID,
                                     Client.Network.CurrentSim);
                                 break;
+                            case Action.TAKE:
+                                InventoryBase inventoryBase = !entityUUID.Equals(UUID.Zero)
+                                    ? Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
+                                        Configuration.SERVICES_TIMEOUT).FirstOrDefault(o => o.UUID.Equals(entityUUID))
+                                    : Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
+                                        Configuration.SERVICES_TIMEOUT).FirstOrDefault(o => o.Name.Equals(entity));
+                                InventoryItem inventoryItem = inventoryBase as InventoryItem;
+                                if (inventoryItem == null)
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                }
+                                UUID folderUUID;
+                                string folder =
+                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FOLDER),
+                                        message));
+                                if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
+                                {
+                                    folderUUID =
+                                        Client.Inventory.Store.Items[
+                                            Client.Inventory.FindFolderForType(inventoryItem.AssetType)].Data
+                                            .UUID;
+                                }
+                                Client.Inventory.MoveTaskInventory(primitive.LocalID, inventoryItem.UUID, folderUUID,
+                                    Client.Network.CurrentSim);
+                                break;
+                            default:
+                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ACTION));
                         }
                     };
                     break;
@@ -6098,8 +6521,7 @@ namespace Corrade
                                 GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string name =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message))
-                                .ToLower(CultureInfo.InvariantCulture);
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message));
                         if (string.IsNullOrEmpty(name))
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_NAME_PROVIDED));
@@ -6108,7 +6530,7 @@ namespace Corrade
                         bool succeeded = false;
                         InventoryItem newItem = null;
                         Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(AssetType.Notecard),
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message)),
+                            name,
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION), message)),
                             AssetType.Notecard,
                             UUID.Random(), InventoryType.Notecard, PermissionMask.All,
@@ -6557,7 +6979,7 @@ namespace Corrade
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.NO_DATABASE_KEY_SPECIFIED));
                                 }
-                                lock (DatabaseLock)
+                                lock (DatabaseFileLock)
                                 {
                                     if (!DatabaseLocks.ContainsKey(group))
                                     {
@@ -6574,7 +6996,7 @@ namespace Corrade
                                             wasUriUnescapeDataString(databaseGetValue));
                                     }
                                 }
-                                lock (DatabaseLock)
+                                lock (DatabaseFileLock)
                                 {
                                     if (DatabaseLocks.ContainsKey(group))
                                     {
@@ -6596,7 +7018,7 @@ namespace Corrade
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.NO_DATABASE_VALUE_SPECIFIED));
                                 }
-                                lock (DatabaseLock)
+                                lock (DatabaseFileLock)
                                 {
                                     if (!DatabaseLocks.ContainsKey(group))
                                     {
@@ -6614,7 +7036,7 @@ namespace Corrade
                                         //recreateDatabase.Close();
                                     }
                                 }
-                                lock (DatabaseLock)
+                                lock (DatabaseFileLock)
                                 {
                                     if (DatabaseLocks.ContainsKey(group))
                                     {
@@ -6629,7 +7051,7 @@ namespace Corrade
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.NO_DATABASE_KEY_SPECIFIED));
                                 }
-                                lock (DatabaseLock)
+                                lock (DatabaseFileLock)
                                 {
                                     if (!DatabaseLocks.ContainsKey(group))
                                     {
@@ -6646,7 +7068,7 @@ namespace Corrade
                                         //recreateDatabase.Close();
                                     }
                                 }
-                                lock (DatabaseLock)
+                                lock (DatabaseFileLock)
                                 {
                                     if (DatabaseLocks.ContainsKey(group))
                                     {
@@ -6715,9 +7137,7 @@ namespace Corrade
                                 };
                                 lock (GroupNotificationsLock)
                                 {
-                                    // If we already have the same notification, bail
-                                    if (GroupNotifications.Contains(notification)) break;
-                                    // Otherwise, replace it.
+                                    // Replace notification.
                                     GroupNotifications.RemoveWhere(
                                         o => o.GROUP.Equals(group, StringComparison.Ordinal));
                                     GroupNotifications.Add(notification);
@@ -7162,7 +7582,7 @@ namespace Corrade
                                         Client.Estate.UnbanUser(targetUUID, allEstates);
                                         break;
                                     default:
-                                        throw new Exception(GetEnumDescription(ScriptError.UNKNWON_ESTATE_LIST_ACTION));
+                                        throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ESTATE_LIST_ACTION));
                                 }
                                 break;
                             case Type.GROUP:
@@ -7170,16 +7590,12 @@ namespace Corrade
                                     !UUID.TryParse(
                                         wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TARGET),
                                             message)),
-                                        out targetUUID))
-                                {
-                                    if (
-                                        !GroupNameToUUID(
+                                        out targetUUID) && !GroupNameToUUID(
                                             wasUriUnescapeDataString(
                                                 wasKeyValueGet(GetEnumDescription(ScriptKeys.TARGET), message)),
                                             Configuration.SERVICES_TIMEOUT, ref targetUUID))
-                                    {
-                                        throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
-                                    }
+                                {
+                                    throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
                                 }
                                 switch (
                                     (Action)
@@ -7195,7 +7611,7 @@ namespace Corrade
                                         Client.Estate.RemoveAllowedGroup(targetUUID, allEstates);
                                         break;
                                     default:
-                                        throw new Exception(GetEnumDescription(ScriptError.UNKNWON_ESTATE_LIST_ACTION));
+                                        throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ESTATE_LIST_ACTION));
                                 }
                                 break;
                             case Type.USER:
@@ -7226,7 +7642,7 @@ namespace Corrade
                                         Client.Estate.RemoveAllowedUser(targetUUID, allEstates);
                                         break;
                                     default:
-                                        throw new Exception(GetEnumDescription(ScriptError.UNKNWON_ESTATE_LIST_ACTION));
+                                        throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ESTATE_LIST_ACTION));
                                 }
                                 break;
                             case Type.MANAGER:
@@ -7257,7 +7673,7 @@ namespace Corrade
                                         Client.Estate.RemoveEstateManager(targetUUID, allEstates);
                                         break;
                                     default:
-                                        throw new Exception(GetEnumDescription(ScriptError.UNKNWON_ESTATE_LIST_ACTION));
+                                        throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ESTATE_LIST_ACTION));
                                 }
                                 break;
                             default:
@@ -7695,8 +8111,7 @@ namespace Corrade
                                 break;
                             case Action.SET:
                                 string name =
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message))
-                                        .ToLower(CultureInfo.InvariantCulture);
+                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message));
                                 if (string.IsNullOrEmpty(name))
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.NO_NAME_PROVIDED));
@@ -8474,11 +8889,8 @@ namespace Corrade
                                     if (items.Any(q =>
                                     {
                                         InventoryWearable i = q as InventoryWearable;
-                                        if (i != null && ((InventoryWearable) item).WearableType.Equals(i.WearableType))
-                                        {
-                                            return true;
-                                        }
-                                        return false;
+                                        return i != null &&
+                                               ((InventoryWearable) item).WearableType.Equals(i.WearableType);
                                     })) UnWear(item);
                                     return;
                                 }
@@ -8551,12 +8963,7 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        string url =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.URL), message));
-                        if (string.IsNullOrEmpty(url))
-                        {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_URL_PROVIDED));
-                        }
+                        byte[] data = null;
                         switch ((Action) wasGetEnumValueFromDescription<Action>(
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
                                 .ToLower(CultureInfo.InvariantCulture)))
@@ -8574,10 +8981,9 @@ namespace Corrade
                                             AssetType.Unknown, false);
                                         DownloadTerrainEvents[0].Set();
                                     };
-                                byte[] assetData = null;
                                 EventHandler<XferReceivedEventArgs> XferReceivedEventHandler = (sender, args) =>
                                 {
-                                    assetData = args.Xfer.AssetData;
+                                    data = args.Xfer.AssetData;
                                     DownloadTerrainEvents[1].Set();
                                 };
                                 Client.Assets.InitiateDownload += InitiateDownloadEventHandler;
@@ -8592,43 +8998,30 @@ namespace Corrade
                                 {
                                     Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
                                     Client.Assets.XferReceived -= XferReceivedEventHandler;
-                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_DOWNLOADING_TERRAIN));
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_DOWNLOADING_ASSET));
                                 }
                                 Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
                                 Client.Assets.XferReceived -= XferReceivedEventHandler;
-                                if (assetData == null || !assetData.Length.Equals(0))
+                                if (data == null || !data.Length.Equals(0))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.EMPTY_TERRAIN_DATA));
+                                    throw new Exception(GetEnumDescription(ScriptError.EMPTY_ASSET_DATA));
                                 }
-                                try
-                                {
-                                    wasPOST(url, new Dictionary<string, string>
-                                    {
-                                        {GetEnumDescription(ScriptKeys.REGION), Client.Network.CurrentSim.Name},
-                                        {GetEnumDescription(ScriptKeys.TERRAIN), Convert.ToBase64String(assetData)}
-                                    });
-                                }
-                                catch (Exception)
-                                {
-                                    throw new Exception(GetEnumDescription(ScriptError.TERRAIN_UPLOAD_FAILED));
-                                }
+                                result.Add(GetEnumDescription(ResultKeys.DATA), Convert.ToBase64String(data));
                                 break;
                             case Action.SET:
-                                byte[] terrainData;
                                 try
                                 {
-                                    terrainData = wasPOST(url, new Dictionary<string, string>
-                                    {
-                                        {GetEnumDescription(ScriptKeys.REGION), Client.Network.CurrentSim.Name}
-                                    });
+                                    data = Convert.FromBase64String(
+                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA),
+                                            message)));
                                 }
                                 catch (Exception)
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.TERRAIN_DOWNLOAD_FAILED));
+                                    throw new Exception(GetEnumDescription(ScriptError.INVALID_ASSET_DATA));
                                 }
-                                if (terrainData == null || !terrainData.Length.Equals(0))
+                                if (data == null || !data.Length.Equals(0))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.EMPTY_TERRAIN_DATA));
+                                    throw new Exception(GetEnumDescription(ScriptError.EMPTY_ASSET_DATA));
                                 }
                                 ManualResetEvent AssetUploadEvent = new ManualResetEvent(false);
                                 EventHandler<AssetUploadEventArgs> AssetUploadEventHandler = (sender, args) =>
@@ -8639,11 +9032,11 @@ namespace Corrade
                                     }
                                 };
                                 Client.Assets.UploadProgress += AssetUploadEventHandler;
-                                Client.Estate.UploadTerrain(terrainData, Client.Network.CurrentSim.Name);
+                                Client.Estate.UploadTerrain(data, Client.Network.CurrentSim.Name);
                                 if (!AssetUploadEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
                                     Client.Assets.UploadProgress -= AssetUploadEventHandler;
-                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPLOADING_TERRAIN));
+                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPLOADING_ASSET));
                                 }
                                 Client.Assets.UploadProgress -= AssetUploadEventHandler;
                                 break;
@@ -8705,6 +9098,31 @@ namespace Corrade
                                 break;
                             default:
                                 throw new Exception(GetEnumDescription(ScriptError.FLY_ACTION_START_OR_STOP));
+                        }
+                    };
+                    break;
+                case ScriptKeys.CONFIGURATION:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_SYSTEM))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        switch ((Action) wasGetEnumValueFromDescription<Action>(wasUriUnescapeDataString(
+                            wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
+                            .ToLower(CultureInfo.InvariantCulture)))
+                        {
+                            case Action.READ:
+                                result.Add(GetEnumDescription(ResultKeys.DATA),
+                                    Convert.ToBase64String(
+                                        Encoding.ASCII.GetBytes(Configuration.Read(CORRADE_CONSTANTS.CONFIGURATION_FILE))));
+                                break;
+                            case Action.WRITE:
+                                Configuration.Write(CORRADE_CONSTANTS.CONFIGURATION_FILE,
+                                    Encoding.ASCII.GetString(
+                                        Convert.FromBase64String(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA),
+                                            message))));
+                                break;
                         }
                     };
                     break;
@@ -9718,7 +10136,10 @@ namespace Corrade
             [Description("offline")] OFFLINE,
             [Description("request")] REQUEST,
             [Description("response")] RESPONSE,
-            [Description("delete")] DELETE
+            [Description("delete")] DELETE,
+            [Description("take")] TAKE,
+            [Description("read")] READ,
+            [Description("wrtie")] WRITE
         }
 
         /// <summary>
@@ -9775,6 +10196,22 @@ namespace Corrade
             public static HashSet<Group> GROUPS;
             public static HashSet<Master> MASTERS;
 
+            public static string Read(string file)
+            {
+                lock (ConfigurationFileLock)
+                {
+                    return File.ReadAllText(file);
+                }
+            }
+
+            public static void Write(string file, string data)
+            {
+                lock (ConfigurationFileLock)
+                {
+                    File.WriteAllText(file, data);
+                }
+            }
+
             public static void Load(string file)
             {
                 FIRST_NAME = string.Empty;
@@ -9796,7 +10233,10 @@ namespace Corrade
 
                 try
                 {
-                    file = File.ReadAllText(file);
+                    lock (ConfigurationFileLock)
+                    {
+                        file = File.ReadAllText(file);
+                    }
                 }
                 catch (Exception e)
                 {
@@ -10453,7 +10893,7 @@ namespace Corrade
             [Description("timeout getting top scripts")] TIMEOUT_GETTING_TOP_SCRIPTS,
             [Description("timeout waiting for estate list")] TIMEOUT_WAITING_FOR_ESTATE_LIST,
             [Description("unknwon top type")] UNKNOWN_TOP_TYPE,
-            [Description("unknown estate list action")] UNKNWON_ESTATE_LIST_ACTION,
+            [Description("unknown estate list action")] UNKNOWN_ESTATE_LIST_ACTION,
             [Description("unknown estate list")] UNKNOWN_ESTATE_LIST,
             [Description("no item specified")] NO_ITEM_SPECIFIED,
             [Description("unknown animation action")] UNKNOWN_ANIMATION_ACTION,
@@ -10505,11 +10945,9 @@ namespace Corrade
             [Description("no task specified")] NO_TASK_SPECIFIED,
             [Description("timeout getting group members")] TIMEOUT_GETTING_GROUP_MEMBERS,
             [Description("group not open")] GROUP_NOT_OPEN,
-            [Description("terrain download failed")] TERRAIN_DOWNLOAD_FAILED,
-            [Description("terrain upload failed")] TERRAIN_UPLOAD_FAILED,
-            [Description("timeout downloading terrain")] TIMEOUT_DOWNLOADING_TERRAIN,
-            [Description("timeout uploading terrain")] TIMEOUT_UPLOADING_TERRAIN,
-            [Description("empty terrain data")] EMPTY_TERRAIN_DATA,
+            [Description("timeout downloading terrain")] TIMEOUT_DOWNLOADING_ASSET,
+            [Description("timeout uploading terrain")] TIMEOUT_UPLOADING_ASSET,
+            [Description("empty terrain data")] EMPTY_ASSET_DATA,
             [Description("the specified folder contains no equipable items")] NO_EQUIPABLE_ITEMS,
             [Description("inventory offer not found")] INVENTORY_OFFER_NOT_FOUND,
             [Description("no session specified")] NO_SESSION_SPECIFIED,
@@ -10521,7 +10959,14 @@ namespace Corrade
             [Description("timeout uploading item data")] TIMEOUT_UPLOADING_ITEM_DATA,
             [Description("unable to upload item data")] UNABLE_TO_UPLOAD_ITEM_DATA,
             [Description("unknown direction")] UNKNOWN_DIRECTION,
-            [Description("timeout requesting to set home")] TIMEOUT_REQUESTING_TO_SET_HOME
+            [Description("timeout requesting to set home")] TIMEOUT_REQUESTING_TO_SET_HOME,
+            [Description("timeout traferring asset")] TIMEOUT_TRANSFERRING_ASSET,
+            [Description("asset upload failed")] ASSET_UPLOAD_FAILED,
+            [Description("failed to download asset")] FAILED_TO_DOWNLOAD_ASSET,
+            [Description("unknown asset type")] UNKNOWN_ASSET_TYPE,
+            [Description("invalid asset data")] INVALID_ASSET_DATA,
+            [Description("unknown wearable type")] UNKNOWN_WEARABLE_TYPE,
+            [Description("unknown inventory type")] UNKNOWN_INVENTORY_TYPE
         }
 
         /// <summary>
@@ -10529,7 +10974,10 @@ namespace Corrade
         /// </summary>
         private enum ScriptKeys : uint
         {
-            [Description("collision")] COLLISION,
+            [Description("configuration")] CONFIGURATION,
+            [Description("upload")] UPLOAD,
+            [Description("download")] DOWNLOAD,
+            [Description("setparceldata")] SETPARCELDATA,
             [Description("new")] NEW,
             [Description("old")] OLD,
             [Description("aggressor")] AGGRESSOR,
@@ -10690,7 +11138,6 @@ namespace Corrade
             [Description("getrolepowers")] GETROLEPOWERS,
             [Description("powers")] POWERS,
             [Description("lure")] LURE,
-            [Description("parcelmusic")] PARCELMUSIC,
             [Description("URL")] URL,
             [Description("sethome")] SETHOME,
             [Description("gohome")] GOHOME,

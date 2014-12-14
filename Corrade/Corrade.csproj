@@ -59,6 +59,10 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\libopenmetaverse\bin\OpenMetaverse.dll</HintPath>
     </Reference>
+    <Reference Include="OpenMetaverse.StructuredData, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\libopenmetaverse\bin\OpenMetaverse.StructuredData.dll</HintPath>
+    </Reference>
     <Reference Include="OpenMetaverse.Utilities, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\libopenmetaverse\bin\OpenMetaverse.Utilities.dll</HintPath>
