@@ -5499,6 +5499,39 @@ namespace Corrade
                         parcel.Update(Client.Network.CurrentSim, true);
                     };
                     break;
+                case ScriptKeys.GETREGIONPARCELSBOUNDINGBOX:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        // Get all sim parcels
+                        ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
+                        EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
+                            (sender, args) => SimParcelsDownloadedEvent.Set();
+                        Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
+                        Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim);
+                        if (Client.Network.CurrentSim.IsParcelMapFull())
+                        {
+                            SimParcelsDownloadedEvent.Set();
+                        }
+                        if (!SimParcelsDownloadedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                        {
+                            Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                            throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_PARCELS));
+                        }
+                        Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                        List<Vector3> csv = new List<Vector3>();
+                        Client.Network.CurrentSim.Parcels.ForEach(o => csv.AddRange(new[] {o.AABBMin, o.AABBMax}));
+                        if (!csv.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.PLOTS),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => o.ToString()).ToArray()));
+                        }
+                    };
+                    break;
                 case ScriptKeys.DOWNLOAD:
                     execute = () =>
                     {
@@ -10959,6 +10992,7 @@ namespace Corrade
         /// </summary>
         private enum ResultKeys : uint
         {
+            [Description("plots")] PLOTS,
             [Description("version")] VERSION,
             [Description("positions")] POSITIONS,
             [Description("primitives")] PRIMITIVES,
@@ -11147,6 +11181,7 @@ namespace Corrade
         /// </summary>
         private enum ScriptKeys : uint
         {
+            [Description("getregionparcelsboundingbox")] GETREGIONPARCELSBOUNDINGBOX,
             [Description("pattern")] PATTERN,
             [Description("searchinventory")] SEARCHINVENTORY,
             [Description("getterrainheight")] GETTERRAINHEIGHT,
