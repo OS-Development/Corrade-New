@@ -422,6 +422,21 @@ namespace Corrade
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
+        ///     Swaps two integers passed by reference using XOR.
+        /// </summary>
+        /// <param name="q">first integer to swap</param>
+        /// <param name="p">second integer to swap</param>
+        private static void wasXORSwap(ref int q, ref int p)
+        {
+            q ^= p;
+            p ^= q;
+            q ^= p;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
         ///     Returns all the field descriptions of an enumeration.
         /// </summary>
         /// <returns>the field descriptions</returns>
@@ -1058,7 +1073,7 @@ namespace Corrade
                 if (inventoryFolder != null)
                 {
                     if (inventoryFolder.Name.Equals(itemBase, StringComparison.Ordinal) ||
-                        inventoryFolder.UUID.ToString().ToLowerInvariant().Equals(itemBase))
+                        inventoryFolder.UUID.ToString().ToLowerInvariant().Equals(itemBase.ToLowerInvariant()))
                     {
                         yield return inventoryFolder;
                     }
@@ -1067,7 +1082,7 @@ namespace Corrade
                 if (inventoryItem != null)
                 {
                     if (inventory.Name.Equals(itemBase, StringComparison.Ordinal) ||
-                        inventoryItem.UUID.ToString().ToLowerInvariant().Equals(itemBase))
+                        inventoryItem.UUID.ToString().ToLowerInvariant().Equals(itemBase.ToLowerInvariant()))
                     {
                         yield return inventoryItem;
                     }
@@ -1076,6 +1091,57 @@ namespace Corrade
                     continue;
                 foreach (
                     InventoryBase inventoryBase in FindInventoryBase(inventoryFolder, itemBase, millisecondsTimeout))
+                {
+                    yield return inventoryBase;
+                }
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// ///
+        /// <summary>
+        ///     Searches the current inventory for an item by name or UUID and
+        ///     returns all the items that match the item name.
+        /// </summary>
+        /// <param name="rootFolder">a folder from which to search</param>
+        /// <param name="assetExpression">a regular expression to search by</param>
+        /// <param name="assetTypes">the type of the asset to find</param>
+        /// <param name="millisecondsTimeout">timeout for the search</param>
+        /// <returns>a list of items matching the item name</returns>
+        private static IEnumerable<InventoryBase> FindInventoryBase(InventoryBase rootFolder, Regex assetExpression,
+            HashSet<AssetType> assetTypes,
+            int millisecondsTimeout)
+        {
+            HashSet<InventoryBase> contents =
+                new HashSet<InventoryBase>(Client.Inventory.FolderContents(rootFolder.UUID, Client.Self.AgentID,
+                    true, true, InventorySortOrder.ByName, millisecondsTimeout));
+            foreach (InventoryBase inventory in contents)
+            {
+                InventoryFolder inventoryFolder = inventory as InventoryFolder;
+                if (inventoryFolder != null)
+                {
+                    if (assetExpression.IsMatch(inventoryFolder.Name) &&
+                        (assetTypes.Contains(AssetType.Folder) || assetTypes.Contains(AssetType.Unknown)))
+                    {
+                        yield return inventoryFolder;
+                    }
+                }
+                InventoryItem inventoryItem = inventory as InventoryItem;
+                if (inventoryItem != null)
+                {
+                    if (assetExpression.IsMatch(inventory.Name) &&
+                        (assetTypes.Contains(inventoryItem.AssetType) || assetTypes.Contains(AssetType.Unknown)))
+                    {
+                        yield return inventoryItem;
+                    }
+                }
+                if (contents.Count.Equals(0) || inventoryFolder == null)
+                    continue;
+                foreach (
+                    InventoryBase inventoryBase in
+                        FindInventoryBase(inventoryFolder, assetExpression, assetTypes, millisecondsTimeout))
                 {
                     yield return inventoryBase;
                 }
@@ -6368,6 +6434,60 @@ namespace Corrade
                         }
                     };
                     break;
+                case ScriptKeys.SEARCHINVENTORY:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                        {
+                            throw new Exception(
+                                GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        HashSet<AssetType> assetTypes = new HashSet<AssetType>();
+                        Parallel.ForEach(
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message))
+                                .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
+                            o => Parallel.ForEach(
+                                typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                    .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                q => assetTypes.Add((AssetType) q.GetValue(null))));
+                        if (assetTypes.Count.Equals(0))
+                        {
+                            assetTypes.Add(AssetType.Unknown);
+                        }
+                        string pattern =
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.PATTERN), message));
+                        if (string.IsNullOrEmpty(pattern))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_PATTERN_PROVIDED));
+                        }
+                        Regex search;
+                        try
+                        {
+                            search = new Regex(pattern, RegexOptions.Compiled);
+                        }
+                        catch
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION));
+                        }
+                        List<string> csv = new List<string>();
+                        foreach (
+                            InventoryBase item in
+                                FindInventoryBase(Client.Inventory.Store.RootFolder, search, assetTypes,
+                                    Configuration.SERVICES_TIMEOUT))
+                        {
+                            InventoryItem inventoryItem = item as InventoryItem;
+                            if (inventoryItem == null) continue;
+                            csv.Add(Enum.GetName(typeof (AssetType), inventoryItem.AssetType));
+                            csv.Add(item.Name);
+                        }
+                        if (!csv.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.INVENTORY),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.ToArray()));
+                        }
+                    };
+                    break;
                 case ScriptKeys.GETPARTICLESYSTEM:
                     execute = () =>
                     {
@@ -9051,6 +9171,66 @@ namespace Corrade
                         }
                     };
                     break;
+                case ScriptKeys.GETTERRAINHEIGHT:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        Vector3 southwest;
+                        if (
+                            !Vector3.TryParse(
+                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.SOUTHWEST),
+                                    message)),
+                                out southwest))
+                        {
+                            southwest = new Vector3(0, 0, 0);
+                        }
+                        Vector3 northeast;
+                        if (
+                            !Vector3.TryParse(
+                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NORTHEAST),
+                                    message)),
+                                out northeast))
+                        {
+                            northeast = new Vector3(255, 255, 0);
+                        }
+
+                        int x1 = Convert.ToInt32(southwest.X);
+                        int y1 = Convert.ToInt32(southwest.Y);
+                        int x2 = Convert.ToInt32(northeast.X);
+                        int y2 = Convert.ToInt32(northeast.Y);
+
+                        if (x1 > x2)
+                        {
+                            wasXORSwap(ref x1, ref x2);
+                        }
+                        if (y1 > y2)
+                        {
+                            wasXORSwap(ref y1, ref y2);
+                        }
+
+                        int sx = x2 - x1 + 1;
+                        int sy = y2 - y1 + 1;
+
+                        float[] csv = new float[sx*sy];
+                        Parallel.ForEach(Enumerable.Range(x1, sx), x => Parallel.ForEach(Enumerable.Range(y1, sy), y =>
+                        {
+                            float height;
+                            csv[2*(x2 - x) + (y2 - y)] = Client.Network.CurrentSim.TerrainHeightAtPoint(x, y, out height)
+                                ? height
+                                : -1;
+                        }));
+
+                        if (!csv.Length.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => o.ToString(CultureInfo.InvariantCulture)).ToArray()));
+                        }
+                    };
+                    break;
                 case ScriptKeys.CROUCH:
                     execute = () =>
                     {
@@ -9668,15 +9848,14 @@ namespace Corrade
         /// </summary>
         /// <param name="URL">the url to send the message to</param>
         /// <param name="message">key-value pairs to send</param>
-        /// <returns>a byte array containing the response</returns>
-        private static byte[] wasPOST(string URL, Dictionary<string, string> message)
+        private static void wasPOST(string URL, Dictionary<string, string> message)
         {
-            byte[] byteArray =
-                Encoding.UTF8.GetBytes(string.Format(CultureInfo.InvariantCulture, "{0}", wasKeyValueEncode(message)));
             WebRequest request = WebRequest.Create(URL);
             request.Timeout = Configuration.CALLBACK_TIMEOUT;
             request.Method = "POST";
             request.ContentType = "application/x-www-form-urlencoded";
+            byte[] byteArray =
+                Encoding.UTF8.GetBytes(string.Format(CultureInfo.InvariantCulture, "{0}", wasKeyValueEncode(message)));
             request.ContentLength = byteArray.Length;
             using (Stream dataStream = request.GetRequestStream())
             {
@@ -9684,22 +9863,6 @@ namespace Corrade
                 dataStream.Flush();
                 dataStream.Close();
             }
-            WebResponse response = request.GetResponse();
-            byteArray = new byte[(int) response.ContentLength];
-            using (Stream dataStream = response.GetResponseStream())
-            {
-                int seek = 0;
-                do
-                {
-                    int bytesRead = dataStream.Read(byteArray, seek, byteArray.Length - seek);
-                    if (bytesRead.Equals(0))
-                    {
-                        throw new IOException("Premature end of data");
-                    }
-                    seek += bytesRead;
-                } while (seek < byteArray.Length);
-            }
-            return byteArray;
         }
 
         private static void HandleTerseObjectUpdate(object sender, TerseObjectUpdateEventArgs e)
@@ -10974,7 +11137,9 @@ namespace Corrade
             [Description("unknown asset type")] UNKNOWN_ASSET_TYPE,
             [Description("invalid asset data")] INVALID_ASSET_DATA,
             [Description("unknown wearable type")] UNKNOWN_WEARABLE_TYPE,
-            [Description("unknown inventory type")] UNKNOWN_INVENTORY_TYPE
+            [Description("unknown inventory type")] UNKNOWN_INVENTORY_TYPE,
+            [Description("could not compile regular expression")] COULD_NOT_COMPILE_REGULAR_EXPRESSION,
+            [Description("no pattern provided")] NO_PATTERN_PROVIDED
         }
 
         /// <summary>
@@ -10982,6 +11147,11 @@ namespace Corrade
         /// </summary>
         private enum ScriptKeys : uint
         {
+            [Description("pattern")] PATTERN,
+            [Description("searchinventory")] SEARCHINVENTORY,
+            [Description("getterrainheight")] GETTERRAINHEIGHT,
+            [Description("northeast")] NORTHEAST,
+            [Description("southwest")] SOUTHWEST,
             [Description("configuration")] CONFIGURATION,
             [Description("upload")] UPLOAD,
             [Description("download")] DOWNLOAD,
