@@ -9485,6 +9485,69 @@ namespace Corrade
                         }
                     };
                     break;
+                case ScriptKeys.EXECUTE:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_EXECUTE))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        string file =
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FILE), message));
+                        if (string.IsNullOrEmpty(file))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_EXECUTABLE_FILE_PROVIDED));
+                        }
+                        ProcessStartInfo p = new ProcessStartInfo(file,
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.PARAMETER), message)))
+                        {
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            WindowStyle = ProcessWindowStyle.Normal,
+                            UseShellExecute = false
+                        };
+                        StringBuilder stdout = new StringBuilder();
+                        StringBuilder stderr = new StringBuilder();
+                        Process q = Process.Start(p);
+                        ManualResetEvent[] StdEvent =
+                        {
+                            new ManualResetEvent(false),
+                            new ManualResetEvent(false)
+                        };
+                        q.OutputDataReceived += (sender, output) =>
+                        {
+                            if (output.Data == null)
+                            {
+                                StdEvent[0].Set();
+                                return;
+                            }
+                            stdout.AppendLine(output.Data);
+                        };
+                        q.ErrorDataReceived += (sender, output) =>
+                        {
+                            if (output.Data == null)
+                            {
+                                StdEvent[1].Set();
+                                return;
+                            }
+                            stderr.AppendLine(output.Data);
+                        };
+                        q.BeginErrorReadLine();
+                        q.BeginOutputReadLine();
+                        if (!q.WaitForExit(Configuration.SERVICES_TIMEOUT))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_WAITING_FOR_EXECUTION));
+                        }
+                        if (StdEvent[0].WaitOne(Configuration.SERVICES_TIMEOUT) && !stdout.Length.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.OUTPUT), stdout.ToString());
+                        }
+                        if (StdEvent[1].WaitOne(Configuration.SERVICES_TIMEOUT) && !stderr.Length.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.ERROR), stderr.ToString());
+                        }
+                    };
+                    break;
                 case ScriptKeys.CONFIGURATION:
                     execute = () =>
                     {
@@ -10070,10 +10133,15 @@ namespace Corrade
         /// <param name="millisecondsTimeout">the time in milliseconds for the request to timeout</param>
         private static void wasPOST(string URL, Dictionary<string, string> message, int millisecondsTimeout)
         {
-            WebRequest request = WebRequest.Create(URL);
+            HttpWebRequest request = (HttpWebRequest) WebRequest.Create(URL);
             request.Timeout = millisecondsTimeout;
-            request.Method = "POST";
+            request.AllowAutoRedirect = true;
+            request.AllowWriteStreamBuffering = true;
+            request.Pipelined = true;
+            request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+            request.Method = WebRequestMethods.Http.Post;
             request.ContentType = "application/x-www-form-urlencoded";
+            request.UserAgent = string.Format("{0}/{1} ({2})", "Corrade", CORRADE_VERSION, "http://was.fm/");
             byte[] byteArray =
                 Encoding.UTF8.GetBytes(string.Format(CultureInfo.InvariantCulture, "{0}", wasKeyValueEncode(message)));
             request.ContentLength = byteArray.Length;
@@ -11568,7 +11636,8 @@ namespace Corrade
             [Description("talk")] PERMISSION_TALK = 512,
             [Description("directory")] PERMISSION_DIRECTORY = 1024,
             [Description("system")] PERMISSION_SYSTEM = 2048,
-            [Description("friendship")] PERMISSION_FRIENDSHIP = 4096
+            [Description("friendship")] PERMISSION_FRIENDSHIP = 4096,
+            [Description("execute")] PERMISSION_EXECUTE = 8192
         }
 
         /// <summary>
@@ -11576,6 +11645,7 @@ namespace Corrade
         /// </summary>
         private enum ResultKeys : uint
         {
+            [Description("output")] OUTPUT,
             [Description("plots")] PLOTS,
             [Description("version")] VERSION,
             [Description("positions")] POSITIONS,
@@ -11756,7 +11826,9 @@ namespace Corrade
             [Description("unknown wearable type")] UNKNOWN_WEARABLE_TYPE,
             [Description("unknown inventory type")] UNKNOWN_INVENTORY_TYPE,
             [Description("could not compile regular expression")] COULD_NOT_COMPILE_REGULAR_EXPRESSION,
-            [Description("no pattern provided")] NO_PATTERN_PROVIDED
+            [Description("no pattern provided")] NO_PATTERN_PROVIDED,
+            [Description("no executable file provided")] NO_EXECUTABLE_FILE_PROVIDED,
+            [Description("timeout waiting for execution")] TIMEOUT_WAITING_FOR_EXECUTION
         }
 
         /// <summary>
@@ -11764,6 +11836,9 @@ namespace Corrade
         /// </summary>
         private enum ScriptKeys : uint
         {
+            [Description("execute")] EXECUTE,
+            [Description("parameter")] PARAMETER,
+            [Description("file")] FILE,
             [Description("cache")] CACHE,
             [Description("getgridregiondata")] GETGRIDREGIONDATA,
             [Description("getregionparcelsboundingbox")] GETREGIONPARCELSBOUNDINGBOX,
