@@ -11484,7 +11484,7 @@ namespace Corrade
             public const string NAGGLE = @"naggle";
             public const string CONNECTIONS = @"connections";
             public const string EXPECT100CONTINUE = @"expect100continue";
-            public const string MAC = @"mac";
+            public const string MAC = @"MAC";
             public const string SERVER = @"server";
         }
 
