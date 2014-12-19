@@ -68,6 +68,10 @@ namespace Corrade
 
         private static readonly GridClient Client = new GridClient();
 
+        private static readonly object ServicesLock = new object();
+
+        private static readonly object CommandLock = new object();
+
         private static readonly object ConfigurationFileLock = new object();
 
         private static readonly object LogFileLock = new object();
@@ -682,7 +686,8 @@ namespace Corrade
         /// <param name="powers">a GroupPowers structure</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <returns>true if the agent has the powers</returns>
-        private static bool HasGroupPowers(UUID agentUUID, UUID groupUUID, GroupPowers powers, int millisecondsTimeout)
+        private static bool lookupHasGroupPowers(UUID agentUUID, UUID groupUUID, GroupPowers powers,
+            int millisecondsTimeout)
         {
             bool hasPowers = false;
             ManualResetEvent avatarGroupsEvent = new ManualResetEvent(false);
@@ -704,6 +709,22 @@ namespace Corrade
             return hasPowers;
         }
 
+        /// <summary>
+        ///     Determines whether n agent has a set of powers for a group - locks down services.
+        /// </summary>
+        /// <param name="agentUUID">the agent UUID</param>
+        /// <param name="groupUUID">the UUID of the group</param>
+        /// <param name="powers">a GroupPowers structure</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <returns>true if the agent has the powers</returns>
+        private static bool HasGroupPowers(UUID agentUUID, UUID groupUUID, GroupPowers powers, int millisecondsTimeout)
+        {
+            lock (ServicesLock)
+            {
+                return lookupHasGroupPowers(agentUUID, groupUUID, powers, millisecondsTimeout);
+            }
+        }
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -715,7 +736,7 @@ namespace Corrade
         /// <param name="groupUUID">the UUID of the groupt</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <returns>true if the agent is in the group</returns>
-        private static bool AgentInGroup(UUID agentUUID, UUID groupUUID, int millisecondsTimeout)
+        private static bool lookupAgentInGroup(UUID agentUUID, UUID groupUUID, int millisecondsTimeout)
         {
             bool agentInGroup = false;
             ManualResetEvent agentInGroupEvent = new ManualResetEvent(false);
@@ -733,6 +754,21 @@ namespace Corrade
             }
             Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
             return agentInGroup;
+        }
+
+        /// <summary>
+        ///     Determines whether an agent is in a group - locks down services.
+        /// </summary>
+        /// <param name="agentUUID">the UUID of the agent</param>
+        /// <param name="groupUUID">the UUID of the groupt</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <returns>true if the agent is in the group</returns>
+        private static bool AgentInGroup(UUID agentUUID, UUID groupUUID, int millisecondsTimeout)
+        {
+            lock (ServicesLock)
+            {
+                return lookupAgentInGroup(agentUUID, groupUUID, millisecondsTimeout);
+            }
         }
 
         /// <summary>
@@ -800,7 +836,7 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="group">a group object to store the group profile</param>
         /// <returns>true if the group was found and false otherwise</returns>
-        private static bool RequestGroup(UUID groupUUID, int millisecondsTimeout, ref OpenMetaverse.Group group)
+        private static bool lookupRequestGroup(UUID groupUUID, int millisecondsTimeout, ref OpenMetaverse.Group group)
         {
             OpenMetaverse.Group localGroup = new OpenMetaverse.Group();
             ManualResetEvent GroupProfileEvent = new ManualResetEvent(false);
@@ -821,6 +857,21 @@ namespace Corrade
             return true;
         }
 
+        /// <summary>
+        ///     Wrapper for group profile requests - locks down service usage.
+        /// </summary>
+        /// <param name="groupUUID">the UUID of the group</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="group">a group object to store the group profile</param>
+        /// <returns>true if the group was found and false otherwise</returns>
+        private static bool RequestGroup(UUID groupUUID, int millisecondsTimeout, ref OpenMetaverse.Group group)
+        {
+            lock (ServicesLock)
+            {
+                return lookupRequestGroup(groupUUID, millisecondsTimeout, ref group);
+            }
+        }
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -831,7 +882,7 @@ namespace Corrade
         /// <param name="position">a position within the parcel</param>
         /// <param name="parcel">a parcel object where to store the found parcel</param>
         /// <returns>true if the parcel could be found</returns>
-        private static bool GetParcelAtPosition(Simulator simulator, Vector3 position,
+        private static bool lookupGetParcelAtPosition(Simulator simulator, Vector3 position,
             ref Parcel parcel)
         {
             Parcel localParcel = null;
@@ -861,6 +912,21 @@ namespace Corrade
             return true;
         }
 
+        /// <summary>
+        ///     Wrapper for getting a parcel at a position - locks down services.
+        /// </summary>
+        /// <param name="simulator">the simulator containing the parcel</param>
+        /// <param name="position">a position within the parcel</param>
+        /// <param name="parcel">a parcel object where to store the found parcel</param>
+        /// <returns>true if the parcel could be found</returns>
+        private static bool GetParcelAtPosition(Simulator simulator, Vector3 position, ref Parcel parcel)
+        {
+            lock (ServicesLock)
+            {
+                return lookupGetParcelAtPosition(simulator, position, ref parcel);
+            }
+        }
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -872,7 +938,8 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="primitive">a primitive object to store the result</param>
         /// <returns>true if the primitive could be found</returns>
-        private static bool FindPrimitive(string item, float range, int millisecondsTimeout, ref Primitive primitive)
+        private static bool lookupFindPrimitive(string item, float range, int millisecondsTimeout,
+            ref Primitive primitive)
         {
             UUID itemUUID;
             if (!UUID.TryParse(item, out itemUUID))
@@ -979,6 +1046,22 @@ namespace Corrade
             return primitive != null;
         }
 
+        /// <summary>
+        ///     Wrapper for finding primitives given an item, range, timeout and primitive to store - locks services down.
+        /// </summary>
+        /// <param name="item">the name or UUID of the primitive</param>
+        /// <param name="range">the range in meters to search for the object</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="primitive">a primitive object to store the result</param>
+        /// <returns>true if the primitive could be found</returns>
+        private static bool FindPrimitive(string item, float range, int millisecondsTimeout, ref Primitive primitive)
+        {
+            lock (ServicesLock)
+            {
+                return lookupFindPrimitive(item, range, millisecondsTimeout, ref primitive);
+            }
+        }
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -987,7 +1070,8 @@ namespace Corrade
         /// </summary>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <returns>attachment points by primitives</returns>
-        private static IEnumerable<KeyValuePair<AttachmentPoint, Primitive>> GetAttachments(int millisecondsTimeout)
+        private static IEnumerable<KeyValuePair<AttachmentPoint, Primitive>> lookupGetAttachments(
+            int millisecondsTimeout)
         {
             HashSet<Primitive> primitives = new HashSet<Primitive>(Client.Network.CurrentSim.ObjectsPrimitives.FindAll(
                 o => o.ParentID.Equals(Client.Self.LocalID)));
@@ -1013,6 +1097,19 @@ namespace Corrade
                 }
             }
             Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
+        }
+
+        /// <summary>
+        ///     Get worn attachments - locks down services.
+        /// </summary>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <returns>attachment points by primitives</returns>
+        private static IEnumerable<KeyValuePair<AttachmentPoint, Primitive>> GetAttachments(int millisecondsTimeout)
+        {
+            lock (ServicesLock)
+            {
+                return lookupGetAttachments(millisecondsTimeout);
+            }
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1431,6 +1528,10 @@ namespace Corrade
             };
             configurationWatcher.Changed += HandleConfigurationFileChanged;
             configurationWatcher.EnableRaisingEvents = true;
+            // Network Tweaks
+            ServicePointManager.DefaultConnectionLimit = Configuration.CONNECTION_LIMIT;
+            ServicePointManager.UseNagleAlgorithm = Configuration.USE_NAGGLE;
+            ServicePointManager.Expect100Continue = Configuration.USE_EXPECT100CONTINUE;
             // Suppress standard OpenMetaverse logs, we have better ones.
             Settings.LOG_LEVEL = Helpers.LogLevel.None;
             Client.Settings.STORE_LAND_PATCHES = true;
@@ -1477,7 +1578,7 @@ namespace Corrade
             Client.Self.MeanCollision += HandleMeanCollision;
             Client.Self.RegionCrossed += HandleRegionCrossed;
             // Each Instant Message is processed in its own thread.
-            Client.Self.IM += HandleSelfIM;
+            Client.Self.IM += (sender, args) => new Thread(o => HandleSelfIM(sender, args)).Start();
             // Write the logo in interactive mode.
             if (Environment.UserInteractive)
             {
@@ -1514,12 +1615,12 @@ namespace Corrade
             // Start the HTTP Server if it is supported
             Thread HTTPListenerThread = null;
             HttpListener HTTPListener = null;
-            if (Configuration.HTTP_SERVER && !HttpListener.IsSupported)
+            if (Configuration.ENABLE_HTTP_SERVER && !HttpListener.IsSupported)
             {
                 Feedback(GetEnumDescription(ConsoleError.HTTP_SERVER_ERROR),
                     GetEnumDescription(ConsoleError.HTTP_SERVER_NOT_SUPPORTED));
             }
-            if (Configuration.HTTP_SERVER && HttpListener.IsSupported)
+            if (Configuration.ENABLE_HTTP_SERVER && HttpListener.IsSupported)
             {
                 Feedback(GetEnumDescription(ConsoleError.STARTING_HTTP_SERVER));
                 HTTPListenerThread = new Thread(() =>
@@ -1657,7 +1758,7 @@ namespace Corrade
                 CallbackThread.Abort();
             }
             // Close HTTP server
-            if (Configuration.HTTP_SERVER && HttpListener.IsSupported)
+            if (Configuration.ENABLE_HTTP_SERVER && HttpListener.IsSupported)
             {
                 Feedback(GetEnumDescription(ConsoleError.STOPPING_HTTP_SERVER));
                 if (HTTPListenerThread != null)
@@ -1733,7 +1834,8 @@ namespace Corrade
                 HttpListenerContext httpContext = httpListener.EndGetContext(ar);
                 HttpListenerRequest httpRequest = httpContext.Request;
                 // only accept POST requests
-                if (!httpRequest.HttpMethod.Equals(CORRADE_CONSTANTS.POST, StringComparison.OrdinalIgnoreCase)) return;
+                if (!httpRequest.HttpMethod.Equals(WebRequestMethods.Http.Post, StringComparison.OrdinalIgnoreCase))
+                    return;
                 Stream body = httpRequest.InputStream;
                 Encoding encoding = httpRequest.ContentEncoding;
                 StreamReader reader = new StreamReader(body, encoding);
@@ -2514,10 +2616,27 @@ namespace Corrade
                     return null;
                 }
             }
+            // Log the command.
             Feedback(string.Format(CultureInfo.InvariantCulture, "{0} ({1}) : {2}", sender,
                 identifier,
                 message));
-            return ProcessCommand(message);
+
+            // Perform the command.
+            Dictionary<string, string> result = ProcessCommand(message);
+            // send callback if registered
+            string url = wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.CALLBACK), message));
+            if (!string.IsNullOrEmpty(url) && CallbackQueue.Count < Configuration.CALLBACK_QUEUE_LENGTH)
+            {
+                lock (CallbackQueueLock)
+                {
+                    CallbackQueue.Enqueue(new CallbackQueueElement
+                    {
+                        URL = url,
+                        message = wasKeyValueEscape(result)
+                    });
+                }
+            }
+            return result;
         }
 
         /// <summary>
@@ -3292,11 +3411,6 @@ namespace Corrade
                         }
                         Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                         Client.Groups.DeleteRole(groupUUID, roleUUID);
-                        // Delete from Role Cache
-                        lock (Cache.Locks.RoleCacheLock)
-                        {
-                            Cache.RoleCache.RemoveWhere(o => o.UUID.Equals(roleUUID));
-                        }
                     };
                     break;
                 case ScriptKeys.ADDTOROLE:
@@ -9986,51 +10100,34 @@ namespace Corrade
             bool success = false;
             try
             {
-                execute.Invoke();
+                lock (CommandLock)
+                {
+                    execute.Invoke();
+                }
                 success = true;
             }
             catch (Exception e)
             {
                 result.Add(GetEnumDescription(ResultKeys.ERROR), e.Message);
             }
+            // add the final success status
             result.Add(GetEnumDescription(ResultKeys.SUCCESS), success.ToString(CultureInfo.InvariantCulture));
 
             // build afterburn
-            System.Action afterburn = () =>
+            object AfterBurnLock = new object();
+            HashSet<string> resultKeys = new HashSet<string>(wasGetEnumDescriptions<ResultKeys>());
+            HashSet<string> scriptKeys = new HashSet<string>(wasGetEnumDescriptions<ScriptKeys>());
+            Parallel.ForEach(wasKeyValueDecode(message), o =>
             {
-                object LockObject = new object();
-                Parallel.ForEach(wasKeyValueDecode(message), o =>
+                // remove keys that are script keys or invalid key-value pairs
+                if (string.IsNullOrEmpty(o.Key) || resultKeys.Contains(o.Key) || scriptKeys.Contains(o.Key) ||
+                    string.IsNullOrEmpty(o.Value))
+                    return;
+                lock (AfterBurnLock)
                 {
-                    // remove keys that are script keys or invalid key-value pairs
-                    if (string.IsNullOrEmpty(o.Key) || wasGetEnumDescriptions<ScriptKeys>().Contains(o.Key) ||
-                        string.IsNullOrEmpty(o.Value))
-                        return;
-                    lock (LockObject)
-                    {
-                        result.Add(wasUriEscapeDataString(o.Key), wasUriEscapeDataString(o.Value));
-                    }
-                });
-            };
-            afterburn.Invoke();
-
-            // send callback
-            System.Action callback = () =>
-            {
-                string url = wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.CALLBACK), message));
-                if (string.IsNullOrEmpty(url)) return;
-                if (CallbackQueue.Count < Configuration.CALLBACK_QUEUE_LENGTH)
-                {
-                    lock (CallbackQueueLock)
-                    {
-                        CallbackQueue.Enqueue(new CallbackQueueElement
-                        {
-                            URL = url,
-                            message = wasKeyValueEscape(result)
-                        });
-                    }
+                    result.Add(wasUriEscapeDataString(o.Key), wasUriEscapeDataString(o.Value));
                 }
-            };
-            callback.Invoke();
+            });
 
             return result;
         }
@@ -10239,7 +10336,11 @@ namespace Corrade
                     return true;
                 }
             }
-            bool succeeded = lookupGroupNameToUUID(groupName, millisecondsTimeout, ref groupUUID);
+            bool succeeded;
+            lock (ServicesLock)
+            {
+                succeeded = lookupGroupNameToUUID(groupName, millisecondsTimeout, ref groupUUID);
+            }
             if (succeeded)
             {
                 lock (Cache.Locks.GroupCacheLock)
@@ -10319,7 +10420,11 @@ namespace Corrade
                     return true;
                 }
             }
-            bool succeeded = lookupAgentNameToUUID(agentFirstName, agentLastName, millisecondsTimeout, ref agentUUID);
+            bool succeeded;
+            lock (ServicesLock)
+            {
+                succeeded = lookupAgentNameToUUID(agentFirstName, agentLastName, millisecondsTimeout, ref agentUUID);
+            }
             if (succeeded)
             {
                 lock (Cache.Locks.AgentCacheLock)
@@ -10390,7 +10495,11 @@ namespace Corrade
                     return true;
                 }
             }
-            bool succeeded = lookupAgentUUIDToName(agentUUID, millisecondsTimeout, ref agentName);
+            bool succeeded;
+            lock (ServicesLock)
+            {
+                succeeded = lookupAgentUUIDToName(agentUUID, millisecondsTimeout, ref agentName);
+            }
             if (succeeded)
             {
                 List<string> name =
@@ -10448,7 +10557,7 @@ namespace Corrade
         }
 
         /// <summary>
-        ///     A wrapper to resolve role names to role UUIDs using Corrade's internal cache.
+        ///     A wrapper to resolve role names to role UUIDs - used for locking service requests.
         /// </summary>
         /// <param name="roleName">the name of the role to be resolved to an UUID</param>
         /// <param name="groupUUID">the UUID of the group to query for the role UUID</param>
@@ -10458,31 +10567,10 @@ namespace Corrade
         private static bool RoleNameToRoleUUID(string roleName, UUID groupUUID, int millisecondsTimeout,
             ref UUID roleUUID)
         {
-            lock (Cache.Locks.RoleCacheLock)
+            lock (ServicesLock)
             {
-                Cache.Roles role =
-                    Cache.RoleCache.FirstOrDefault(o => o.GroupUUID.Equals(groupUUID) && o.Name.Equals(roleName));
-
-                if (!role.Equals(default(Cache.Roles)))
-                {
-                    roleUUID = role.UUID;
-                    return true;
-                }
+                return lookupRoleNameToRoleUUID(roleName, groupUUID, millisecondsTimeout, ref roleUUID);
             }
-            bool succeeded = lookupRoleNameToRoleUUID(roleName, groupUUID, millisecondsTimeout, ref roleUUID);
-            if (succeeded)
-            {
-                lock (Cache.Locks.RoleCacheLock)
-                {
-                    Cache.RoleCache.Add(new Cache.Roles
-                    {
-                        Name = roleName,
-                        UUID = roleUUID,
-                        GroupUUID = groupUUID
-                    });
-                }
-            }
-            return succeeded;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -10525,7 +10613,7 @@ namespace Corrade
         }
 
         /// <summary>
-        ///     Wrapper for resolving role UUIDs to names using Corrade's internal cache.
+        ///     Wrapper for resolving role UUIDs to names - used for locking service requests.
         /// </summary>
         /// <param name="RoleUUID"></param>
         /// <param name="GroupUUID"></param>
@@ -10534,31 +10622,10 @@ namespace Corrade
         /// <returns></returns>
         private static bool RoleUUIDToName(UUID RoleUUID, UUID GroupUUID, int millisecondsTimeout, ref string roleName)
         {
-            lock (Cache.Locks.RoleCacheLock)
+            lock (ServicesLock)
             {
-                Cache.Roles role =
-                    Cache.RoleCache.FirstOrDefault(o => o.GroupUUID.Equals(GroupUUID) && o.UUID.Equals(RoleUUID));
-
-                if (!role.Equals(default(Cache.Roles)))
-                {
-                    roleName = role.Name;
-                    return true;
-                }
+                return lookupRoleUUIDToName(RoleUUID, GroupUUID, millisecondsTimeout, ref roleName);
             }
-            bool succeeded = lookupRoleUUIDToName(RoleUUID, GroupUUID, millisecondsTimeout, ref roleName);
-            if (succeeded)
-            {
-                lock (Cache.Locks.RoleCacheLock)
-                {
-                    Cache.RoleCache.Add(new Cache.Roles
-                    {
-                        Name = roleName,
-                        UUID = RoleUUID,
-                        GroupUUID = GroupUUID
-                    });
-                }
-            }
-            return succeeded;
         }
 
         #endregion
@@ -10813,7 +10880,6 @@ namespace Corrade
             public const string DEFAULT_SERVICE_NAME = @"Corrade";
             public const string LOG_FACILITY = @"Application";
             public const string WEB_REQUEST = @"Web Request";
-            public const string POST = @"POST";
             public const string TEXT_HTML = @"text/html";
             public const string CONFIGURATION_FILE = @"Corrade.ini";
             public const string DATE_TIME_STAMP = @"dd-MM-yyyy HH:mm";
@@ -10830,7 +10896,7 @@ namespace Corrade
             public static string LAST_NAME;
             public static string PASSWORD;
             public static string LOGIN_URL;
-            public static bool HTTP_SERVER;
+            public static bool ENABLE_HTTP_SERVER;
             public static string HTTP_SERVER_PREFIX;
             public static int HTTP_SERVER_TIMEOUT;
             public static int CALLBACK_TIMEOUT;
@@ -10839,6 +10905,9 @@ namespace Corrade
             public static int NOTIFICATION_TIMEOUT;
             public static int NOTIFICATION_THROTTLE;
             public static int NOTIFICATION_QUEUE_LENGTH;
+            public static int CONNECTION_LIMIT;
+            public static bool USE_NAGGLE;
+            public static bool USE_EXPECT100CONTINUE;
             public static int SERVICES_TIMEOUT;
             public static bool TOS_ACCEPTED;
             public static string START_LOCATION;
@@ -10871,7 +10940,7 @@ namespace Corrade
                 LAST_NAME = string.Empty;
                 PASSWORD = string.Empty;
                 LOGIN_URL = string.Empty;
-                HTTP_SERVER = false;
+                ENABLE_HTTP_SERVER = false;
                 HTTP_SERVER_PREFIX = "http://+:8080/";
                 HTTP_SERVER_TIMEOUT = 5000;
                 CALLBACK_TIMEOUT = 5000;
@@ -10880,6 +10949,8 @@ namespace Corrade
                 NOTIFICATION_TIMEOUT = 5000;
                 NOTIFICATION_THROTTLE = 1000;
                 NOTIFICATION_QUEUE_LENGTH = 100;
+                CONNECTION_LIMIT = 100;
+                USE_NAGGLE = true;
                 SERVICES_TIMEOUT = 60000;
                 TOS_ACCEPTED = false;
                 START_LOCATION = "last";
@@ -10959,19 +11030,6 @@ namespace Corrade
                                     }
                                     LOGIN_URL = client.InnerText;
                                     break;
-                                case ConfigurationKeys.HTTP_SERVER:
-                                    if (!bool.TryParse(client.InnerText, out HTTP_SERVER))
-                                    {
-                                        throw new Exception("error in client section");
-                                    }
-                                    break;
-                                case ConfigurationKeys.HTTP_SERVER_PREFIX:
-                                    if (string.IsNullOrEmpty(client.InnerText))
-                                    {
-                                        throw new Exception("error in client section");
-                                    }
-                                    HTTP_SERVER_PREFIX = client.InnerText;
-                                    break;
                                 case ConfigurationKeys.TOS_ACCEPTED:
                                     if (!bool.TryParse(client.InnerText, out TOS_ACCEPTED))
                                     {
@@ -10997,12 +11055,6 @@ namespace Corrade
                                     }
                                     START_LOCATION = client.InnerText;
                                     break;
-                                case ConfigurationKeys.NETWORK_CARD_MAC:
-                                    if (!string.IsNullOrEmpty(client.InnerText))
-                                    {
-                                        NETWORK_CARD_MAC = client.InnerText;
-                                    }
-                                    break;
                                 case ConfigurationKeys.LOG:
                                     if (string.IsNullOrEmpty(client.InnerText))
                                     {
@@ -11017,6 +11069,75 @@ namespace Corrade
                         Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
                     }
 
+                    // Process server.
+                    nodeList = root.SelectNodes("/config/server/*");
+                    if (nodeList != null)
+                    {
+                        try
+                        {
+                            foreach (XmlNode serverNode in nodeList)
+                            {
+                                switch (serverNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                {
+                                    case ConfigurationKeys.HTTP:
+                                        if (!bool.TryParse(serverNode.InnerText, out ENABLE_HTTP_SERVER))
+                                        {
+                                            throw new Exception("error in server section");
+                                        }
+                                        break;
+                                    case ConfigurationKeys.PREFIX:
+                                        if (string.IsNullOrEmpty(serverNode.InnerText))
+                                        {
+                                            throw new Exception("error in server section");
+                                        }
+                                        HTTP_SERVER_PREFIX = serverNode.InnerText;
+                                        break;
+                                }
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                        }
+                    }
+
+                    // Process network.
+                    nodeList = root.SelectNodes("/config/network/*");
+                    if (nodeList != null)
+                    {
+                        try
+                        {
+                            foreach (XmlNode networkNode in nodeList)
+                            {
+                                switch (networkNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                {
+                                    case ConfigurationKeys.MAC:
+                                        if (!string.IsNullOrEmpty(networkNode.InnerText))
+                                        {
+                                            NETWORK_CARD_MAC = networkNode.InnerText;
+                                        }
+                                        break;
+                                    case ConfigurationKeys.NAGGLE:
+                                        if (!bool.TryParse(networkNode.InnerText, out USE_NAGGLE))
+                                        {
+                                            throw new Exception("error in network section");
+                                        }
+                                        break;
+                                    case ConfigurationKeys.EXPECT100CONTINUE:
+                                        if (!bool.TryParse(networkNode.InnerText, out USE_EXPECT100CONTINUE))
+                                        {
+                                            throw new Exception("error in network section");
+                                        }
+                                        break;
+                                }
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                        }
+                    }
+
                     // Process limits.
                     nodeList = root.SelectNodes("/config/limits/*");
                     if (nodeList != null)
@@ -11027,6 +11148,27 @@ namespace Corrade
                             {
                                 switch (limitsNode.Name.ToLower(CultureInfo.InvariantCulture))
                                 {
+                                    case ConfigurationKeys.CLIENT:
+                                        XmlNodeList clientLimitNodeList = limitsNode.SelectNodes("*");
+                                        if (clientLimitNodeList == null)
+                                        {
+                                            throw new Exception("error in client limits section");
+                                        }
+                                        foreach (XmlNode clientLimitNode in clientLimitNodeList)
+                                        {
+                                            switch (clientLimitNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                            {
+                                                case ConfigurationKeys.CONNECTIONS:
+                                                    if (
+                                                        !int.TryParse(clientLimitNode.InnerText,
+                                                            out SERVICES_TIMEOUT))
+                                                    {
+                                                        throw new Exception("error in client limits section");
+                                                    }
+                                                    break;
+                                            }
+                                        }
+                                        break;
                                     case ConfigurationKeys.CALLBACKS:
                                         XmlNodeList callbackLimitNodeList = limitsNode.SelectNodes("*");
                                         if (callbackLimitNodeList == null)
@@ -11098,11 +11240,11 @@ namespace Corrade
                                             }
                                         }
                                         break;
-                                    case ConfigurationKeys.HTTP_SERVER:
+                                    case ConfigurationKeys.SERVER:
                                         XmlNodeList HTTPServerLimitNodeList = limitsNode.SelectNodes("*");
                                         if (HTTPServerLimitNodeList == null)
                                         {
-                                            throw new Exception("error in HTTP server limits section");
+                                            throw new Exception("error in server limits section");
                                         }
                                         foreach (XmlNode HTTPServerLimitNode in HTTPServerLimitNodeList)
                                         {
@@ -11113,7 +11255,7 @@ namespace Corrade
                                                         !int.TryParse(HTTPServerLimitNode.InnerText,
                                                             out HTTP_SERVER_TIMEOUT))
                                                     {
-                                                        throw new Exception("error in HTTP server limits section");
+                                                        throw new Exception("error in server limits section");
                                                     }
                                                     break;
                                             }
@@ -11123,7 +11265,7 @@ namespace Corrade
                                         XmlNodeList servicesLimitNodeList = limitsNode.SelectNodes("*");
                                         if (servicesLimitNodeList == null)
                                         {
-                                            throw new Exception("error in HTTP server limits section");
+                                            throw new Exception("error in services limits section");
                                         }
                                         foreach (XmlNode servicesLimitNode in servicesLimitNodeList)
                                         {
@@ -11134,7 +11276,7 @@ namespace Corrade
                                                         !int.TryParse(servicesLimitNode.InnerText,
                                                             out SERVICES_TIMEOUT))
                                                     {
-                                                        throw new Exception("error in HTTP server limits section");
+                                                        throw new Exception("error in services limits section");
                                                     }
                                                     break;
                                             }
@@ -11316,29 +11458,34 @@ namespace Corrade
         /// </summary>
         private struct ConfigurationKeys
         {
-            public const string FIRST_NAME = "firstname";
-            public const string LAST_NAME = "lastname";
-            public const string LOGIN_URL = "loginurl";
-            public const string HTTP_SERVER = "httpserver";
-            public const string HTTP_SERVER_PREFIX = "httpserverprefix";
-            public const string TIMEOUT = "timeout";
-            public const string THROTTLE = "throttle";
-            public const string SERVICES = "services";
-            public const string TOS_ACCEPTED = "tosaccepted";
-            public const string AUTO_ACTIVATE_GROUP = "autoactivategroup";
-            public const string GROUP_CREATE_FEE = "groupcreatefee";
-            public const string START_LOCATION = "startlocation";
-            public const string NETWORK_CARD_MAC = "networkcardmac";
-            public const string LOG = "log";
-            public const string NAME = "name";
-            public const string UUID = "uuid";
-            public const string PASSWORD = "password";
-            public const string CHATLOG = "chatlog";
-            public const string DATABASE = "database";
-            public const string PERMISSIONS = "permissions";
-            public const string NOTIFICATIONS = "notifications";
-            public const string CALLBACKS = "callbacks";
-            public const string QUEUE_LENGTH = "queuelength";
+            public const string FIRST_NAME = @"firstname";
+            public const string LAST_NAME = @"lastname";
+            public const string LOGIN_URL = @"loginurl";
+            public const string HTTP = @"http";
+            public const string PREFIX = @"prefix";
+            public const string TIMEOUT = @"timeout";
+            public const string THROTTLE = @"throttle";
+            public const string SERVICES = @"services";
+            public const string TOS_ACCEPTED = @"tosaccepted";
+            public const string AUTO_ACTIVATE_GROUP = @"autoactivategroup";
+            public const string GROUP_CREATE_FEE = @"groupcreatefee";
+            public const string START_LOCATION = @"startlocation";
+            public const string LOG = @"log";
+            public const string NAME = @"name";
+            public const string UUID = @"uuid";
+            public const string PASSWORD = @"password";
+            public const string CHATLOG = @"chatlog";
+            public const string DATABASE = @"database";
+            public const string PERMISSIONS = @"permissions";
+            public const string NOTIFICATIONS = @"notifications";
+            public const string CALLBACKS = @"callbacks";
+            public const string QUEUE_LENGTH = @"queuelength";
+            public const string CLIENT = @"client";
+            public const string NAGGLE = @"naggle";
+            public const string CONNECTIONS = @"connections";
+            public const string EXPECT100CONTINUE = @"expect100continue";
+            public const string MAC = @"mac";
+            public const string SERVER = @"server";
         }
 
         /// <summary>
@@ -11548,7 +11695,6 @@ namespace Corrade
         {
             public static readonly HashSet<Agents> AgentCache = new HashSet<Agents>();
             public static readonly HashSet<Groups> GroupCache = new HashSet<Groups>();
-            public static readonly HashSet<Roles> RoleCache = new HashSet<Roles>();
 
             internal struct Agents
             {
@@ -11563,18 +11709,10 @@ namespace Corrade
                 public UUID UUID;
             }
 
-            internal struct Roles
-            {
-                public string Name;
-                public UUID UUID;
-                public UUID GroupUUID;
-            }
-
             public struct Locks
             {
                 public static readonly object AgentCacheLock = new object();
                 public static readonly object GroupCacheLock = new object();
-                public static readonly object RoleCacheLock = new object();
             }
 
             internal static void Purge()
@@ -11586,10 +11724,6 @@ namespace Corrade
                 lock (Locks.GroupCacheLock)
                 {
                     GroupCache.Clear();
-                }
-                lock (Locks.RoleCacheLock)
-                {
-                    RoleCache.Clear();
                 }
             }
         }
