@@ -2798,6 +2798,16 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.ROLE_NOT_FOUND));
                         }
+                        // If the role is not everybody, then check for powers to assign to the specified role.
+                        if (roleUUID.Equals(UUID.Zero))
+                        {
+                            if (
+                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
+                                Configuration.SERVICES_TIMEOUT))
+                            {
+                                throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                            }
+                        }
                         Client.Groups.Invite(groupUUID, new List<UUID> {roleUUID}, agentUUID);
                     };
                     break;
