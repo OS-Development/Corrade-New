@@ -78,8 +78,7 @@ namespace Corrade
 
         private static readonly object GroupNotificationsLock = new object();
 
-        private static readonly HashSet<Notification> GroupNotifications =
-            new HashSet<Notification>();
+        private static readonly HashSet<Notification> GroupNotifications = new HashSet<Notification>();
 
         private static readonly object TeleportLock = new object();
 
@@ -88,9 +87,18 @@ namespace Corrade
 
         private static readonly object InventoryOffersLock = new object();
 
+        private static readonly Queue<CallbackQueueElement> CallbackQueue = new Queue<CallbackQueueElement>();
+
+        private static readonly object CallbackQueueLock = new object();
+
+        private static readonly Queue<NotificationQueueElement> NotificationQueue =
+            new Queue<NotificationQueueElement>();
+
+        private static readonly object NotificationQueueLock = new object();
+
         public static EventHandler ConsoleEventHandler;
 
-        private static readonly System.Action ActivateCurrentLandGroup = () => new Thread(() =>
+        private static readonly System.Action ActivateCurrentLandGroup = () => new Thread(activate =>
         {
             // relax 5 seconds
             Thread.Sleep(5000 + Client.Network.CurrentSim.Stats.LastLag);
@@ -103,7 +111,7 @@ namespace Corrade
             }
         }).Start();
 
-        private static readonly System.Action Rebake = () => new Thread(() =>
+        private static readonly System.Action Rebake = () => new Thread(rebake =>
         {
             // relax 5 seconds
             Thread.Sleep(5000 + Client.Network.CurrentSim.Stats.LastLag);
@@ -770,7 +778,7 @@ namespace Corrade
         /// <param name="group">the name of the group</param>
         /// <param name="notification">the numeric Corrade notification</param>
         /// <returns>true if the group has the notification</returns>
-        private static bool HasCorradeNotification(string group, int notification)
+        private static bool HasCorradeNotification(string group, uint notification)
         {
             UUID groupUUID;
             return !notification.Equals(0) && UUID.TryParse(group, out groupUUID)
@@ -1439,6 +1447,8 @@ namespace Corrade
             Client.Settings.USE_ASSET_CACHE = true;
             Client.Settings.USE_INTERPOLATION_TIMER = true;
             Client.Settings.FETCH_MISSING_INVENTORY = true;
+            Client.Settings.LOGIN_TIMEOUT = Configuration.SERVICES_TIMEOUT;
+            Client.Settings.LOGOUT_TIMEOUT = Configuration.SERVICES_TIMEOUT;
             // Install global event handlers.
             Client.Inventory.InventoryObjectOffered += HandleInventoryObjectOffered;
             Client.Appearance.AppearanceSet += HandleAppearanceSet;
@@ -1447,7 +1457,7 @@ namespace Corrade
             Client.Network.Disconnected += HandleDisconnected;
             Client.Network.SimDisconnected += HandleSimulatorDisconnected;
             Client.Network.EventQueueRunning += HandleEventQueueRunning;
-            Client.Network.SimChanged += HandleSimChanged;
+            //Client.Network.SimChanged += HandleSimChanged;
             Client.Friends.FriendshipOffered += HandleFriendshipOffered;
             Client.Friends.FriendshipResponse += HandleFriendShipResponse;
             Client.Friends.FriendOnline += HandleFriendOnlineStatus;
@@ -1523,7 +1533,7 @@ namespace Corrade
                             while (HTTPListener.IsListening)
                             {
                                 IAsyncResult result = HTTPListener.BeginGetContext(ProcesHTTPRequest, HTTPListener);
-                                result.AsyncWaitHandle.WaitOne(Configuration.CALLBACK_TIMEOUT, false);
+                                result.AsyncWaitHandle.WaitOne(Configuration.HTTP_SERVER_TIMEOUT, false);
                             }
                         }
                     }
@@ -1534,6 +1544,67 @@ namespace Corrade
                 });
                 HTTPListenerThread.Start();
             }
+            // Start the callback thread to send callbacks.
+            bool runCallbackThread = true;
+            Thread CallbackThread = new Thread(() =>
+            {
+                while (runCallbackThread)
+                {
+                    if (!CallbackQueue.Count.Equals(0))
+                    {
+                        CallbackQueueElement callbackQueueElement;
+                        lock (CallbackQueueLock)
+                        {
+                            callbackQueueElement = CallbackQueue.Dequeue();
+                        }
+                        try
+                        {
+                            if (!callbackQueueElement.Equals(default(CallbackQueueElement)))
+                            {
+                                wasPOST(callbackQueueElement.URL, callbackQueueElement.message,
+                                    Configuration.CALLBACK_TIMEOUT);
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Feedback(GetEnumDescription(ConsoleError.CALLBACK_ERROR), callbackQueueElement.URL,
+                                e.Message);
+                        }
+                    }
+                    Thread.Sleep(Configuration.CALLBACK_THROTTLE);
+                }
+            });
+            CallbackThread.Start();
+            bool runNotificationThread = true;
+            Thread NotificationThread = new Thread(() =>
+            {
+                while (runNotificationThread)
+                {
+                    if (!NotificationQueue.Count.Equals(0))
+                    {
+                        NotificationQueueElement notificationQueueElement;
+                        lock (NotificationQueueLock)
+                        {
+                            notificationQueueElement = NotificationQueue.Dequeue();
+                        }
+                        try
+                        {
+                            if (!notificationQueueElement.Equals(default(NotificationQueueElement)))
+                            {
+                                wasPOST(notificationQueueElement.URL, notificationQueueElement.message,
+                                    Configuration.NOTIFICATION_TIMEOUT);
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Feedback(GetEnumDescription(ConsoleError.NOTIFICATION_ERROR), notificationQueueElement.URL,
+                                e.Message);
+                        }
+                    }
+                    Thread.Sleep(Configuration.NOTIFICATION_THROTTLE);
+                }
+            });
+            NotificationThread.Start();
             /*
              * The main thread spins around waiting for the semaphores to become invalidated,
              * at which point Corrade will consider its connection to the grid severed and
@@ -1571,6 +1642,34 @@ namespace Corrade
             Client.Self.MeanCollision -= HandleMeanCollision;
             Client.Self.RegionCrossed -= HandleRegionCrossed;
             Client.Self.IM -= HandleSelfIM;
+            // Stop the notification thread.
+            runNotificationThread = false;
+            NotificationThread.Join(Configuration.SERVICES_TIMEOUT);
+            if (NotificationThread.IsAlive)
+            {
+                NotificationThread.Abort();
+            }
+            // Stop the callback thread.
+            runCallbackThread = false;
+            CallbackThread.Join(Configuration.SERVICES_TIMEOUT);
+            if (CallbackThread.IsAlive)
+            {
+                CallbackThread.Abort();
+            }
+            // Close HTTP server
+            if (Configuration.HTTP_SERVER && HttpListener.IsSupported)
+            {
+                Feedback(GetEnumDescription(ConsoleError.STOPPING_HTTP_SERVER));
+                if (HTTPListenerThread != null)
+                {
+                    HTTPListener.Stop();
+                    HTTPListenerThread.Join(Configuration.SERVICES_TIMEOUT);
+                    if (HTTPListenerThread.IsAlive)
+                    {
+                        HTTPListenerThread.Abort();
+                    }
+                }
+            }
             // Reject any inventory that has not been accepted.
             Parallel.ForEach(InventoryOffers, o =>
             {
@@ -1583,19 +1682,24 @@ namespace Corrade
             // Disable the watcher.
             configurationWatcher.EnableRaisingEvents = false;
             configurationWatcher.Dispose();
-            // Close HTTP server
-            if (Configuration.HTTP_SERVER && HttpListener.IsSupported)
-            {
-                Feedback(GetEnumDescription(ConsoleError.STOPPING_HTTP_SERVER));
-                if (HTTPListenerThread != null)
-                {
-                    HTTPListener.Stop();
-                    HTTPListenerThread.Join(Configuration.SERVICES_TIMEOUT);
-                }
-            }
             // Logout
-            Client.Network.Logout();
-            Client.Network.Shutdown(NetworkManager.DisconnectType.ClientInitiated);
+            if (Client.Network.Connected)
+            {
+                ManualResetEvent LoggedOutEvent = new ManualResetEvent(false);
+                EventHandler<LoggedOutEventArgs> LoggedOutEventHandler = (sender, args) => LoggedOutEvent.Set();
+                Client.Network.LoggedOut += LoggedOutEventHandler;
+                Client.Network.RequestLogout();
+                if (!LoggedOutEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                {
+                    Client.Network.LoggedOut -= LoggedOutEventHandler;
+                    Feedback(GetEnumDescription(ConsoleError.TIMEOUT_LOGGING_OUT));
+                }
+                Client.Network.LoggedOut -= LoggedOutEventHandler;
+            }
+            if (Client.Network.Connected)
+            {
+                Client.Network.Shutdown(NetworkManager.DisconnectType.ClientInitiated);
+            }
             // Close signals
             if (Environment.OSVersion.Platform.Equals(PlatformID.Unix) && BindSignalsThread != null)
             {
@@ -1606,17 +1710,17 @@ namespace Corrade
 
         private static void HandleRegionCrossed(object sender, RegionCrossedEventArgs e)
         {
-            SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e);
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e)).Start();
         }
 
         private static void HandleMeanCollision(object sender, MeanCollisionEventArgs e)
         {
-            SendNotification(Notifications.NOTIFICATION_MEAN_COLLISION, e);
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_MEAN_COLLISION, e)).Start();
         }
 
         private static void HandleViewerEffect(object sender, object e)
         {
-            SendNotification(Notifications.NOTIFICATION_VIEWER_EFFECT, e);
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_VIEWER_EFFECT, e)).Start();
         }
 
         private static void ProcesHTTPRequest(IAsyncResult ar)
@@ -1656,342 +1760,362 @@ namespace Corrade
         private static void SendNotification(Notifications notification, object args)
         {
             // Only send notifications for groups that have bound to the notification to send.
-            Parallel.ForEach(
-                GroupNotifications.Where(
-                    o =>
-                        HasCorradeNotification(o.GROUP, (int) notification) &&
-                        !(o.NOTIFICATION_MASK & (int) notification).Equals(0)), p => new Thread(() =>
+            Parallel.ForEach(GroupNotifications, o =>
+            {
+                if (!HasCorradeNotification(o.GROUP, (uint) notification) ||
+                    (o.NOTIFICATION_MASK & (uint) notification).Equals(0)) return;
+                // Set the notification type
+                Dictionary<string, string> notificationData = new Dictionary<string, string>
+                {
+                    {
+                        GetEnumDescription(ScriptKeys.TYPE),
+                        GetEnumDescription(notification)
+                    }
+                };
+                switch (notification)
+                {
+                    case Notifications.NOTIFICATION_SCRIPT_DIALOG:
+                        ScriptDialogEventArgs scriptDialogEventArgs = (ScriptDialogEventArgs) args;
+                        notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
+                            scriptDialogEventArgs.Message);
+                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                            scriptDialogEventArgs.FirstName);
+                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                            scriptDialogEventArgs.LastName);
+                        notificationData.Add(GetEnumDescription(ScriptKeys.CHANNEL),
+                            scriptDialogEventArgs.Channel.ToString(CultureInfo.InvariantCulture));
+                        notificationData.Add(GetEnumDescription(ScriptKeys.NAME),
+                            scriptDialogEventArgs.ObjectName);
+                        notificationData.Add(GetEnumDescription(ScriptKeys.ITEM),
+                            scriptDialogEventArgs.ObjectID.ToString());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.OWNER),
+                            scriptDialogEventArgs.OwnerID.ToString());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.BUTTON),
+                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                scriptDialogEventArgs.ButtonLabels.ToArray()));
+                        break;
+                    case Notifications.NOTIFICATION_LOCAL_CHAT:
+                        ChatEventArgs chatEventArgs = (ChatEventArgs) args;
+                        List<string> chatName =
+                            new List<string>(chatEventArgs.FromName.Split(new[] {' ', '.'},
+                                StringSplitOptions.RemoveEmptyEntries));
+                        notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
+                            chatEventArgs.Message);
+                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME), chatName.First());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME), chatName.Last());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.OWNER),
+                            chatEventArgs.OwnerID.ToString());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.ITEM),
+                            chatEventArgs.SourceID.ToString());
+                        break;
+                    case Notifications.NOTIFICATION_BALANCE:
+                        BalanceEventArgs balanceEventArgs = (BalanceEventArgs) args;
+                        notificationData.Add(GetEnumDescription(ScriptKeys.BALANCE),
+                            balanceEventArgs.Balance.ToString(CultureInfo.InvariantCulture));
+                        break;
+                    case Notifications.NOTIFICATION_ALERT_MESSAGE:
+                        AlertMessageEventArgs alertMessageEventArgs = (AlertMessageEventArgs) args;
+                        notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
+                            alertMessageEventArgs.Message);
+                        break;
+                    case Notifications.NOTIFICATION_INVENTORY_OFFER:
+                        InventoryObjectOfferedEventArgs inventoryObjectOfferedEventArgs =
+                            (InventoryObjectOfferedEventArgs) args;
+                        List<string> inventoryObjectOfferedName =
+                            new List<string>(
+                                inventoryObjectOfferedEventArgs.Offer.FromAgentName.Split(
+                                    new[] {' ', '.'},
+                                    StringSplitOptions.RemoveEmptyEntries));
+                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                            inventoryObjectOfferedName.First());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                            inventoryObjectOfferedName.Last());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                            inventoryObjectOfferedEventArgs.Offer.FromAgentID.ToString());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.ASSET),
+                            inventoryObjectOfferedEventArgs.AssetType.ToString());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.NAME),
+                            inventoryObjectOfferedEventArgs.Offer.Message);
+                        notificationData.Add(GetEnumDescription(ScriptKeys.SESSION),
+                            inventoryObjectOfferedEventArgs.Offer.IMSessionID.ToString());
+                        break;
+                    case Notifications.NOTIFICATION_SCRIPT_PERMISSION:
+                        ScriptQuestionEventArgs scriptQuestionEventArgs = (ScriptQuestionEventArgs) args;
+                        notificationData.Add(GetEnumDescription(ScriptKeys.ITEM),
+                            scriptQuestionEventArgs.ItemID.ToString());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.TASK),
+                            scriptQuestionEventArgs.TaskID.ToString());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.PERMISSIONS),
+                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                typeof (ScriptPermission).GetFields(BindingFlags.Public |
+                                                                    BindingFlags.Static)
+                                    .Where(
+                                        p =>
+                                            !(((int) p.GetValue(null) &
+                                               (int) scriptQuestionEventArgs.Questions)).Equals(0))
+                                    .Select(p => p.Name).ToArray()));
+                        break;
+                    case Notifications.NOTIFICATION_FRIENDSHIP:
+                        System.Type friendshipNotificationType = args.GetType();
+                        if (friendshipNotificationType == typeof (FriendInfoEventArgs))
                         {
-                            // Set the notification type
-                            Dictionary<string, string> notificationData = new Dictionary<string, string>
-                            {
-                                {
-                                    GetEnumDescription(ScriptKeys.TYPE),
-                                    GetEnumDescription(notification)
-                                }
-                            };
-                            switch (notification)
-                            {
-                                case Notifications.NOTIFICATION_SCRIPT_DIALOG:
-                                    ScriptDialogEventArgs scriptDialogEventArgs = (ScriptDialogEventArgs) args;
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
-                                        scriptDialogEventArgs.Message);
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        scriptDialogEventArgs.FirstName);
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        scriptDialogEventArgs.LastName);
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.CHANNEL),
-                                        scriptDialogEventArgs.Channel.ToString(CultureInfo.InvariantCulture));
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.NAME),
-                                        scriptDialogEventArgs.ObjectName);
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.ITEM),
-                                        scriptDialogEventArgs.ObjectID.ToString());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.OWNER),
-                                        scriptDialogEventArgs.OwnerID.ToString());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.BUTTON),
-                                        string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                            scriptDialogEventArgs.ButtonLabels.ToArray()));
-                                    break;
-                                case Notifications.NOTIFICATION_LOCAL_CHAT:
-                                    ChatEventArgs chatEventArgs = (ChatEventArgs) args;
-                                    List<string> chatName =
-                                        new List<string>(chatEventArgs.FromName.Split(new[] {' ', '.'},
-                                            StringSplitOptions.RemoveEmptyEntries));
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE), chatEventArgs.Message);
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME), chatName.First());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME), chatName.Last());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.OWNER),
-                                        chatEventArgs.OwnerID.ToString());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.ITEM),
-                                        chatEventArgs.SourceID.ToString());
-                                    break;
-                                case Notifications.NOTIFICATION_BALANCE:
-                                    BalanceEventArgs balanceEventArgs = (BalanceEventArgs) args;
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.BALANCE),
-                                        balanceEventArgs.Balance.ToString(CultureInfo.InvariantCulture));
-                                    break;
-                                case Notifications.NOTIFICATION_ALERT_MESSAGE:
-                                    AlertMessageEventArgs alertMessageEventArgs = (AlertMessageEventArgs) args;
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
-                                        alertMessageEventArgs.Message);
-                                    break;
-                                case Notifications.NOTIFICATION_INVENTORY_OFFER:
-                                    InventoryObjectOfferedEventArgs inventoryObjectOfferedEventArgs =
-                                        (InventoryObjectOfferedEventArgs) args;
-                                    List<string> inventoryObjectOfferedName =
-                                        new List<string>(
-                                            inventoryObjectOfferedEventArgs.Offer.FromAgentName.Split(new[] {' ', '.'},
-                                                StringSplitOptions.RemoveEmptyEntries));
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        inventoryObjectOfferedName.First());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        inventoryObjectOfferedName.Last());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
-                                        inventoryObjectOfferedEventArgs.Offer.FromAgentID.ToString());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.ASSET),
-                                        inventoryObjectOfferedEventArgs.AssetType.ToString());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.NAME),
-                                        inventoryObjectOfferedEventArgs.Offer.Message);
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.SESSION),
-                                        inventoryObjectOfferedEventArgs.Offer.IMSessionID.ToString());
-                                    break;
-                                case Notifications.NOTIFICATION_SCRIPT_PERMISSION:
-                                    ScriptQuestionEventArgs scriptQuestionEventArgs = (ScriptQuestionEventArgs) args;
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.ITEM),
-                                        scriptQuestionEventArgs.ItemID.ToString());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.TASK),
-                                        scriptQuestionEventArgs.TaskID.ToString());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.PERMISSIONS),
-                                        string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                            typeof (ScriptPermission).GetFields(BindingFlags.Public |
-                                                                                BindingFlags.Static)
-                                                .Where(
-                                                    o =>
-                                                        !(((int) o.GetValue(null) &
-                                                           (int) scriptQuestionEventArgs.Questions)).Equals(0))
-                                                .Select(o => o.Name).ToArray()));
-                                    break;
-                                case Notifications.NOTIFICATION_FRIENDSHIP:
-                                    System.Type friendshipNotificationType = args.GetType();
-                                    if (friendshipNotificationType == typeof (FriendInfoEventArgs))
-                                    {
-                                        FriendInfoEventArgs friendInfoEventArgs = (FriendInfoEventArgs) args;
-                                        List<string> name =
-                                            new List<string>(friendInfoEventArgs.Friend.Name.Split(new[] {' ', '.'},
-                                                StringSplitOptions.RemoveEmptyEntries));
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME), name.First());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME), name.Last());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
-                                            friendInfoEventArgs.Friend.UUID.ToString());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.STATUS),
-                                            friendInfoEventArgs.Friend.IsOnline
-                                                ? GetEnumDescription(Action.ONLINE)
-                                                : GetEnumDescription(Action.OFFLINE));
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.RIGHTS),
-                                            // Return the friend rights as a nice CSV string.
-                                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                                typeof (FriendRights).GetFields(BindingFlags.Public |
-                                                                                BindingFlags.Static)
-                                                    .Where(
-                                                        o =>
-                                                            !(((int) o.GetValue(null) &
-                                                               (int) friendInfoEventArgs.Friend.MyFriendRights)).Equals(
-                                                                   0))
-                                                    .Select(o => o.Name)
-                                                    .ToArray()));
-                                        break;
-                                    }
-                                    if (friendshipNotificationType == typeof (FriendshipResponseEventArgs))
-                                    {
-                                        FriendshipResponseEventArgs friendshipResponseEventArgs =
-                                            (FriendshipResponseEventArgs) args;
-                                        List<string> friendshipResponseName =
-                                            new List<string>(
-                                                friendshipResponseEventArgs.AgentName.Split(new[] {' ', '.'},
-                                                    StringSplitOptions.RemoveEmptyEntries));
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                            friendshipResponseName.First());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
-                                            friendshipResponseName.Last());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
-                                            friendshipResponseEventArgs.AgentID.ToString());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
-                                            GetEnumDescription(Action.RESPONSE));
-                                        break;
-                                    }
-                                    if (friendshipNotificationType == typeof (FriendshipOfferedEventArgs))
-                                    {
-                                        FriendshipOfferedEventArgs friendshipOfferedEventArgs =
-                                            (FriendshipOfferedEventArgs) args;
-                                        List<string> friendshipOfferedName =
-                                            new List<string>(friendshipOfferedEventArgs.AgentName.Split(
-                                                new[] {' ', '.'},
-                                                StringSplitOptions.RemoveEmptyEntries));
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                            friendshipOfferedName.First());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
-                                            friendshipOfferedName.Last());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
-                                            friendshipOfferedEventArgs.AgentID.ToString());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
-                                            GetEnumDescription(Action.REQUEST));
-                                    }
-                                    break;
-                                case Notifications.NOTIFICATION_TELEPORT_LURE:
-                                    InstantMessageEventArgs teleportLureEventArgs = (InstantMessageEventArgs) args;
-                                    List<string> teleportLureName =
-                                        new List<string>(teleportLureEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
-                                            StringSplitOptions.RemoveEmptyEntries));
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        teleportLureName.First());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        teleportLureName.Last());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
-                                        teleportLureEventArgs.IM.FromAgentID.ToString());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.SESSION),
-                                        teleportLureEventArgs.IM.IMSessionID.ToString());
-                                    break;
-                                case Notifications.NOTIFICATION_GROUP_NOTICE:
-                                    InstantMessageEventArgs notificationGroupNoticEventArgs =
-                                        (InstantMessageEventArgs) args;
-                                    List<string> notificationGroupNoticeName =
-                                        new List<string>(
-                                            notificationGroupNoticEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
-                                                StringSplitOptions.RemoveEmptyEntries));
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        notificationGroupNoticeName.First());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        notificationGroupNoticeName.Last());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
-                                        notificationGroupNoticEventArgs.IM.FromAgentID.ToString());
-                                    string[] noticeData = notificationGroupNoticEventArgs.IM.Message.Split('|');
-                                    if (noticeData.Length > 0 && !string.IsNullOrEmpty(noticeData[0]))
-                                    {
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.SUBJECT), noticeData[0]);
-                                    }
-                                    if (noticeData.Length > 1 && !string.IsNullOrEmpty(noticeData[1]))
-                                    {
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE), noticeData[1]);
-                                    }
-                                    break;
-                                case Notifications.NOTIFICATION_INSTANT_MESSAGE:
-                                    InstantMessageEventArgs notificationInstantMessage = (InstantMessageEventArgs) args;
-                                    List<string> notificationInstantMessageName =
-                                        new List<string>(
-                                            notificationInstantMessage.IM.FromAgentName.Split(new[] {' ', '.'},
-                                                StringSplitOptions.RemoveEmptyEntries));
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        notificationInstantMessageName.First());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        notificationInstantMessageName.Last());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
-                                        notificationInstantMessage.IM.FromAgentID.ToString());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
-                                        notificationInstantMessage.IM.Message);
-                                    break;
-                                case Notifications.NOTIFICATION_REGION_MESSAGE:
-                                    InstantMessageEventArgs notificationRegionMessage = (InstantMessageEventArgs) args;
-                                    List<string> notificationRegionMessageName =
-                                        new List<string>(
-                                            notificationRegionMessage.IM.FromAgentName.Split(new[] {' ', '.'},
-                                                StringSplitOptions.RemoveEmptyEntries));
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        notificationRegionMessageName.First());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        notificationRegionMessageName.Last());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
-                                        notificationRegionMessage.IM.FromAgentID.ToString());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
-                                        notificationRegionMessage.IM.Message);
-                                    break;
-                                case Notifications.NOTIFICATION_GROUP_MESSAGE:
-                                    InstantMessageEventArgs notificationGroupMessage = (InstantMessageEventArgs) args;
-                                    List<string> notificationGroupMessageName =
-                                        new List<string>(
-                                            notificationGroupMessage.IM.FromAgentName.Split(new[] {' ', '.'},
-                                                StringSplitOptions.RemoveEmptyEntries));
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        notificationGroupMessageName.First());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        notificationGroupMessageName.Last());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
-                                        notificationGroupMessage.IM.FromAgentID.ToString());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.GROUP), p.GROUP);
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
-                                        notificationGroupMessage.IM.Message);
-                                    break;
-                                case Notifications.NOTIFICATION_VIEWER_EFFECT:
-                                    System.Type viewerEffectType = args.GetType();
-                                    if (viewerEffectType == typeof (ViewerEffectEventArgs))
-                                    {
-                                        ViewerEffectEventArgs notificationViewerEffectEventArgs =
-                                            (ViewerEffectEventArgs) args;
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.EFFECT),
-                                            notificationViewerEffectEventArgs.Type.ToString());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.SOURCE),
-                                            notificationViewerEffectEventArgs.SourceID.ToString());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.TARGET),
-                                            notificationViewerEffectEventArgs.TargetID.ToString());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.POSITION),
-                                            notificationViewerEffectEventArgs.TargetPosition.ToString());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.DURATION),
-                                            notificationViewerEffectEventArgs.Duration.ToString(
-                                                CultureInfo.InvariantCulture));
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.ID),
-                                            notificationViewerEffectEventArgs.EffectID.ToString());
-                                        break;
-                                    }
-                                    if (viewerEffectType == typeof (ViewerEffectPointAtEventArgs))
-                                    {
-                                        ViewerEffectPointAtEventArgs notificationViewerPointAtEventArgs =
-                                            (ViewerEffectPointAtEventArgs) args;
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.SOURCE),
-                                            notificationViewerPointAtEventArgs.SourceID.ToString());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.TARGET),
-                                            notificationViewerPointAtEventArgs.TargetID.ToString());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.POSITION),
-                                            notificationViewerPointAtEventArgs.TargetPosition.ToString());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.DURATION),
-                                            notificationViewerPointAtEventArgs.Duration.ToString(
-                                                CultureInfo.InvariantCulture));
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.ID),
-                                            notificationViewerPointAtEventArgs.EffectID.ToString());
-                                        break;
-                                    }
-                                    if (viewerEffectType == typeof (ViewerEffectLookAtEventArgs))
-                                    {
-                                        ViewerEffectLookAtEventArgs notificationViewerLookAtEventArgs =
-                                            (ViewerEffectLookAtEventArgs) args;
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.SOURCE),
-                                            notificationViewerLookAtEventArgs.SourceID.ToString());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.TARGET),
-                                            notificationViewerLookAtEventArgs.TargetID.ToString());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.POSITION),
-                                            notificationViewerLookAtEventArgs.TargetPosition.ToString());
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.DURATION),
-                                            notificationViewerLookAtEventArgs.Duration.ToString(
-                                                CultureInfo.InvariantCulture));
-                                        notificationData.Add(GetEnumDescription(ScriptKeys.ID),
-                                            notificationViewerLookAtEventArgs.EffectID.ToString());
-                                    }
-                                    break;
-                                case Notifications.NOTIFICATION_MEAN_COLLISION:
-                                    MeanCollisionEventArgs meanCollisionEventArgs =
-                                        (MeanCollisionEventArgs) args;
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.AGGRESSOR),
-                                        meanCollisionEventArgs.Aggressor.ToString());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.MAGNITUDE),
-                                        meanCollisionEventArgs.Magnitude.ToString(CultureInfo.InvariantCulture));
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.TIME),
-                                        meanCollisionEventArgs.Time.ToLongDateString());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.ENTITY),
-                                        meanCollisionEventArgs.Type.ToString());
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.VICTIM),
-                                        meanCollisionEventArgs.Victim.ToString());
-                                    break;
-                                case Notifications.NOTIFICATION_REGION_CROSSED:
-                                    RegionCrossedEventArgs regionCrossedEventArgs =
-                                        (RegionCrossedEventArgs) args;
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.OLD),
-                                        regionCrossedEventArgs.OldSimulator.Name);
-                                    notificationData.Add(GetEnumDescription(ScriptKeys.NEW),
-                                        regionCrossedEventArgs.NewSimulator.Name);
-                                    break;
-                            }
-                            try
-                            {
-                                wasPOST(p.URL, wasKeyValueEscape(notificationData));
-                            }
-                            catch (Exception e)
-                            {
-                                Feedback(GetEnumDescription(ConsoleError.NOTIFICATION_COULD_NOT_BE_SENT), e.Message);
-                            }
-                        }).Start());
+                            FriendInfoEventArgs friendInfoEventArgs = (FriendInfoEventArgs) args;
+                            List<string> name =
+                                new List<string>(friendInfoEventArgs.Friend.Name.Split(new[] {' ', '.'},
+                                    StringSplitOptions.RemoveEmptyEntries));
+                            notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME), name.First());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME), name.Last());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                                friendInfoEventArgs.Friend.UUID.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.STATUS),
+                                friendInfoEventArgs.Friend.IsOnline
+                                    ? GetEnumDescription(Action.ONLINE)
+                                    : GetEnumDescription(Action.OFFLINE));
+                            notificationData.Add(GetEnumDescription(ScriptKeys.RIGHTS),
+                                // Return the friend rights as a nice CSV string.
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    typeof (FriendRights).GetFields(BindingFlags.Public |
+                                                                    BindingFlags.Static)
+                                        .Where(
+                                            p =>
+                                                !(((int) p.GetValue(null) &
+                                                   (int) friendInfoEventArgs.Friend.MyFriendRights))
+                                                    .Equals(
+                                                        0))
+                                        .Select(p => p.Name)
+                                        .ToArray()));
+                            break;
+                        }
+                        if (friendshipNotificationType == typeof (FriendshipResponseEventArgs))
+                        {
+                            FriendshipResponseEventArgs friendshipResponseEventArgs =
+                                (FriendshipResponseEventArgs) args;
+                            List<string> friendshipResponseName =
+                                new List<string>(
+                                    friendshipResponseEventArgs.AgentName.Split(new[] {' ', '.'},
+                                        StringSplitOptions.RemoveEmptyEntries));
+                            notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                friendshipResponseName.First());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                                friendshipResponseName.Last());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                                friendshipResponseEventArgs.AgentID.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
+                                GetEnumDescription(Action.RESPONSE));
+                            break;
+                        }
+                        if (friendshipNotificationType == typeof (FriendshipOfferedEventArgs))
+                        {
+                            FriendshipOfferedEventArgs friendshipOfferedEventArgs =
+                                (FriendshipOfferedEventArgs) args;
+                            List<string> friendshipOfferedName =
+                                new List<string>(friendshipOfferedEventArgs.AgentName.Split(
+                                    new[] {' ', '.'},
+                                    StringSplitOptions.RemoveEmptyEntries));
+                            notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                friendshipOfferedName.First());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                                friendshipOfferedName.Last());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                                friendshipOfferedEventArgs.AgentID.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
+                                GetEnumDescription(Action.REQUEST));
+                        }
+                        break;
+                    case Notifications.NOTIFICATION_TELEPORT_LURE:
+                        InstantMessageEventArgs teleportLureEventArgs = (InstantMessageEventArgs) args;
+                        List<string> teleportLureName =
+                            new List<string>(
+                                teleportLureEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
+                                    StringSplitOptions.RemoveEmptyEntries));
+                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                            teleportLureName.First());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                            teleportLureName.Last());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                            teleportLureEventArgs.IM.FromAgentID.ToString());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.SESSION),
+                            teleportLureEventArgs.IM.IMSessionID.ToString());
+                        break;
+                    case Notifications.NOTIFICATION_GROUP_NOTICE:
+                        InstantMessageEventArgs notificationGroupNoticEventArgs =
+                            (InstantMessageEventArgs) args;
+                        List<string> notificationGroupNoticeName =
+                            new List<string>(
+                                notificationGroupNoticEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
+                                    StringSplitOptions.RemoveEmptyEntries));
+                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                            notificationGroupNoticeName.First());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                            notificationGroupNoticeName.Last());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                            notificationGroupNoticEventArgs.IM.FromAgentID.ToString());
+                        string[] noticeData = notificationGroupNoticEventArgs.IM.Message.Split('|');
+                        if (noticeData.Length > 0 && !string.IsNullOrEmpty(noticeData[0]))
+                        {
+                            notificationData.Add(GetEnumDescription(ScriptKeys.SUBJECT), noticeData[0]);
+                        }
+                        if (noticeData.Length > 1 && !string.IsNullOrEmpty(noticeData[1]))
+                        {
+                            notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE), noticeData[1]);
+                        }
+                        break;
+                    case Notifications.NOTIFICATION_INSTANT_MESSAGE:
+                        InstantMessageEventArgs notificationInstantMessage =
+                            (InstantMessageEventArgs) args;
+                        List<string> notificationInstantMessageName =
+                            new List<string>(
+                                notificationInstantMessage.IM.FromAgentName.Split(new[] {' ', '.'},
+                                    StringSplitOptions.RemoveEmptyEntries));
+                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                            notificationInstantMessageName.First());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                            notificationInstantMessageName.Last());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                            notificationInstantMessage.IM.FromAgentID.ToString());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
+                            notificationInstantMessage.IM.Message);
+                        break;
+                    case Notifications.NOTIFICATION_REGION_MESSAGE:
+                        InstantMessageEventArgs notificationRegionMessage =
+                            (InstantMessageEventArgs) args;
+                        List<string> notificationRegionMessageName =
+                            new List<string>(
+                                notificationRegionMessage.IM.FromAgentName.Split(new[] {' ', '.'},
+                                    StringSplitOptions.RemoveEmptyEntries));
+                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                            notificationRegionMessageName.First());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                            notificationRegionMessageName.Last());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                            notificationRegionMessage.IM.FromAgentID.ToString());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
+                            notificationRegionMessage.IM.Message);
+                        break;
+                    case Notifications.NOTIFICATION_GROUP_MESSAGE:
+                        InstantMessageEventArgs notificationGroupMessage =
+                            (InstantMessageEventArgs) args;
+                        List<string> notificationGroupMessageName =
+                            new List<string>(
+                                notificationGroupMessage.IM.FromAgentName.Split(new[] {' ', '.'},
+                                    StringSplitOptions.RemoveEmptyEntries));
+                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                            notificationGroupMessageName.First());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                            notificationGroupMessageName.Last());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                            notificationGroupMessage.IM.FromAgentID.ToString());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.GROUP), o.GROUP);
+                        notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
+                            notificationGroupMessage.IM.Message);
+                        break;
+                    case Notifications.NOTIFICATION_VIEWER_EFFECT:
+                        System.Type viewerEffectType = args.GetType();
+                        if (viewerEffectType == typeof (ViewerEffectEventArgs))
+                        {
+                            ViewerEffectEventArgs notificationViewerEffectEventArgs =
+                                (ViewerEffectEventArgs) args;
+                            notificationData.Add(GetEnumDescription(ScriptKeys.EFFECT),
+                                notificationViewerEffectEventArgs.Type.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.SOURCE),
+                                notificationViewerEffectEventArgs.SourceID.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.TARGET),
+                                notificationViewerEffectEventArgs.TargetID.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.POSITION),
+                                notificationViewerEffectEventArgs.TargetPosition.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.DURATION),
+                                notificationViewerEffectEventArgs.Duration.ToString(
+                                    CultureInfo.InvariantCulture));
+                            notificationData.Add(GetEnumDescription(ScriptKeys.ID),
+                                notificationViewerEffectEventArgs.EffectID.ToString());
+                            break;
+                        }
+                        if (viewerEffectType == typeof (ViewerEffectPointAtEventArgs))
+                        {
+                            ViewerEffectPointAtEventArgs notificationViewerPointAtEventArgs =
+                                (ViewerEffectPointAtEventArgs) args;
+                            notificationData.Add(GetEnumDescription(ScriptKeys.SOURCE),
+                                notificationViewerPointAtEventArgs.SourceID.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.TARGET),
+                                notificationViewerPointAtEventArgs.TargetID.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.POSITION),
+                                notificationViewerPointAtEventArgs.TargetPosition.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.DURATION),
+                                notificationViewerPointAtEventArgs.Duration.ToString(
+                                    CultureInfo.InvariantCulture));
+                            notificationData.Add(GetEnumDescription(ScriptKeys.ID),
+                                notificationViewerPointAtEventArgs.EffectID.ToString());
+                            break;
+                        }
+                        if (viewerEffectType == typeof (ViewerEffectLookAtEventArgs))
+                        {
+                            ViewerEffectLookAtEventArgs notificationViewerLookAtEventArgs =
+                                (ViewerEffectLookAtEventArgs) args;
+                            notificationData.Add(GetEnumDescription(ScriptKeys.SOURCE),
+                                notificationViewerLookAtEventArgs.SourceID.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.TARGET),
+                                notificationViewerLookAtEventArgs.TargetID.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.POSITION),
+                                notificationViewerLookAtEventArgs.TargetPosition.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.DURATION),
+                                notificationViewerLookAtEventArgs.Duration.ToString(
+                                    CultureInfo.InvariantCulture));
+                            notificationData.Add(GetEnumDescription(ScriptKeys.ID),
+                                notificationViewerLookAtEventArgs.EffectID.ToString());
+                        }
+                        break;
+                    case Notifications.NOTIFICATION_MEAN_COLLISION:
+                        MeanCollisionEventArgs meanCollisionEventArgs =
+                            (MeanCollisionEventArgs) args;
+                        notificationData.Add(GetEnumDescription(ScriptKeys.AGGRESSOR),
+                            meanCollisionEventArgs.Aggressor.ToString());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.MAGNITUDE),
+                            meanCollisionEventArgs.Magnitude.ToString(CultureInfo.InvariantCulture));
+                        notificationData.Add(GetEnumDescription(ScriptKeys.TIME),
+                            meanCollisionEventArgs.Time.ToLongDateString());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.ENTITY),
+                            meanCollisionEventArgs.Type.ToString());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.VICTIM),
+                            meanCollisionEventArgs.Victim.ToString());
+                        break;
+                    case Notifications.NOTIFICATION_REGION_CROSSED:
+                        RegionCrossedEventArgs regionCrossedEventArgs =
+                            (RegionCrossedEventArgs) args;
+                        notificationData.Add(GetEnumDescription(ScriptKeys.OLD),
+                            regionCrossedEventArgs.OldSimulator.Name);
+                        notificationData.Add(GetEnumDescription(ScriptKeys.NEW),
+                            regionCrossedEventArgs.NewSimulator.Name);
+                        break;
+                    case Notifications.NOTIFICATION_TERSE_UPDATES:
+                        TerseObjectUpdateEventArgs terseObjectUpdateEventArgs =
+                            (TerseObjectUpdateEventArgs) args;
+                        notificationData.Add(GetEnumDescription(ScriptKeys.ID),
+                            terseObjectUpdateEventArgs.Prim.ID.ToString());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.POSITION),
+                            terseObjectUpdateEventArgs.Prim.Position.ToString());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.ROTATION),
+                            terseObjectUpdateEventArgs.Prim.Rotation.ToString());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.ENTITY),
+                            terseObjectUpdateEventArgs.Prim.PrimData.PCode.ToString());
+                        break;
+                }
+                if (NotificationQueue.Count < Configuration.NOTIFICATION_QUEUE_LENGTH)
+                {
+                    lock (NotificationQueueLock)
+                    {
+                        NotificationQueue.Enqueue(new NotificationQueueElement
+                        {
+                            URL = o.URL,
+                            message = wasKeyValueEscape(notificationData)
+                        });
+                    }
+                }
+            });
         }
 
         private static void HandleScriptDialog(object sender, ScriptDialogEventArgs e)
         {
-            SendNotification(Notifications.NOTIFICATION_SCRIPT_DIALOG, e);
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_SCRIPT_DIALOG, e)).Start();
         }
 
         private static void HandleChatFromSimulator(object sender, ChatEventArgs e)
@@ -2008,7 +2132,7 @@ namespace Corrade
                 case ChatType.Shout:
                 case ChatType.Whisper:
                     // Send chat notifications.
-                    SendNotification(Notifications.NOTIFICATION_LOCAL_CHAT, e);
+                    new Thread(o => SendNotification(Notifications.NOTIFICATION_LOCAL_CHAT, e)).Start();
                     break;
                 case (ChatType) 9:
                     HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString());
@@ -2018,12 +2142,12 @@ namespace Corrade
 
         private static void HandleMoneyBalance(object sender, BalanceEventArgs e)
         {
-            SendNotification(Notifications.NOTIFICATION_BALANCE, e);
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_BALANCE, e)).Start();
         }
 
         private static void HandleAlertMessage(object sender, AlertMessageEventArgs e)
         {
-            SendNotification(Notifications.NOTIFICATION_ALERT_MESSAGE, e);
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_ALERT_MESSAGE, e)).Start();
         }
 
         private static void HandleInventoryObjectOffered(object sender, InventoryObjectOfferedEventArgs e)
@@ -2065,7 +2189,7 @@ namespace Corrade
             }
 
             // Send notification
-            SendNotification(Notifications.NOTIFICATION_INVENTORY_OFFER, e);
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_INVENTORY_OFFER, e)).Start();
             // Wait for a reply.
             wait.WaitOne(Timeout.Infinite);
 
@@ -2100,7 +2224,7 @@ namespace Corrade
 
         private static void HandleScriptQuestion(object sender, ScriptQuestionEventArgs e)
         {
-            SendNotification(Notifications.NOTIFICATION_SCRIPT_PERMISSION, e);
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_SCRIPT_PERMISSION, e)).Start();
         }
 
         private static void HandleConfigurationFileChanged(object sender, FileSystemEventArgs e)
@@ -2164,23 +2288,23 @@ namespace Corrade
 
         private static void HandleFriendOnlineStatus(object sender, FriendInfoEventArgs e)
         {
-            SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e);
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e)).Start();
         }
 
         private static void HandleFriendRightsUpdate(object sender, FriendInfoEventArgs e)
         {
-            SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e);
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e)).Start();
         }
 
         private static void HandleFriendShipResponse(object sender, FriendshipResponseEventArgs e)
         {
-            SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e);
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e)).Start();
         }
 
         private static void HandleFriendshipOffered(object sender, FriendshipOfferedEventArgs e)
         {
             // Send friendship notifications
-            SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e);
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e)).Start();
             // Accept friendships only from masters (for the time being)
             if (
                 !Configuration.MASTERS.Select(
@@ -2236,7 +2360,7 @@ namespace Corrade
                     Feedback(GetEnumDescription(ConsoleError.GOT_TELEPORT_LURE),
                         message.Replace(Environment.NewLine, " : "));
                     // Send teleport lure notification.
-                    SendNotification(Notifications.NOTIFICATION_TELEPORT_LURE, args);
+                    new Thread(o => SendNotification(Notifications.NOTIFICATION_TELEPORT_LURE, args)).Start();
                     // If we got a teleport request from a master, then accept it (for the moment).
                     if (Configuration.MASTERS.Select(
                         o =>
@@ -2271,7 +2395,7 @@ namespace Corrade
                 case InstantMessageDialog.GroupNotice:
                     Feedback(GetEnumDescription(ConsoleError.GOT_GROUP_NOTICE),
                         message.Replace(Environment.NewLine, " : "));
-                    SendNotification(Notifications.NOTIFICATION_GROUP_NOTICE, args);
+                    new Thread(o => SendNotification(Notifications.NOTIFICATION_GROUP_NOTICE, args)).Start();
                     return;
                 case InstantMessageDialog.SessionSend:
                 case InstantMessageDialog.MessageFromAgent:
@@ -2302,7 +2426,7 @@ namespace Corrade
                         Feedback(GetEnumDescription(ConsoleError.GOT_GROUP_MESSAGE),
                             message.Replace(Environment.NewLine, " : "));
                         // Send group notice notifications.
-                        SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, args);
+                        new Thread(o => SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, args)).Start();
                         // Log group messages
                         Parallel.ForEach(
                             Configuration.GROUPS.Where(o => o.Name.Equals(messageGroup.Name, StringComparison.Ordinal)),
@@ -2337,7 +2461,7 @@ namespace Corrade
                     {
                         Feedback(GetEnumDescription(ConsoleError.GOT_INSTANT_MESSAGE),
                             message.Replace(Environment.NewLine, " : "));
-                        SendNotification(Notifications.NOTIFICATION_INSTANT_MESSAGE, args);
+                        new Thread(o => SendNotification(Notifications.NOTIFICATION_INSTANT_MESSAGE, args)).Start();
                         return;
                     }
                     // Check if this is a region message.
@@ -2345,7 +2469,7 @@ namespace Corrade
                     {
                         Feedback(GetEnumDescription(ConsoleError.GOT_REGION_MESSAGE),
                             message.Replace(Environment.NewLine, " : "));
-                        SendNotification(Notifications.NOTIFICATION_REGION_MESSAGE, args);
+                        new Thread(o => SendNotification(Notifications.NOTIFICATION_REGION_MESSAGE, args)).Start();
                         return;
                     }
                     break;
@@ -3168,6 +3292,11 @@ namespace Corrade
                         }
                         Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                         Client.Groups.DeleteRole(groupUUID, roleUUID);
+                        // Delete from Role Cache
+                        lock (Cache.Locks.RoleCacheLock)
+                        {
+                            Cache.RoleCache.RemoveWhere(o => o.UUID.Equals(roleUUID));
+                        }
                     };
                     break;
                 case ScriptKeys.ADDTOROLE:
@@ -3720,6 +3849,44 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(Client.Network.CurrentSim,
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)))
                             );
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.ToArray()));
+                        }
+                    };
+                    break;
+                case ScriptKeys.GETGRIDREGIONDATA:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        string region =
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.REGION), message));
+                        if (string.IsNullOrEmpty(region))
+                        {
+                            region = Client.Network.CurrentSim.Name;
+                        }
+                        ManualResetEvent GridRegionEvent = new ManualResetEvent(false);
+                        GridRegion gridRegion = new GridRegion();
+                        EventHandler<GridRegionEventArgs> GridRegionEventHandler = (sender, args) =>
+                        {
+                            gridRegion = args.Region;
+                            GridRegionEvent.Set();
+                        };
+                        Client.Grid.GridRegion += GridRegionEventHandler;
+                        Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
+                        if (!GridRegionEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                        {
+                            Client.Grid.GridRegion -= GridRegionEventHandler;
+                            throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_REGION));
+                        }
+                        Client.Grid.GridRegion -= GridRegionEventHandler;
+                        List<string> data = new List<string>(GetStructuredData(gridRegion,
+                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
                         if (!data.Count.Equals(0))
                         {
                             result.Add(GetEnumDescription(ResultKeys.DATA),
@@ -7272,15 +7439,13 @@ namespace Corrade
                                 {
                                     throw new Exception(GetEnumDescription(ScriptError.INVALID_NOTIFICATION_TYPES));
                                 }
-                                int notifications = 0;
+                                uint notifications = 0;
                                 Parallel.ForEach(
                                     notificationTypes.Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER},
                                         StringSplitOptions.RemoveEmptyEntries),
                                     o =>
                                     {
-                                        int notificationValue =
-                                            (int)
-                                                wasGetEnumValueFromDescription<Notifications>(o);
+                                        uint notificationValue = wasGetEnumValueFromDescription<Notifications>(o);
                                         if (!HasCorradeNotification(group, notificationValue))
                                         {
                                             throw new Exception(GetEnumDescription(ScriptError.NOTIFICATION_NOT_ALLOWED));
@@ -9347,6 +9512,25 @@ namespace Corrade
                         }
                     };
                     break;
+                case ScriptKeys.CACHE:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_SYSTEM))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        switch ((Action) wasGetEnumValueFromDescription<Action>(wasUriUnescapeDataString(
+                            wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
+                            .ToLower(CultureInfo.InvariantCulture)))
+                        {
+                            case Action.PURGE:
+                                Cache.Purge();
+                                break;
+                            default:
+                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ACTION));
+                        }
+                    };
+                    break;
                 case ScriptKeys.LOGOUT:
                     execute = () =>
                     {
@@ -9771,14 +9955,16 @@ namespace Corrade
             {
                 string url = wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.CALLBACK), message));
                 if (string.IsNullOrEmpty(url)) return;
-                try
+                if (CallbackQueue.Count < Configuration.CALLBACK_QUEUE_LENGTH)
                 {
-                    wasPOST(url, wasKeyValueEscape(result));
-                }
-                catch (Exception e)
-                {
-                    result.Add(GetEnumDescription(ScriptKeys.CALLBACK), url);
-                    result.Add(GetEnumDescription(ResultKeys.CALLBACKERROR), e.Message);
+                    lock (CallbackQueueLock)
+                    {
+                        CallbackQueue.Enqueue(new CallbackQueueElement
+                        {
+                            URL = url,
+                            message = wasKeyValueEscape(result)
+                        });
+                    }
                 }
             };
             callback.Invoke();
@@ -9881,10 +10067,11 @@ namespace Corrade
         /// </summary>
         /// <param name="URL">the url to send the message to</param>
         /// <param name="message">key-value pairs to send</param>
-        private static void wasPOST(string URL, Dictionary<string, string> message)
+        /// <param name="millisecondsTimeout">the time in milliseconds for the request to timeout</param>
+        private static void wasPOST(string URL, Dictionary<string, string> message, int millisecondsTimeout)
         {
             WebRequest request = WebRequest.Create(URL);
-            request.Timeout = Configuration.CALLBACK_TIMEOUT;
+            request.Timeout = millisecondsTimeout;
             request.Method = "POST";
             request.ContentType = "application/x-www-form-urlencoded";
             byte[] byteArray =
@@ -9904,6 +10091,7 @@ namespace Corrade
             {
                 SetDefaultCamera();
             }
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_TERSE_UPDATES, e)).Start();
         }
 
         private static void HandleAvatarUpdate(object sender, AvatarUpdateEventArgs e)
@@ -9940,7 +10128,7 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="groupUUID">an object in which to store the UUID of the group</param>
         /// <returns>true if the group name could be resolved to an UUID</returns>
-        private static bool GroupNameToUUID(string groupName, int millisecondsTimeout, ref UUID groupUUID)
+        private static bool lookupGroupNameToUUID(string groupName, int millisecondsTimeout, ref UUID groupUUID)
         {
             UUID localGroupUUID = UUID.Zero;
             ManualResetEvent DirGroupsEvent = new ManualResetEvent(false);
@@ -9964,6 +10152,40 @@ namespace Corrade
             return true;
         }
 
+        /// <summary>
+        ///     A wrapper for resolving group names to UUIDs by using Corrade's internal cache.
+        /// </summary>
+        /// <param name="groupName">the name of the group to resolve</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="groupUUID">an object in which to store the UUID of the group</param>
+        /// <returns>true if the group name could be resolved to an UUID</returns>
+        private static bool GroupNameToUUID(string groupName, int millisecondsTimeout, ref UUID groupUUID)
+        {
+            lock (Cache.Locks.GroupCacheLock)
+            {
+                Cache.Groups group = Cache.GroupCache.FirstOrDefault(o => o.Name.Equals(groupName));
+
+                if (!group.Equals(default(Cache.Groups)))
+                {
+                    groupUUID = group.UUID;
+                    return true;
+                }
+            }
+            bool succeeded = lookupGroupNameToUUID(groupName, millisecondsTimeout, ref groupUUID);
+            if (succeeded)
+            {
+                lock (Cache.Locks.GroupCacheLock)
+                {
+                    Cache.GroupCache.Add(new Cache.Groups
+                    {
+                        Name = groupName,
+                        UUID = groupUUID
+                    });
+                }
+            }
+            return succeeded;
+        }
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -9976,7 +10198,7 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="agentUUID">an object to store the agent UUID</param>
         /// <returns>true if the agent name could be resolved to an UUID</returns>
-        private static bool AgentNameToUUID(string agentFirstName, string agentLastName, int millisecondsTimeout,
+        private static bool lookupAgentNameToUUID(string agentFirstName, string agentLastName, int millisecondsTimeout,
             ref UUID agentUUID)
         {
             UUID localAgentUUID = UUID.Zero;
@@ -10006,6 +10228,45 @@ namespace Corrade
             return true;
         }
 
+        /// <summary>
+        ///     A wrapper for looking up an agent name using Corrade's internal cache.
+        /// </summary>
+        /// <param name="agentFirstName">the first name of the agent</param>
+        /// <param name="agentLastName">the last name of the agent</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="agentUUID">an object to store the agent UUID</param>
+        /// <returns>true if the agent name could be resolved to an UUID</returns>
+        private static bool AgentNameToUUID(string agentFirstName, string agentLastName, int millisecondsTimeout,
+            ref UUID agentUUID)
+        {
+            lock (Cache.Locks.AgentCacheLock)
+            {
+                Cache.Agents agent =
+                    Cache.AgentCache.FirstOrDefault(
+                        o => o.FirstName.Equals(agentFirstName) && o.LastName.Equals(agentLastName));
+
+                if (!agent.Equals(default(Cache.Agents)))
+                {
+                    agentUUID = agent.UUID;
+                    return true;
+                }
+            }
+            bool succeeded = lookupAgentNameToUUID(agentFirstName, agentLastName, millisecondsTimeout, ref agentUUID);
+            if (succeeded)
+            {
+                lock (Cache.Locks.AgentCacheLock)
+                {
+                    Cache.AgentCache.Add(new Cache.Agents
+                    {
+                        FirstName = agentFirstName,
+                        LastName = agentLastName,
+                        UUID = agentUUID
+                    });
+                }
+            }
+            return succeeded;
+        }
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -10016,7 +10277,7 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="agentName">an object to store the name of the agent in</param>
         /// <returns>true if the UUID could be resolved to a name</returns>
-        private static bool AgentUUIDToName(UUID agentUUID, int millisecondsTimeout, ref string agentName)
+        private static bool lookupAgentUUIDToName(UUID agentUUID, int millisecondsTimeout, ref string agentName)
         {
             if (agentUUID.Equals(UUID.Zero))
                 return false;
@@ -10042,6 +10303,43 @@ namespace Corrade
             return true;
         }
 
+        /// <summary>
+        ///     A wrapper for agent to UUID lookups using Corrade's internal cache.
+        /// </summary>
+        /// <param name="agentUUID">the UUID of the agent</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="agentName">an object to store the name of the agent in</param>
+        /// <returns>true if the UUID could be resolved to a name</returns>
+        private static bool AgentUUIDToName(UUID agentUUID, int millisecondsTimeout, ref string agentName)
+        {
+            lock (Cache.Locks.AgentCacheLock)
+            {
+                Cache.Agents agent = Cache.AgentCache.FirstOrDefault(o => o.UUID.Equals(agentUUID));
+
+                if (!agent.Equals(default(Cache.Agents)))
+                {
+                    agentName = string.Join(" ", new[] {agent.FirstName, agent.LastName});
+                    return true;
+                }
+            }
+            bool succeeded = lookupAgentUUIDToName(agentUUID, millisecondsTimeout, ref agentName);
+            if (succeeded)
+            {
+                List<string> name =
+                    new List<string>(agentName.Split(new[] {' ', '.'}, StringSplitOptions.RemoveEmptyEntries));
+                lock (Cache.Locks.AgentCacheLock)
+                {
+                    Cache.AgentCache.Add(new Cache.Agents
+                    {
+                        FirstName = name.First(),
+                        LastName = name.Last(),
+                        UUID = agentUUID
+                    });
+                }
+            }
+            return succeeded;
+        }
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -10054,7 +10352,7 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="roleUUID">an UUID object to store the role UUID in</param>
         /// <returns>true if the role could be found</returns>
-        private static bool RoleNameToRoleUUID(string roleName, UUID groupUUID, int millisecondsTimeout,
+        private static bool lookupRoleNameToRoleUUID(string roleName, UUID groupUUID, int millisecondsTimeout,
             ref UUID roleUUID)
         {
             UUID localRoleUUID = UUID.Zero;
@@ -10081,6 +10379,44 @@ namespace Corrade
             return true;
         }
 
+        /// <summary>
+        ///     A wrapper to resolve role names to role UUIDs using Corrade's internal cache.
+        /// </summary>
+        /// <param name="roleName">the name of the role to be resolved to an UUID</param>
+        /// <param name="groupUUID">the UUID of the group to query for the role UUID</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="roleUUID">an UUID object to store the role UUID in</param>
+        /// <returns>true if the role could be found</returns>
+        private static bool RoleNameToRoleUUID(string roleName, UUID groupUUID, int millisecondsTimeout,
+            ref UUID roleUUID)
+        {
+            lock (Cache.Locks.RoleCacheLock)
+            {
+                Cache.Roles role =
+                    Cache.RoleCache.FirstOrDefault(o => o.GroupUUID.Equals(groupUUID) && o.Name.Equals(roleName));
+
+                if (!role.Equals(default(Cache.Roles)))
+                {
+                    roleUUID = role.UUID;
+                    return true;
+                }
+            }
+            bool succeeded = lookupRoleNameToRoleUUID(roleName, groupUUID, millisecondsTimeout, ref roleUUID);
+            if (succeeded)
+            {
+                lock (Cache.Locks.RoleCacheLock)
+                {
+                    Cache.RoleCache.Add(new Cache.Roles
+                    {
+                        Name = roleName,
+                        UUID = roleUUID,
+                        GroupUUID = groupUUID
+                    });
+                }
+            }
+            return succeeded;
+        }
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -10092,7 +10428,8 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="roleName">a string object to store the role name in</param>
         /// <returns>true if the role could be resolved</returns>
-        private static bool RoleUUIDToName(UUID RoleUUID, UUID GroupUUID, int millisecondsTimeout, ref string roleName)
+        private static bool lookupRoleUUIDToName(UUID RoleUUID, UUID GroupUUID, int millisecondsTimeout,
+            ref string roleName)
         {
             if (RoleUUID.Equals(UUID.Zero) || GroupUUID.Equals(UUID.Zero))
                 return false;
@@ -10117,6 +10454,43 @@ namespace Corrade
             Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
             roleName = localRoleName;
             return true;
+        }
+
+        /// <summary>
+        ///     Wrapper for resolving role UUIDs to names using Corrade's internal cache.
+        /// </summary>
+        /// <param name="RoleUUID"></param>
+        /// <param name="GroupUUID"></param>
+        /// <param name="millisecondsTimeout"></param>
+        /// <param name="roleName"></param>
+        /// <returns></returns>
+        private static bool RoleUUIDToName(UUID RoleUUID, UUID GroupUUID, int millisecondsTimeout, ref string roleName)
+        {
+            lock (Cache.Locks.RoleCacheLock)
+            {
+                Cache.Roles role =
+                    Cache.RoleCache.FirstOrDefault(o => o.GroupUUID.Equals(GroupUUID) && o.UUID.Equals(RoleUUID));
+
+                if (!role.Equals(default(Cache.Roles)))
+                {
+                    roleName = role.Name;
+                    return true;
+                }
+            }
+            bool succeeded = lookupRoleUUIDToName(RoleUUID, GroupUUID, millisecondsTimeout, ref roleName);
+            if (succeeded)
+            {
+                lock (Cache.Locks.RoleCacheLock)
+                {
+                    Cache.RoleCache.Add(new Cache.Roles
+                    {
+                        Name = roleName,
+                        UUID = RoleUUID,
+                        GroupUUID = GroupUUID
+                    });
+                }
+            }
+            return succeeded;
         }
 
         #endregion
@@ -10343,7 +10717,8 @@ namespace Corrade
             [Description("delete")] DELETE,
             [Description("take")] TAKE,
             [Description("read")] READ,
-            [Description("wrtie")] WRITE
+            [Description("wrtie")] WRITE,
+            [Description("purge")] PURGE
         }
 
         /// <summary>
@@ -10389,7 +10764,13 @@ namespace Corrade
             public static string LOGIN_URL;
             public static bool HTTP_SERVER;
             public static string HTTP_SERVER_PREFIX;
+            public static int HTTP_SERVER_TIMEOUT;
             public static int CALLBACK_TIMEOUT;
+            public static int CALLBACK_THROTTLE;
+            public static int CALLBACK_QUEUE_LENGTH;
+            public static int NOTIFICATION_TIMEOUT;
+            public static int NOTIFICATION_THROTTLE;
+            public static int NOTIFICATION_QUEUE_LENGTH;
             public static int SERVICES_TIMEOUT;
             public static bool TOS_ACCEPTED;
             public static string START_LOCATION;
@@ -10424,7 +10805,13 @@ namespace Corrade
                 LOGIN_URL = string.Empty;
                 HTTP_SERVER = false;
                 HTTP_SERVER_PREFIX = "http://+:8080/";
+                HTTP_SERVER_TIMEOUT = 5000;
                 CALLBACK_TIMEOUT = 5000;
+                CALLBACK_THROTTLE = 1000;
+                CALLBACK_QUEUE_LENGTH = 100;
+                NOTIFICATION_TIMEOUT = 5000;
+                NOTIFICATION_THROTTLE = 1000;
+                NOTIFICATION_QUEUE_LENGTH = 100;
                 SERVICES_TIMEOUT = 60000;
                 TOS_ACCEPTED = false;
                 START_LOCATION = "last";
@@ -10517,18 +10904,6 @@ namespace Corrade
                                     }
                                     HTTP_SERVER_PREFIX = client.InnerText;
                                     break;
-                                case ConfigurationKeys.CALLBACK_TIMEOUT:
-                                    if (!int.TryParse(client.InnerText, out CALLBACK_TIMEOUT))
-                                    {
-                                        throw new Exception("error in client section");
-                                    }
-                                    break;
-                                case ConfigurationKeys.SERVICES_TIMEOUT:
-                                    if (!int.TryParse(client.InnerText, out SERVICES_TIMEOUT))
-                                    {
-                                        throw new Exception("error in client section");
-                                    }
-                                    break;
                                 case ConfigurationKeys.TOS_ACCEPTED:
                                     if (!bool.TryParse(client.InnerText, out TOS_ACCEPTED))
                                     {
@@ -10572,164 +10947,296 @@ namespace Corrade
                     catch (Exception e)
                     {
                         Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
-                        Environment.Exit(1);
+                    }
+
+                    // Process limits.
+                    nodeList = root.SelectNodes("/config/limits/*");
+                    if (nodeList != null)
+                    {
+                        try
+                        {
+                            foreach (XmlNode limitsNode in nodeList)
+                            {
+                                switch (limitsNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                {
+                                    case ConfigurationKeys.CALLBACKS:
+                                        XmlNodeList callbackLimitNodeList = limitsNode.SelectNodes("*");
+                                        if (callbackLimitNodeList == null)
+                                        {
+                                            throw new Exception("error in callback limits section");
+                                        }
+                                        foreach (XmlNode callbackLimitNode in callbackLimitNodeList)
+                                        {
+                                            switch (callbackLimitNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                            {
+                                                case ConfigurationKeys.TIMEOUT:
+                                                    if (!int.TryParse(callbackLimitNode.InnerText, out CALLBACK_TIMEOUT))
+                                                    {
+                                                        throw new Exception("error in callback limits section");
+                                                    }
+                                                    break;
+                                                case ConfigurationKeys.THROTTLE:
+                                                    if (
+                                                        !int.TryParse(callbackLimitNode.InnerText, out CALLBACK_THROTTLE))
+                                                    {
+                                                        throw new Exception("error in callback limits section");
+                                                    }
+                                                    break;
+                                                case ConfigurationKeys.QUEUE_LENGTH:
+                                                    if (
+                                                        !int.TryParse(callbackLimitNode.InnerText,
+                                                            out CALLBACK_QUEUE_LENGTH))
+                                                    {
+                                                        throw new Exception("error in callback limits section");
+                                                    }
+                                                    break;
+                                            }
+                                        }
+                                        break;
+                                    case ConfigurationKeys.NOTIFICATIONS:
+                                        XmlNodeList notificationLimitNodeList = limitsNode.SelectNodes("*");
+                                        if (notificationLimitNodeList == null)
+                                        {
+                                            throw new Exception("error in notification limits section");
+                                        }
+                                        foreach (XmlNode notificationLimitNode in notificationLimitNodeList)
+                                        {
+                                            switch (notificationLimitNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                            {
+                                                case ConfigurationKeys.TIMEOUT:
+                                                    if (
+                                                        !int.TryParse(notificationLimitNode.InnerText,
+                                                            out NOTIFICATION_TIMEOUT))
+                                                    {
+                                                        throw new Exception("error in notification limits section");
+                                                    }
+                                                    break;
+                                                case ConfigurationKeys.THROTTLE:
+                                                    if (
+                                                        !int.TryParse(notificationLimitNode.InnerText,
+                                                            out NOTIFICATION_THROTTLE))
+                                                    {
+                                                        throw new Exception("error in notification limits section");
+                                                    }
+                                                    break;
+                                                case ConfigurationKeys.QUEUE_LENGTH:
+                                                    if (
+                                                        !int.TryParse(notificationLimitNode.InnerText,
+                                                            out NOTIFICATION_QUEUE_LENGTH))
+                                                    {
+                                                        throw new Exception("error in callback limits section");
+                                                    }
+                                                    break;
+                                            }
+                                        }
+                                        break;
+                                    case ConfigurationKeys.HTTP_SERVER:
+                                        XmlNodeList HTTPServerLimitNodeList = limitsNode.SelectNodes("*");
+                                        if (HTTPServerLimitNodeList == null)
+                                        {
+                                            throw new Exception("error in HTTP server limits section");
+                                        }
+                                        foreach (XmlNode HTTPServerLimitNode in HTTPServerLimitNodeList)
+                                        {
+                                            switch (HTTPServerLimitNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                            {
+                                                case ConfigurationKeys.TIMEOUT:
+                                                    if (
+                                                        !int.TryParse(HTTPServerLimitNode.InnerText,
+                                                            out HTTP_SERVER_TIMEOUT))
+                                                    {
+                                                        throw new Exception("error in HTTP server limits section");
+                                                    }
+                                                    break;
+                                            }
+                                        }
+                                        break;
+                                    case ConfigurationKeys.SERVICES:
+                                        XmlNodeList servicesLimitNodeList = limitsNode.SelectNodes("*");
+                                        if (servicesLimitNodeList == null)
+                                        {
+                                            throw new Exception("error in HTTP server limits section");
+                                        }
+                                        foreach (XmlNode servicesLimitNode in servicesLimitNodeList)
+                                        {
+                                            switch (servicesLimitNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                            {
+                                                case ConfigurationKeys.TIMEOUT:
+                                                    if (
+                                                        !int.TryParse(servicesLimitNode.InnerText,
+                                                            out SERVICES_TIMEOUT))
+                                                    {
+                                                        throw new Exception("error in HTTP server limits section");
+                                                    }
+                                                    break;
+                                            }
+                                        }
+                                        break;
+                                }
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                        }
                     }
 
                     // Process masters.
                     nodeList = root.SelectNodes("/config/masters/*");
-                    if (nodeList == null)
-                        return;
-                    try
+                    if (nodeList != null)
                     {
-                        foreach (XmlNode mastersNode in nodeList)
+                        try
                         {
-                            Master configMaster = new Master();
-                            foreach (XmlNode masterNode in mastersNode.ChildNodes)
+                            foreach (XmlNode mastersNode in nodeList)
                             {
-                                switch (masterNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                Master configMaster = new Master();
+                                foreach (XmlNode masterNode in mastersNode.ChildNodes)
                                 {
-                                    case ConfigurationKeys.FIRST_NAME:
-                                        if (string.IsNullOrEmpty(masterNode.InnerText))
-                                        {
-                                            throw new Exception("error in masters section");
-                                        }
-                                        configMaster.FirstName = masterNode.InnerText;
-                                        break;
-                                    case ConfigurationKeys.LAST_NAME:
-                                        if (string.IsNullOrEmpty(masterNode.InnerText))
-                                        {
-                                            throw new Exception("error in masters section");
-                                        }
-                                        configMaster.LastName = masterNode.InnerText;
-                                        break;
+                                    switch (masterNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                    {
+                                        case ConfigurationKeys.FIRST_NAME:
+                                            if (string.IsNullOrEmpty(masterNode.InnerText))
+                                            {
+                                                throw new Exception("error in masters section");
+                                            }
+                                            configMaster.FirstName = masterNode.InnerText;
+                                            break;
+                                        case ConfigurationKeys.LAST_NAME:
+                                            if (string.IsNullOrEmpty(masterNode.InnerText))
+                                            {
+                                                throw new Exception("error in masters section");
+                                            }
+                                            configMaster.LastName = masterNode.InnerText;
+                                            break;
+                                    }
                                 }
+                                MASTERS.Add(configMaster);
                             }
-                            MASTERS.Add(configMaster);
                         }
-                    }
-                    catch (Exception e)
-                    {
-                        Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
-                        Environment.Exit(1);
+                        catch (Exception e)
+                        {
+                            Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                        }
                     }
 
                     // Process groups.
                     nodeList = root.SelectNodes("/config/groups/*");
-                    if (nodeList == null)
-                        return;
-                    try
+                    if (nodeList != null)
                     {
-                        foreach (XmlNode groupsNode in nodeList)
+                        try
                         {
-                            Group configGroup = new Group();
-                            foreach (XmlNode groupNode in groupsNode.ChildNodes)
+                            foreach (XmlNode groupsNode in nodeList)
                             {
-                                switch (groupNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                Group configGroup = new Group();
+                                foreach (XmlNode groupNode in groupsNode.ChildNodes)
                                 {
-                                    case ConfigurationKeys.NAME:
-                                        if (string.IsNullOrEmpty(groupNode.InnerText))
-                                        {
-                                            throw new Exception("error in group section");
-                                        }
-                                        configGroup.Name = groupNode.InnerText;
-                                        break;
-                                    case ConfigurationKeys.UUID:
-                                        if (!UUID.TryParse(groupNode.InnerText, out configGroup.UUID))
-                                        {
-                                            throw new Exception("error in group section");
-                                        }
-                                        break;
-                                    case ConfigurationKeys.PASSWORD:
-                                        if (string.IsNullOrEmpty(groupNode.InnerText))
-                                        {
-                                            throw new Exception("error in group section");
-                                        }
-                                        configGroup.Password = groupNode.InnerText;
-                                        break;
-                                    case ConfigurationKeys.CHATLOG:
-                                        if (string.IsNullOrEmpty(groupNode.InnerText))
-                                        {
-                                            throw new Exception("error in group section");
-                                        }
-                                        configGroup.ChatLog = groupNode.InnerText;
-                                        break;
-                                    case ConfigurationKeys.DATABASE:
-                                        if (string.IsNullOrEmpty(groupNode.InnerText))
-                                        {
-                                            throw new Exception("error in group section");
-                                        }
-                                        configGroup.DatabaseFile = groupNode.InnerText;
-                                        break;
-                                    case ConfigurationKeys.PERMISSIONS:
-                                        XmlNodeList permissionNodeList = groupNode.SelectNodes("*");
-                                        if (permissionNodeList == null)
-                                        {
-                                            throw new Exception("error in group permission section");
-                                        }
-                                        uint permissionMask = 0;
-                                        foreach (XmlNode permissioNode in permissionNodeList)
-                                        {
-                                            XmlNode node = permissioNode;
-                                            Parallel.ForEach(
-                                                wasGetEnumDescriptions<Permissions>()
-                                                    .Where(name => name.Equals(node.Name,
-                                                        StringComparison.Ordinal)), name =>
-                                                        {
-                                                            bool granted;
-                                                            if (!bool.TryParse(node.InnerText, out granted))
+                                    switch (groupNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                    {
+                                        case ConfigurationKeys.NAME:
+                                            if (string.IsNullOrEmpty(groupNode.InnerText))
+                                            {
+                                                throw new Exception("error in group section");
+                                            }
+                                            configGroup.Name = groupNode.InnerText;
+                                            break;
+                                        case ConfigurationKeys.UUID:
+                                            if (!UUID.TryParse(groupNode.InnerText, out configGroup.UUID))
+                                            {
+                                                throw new Exception("error in group section");
+                                            }
+                                            break;
+                                        case ConfigurationKeys.PASSWORD:
+                                            if (string.IsNullOrEmpty(groupNode.InnerText))
+                                            {
+                                                throw new Exception("error in group section");
+                                            }
+                                            configGroup.Password = groupNode.InnerText;
+                                            break;
+                                        case ConfigurationKeys.CHATLOG:
+                                            if (string.IsNullOrEmpty(groupNode.InnerText))
+                                            {
+                                                throw new Exception("error in group section");
+                                            }
+                                            configGroup.ChatLog = groupNode.InnerText;
+                                            break;
+                                        case ConfigurationKeys.DATABASE:
+                                            if (string.IsNullOrEmpty(groupNode.InnerText))
+                                            {
+                                                throw new Exception("error in group section");
+                                            }
+                                            configGroup.DatabaseFile = groupNode.InnerText;
+                                            break;
+                                        case ConfigurationKeys.PERMISSIONS:
+                                            XmlNodeList permissionNodeList = groupNode.SelectNodes("*");
+                                            if (permissionNodeList == null)
+                                            {
+                                                throw new Exception("error in group permission section");
+                                            }
+                                            uint permissionMask = 0;
+                                            foreach (XmlNode permissioNode in permissionNodeList)
+                                            {
+                                                XmlNode node = permissioNode;
+                                                Parallel.ForEach(
+                                                    wasGetEnumDescriptions<Permissions>()
+                                                        .Where(name => name.Equals(node.Name,
+                                                            StringComparison.Ordinal)), name =>
                                                             {
-                                                                throw new Exception("error in group permission section");
-                                                            }
-                                                            if (granted)
+                                                                bool granted;
+                                                                if (!bool.TryParse(node.InnerText, out granted))
+                                                                {
+                                                                    throw new Exception(
+                                                                        "error in group permission section");
+                                                                }
+                                                                if (granted)
+                                                                {
+                                                                    permissionMask = permissionMask |
+                                                                                     wasGetEnumValueFromDescription
+                                                                                         <Permissions>(name);
+                                                                }
+                                                            });
+                                            }
+                                            configGroup.PermissionMask = permissionMask;
+                                            break;
+                                        case ConfigurationKeys.NOTIFICATIONS:
+                                            XmlNodeList notificationNodeList = groupNode.SelectNodes("*");
+                                            if (notificationNodeList == null)
+                                            {
+                                                throw new Exception("error in group notification section");
+                                            }
+                                            uint notificationMask = 0;
+                                            foreach (XmlNode notificationNode in notificationNodeList)
+                                            {
+                                                XmlNode node = notificationNode;
+                                                Parallel.ForEach(
+                                                    wasGetEnumDescriptions<Notifications>()
+                                                        .Where(name => name.Equals(node.Name,
+                                                            StringComparison.Ordinal)), name =>
                                                             {
-                                                                permissionMask = permissionMask |
-                                                                                 wasGetEnumValueFromDescription
-                                                                                     <Permissions>(name);
-                                                            }
-                                                        });
-                                        }
-                                        configGroup.PermissionMask = permissionMask;
-                                        break;
-                                    case ConfigurationKeys.NOTIFICATIONS:
-                                        XmlNodeList notificationNodeList = groupNode.SelectNodes("*");
-                                        if (notificationNodeList == null)
-                                        {
-                                            throw new Exception("error in group notification section");
-                                        }
-                                        uint notificationMask = 0;
-                                        foreach (XmlNode notificationNode in notificationNodeList)
-                                        {
-                                            XmlNode node = notificationNode;
-                                            Parallel.ForEach(
-                                                wasGetEnumDescriptions<Notifications>()
-                                                    .Where(name => name.Equals(node.Name,
-                                                        StringComparison.Ordinal)), name =>
-                                                        {
-                                                            bool granted;
-                                                            if (!bool.TryParse(node.InnerText, out granted))
-                                                            {
-                                                                throw new Exception(
-                                                                    "error in group notification section");
-                                                            }
-                                                            if (granted)
-                                                            {
-                                                                notificationMask = notificationMask |
-                                                                                   wasGetEnumValueFromDescription
-                                                                                       <Notifications>(name);
-                                                            }
-                                                        });
-                                        }
-                                        configGroup.NotificationMask = notificationMask;
-                                        break;
+                                                                bool granted;
+                                                                if (!bool.TryParse(node.InnerText, out granted))
+                                                                {
+                                                                    throw new Exception(
+                                                                        "error in group notification section");
+                                                                }
+                                                                if (granted)
+                                                                {
+                                                                    notificationMask = notificationMask |
+                                                                                       wasGetEnumValueFromDescription
+                                                                                           <Notifications>(name);
+                                                                }
+                                                            });
+                                            }
+                                            configGroup.NotificationMask = notificationMask;
+                                            break;
+                                    }
                                 }
+                                GROUPS.Add(configGroup);
                             }
-                            GROUPS.Add(configGroup);
                         }
-                    }
-                    catch (Exception e)
-                    {
-                        Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
-                        Environment.Exit(1);
+                        catch (Exception e)
+                        {
+                            Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                        }
                     }
                 }
                 Feedback(GetEnumDescription(ConsoleError.READ_CONFIGURATION_FILE));
@@ -10746,8 +11253,9 @@ namespace Corrade
             public const string LOGIN_URL = "loginurl";
             public const string HTTP_SERVER = "httpserver";
             public const string HTTP_SERVER_PREFIX = "httpserverprefix";
-            public const string CALLBACK_TIMEOUT = "callbacktimeout";
-            public const string SERVICES_TIMEOUT = "servicestimeout";
+            public const string TIMEOUT = "timeout";
+            public const string THROTTLE = "throttle";
+            public const string SERVICES = "services";
             public const string TOS_ACCEPTED = "tosaccepted";
             public const string AUTO_ACTIVATE_GROUP = "autoactivategroup";
             public const string GROUP_CREATE_FEE = "groupcreatefee";
@@ -10761,6 +11269,8 @@ namespace Corrade
             public const string DATABASE = "database";
             public const string PERMISSIONS = "permissions";
             public const string NOTIFICATIONS = "notifications";
+            public const string CALLBACKS = "callbacks";
+            public const string QUEUE_LENGTH = "queuelength";
         }
 
         /// <summary>
@@ -10795,7 +11305,6 @@ namespace Corrade
             [Description("got group invite")] GOT_GROUP_INVITE,
             [Description("read configuration file")] READ_CONFIGURATION_FILE,
             [Description("configuration file modified")] CONFIGURATION_FILE_MODIFIED,
-            [Description("notification could not be sent")] NOTIFICATION_COULD_NOT_BE_SENT,
             [Description("got region message")] GOT_REGION_MESSAGE,
             [Description("got group message")] GOT_GROUP_NOTICE,
             [Description("got insant message")] GOT_INSTANT_MESSAGE,
@@ -10803,7 +11312,10 @@ namespace Corrade
             [Description("HTTP server not supported")] HTTP_SERVER_NOT_SUPPORTED,
             [Description("starting HTTP server")] STARTING_HTTP_SERVER,
             [Description("stopping HTTP server")] STOPPING_HTTP_SERVER,
-            [Description("http server processing aborted")] HTTP_SERVER_PROCESSING_ABORTED
+            [Description("HTTP server processing aborted")] HTTP_SERVER_PROCESSING_ABORTED,
+            [Description("timeout logging out")] TIMEOUT_LOGGING_OUT,
+            [Description("callback error")] CALLBACK_ERROR,
+            [Description("notification error")] NOTIFICATION_ERROR
         }
 
         /// <summary>
@@ -10925,6 +11437,24 @@ namespace Corrade
         }
 
         /// <summary>
+        ///     An element from the callback queue waiting to be dispatched.
+        /// </summary>
+        private struct CallbackQueueElement
+        {
+            public string URL;
+            public Dictionary<string, string> message;
+        }
+
+        /// <summary>
+        ///     An element from the notification queue waiting to be dispatched.
+        /// </summary>
+        private struct NotificationQueueElement
+        {
+            public string URL;
+            public Dictionary<string, string> message;
+        }
+
+        /// <summary>
         ///     Masters structure.
         /// </summary>
         private struct Master
@@ -10939,8 +11469,61 @@ namespace Corrade
         private struct Notification
         {
             public string GROUP;
-            public int NOTIFICATION_MASK;
+            public uint NOTIFICATION_MASK;
             public string URL;
+        }
+
+        /// <summary>
+        ///     Corrade's caches.
+        /// </summary>
+        private struct Cache
+        {
+            public static readonly HashSet<Agents> AgentCache = new HashSet<Agents>();
+            public static readonly HashSet<Groups> GroupCache = new HashSet<Groups>();
+            public static readonly HashSet<Roles> RoleCache = new HashSet<Roles>();
+
+            internal struct Agents
+            {
+                public string FirstName;
+                public string LastName;
+                public UUID UUID;
+            }
+
+            internal struct Groups
+            {
+                public string Name;
+                public UUID UUID;
+            }
+
+            internal struct Roles
+            {
+                public string Name;
+                public UUID UUID;
+                public UUID GroupUUID;
+            }
+
+            public struct Locks
+            {
+                public static readonly object AgentCacheLock = new object();
+                public static readonly object GroupCacheLock = new object();
+                public static readonly object RoleCacheLock = new object();
+            }
+
+            internal static void Purge()
+            {
+                lock (Locks.AgentCacheLock)
+                {
+                    AgentCache.Clear();
+                }
+                lock (Locks.GroupCacheLock)
+                {
+                    GroupCache.Clear();
+                }
+                lock (Locks.RoleCacheLock)
+                {
+                    RoleCache.Clear();
+                }
+            }
         }
 
         /// <summary>
@@ -10963,7 +11546,8 @@ namespace Corrade
             [Description("lure")] NOTIFICATION_TELEPORT_LURE = 2048,
             [Description("effect")] NOTIFICATION_VIEWER_EFFECT = 4096,
             [Description("collision")] NOTIFICATION_MEAN_COLLISION = 8192,
-            [Description("crossing")] NOTIFICATION_REGION_CROSSED = 16384
+            [Description("crossing")] NOTIFICATION_REGION_CROSSED = 16384,
+            [Description("terse")] NOTIFICATION_TERSE_UPDATES = 32768
         }
 
         /// <summary>
@@ -11015,7 +11599,6 @@ namespace Corrade
             [Description("balance")] BALANCE,
             [Description("owners")] OWNERS,
             [Description("error")] ERROR,
-            [Description("callbackerror")] CALLBACKERROR,
             [Description("success")] SUCCESS,
             [Description("mutes")] MUTES,
             [Description("notifications")] NOTIFICATIONS,
@@ -11181,6 +11764,8 @@ namespace Corrade
         /// </summary>
         private enum ScriptKeys : uint
         {
+            [Description("cache")] CACHE,
+            [Description("getgridregiondata")] GETGRIDREGIONDATA,
             [Description("getregionparcelsboundingbox")] GETREGIONPARCELSBOUNDINGBOX,
             [Description("pattern")] PATTERN,
             [Description("searchinventory")] SEARCHINVENTORY,
