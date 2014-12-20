@@ -2802,8 +2802,8 @@ namespace Corrade
                         if (roleUUID.Equals(UUID.Zero))
                         {
                             if (
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
-                                Configuration.SERVICES_TIMEOUT))
+                                !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
+                                    Configuration.SERVICES_TIMEOUT))
                             {
                                 throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                             }
@@ -3184,6 +3184,70 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(GetEnumDescription(ResultKeys.MEMBERS),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                        }
+                    };
+                    break;
+                case ScriptKeys.GETMEMBERROLES:
+                    execute = () =>
+                    {
+                        UUID groupUUID =
+                            Configuration.GROUPS.FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
+                        if (groupUUID.Equals(UUID.Zero) &&
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                        }
+                        if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NOT_IN_GROUP));
+                        }
+                        UUID agentUUID;
+                        if (
+                            !UUID.TryParse(
+                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                out agentUUID) && !AgentNameToUUID(
+                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                        message)),
+                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
+                                        message)),
+                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                        }
+                        if (!AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_IN_GROUP));
+                        }
+                        HashSet<string> csv = new HashSet<string>();
+                        // get roles for a member
+                        ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                        EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
+                        {
+                            foreach (
+                                KeyValuePair<UUID, UUID> pair in args.RolesMembers.Where(o => o.Value.Equals(agentUUID))
+                                )
+                            {
+                                string roleName = string.Empty;
+                                if (
+                                    !RoleUUIDToName(pair.Key, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                        ref roleName))
+                                    continue;
+                                csv.Add(roleName);
+                            }
+                            GroupRoleMembersReplyEvent.Set();
+                        };
+                        Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
+                        Client.Groups.RequestGroupRolesMembers(groupUUID);
+                        if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                        {
+                            Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
+                            throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS));
+                        }
+                        if (!csv.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.ROLES),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -11980,6 +12044,7 @@ namespace Corrade
         /// </summary>
         private enum ScriptKeys : uint
         {
+            [Description("getmemberroles")] GETMEMBERROLES,
             [Description("execute")] EXECUTE,
             [Description("parameter")] PARAMETER,
             [Description("file")] FILE,
