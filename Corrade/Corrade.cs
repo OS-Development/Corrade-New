@@ -2230,7 +2230,7 @@ namespace Corrade
                             notificationData.Add(GetEnumDescription(ScriptKeys.ID),
                                 notificationViewerLookAtEventArgs.EffectID.ToString());
                             notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
-                                GetEnumDescription(Action.LOOKAT));
+                                GetEnumDescription(Action.LOOK));
                         }
                         break;
                     case Notifications.NOTIFICATION_MEAN_COLLISION:
@@ -2318,6 +2318,8 @@ namespace Corrade
                             notificationGroupInviteName.First());
                         notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
                             notificationGroupInviteName.Last());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                            notificationGroupInviteEventArgs.IM.FromAgentID.ToString());
                         notificationData.Add(GetEnumDescription(ScriptKeys.GROUP),
                             GroupInvites.FirstOrDefault(
                                 p => p.Session.Equals(notificationGroupInviteEventArgs.IM.IMSessionID))
@@ -2656,6 +2658,10 @@ namespace Corrade
                         new List<string>(
                             args.IM.FromAgentName.Split(new[] {' ', '.'},
                                 StringSplitOptions.RemoveEmptyEntries));
+                    UUID inviteGroupAgent = UUID.Zero;
+                    if (
+                        !AgentNameToUUID(groupInviteName.First(), groupInviteName.Last(), Configuration.SERVICES_TIMEOUT,
+                            ref inviteGroupAgent)) return;
                     // Add the group invite - have to track them manually.
                     lock (GroupInviteLock)
                     {
@@ -2663,6 +2669,7 @@ namespace Corrade
                         {
                             FirstName = groupInviteName.First(),
                             LastName = groupInviteName.Last(),
+                            Agent = inviteGroupAgent,
                             Group = inviteGroup.Name,
                             Session = args.IM.IMSessionID,
                             Fee = inviteGroup.MembershipFee
@@ -3048,7 +3055,7 @@ namespace Corrade
                             throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_GROUP_INVITE_SESSION));
                         }
                         int amount = GroupInvites.FirstOrDefault(o => o.Session.Equals(sessionUUID)).Fee;
-                        if (!amount.Equals(0))
+                        if (!amount.Equals(0) && action.Equals((uint)Action.ACCEPT))
                         {
                             if (!HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
                             {
@@ -3081,11 +3088,6 @@ namespace Corrade
                         {
                             throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        if (
-                            !HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
-                        {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
-                        }
                         List<string> csv = new List<string>();
                         object LockObject = new object();
                         Parallel.ForEach(GroupInvites, o =>
@@ -3094,6 +3096,7 @@ namespace Corrade
                             {
                                 csv.Add(o.FirstName);
                                 csv.Add(o.LastName);
+                                csv.Add(o.Agent.ToString());
                                 csv.Add(o.Group);
                                 csv.Add(o.Session.ToString());
                                 csv.Add(o.Fee.ToString(CultureInfo.InvariantCulture));
@@ -11391,7 +11394,7 @@ namespace Corrade
             [Description("offer")] OFFER,
             [Description("generic")] GENERIC,
             [Description("point")] POINT,
-            [Description("lookat")] LOOKAT,
+            [Description("look")] LOOK,
             [Description("update")] UPDATE,
             [Description("received")] RECEIVED
         }
@@ -12169,6 +12172,7 @@ namespace Corrade
             public string FirstName;
             public string Group;
             public string LastName;
+            public UUID Agent;
             public UUID Session;
         }
 
