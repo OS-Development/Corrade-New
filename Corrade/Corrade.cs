@@ -100,6 +100,23 @@ namespace Corrade
 
         private static readonly object NotificationQueueLock = new object();
 
+        private static readonly HashSet<GroupInvite> GroupInvites = new HashSet<GroupInvite>();
+
+        private static readonly object GroupInviteLock = new object();
+
+        private static readonly HashSet<TeleportLure> TeleportLures = new HashSet<TeleportLure>();
+
+        private static readonly object TeleportLureLock = new object();
+
+        private static readonly HashSet<ScriptPermissionRequest> ScriptPermissionRequests =
+            new HashSet<ScriptPermissionRequest>();
+
+        private static readonly object ScriptPermissionRequestLock = new object();
+
+        private static readonly HashSet<ScriptDialog> ScriptDialogs = new HashSet<ScriptDialog>();
+
+        private static readonly object ScriptDialogLock = new object();
+
         public static EventHandler ConsoleEventHandler;
 
         private static readonly System.Action ActivateCurrentLandGroup = () => new Thread(activate =>
@@ -587,10 +604,12 @@ namespace Corrade
             {
                 IList array = (IList) data;
                 if (array.Count.Equals(0)) yield break;
-                foreach (object item in array)
+                foreach (
+                    string itemValue in
+                        array.Cast<object>()
+                            .Select(item => item.ToString())
+                            .Where(itemValue => !string.IsNullOrEmpty(itemValue)))
                 {
-                    string itemValue = item.ToString();
-                    if (string.IsNullOrEmpty(itemValue)) continue;
                     yield return itemValue;
                 }
                 yield break;
@@ -613,64 +632,62 @@ namespace Corrade
         /// <param name="object">the object to set the values for</param>
         private static void wasSetInfo<T>(object info, object value, string setting, ref T @object)
         {
-            if (info != null)
+            if (info == null) return;
+            if (wasGetInfoValue(info, value) is string)
             {
-                if (wasGetInfoValue(info, value) is string)
+                wasSetInfoValue(info, ref @object, setting);
+            }
+            if (wasGetInfoValue(info, value) is UUID)
+            {
+                UUID UUIDData;
+                if (!UUID.TryParse(setting, out UUIDData))
                 {
-                    wasSetInfoValue(info, ref @object, setting);
+                    InventoryItem item = FindInventoryBase(Client.Inventory.Store.RootFolder,
+                        setting,
+                        Configuration.SERVICES_TIMEOUT).FirstOrDefault() as InventoryItem;
+                    if (item == null)
+                    {
+                        throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                    }
+                    UUIDData = item.UUID;
                 }
-                if (wasGetInfoValue(info, value) is UUID)
+                if (UUIDData.Equals(UUID.Zero))
                 {
-                    UUID UUIDData;
-                    if (!UUID.TryParse(setting, out UUIDData))
-                    {
-                        InventoryItem item = FindInventoryBase(Client.Inventory.Store.RootFolder,
-                            setting,
-                            Configuration.SERVICES_TIMEOUT).FirstOrDefault() as InventoryItem;
-                        if (item == null)
-                        {
-                            throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
-                        }
-                        UUIDData = item.UUID;
-                    }
-                    if (UUIDData.Equals(UUID.Zero))
-                    {
-                        throw new Exception(
-                            GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
-                    }
-                    wasSetInfoValue(info, ref @object, UUIDData);
+                    throw new Exception(
+                        GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                 }
-                if (wasGetInfoValue(info, value) is bool)
+                wasSetInfoValue(info, ref @object, UUIDData);
+            }
+            if (wasGetInfoValue(info, value) is bool)
+            {
+                bool boolData;
+                if (bool.TryParse(setting, out boolData))
                 {
-                    bool boolData;
-                    if (bool.TryParse(setting, out boolData))
-                    {
-                        wasSetInfoValue(info, ref @object, boolData);
-                    }
+                    wasSetInfoValue(info, ref @object, boolData);
                 }
-                if (wasGetInfoValue(info, value) is int)
+            }
+            if (wasGetInfoValue(info, value) is int)
+            {
+                int intData;
+                if (int.TryParse(setting, out intData))
                 {
-                    int intData;
-                    if (int.TryParse(setting, out intData))
-                    {
-                        wasSetInfoValue(info, ref @object, intData);
-                    }
+                    wasSetInfoValue(info, ref @object, intData);
                 }
-                if (wasGetInfoValue(info, value) is uint)
+            }
+            if (wasGetInfoValue(info, value) is uint)
+            {
+                uint uintData;
+                if (uint.TryParse(setting, out uintData))
                 {
-                    uint uintData;
-                    if (uint.TryParse(setting, out uintData))
-                    {
-                        wasSetInfoValue(info, ref @object, uintData);
-                    }
+                    wasSetInfoValue(info, ref @object, uintData);
                 }
-                if (wasGetInfoValue(info, value) is DateTime)
+            }
+            if (wasGetInfoValue(info, value) is DateTime)
+            {
+                DateTime dateTimeData;
+                if (DateTime.TryParse(setting, out dateTimeData))
                 {
-                    DateTime dateTimeData;
-                    if (DateTime.TryParse(setting, out dateTimeData))
-                    {
-                        wasSetInfoValue(info, ref @object, dateTimeData);
-                    }
+                    wasSetInfoValue(info, ref @object, dateTimeData);
                 }
             }
         }
@@ -1558,7 +1575,6 @@ namespace Corrade
             Client.Network.Disconnected += HandleDisconnected;
             Client.Network.SimDisconnected += HandleSimulatorDisconnected;
             Client.Network.EventQueueRunning += HandleEventQueueRunning;
-            //Client.Network.SimChanged += HandleSimChanged;
             Client.Friends.FriendshipOffered += HandleFriendshipOffered;
             Client.Friends.FriendshipResponse += HandleFriendShipResponse;
             Client.Friends.FriendOnline += HandleFriendOnlineStatus;
@@ -1577,6 +1593,7 @@ namespace Corrade
             Client.Avatars.ViewerEffectLookAt += HandleViewerEffect;
             Client.Self.MeanCollision += HandleMeanCollision;
             Client.Self.RegionCrossed += HandleRegionCrossed;
+            Client.Network.SimChanged += HandleSimChanged;
             // Each Instant Message is processed in its own thread.
             Client.Self.IM += (sender, args) => new Thread(o => HandleSelfIM(sender, args)).Start();
             // Write the logo in interactive mode.
@@ -1716,33 +1733,33 @@ namespace Corrade
             // Now log-out.
             Feedback(GetEnumDescription(ConsoleError.LOGGING_OUT));
             // Uninstall all installed handlers
-            Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
-            Client.Appearance.AppearanceSet -= HandleAppearanceSet;
-            Client.Network.LoginProgress -= HandleLoginProgress;
-            Client.Network.SimConnected -= HandleSimulatorConnected;
-            Client.Network.Disconnected -= HandleDisconnected;
-            Client.Network.SimDisconnected -= HandleSimulatorDisconnected;
-            Client.Network.EventQueueRunning -= HandleEventQueueRunning;
-            Client.Network.SimChanged -= HandleSimChanged;
-            Client.Friends.FriendshipOffered -= HandleFriendshipOffered;
-            Client.Friends.FriendshipResponse -= HandleFriendShipResponse;
-            Client.Friends.FriendOnline -= HandleFriendOnlineStatus;
-            Client.Friends.FriendOffline -= HandleFriendOnlineStatus;
-            Client.Friends.FriendRightsUpdate -= HandleFriendRightsUpdate;
-            Client.Self.TeleportProgress -= HandleTeleportProgress;
-            Client.Self.ScriptQuestion -= HandleScriptQuestion;
-            Client.Self.AlertMessage -= HandleAlertMessage;
-            Client.Self.MoneyBalance -= HandleMoneyBalance;
-            Client.Self.ChatFromSimulator -= HandleChatFromSimulator;
-            Client.Self.ScriptDialog -= HandleScriptDialog;
-            Client.Objects.AvatarUpdate -= HandleAvatarUpdate;
-            Client.Objects.TerseObjectUpdate -= HandleTerseObjectUpdate;
-            Client.Avatars.ViewerEffect -= HandleViewerEffect;
-            Client.Avatars.ViewerEffectPointAt -= HandleViewerEffect;
-            Client.Avatars.ViewerEffectLookAt -= HandleViewerEffect;
-            Client.Self.MeanCollision -= HandleMeanCollision;
-            Client.Self.RegionCrossed -= HandleRegionCrossed;
             Client.Self.IM -= HandleSelfIM;
+            Client.Network.SimChanged -= HandleSimChanged;
+            Client.Self.RegionCrossed -= HandleRegionCrossed;
+            Client.Self.MeanCollision -= HandleMeanCollision;
+            Client.Avatars.ViewerEffectLookAt -= HandleViewerEffect;
+            Client.Avatars.ViewerEffectPointAt -= HandleViewerEffect;
+            Client.Avatars.ViewerEffect -= HandleViewerEffect;
+            Client.Objects.TerseObjectUpdate -= HandleTerseObjectUpdate;
+            Client.Objects.AvatarUpdate -= HandleAvatarUpdate;
+            Client.Self.ScriptDialog -= HandleScriptDialog;
+            Client.Self.ChatFromSimulator -= HandleChatFromSimulator;
+            Client.Self.MoneyBalance -= HandleMoneyBalance;
+            Client.Self.AlertMessage -= HandleAlertMessage;
+            Client.Self.ScriptQuestion -= HandleScriptQuestion;
+            Client.Self.TeleportProgress -= HandleTeleportProgress;
+            Client.Friends.FriendRightsUpdate -= HandleFriendRightsUpdate;
+            Client.Friends.FriendOffline -= HandleFriendOnlineStatus;
+            Client.Friends.FriendOnline -= HandleFriendOnlineStatus;
+            Client.Friends.FriendshipResponse -= HandleFriendShipResponse;
+            Client.Friends.FriendshipOffered -= HandleFriendshipOffered;
+            Client.Network.EventQueueRunning -= HandleEventQueueRunning;
+            Client.Network.SimDisconnected -= HandleSimulatorDisconnected;
+            Client.Network.Disconnected -= HandleDisconnected;
+            Client.Network.SimConnected -= HandleSimulatorConnected;
+            Client.Network.LoginProgress -= HandleLoginProgress;
+            Client.Appearance.AppearanceSet -= HandleAppearanceSet;
+            Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
             // Stop the notification thread.
             runNotificationThread = false;
             NotificationThread.Join(Configuration.SERVICES_TIMEOUT);
@@ -1920,26 +1937,53 @@ namespace Corrade
                         notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
                             alertMessageEventArgs.Message);
                         break;
-                    case Notifications.NOTIFICATION_INVENTORY_OFFER:
-                        InventoryObjectOfferedEventArgs inventoryObjectOfferedEventArgs =
-                            (InventoryObjectOfferedEventArgs) args;
-                        List<string> inventoryObjectOfferedName =
-                            new List<string>(
-                                inventoryObjectOfferedEventArgs.Offer.FromAgentName.Split(
-                                    new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries));
-                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                            inventoryObjectOfferedName.First());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
-                            inventoryObjectOfferedName.Last());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
-                            inventoryObjectOfferedEventArgs.Offer.FromAgentID.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.ASSET),
-                            inventoryObjectOfferedEventArgs.AssetType.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.NAME),
-                            inventoryObjectOfferedEventArgs.Offer.Message);
-                        notificationData.Add(GetEnumDescription(ScriptKeys.SESSION),
-                            inventoryObjectOfferedEventArgs.Offer.IMSessionID.ToString());
+                    case Notifications.NOTIFICATION_INVENTORY:
+                        System.Type inventoryOfferedType = args.GetType();
+                        if (inventoryOfferedType == typeof (InstantMessageEventArgs))
+                        {
+                            InstantMessageEventArgs inventoryOfferEventArgs = (InstantMessageEventArgs) args;
+                            List<string> inventoryOfferName =
+                                new List<string>(
+                                    inventoryOfferEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
+                                        StringSplitOptions.RemoveEmptyEntries));
+                            notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                inventoryOfferName.First());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                                inventoryOfferName.Last());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                                inventoryOfferEventArgs.IM.FromAgentID.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
+                                inventoryOfferEventArgs.IM.Dialog == InstantMessageDialog.InventoryAccepted
+                                    ? GetEnumDescription(Action.ACCEPT)
+                                    : GetEnumDescription(Action.DECLINE));
+                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
+                                GetEnumDescription(Action.REPLY));
+                            break;
+                        }
+                        if (inventoryOfferedType == typeof (InventoryObjectOfferedEventArgs))
+                        {
+                            InventoryObjectOfferedEventArgs inventoryObjectOfferedEventArgs =
+                                (InventoryObjectOfferedEventArgs) args;
+                            List<string> inventoryObjectOfferedName =
+                                new List<string>(
+                                    inventoryObjectOfferedEventArgs.Offer.FromAgentName.Split(
+                                        new[] {' ', '.'},
+                                        StringSplitOptions.RemoveEmptyEntries));
+                            notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                inventoryObjectOfferedName.First());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                                inventoryObjectOfferedName.Last());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                                inventoryObjectOfferedEventArgs.Offer.FromAgentID.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.ASSET),
+                                inventoryObjectOfferedEventArgs.AssetType.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.NAME),
+                                inventoryObjectOfferedEventArgs.Offer.Message);
+                            notificationData.Add(GetEnumDescription(ScriptKeys.SESSION),
+                                inventoryObjectOfferedEventArgs.Offer.IMSessionID.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
+                                GetEnumDescription(Action.OFFER));
+                        }
                         break;
                     case Notifications.NOTIFICATION_SCRIPT_PERMISSION:
                         ScriptQuestionEventArgs scriptQuestionEventArgs = (ScriptQuestionEventArgs) args;
@@ -1986,6 +2030,8 @@ namespace Corrade
                                                         0))
                                         .Select(p => p.Name)
                                         .ToArray()));
+                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
+                                GetEnumDescription(Action.UPDATE));
                             break;
                         }
                         if (friendshipNotificationType == typeof (FriendshipResponseEventArgs))
@@ -2040,19 +2086,19 @@ namespace Corrade
                             teleportLureEventArgs.IM.IMSessionID.ToString());
                         break;
                     case Notifications.NOTIFICATION_GROUP_NOTICE:
-                        InstantMessageEventArgs notificationGroupNoticEventArgs =
+                        InstantMessageEventArgs notificationGroupNoticeEventArgs =
                             (InstantMessageEventArgs) args;
                         List<string> notificationGroupNoticeName =
                             new List<string>(
-                                notificationGroupNoticEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
+                                notificationGroupNoticeEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
                                     StringSplitOptions.RemoveEmptyEntries));
                         notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
                             notificationGroupNoticeName.First());
                         notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
                             notificationGroupNoticeName.Last());
                         notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
-                            notificationGroupNoticEventArgs.IM.FromAgentID.ToString());
-                        string[] noticeData = notificationGroupNoticEventArgs.IM.Message.Split('|');
+                            notificationGroupNoticeEventArgs.IM.FromAgentID.ToString());
+                        string[] noticeData = notificationGroupNoticeEventArgs.IM.Message.Split('|');
                         if (noticeData.Length > 0 && !string.IsNullOrEmpty(noticeData[0]))
                         {
                             notificationData.Add(GetEnumDescription(ScriptKeys.SUBJECT), noticeData[0]);
@@ -2060,6 +2106,21 @@ namespace Corrade
                         if (noticeData.Length > 1 && !string.IsNullOrEmpty(noticeData[1]))
                         {
                             notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE), noticeData[1]);
+                        }
+                        switch (notificationGroupNoticeEventArgs.IM.Dialog)
+                        {
+                            case InstantMessageDialog.GroupNoticeInventoryAccepted:
+                            case InstantMessageDialog.GroupNoticeInventoryDeclined:
+                                notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
+                                    !notificationGroupNoticeEventArgs.IM.Dialog.Equals(
+                                        InstantMessageDialog.GroupNoticeInventoryAccepted)
+                                        ? GetEnumDescription(Action.DECLINE)
+                                        : GetEnumDescription(Action.ACCEPT));
+                                break;
+                            case InstantMessageDialog.GroupNotice:
+                                notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
+                                    GetEnumDescription(Action.RECEIVED));
+                                break;
                         }
                         break;
                     case Notifications.NOTIFICATION_INSTANT_MESSAGE:
@@ -2130,6 +2191,8 @@ namespace Corrade
                                     CultureInfo.InvariantCulture));
                             notificationData.Add(GetEnumDescription(ScriptKeys.ID),
                                 notificationViewerEffectEventArgs.EffectID.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
+                                GetEnumDescription(Action.GENERIC));
                             break;
                         }
                         if (viewerEffectType == typeof (ViewerEffectPointAtEventArgs))
@@ -2147,6 +2210,8 @@ namespace Corrade
                                     CultureInfo.InvariantCulture));
                             notificationData.Add(GetEnumDescription(ScriptKeys.ID),
                                 notificationViewerPointAtEventArgs.EffectID.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
+                                GetEnumDescription(Action.POINT));
                             break;
                         }
                         if (viewerEffectType == typeof (ViewerEffectLookAtEventArgs))
@@ -2164,6 +2229,8 @@ namespace Corrade
                                     CultureInfo.InvariantCulture));
                             notificationData.Add(GetEnumDescription(ScriptKeys.ID),
                                 notificationViewerLookAtEventArgs.EffectID.ToString());
+                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
+                                GetEnumDescription(Action.LOOKAT));
                         }
                         break;
                     case Notifications.NOTIFICATION_MEAN_COLLISION:
@@ -2181,12 +2248,29 @@ namespace Corrade
                             meanCollisionEventArgs.Victim.ToString());
                         break;
                     case Notifications.NOTIFICATION_REGION_CROSSED:
-                        RegionCrossedEventArgs regionCrossedEventArgs =
-                            (RegionCrossedEventArgs) args;
-                        notificationData.Add(GetEnumDescription(ScriptKeys.OLD),
-                            regionCrossedEventArgs.OldSimulator.Name);
-                        notificationData.Add(GetEnumDescription(ScriptKeys.NEW),
-                            regionCrossedEventArgs.NewSimulator.Name);
+                        System.Type regionChangeType = args.GetType();
+                        if (regionChangeType == typeof (SimChangedEventArgs))
+                        {
+                            SimChangedEventArgs simChangedEventArgs = (SimChangedEventArgs) args;
+                            notificationData.Add(GetEnumDescription(ScriptKeys.OLD),
+                                simChangedEventArgs.PreviousSimulator.Name);
+                            notificationData.Add(GetEnumDescription(ScriptKeys.NEW),
+                                Client.Network.CurrentSim.Name);
+                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
+                                GetEnumDescription(Action.CHANGED));
+                            break;
+                        }
+                        if (regionChangeType == typeof (RegionCrossedEventArgs))
+                        {
+                            RegionCrossedEventArgs regionCrossedEventArgs =
+                                (RegionCrossedEventArgs) args;
+                            notificationData.Add(GetEnumDescription(ScriptKeys.OLD),
+                                regionCrossedEventArgs.OldSimulator.Name);
+                            notificationData.Add(GetEnumDescription(ScriptKeys.NEW),
+                                regionCrossedEventArgs.NewSimulator.Name);
+                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
+                                GetEnumDescription(Action.CROSSED));
+                        }
                         break;
                     case Notifications.NOTIFICATION_TERSE_UPDATES:
                         TerseObjectUpdateEventArgs terseObjectUpdateEventArgs =
@@ -2199,6 +2283,47 @@ namespace Corrade
                             terseObjectUpdateEventArgs.Prim.Rotation.ToString());
                         notificationData.Add(GetEnumDescription(ScriptKeys.ENTITY),
                             terseObjectUpdateEventArgs.Prim.PrimData.PCode.ToString());
+                        break;
+                    case Notifications.NOTIFICATION_TYPING:
+                        InstantMessageEventArgs notificationTypingMessageEventArgs = (InstantMessageEventArgs) args;
+                        List<string> notificationTypingMessageName =
+                            new List<string>(
+                                notificationTypingMessageEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
+                                    StringSplitOptions.RemoveEmptyEntries));
+                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                            notificationTypingMessageName.First());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                            notificationTypingMessageName.Last());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                            notificationTypingMessageEventArgs.IM.FromAgentID.ToString());
+                        switch (notificationTypingMessageEventArgs.IM.Dialog)
+                        {
+                            case InstantMessageDialog.StartTyping:
+                            case InstantMessageDialog.StopTyping:
+                                notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
+                                    !notificationTypingMessageEventArgs.IM.Dialog.Equals(
+                                        InstantMessageDialog.StartTyping)
+                                        ? GetEnumDescription(Action.STOP)
+                                        : GetEnumDescription(Action.START));
+                                break;
+                        }
+                        break;
+                    case Notifications.NOTIFICATION_GROUP_INVITE:
+                        InstantMessageEventArgs notificationGroupInviteEventArgs = (InstantMessageEventArgs) args;
+                        List<string> notificationGroupInviteName =
+                            new List<string>(
+                                notificationGroupInviteEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
+                                    StringSplitOptions.RemoveEmptyEntries));
+                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                            notificationGroupInviteName.First());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                            notificationGroupInviteName.Last());
+                        notificationData.Add(GetEnumDescription(ScriptKeys.GROUP),
+                            GroupInvites.FirstOrDefault(
+                                p => p.Session.Equals(notificationGroupInviteEventArgs.IM.IMSessionID))
+                                .Group);
+                        notificationData.Add(GetEnumDescription(ScriptKeys.SESSION),
+                            notificationGroupInviteEventArgs.IM.IMSessionID.ToString());
                         break;
                 }
                 if (NotificationQueue.Count < Configuration.NOTIFICATION_QUEUE_LENGTH)
@@ -2217,6 +2342,20 @@ namespace Corrade
 
         private static void HandleScriptDialog(object sender, ScriptDialogEventArgs e)
         {
+            lock (ScriptDialogLock)
+            {
+                ScriptDialogs.Add(new ScriptDialog
+                {
+                    Message = e.Message,
+                    FirstName = e.FirstName,
+                    LastName = e.LastName,
+                    Channel = e.Channel,
+                    Name = e.ObjectName,
+                    Item = e.ObjectID,
+                    Owner = e.OwnerID,
+                    Button = e.ButtonLabels
+                });
+            }
             new Thread(o => SendNotification(Notifications.NOTIFICATION_SCRIPT_DIALOG, e)).Start();
         }
 
@@ -2291,7 +2430,7 @@ namespace Corrade
             }
 
             // Send notification
-            new Thread(o => SendNotification(Notifications.NOTIFICATION_INVENTORY_OFFER, e)).Start();
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_INVENTORY, e)).Start();
             // Wait for a reply.
             wait.WaitOne(Timeout.Infinite);
 
@@ -2326,6 +2465,17 @@ namespace Corrade
 
         private static void HandleScriptQuestion(object sender, ScriptQuestionEventArgs e)
         {
+            lock (ScriptPermissionRequestLock)
+            {
+                ScriptPermissionRequests.Add(new ScriptPermissionRequest
+                {
+                    ObjectName = e.ObjectName,
+                    OwnerName = e.ObjectOwnerName,
+                    ItemUUID = e.ItemID,
+                    TaskUUID = e.TaskID,
+                    Permissions = e.Questions
+                });
+            }
             new Thread(o => SendNotification(Notifications.NOTIFICATION_SCRIPT_PERMISSION, e)).Start();
         }
 
@@ -2445,14 +2595,16 @@ namespace Corrade
             // Process dialog messages.
             switch (args.IM.Dialog)
             {
-                    // Ignore typing messages.
+                    // Send typing notification.
                 case InstantMessageDialog.StartTyping:
                 case InstantMessageDialog.StopTyping:
+                    new Thread(o => SendNotification(Notifications.NOTIFICATION_TYPING, args)).Start();
                     return;
+                case InstantMessageDialog.InventoryAccepted:
+                case InstantMessageDialog.InventoryDeclined:
                 case InstantMessageDialog.TaskInventoryOffered:
                 case InstantMessageDialog.InventoryOffered:
-                    Feedback(GetEnumDescription(ConsoleError.GOT_INVENTORY_OFFER),
-                        message.Replace(Environment.NewLine, " : "));
+                    new Thread(o => SendNotification(Notifications.NOTIFICATION_INVENTORY, args)).Start();
                     return;
                 case InstantMessageDialog.MessageBox:
                     Feedback(GetEnumDescription(ConsoleError.GOT_SERVER_MESSAGE),
@@ -2461,6 +2613,21 @@ namespace Corrade
                 case InstantMessageDialog.RequestTeleport:
                     Feedback(GetEnumDescription(ConsoleError.GOT_TELEPORT_LURE),
                         message.Replace(Environment.NewLine, " : "));
+                    List<string> teleportLureName =
+                        new List<string>(
+                            args.IM.FromAgentName.Split(new[] {' ', '.'},
+                                StringSplitOptions.RemoveEmptyEntries));
+                    // Store teleport lure.
+                    lock (TeleportLureLock)
+                    {
+                        TeleportLures.Add(new TeleportLure
+                        {
+                            FirstName = teleportLureName.First(),
+                            LastName = teleportLureName.Last(),
+                            Agent = args.IM.FromAgentID,
+                            Session = args.IM.IMSessionID
+                        });
+                    }
                     // Send teleport lure notification.
                     new Thread(o => SendNotification(Notifications.NOTIFICATION_TELEPORT_LURE, args)).Start();
                     // If we got a teleport request from a master, then accept it (for the moment).
@@ -2481,9 +2648,29 @@ namespace Corrade
                         return;
                     }
                     return;
+                    // Group invitations received
                 case InstantMessageDialog.GroupInvitation:
-                    Feedback(GetEnumDescription(ConsoleError.GOT_GROUP_INVITE),
-                        message.Replace(Environment.NewLine, " : "));
+                    OpenMetaverse.Group inviteGroup = new OpenMetaverse.Group();
+                    if (!RequestGroup(args.IM.FromAgentID, Configuration.SERVICES_TIMEOUT, ref inviteGroup)) return;
+                    List<string> groupInviteName =
+                        new List<string>(
+                            args.IM.FromAgentName.Split(new[] {' ', '.'},
+                                StringSplitOptions.RemoveEmptyEntries));
+                    // Add the group invite - have to track them manually.
+                    lock (GroupInviteLock)
+                    {
+                        GroupInvites.Add(new GroupInvite
+                        {
+                            FirstName = groupInviteName.First(),
+                            LastName = groupInviteName.Last(),
+                            Group = inviteGroup.Name,
+                            Session = args.IM.IMSessionID,
+                            Fee = inviteGroup.MembershipFee
+                        });
+                    }
+                    // Send group invitation notification.
+                    new Thread(o => SendNotification(Notifications.NOTIFICATION_GROUP_INVITE, args)).Start();
+                    // If a master sends it, then accept.
                     if (
                         !Configuration.MASTERS.Select(
                             o =>
@@ -2492,11 +2679,12 @@ namespace Corrade
                             Any(p => p.Equals(args.IM.FromAgentName, StringComparison.OrdinalIgnoreCase)))
                         return;
                     Feedback(GetEnumDescription(ConsoleError.ACCEPTING_GROUP_INVITE), args.IM.FromAgentName);
-                    Client.Self.GroupInviteRespond(args.IM.FromAgentID, args.IM.IMSessionID, true);
+                    Client.Self.GroupInviteRespond(inviteGroup.ID, args.IM.IMSessionID, true);
                     return;
+                    // Group notice inventory accepted, declined or notice received.
+                case InstantMessageDialog.GroupNoticeInventoryAccepted:
+                case InstantMessageDialog.GroupNoticeInventoryDeclined:
                 case InstantMessageDialog.GroupNotice:
-                    Feedback(GetEnumDescription(ConsoleError.GOT_GROUP_NOTICE),
-                        message.Replace(Environment.NewLine, " : "));
                     new Thread(o => SendNotification(Notifications.NOTIFICATION_GROUP_NOTICE, args)).Start();
                     return;
                 case InstantMessageDialog.SessionSend:
@@ -2665,6 +2853,10 @@ namespace Corrade
                 case ScriptKeys.JOIN:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -2706,6 +2898,10 @@ namespace Corrade
                 case ScriptKeys.CREATEGROUP:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         if (
                             !HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
                         {
@@ -2757,6 +2953,10 @@ namespace Corrade
                 case ScriptKeys.INVITE:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -2811,9 +3011,108 @@ namespace Corrade
                         Client.Groups.Invite(groupUUID, new List<UUID> {roleUUID}, agentUUID);
                     };
                     break;
+                case ScriptKeys.REPLYTOGROUPINVITE:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        uint action =
+                            wasGetEnumValueFromDescription<Action>(
+                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
+                                    .ToLower(CultureInfo.InvariantCulture));
+                        UUID groupUUID =
+                            Configuration.GROUPS.FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
+                        if (groupUUID.Equals(UUID.Zero) &&
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                        }
+                        if (AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.ALREADY_IN_GROUP));
+                        }
+                        UUID sessionUUID;
+                        if (
+                            !UUID.TryParse(
+                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.SESSION),
+                                    message)),
+                                out sessionUUID))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_SESSION_SPECIFIED));
+                        }
+                        if (!GroupInvites.Any(o => o.Session.Equals(sessionUUID)))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_GROUP_INVITE_SESSION));
+                        }
+                        int amount = GroupInvites.FirstOrDefault(o => o.Session.Equals(sessionUUID)).Fee;
+                        if (!amount.Equals(0))
+                        {
+                            if (!HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
+                            {
+                                throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            }
+                            ManualResetEvent MoneyBalanceEvent = new ManualResetEvent(false);
+                            EventHandler<BalanceEventArgs> MoneyBalanceEventHandler =
+                                (sender, args) => MoneyBalanceEvent.Set();
+                            Client.Self.MoneyBalance += MoneyBalanceEventHandler;
+                            Client.Self.RequestBalance();
+                            if (!MoneyBalanceEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            {
+                                Client.Self.MoneyBalance -= MoneyBalanceEventHandler;
+                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_WAITING_FOR_BALANCE));
+                            }
+                            Client.Self.MoneyBalance -= MoneyBalanceEventHandler;
+                            if (Client.Self.Balance < amount)
+                            {
+                                throw new Exception(GetEnumDescription(ScriptError.INSUFFICIENT_FUNDS));
+                            }
+                        }
+                        Client.Self.GroupInviteRespond(groupUUID, sessionUUID,
+                            action.Equals((uint) Action.ACCEPT));
+                    };
+                    break;
+                case ScriptKeys.GETGROUPINVITES:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        if (
+                            !HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        List<string> csv = new List<string>();
+                        object LockObject = new object();
+                        Parallel.ForEach(GroupInvites, o =>
+                        {
+                            lock (LockObject)
+                            {
+                                csv.Add(o.FirstName);
+                                csv.Add(o.LastName);
+                                csv.Add(o.Group);
+                                csv.Add(o.Session.ToString());
+                                csv.Add(o.Fee.ToString(CultureInfo.InvariantCulture));
+                            }
+                        });
+                        if (!csv.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.INVITES),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                        }
+                    };
+                    break;
                 case ScriptKeys.EJECT:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -2898,6 +3197,10 @@ namespace Corrade
                 case ScriptKeys.GETGROUPACCOUNTSUMMARYDATA:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -2953,6 +3256,10 @@ namespace Corrade
                 case ScriptKeys.UPDATEGROUPDATA:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -2985,6 +3292,10 @@ namespace Corrade
                 case ScriptKeys.LEAVE:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -3021,6 +3332,10 @@ namespace Corrade
                 case ScriptKeys.CREATEROLE:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -3102,6 +3417,10 @@ namespace Corrade
                 case ScriptKeys.GETROLES:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -3145,6 +3464,10 @@ namespace Corrade
                 case ScriptKeys.GETMEMBERS:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
                                 .UUID;
@@ -3191,6 +3514,10 @@ namespace Corrade
                 case ScriptKeys.GETMEMBERROLES:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -3255,6 +3582,10 @@ namespace Corrade
                 case ScriptKeys.GETROLEMEMBERS:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
                                 .UUID;
@@ -3315,6 +3646,10 @@ namespace Corrade
                 case ScriptKeys.GETROLESMEMBERS:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -3368,6 +3703,10 @@ namespace Corrade
                 case ScriptKeys.GETROLEPOWERS:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -3427,6 +3766,10 @@ namespace Corrade
                 case ScriptKeys.DELETEROLE:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -3490,6 +3833,10 @@ namespace Corrade
                 case ScriptKeys.ADDTOROLE:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -3540,6 +3887,10 @@ namespace Corrade
                 case ScriptKeys.DELETEFROMROLE:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -3721,6 +4072,10 @@ namespace Corrade
                 case ScriptKeys.NOTICE:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -5180,6 +5535,10 @@ namespace Corrade
                 case ScriptKeys.MODERATE:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -5718,6 +6077,10 @@ namespace Corrade
                 case ScriptKeys.GETGROUPDATA:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -7327,6 +7690,10 @@ namespace Corrade
                 case ScriptKeys.STARTPROPOSAL:
                     execute = () =>
                     {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -7680,7 +8047,7 @@ namespace Corrade
                         }
                     };
                     break;
-                case ScriptKeys.REPLYTOLURE:
+                case ScriptKeys.REPLYTOTELEPORTLURE:
                     execute = () =>
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MOVEMENT))
@@ -7706,14 +8073,40 @@ namespace Corrade
                                 wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.SESSION), message)),
                                 out sessionUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_ITEM_SPECIFIED));
+                            throw new Exception(GetEnumDescription(ScriptError.NO_SESSION_SPECIFIED));
                         }
                         Client.Self.TeleportLureRespond(agentUUID, sessionUUID, wasGetEnumValueFromDescription<Action>(
                             wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
                                 .ToLower(CultureInfo.InvariantCulture)).Equals(Action.ACCEPT));
                     };
                     break;
-                case ScriptKeys.REPLYTOPERMISSION:
+                case ScriptKeys.GETTELEPORTLURES:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MOVEMENT))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        List<string> csv = new List<string>();
+                        object LockObject = new object();
+                        Parallel.ForEach(TeleportLures, o =>
+                        {
+                            lock (LockObject)
+                            {
+                                csv.Add(o.FirstName);
+                                csv.Add(o.LastName);
+                                csv.Add(o.Agent.ToString());
+                                csv.Add(o.Session.ToString());
+                            }
+                        });
+                        if (!csv.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.LURES),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                        }
+                    };
+                    break;
+                case ScriptKeys.REPLYTOSCRIPTPERMISSIONREQUEST:
                     execute = () =>
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
@@ -7749,7 +8142,40 @@ namespace Corrade
                             (ScriptPermission) permissionMask);
                     };
                     break;
-                case ScriptKeys.REPLYTODIALOG:
+                case ScriptKeys.GETSCRIPTPERMISSIONREQUESTS:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        List<string> csv = new List<string>();
+                        object LockObject = new object();
+                        Parallel.ForEach(ScriptPermissionRequests, o =>
+                        {
+                            lock (LockObject)
+                            {
+                                csv.Add(o.ObjectName);
+                                csv.Add(o.OwnerName);
+                                csv.Add(o.ItemUUID.ToString());
+                                csv.Add(o.TaskUUID.ToString());
+                                csv.AddRange(typeof (ScriptPermission).GetFields(BindingFlags.Public |
+                                                                                 BindingFlags.Static)
+                                    .Where(
+                                        p =>
+                                            !(((int) p.GetValue(null) &
+                                               (int) o.Permissions)).Equals(0))
+                                    .Select(p => p.Name).ToArray());
+                            }
+                        });
+                        if (!csv.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.PERMISSIONS),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                        }
+                    };
+                    break;
+                case ScriptKeys.REPLYTOSCRIPTDIALOG:
                     execute = () =>
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
@@ -7787,6 +8213,36 @@ namespace Corrade
                             throw new Exception(GetEnumDescription(ScriptError.NO_ITEM_SPECIFIED));
                         }
                         Client.Self.ReplyToScriptDialog(channel, index, label, itemUUID);
+                    };
+                    break;
+                case ScriptKeys.GETSCRIPTDIALOGS:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        List<string> csv = new List<string>();
+                        object LockObject = new object();
+                        Parallel.ForEach(ScriptDialogs, o =>
+                        {
+                            lock (LockObject)
+                            {
+                                csv.Add(o.Message);
+                                csv.Add(o.FirstName);
+                                csv.Add(o.LastName);
+                                csv.Add(o.Channel.ToString(CultureInfo.InvariantCulture));
+                                csv.Add(o.Name);
+                                csv.Add(o.Item.ToString());
+                                csv.Add(o.Owner.ToString());
+                                csv.AddRange(o.Button.ToArray());
+                            }
+                        });
+                        if (!csv.Count.Equals(0))
+                        {
+                            result.Add(GetEnumDescription(ResultKeys.DIALOGS),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.ANIMATION:
@@ -10193,7 +10649,7 @@ namespace Corrade
             HashSet<string> scriptKeys = new HashSet<string>(wasGetEnumDescriptions<ScriptKeys>());
             Parallel.ForEach(wasKeyValueDecode(message), o =>
             {
-                // remove keys that are script keys or invalid key-value pairs
+                // remove keys that are script keys, result keys or invalid key-value pairs
                 if (string.IsNullOrEmpty(o.Key) || resultKeys.Contains(o.Key) || scriptKeys.Contains(o.Key) ||
                     string.IsNullOrEmpty(o.Value))
                     return;
@@ -10344,6 +10800,7 @@ namespace Corrade
         private static void HandleSimChanged(object sender, SimChangedEventArgs e)
         {
             Client.Self.Movement.SetFOVVerticalAngle(Utils.TWO_PI - 0.05f);
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e)).Start();
         }
 
         private static void SetDefaultCamera()
@@ -10927,7 +11384,16 @@ namespace Corrade
             [Description("take")] TAKE,
             [Description("read")] READ,
             [Description("wrtie")] WRITE,
-            [Description("purge")] PURGE
+            [Description("purge")] PURGE,
+            [Description("crossed")] CROSSED,
+            [Description("changed")] CHANGED,
+            [Description("reply")] REPLY,
+            [Description("offer")] OFFER,
+            [Description("generic")] GENERIC,
+            [Description("point")] POINT,
+            [Description("lookat")] LOOKAT,
+            [Description("update")] UPDATE,
+            [Description("received")] RECEIVED
         }
 
         /// <summary>
@@ -10962,6 +11428,55 @@ namespace Corrade
             {
                 public const int OK = 200;
             }
+        }
+
+        /// <summary>
+        ///     Corrade's caches.
+        /// </summary>
+        private struct Cache
+        {
+            public static readonly HashSet<Agents> AgentCache = new HashSet<Agents>();
+            public static readonly HashSet<Groups> GroupCache = new HashSet<Groups>();
+
+            internal static void Purge()
+            {
+                lock (Locks.AgentCacheLock)
+                {
+                    AgentCache.Clear();
+                }
+                lock (Locks.GroupCacheLock)
+                {
+                    GroupCache.Clear();
+                }
+            }
+
+            internal struct Agents
+            {
+                public string FirstName;
+                public string LastName;
+                public UUID UUID;
+            }
+
+            internal struct Groups
+            {
+                public string Name;
+                public UUID UUID;
+            }
+
+            public struct Locks
+            {
+                public static readonly object AgentCacheLock = new object();
+                public static readonly object GroupCacheLock = new object();
+            }
+        }
+
+        /// <summary>
+        ///     An element from the callback queue waiting to be dispatched.
+        /// </summary>
+        private struct CallbackQueueElement
+        {
+            public string URL;
+            public Dictionary<string, string> message;
         }
 
         private struct Configuration
@@ -11586,16 +12101,13 @@ namespace Corrade
             [Description("logging out")] LOGGING_OUT,
             [Description("logging in")] LOGGING_IN,
             [Description("could not write to group chat logfile")] COULD_NOT_WRITE_TO_GROUP_CHAT_LOGFILE,
-            [Description("got inventory offer")] GOT_INVENTORY_OFFER,
             [Description("acceping group invite")] ACCEPTING_GROUP_INVITE,
             [Description("agent not found")] AGENT_NOT_FOUND,
             [Description("got group message")] GOT_GROUP_MESSAGE,
             [Description("got teleport lure")] GOT_TELEPORT_LURE,
-            [Description("got group invite")] GOT_GROUP_INVITE,
             [Description("read configuration file")] READ_CONFIGURATION_FILE,
             [Description("configuration file modified")] CONFIGURATION_FILE_MODIFIED,
             [Description("got region message")] GOT_REGION_MESSAGE,
-            [Description("got group message")] GOT_GROUP_NOTICE,
             [Description("got insant message")] GOT_INSTANT_MESSAGE,
             [Description("HTTP server error")] HTTP_SERVER_ERROR,
             [Description("HTTP server not supported")] HTTP_SERVER_NOT_SUPPORTED,
@@ -11646,6 +12158,18 @@ namespace Corrade
             public string Password;
             public uint PermissionMask;
             public UUID UUID;
+        }
+
+        /// <summary>
+        ///     A structure for group invites.
+        /// </summary>
+        private struct GroupInvite
+        {
+            public int Fee;
+            public string FirstName;
+            public string Group;
+            public string LastName;
+            public UUID Session;
         }
 
         /// <summary>
@@ -11726,24 +12250,6 @@ namespace Corrade
         }
 
         /// <summary>
-        ///     An element from the callback queue waiting to be dispatched.
-        /// </summary>
-        private struct CallbackQueueElement
-        {
-            public string URL;
-            public Dictionary<string, string> message;
-        }
-
-        /// <summary>
-        ///     An element from the notification queue waiting to be dispatched.
-        /// </summary>
-        private struct NotificationQueueElement
-        {
-            public string URL;
-            public Dictionary<string, string> message;
-        }
-
-        /// <summary>
         ///     Masters structure.
         /// </summary>
         private struct Master
@@ -11763,43 +12269,12 @@ namespace Corrade
         }
 
         /// <summary>
-        ///     Corrade's caches.
+        ///     An element from the notification queue waiting to be dispatched.
         /// </summary>
-        private struct Cache
+        private struct NotificationQueueElement
         {
-            public static readonly HashSet<Agents> AgentCache = new HashSet<Agents>();
-            public static readonly HashSet<Groups> GroupCache = new HashSet<Groups>();
-
-            internal struct Agents
-            {
-                public string FirstName;
-                public string LastName;
-                public UUID UUID;
-            }
-
-            internal struct Groups
-            {
-                public string Name;
-                public UUID UUID;
-            }
-
-            public struct Locks
-            {
-                public static readonly object AgentCacheLock = new object();
-                public static readonly object GroupCacheLock = new object();
-            }
-
-            internal static void Purge()
-            {
-                lock (Locks.AgentCacheLock)
-                {
-                    AgentCache.Clear();
-                }
-                lock (Locks.GroupCacheLock)
-                {
-                    GroupCache.Clear();
-                }
-            }
+            public string URL;
+            public Dictionary<string, string> message;
         }
 
         /// <summary>
@@ -11817,13 +12292,15 @@ namespace Corrade
             [Description("local")] NOTIFICATION_LOCAL_CHAT = 64,
             [Description("dialog")] NOTIFICATION_SCRIPT_DIALOG = 128,
             [Description("friendship")] NOTIFICATION_FRIENDSHIP = 256,
-            [Description("inventory")] NOTIFICATION_INVENTORY_OFFER = 512,
+            [Description("inventory")] NOTIFICATION_INVENTORY = 512,
             [Description("permission")] NOTIFICATION_SCRIPT_PERMISSION = 1024,
             [Description("lure")] NOTIFICATION_TELEPORT_LURE = 2048,
             [Description("effect")] NOTIFICATION_VIEWER_EFFECT = 4096,
             [Description("collision")] NOTIFICATION_MEAN_COLLISION = 8192,
             [Description("crossing")] NOTIFICATION_REGION_CROSSED = 16384,
-            [Description("terse")] NOTIFICATION_TERSE_UPDATES = 32768
+            [Description("terse")] NOTIFICATION_TERSE_UPDATES = 32768,
+            [Description("typing")] NOTIFICATION_TYPING = 65536,
+            [Description("invite")] NOTIFICATION_GROUP_INVITE = 131072
         }
 
         /// <summary>
@@ -11845,7 +12322,8 @@ namespace Corrade
             [Description("directory")] PERMISSION_DIRECTORY = 1024,
             [Description("system")] PERMISSION_SYSTEM = 2048,
             [Description("friendship")] PERMISSION_FRIENDSHIP = 4096,
-            [Description("execute")] PERMISSION_EXECUTE = 8192
+            [Description("execute")] PERMISSION_EXECUTE = 8192,
+            [Description("group")] PERMISSION_GROUP = 16384
         }
 
         /// <summary>
@@ -11853,6 +12331,10 @@ namespace Corrade
         /// </summary>
         private enum ResultKeys : uint
         {
+            [Description("dialogs")] DIALOGS,
+            [Description("permissions")] PERMISSIONS,
+            [Description("lures")] LURES,
+            [Description("invites")] INVITES,
             [Description("output")] OUTPUT,
             [Description("plots")] PLOTS,
             [Description("version")] VERSION,
@@ -11882,6 +12364,21 @@ namespace Corrade
             [Description("notifications")] NOTIFICATIONS,
             [Description("wearables")] WEARABLES,
             [Description("offers")] OFFERS
+        }
+
+        /// <summary>
+        ///     A structure for script dialogs.
+        /// </summary>
+        private struct ScriptDialog
+        {
+            public List<string> Button;
+            public int Channel;
+            public string FirstName;
+            public UUID Item;
+            public string LastName;
+            public string Message;
+            public string Name;
+            public UUID Owner;
         }
 
         /// <summary>
@@ -12036,7 +12533,8 @@ namespace Corrade
             [Description("could not compile regular expression")] COULD_NOT_COMPILE_REGULAR_EXPRESSION,
             [Description("no pattern provided")] NO_PATTERN_PROVIDED,
             [Description("no executable file provided")] NO_EXECUTABLE_FILE_PROVIDED,
-            [Description("timeout waiting for execution")] TIMEOUT_WAITING_FOR_EXECUTION
+            [Description("timeout waiting for execution")] TIMEOUT_WAITING_FOR_EXECUTION,
+            [Description("unknown group invite session")] UNKNOWN_GROUP_INVITE_SESSION
         }
 
         /// <summary>
@@ -12044,6 +12542,11 @@ namespace Corrade
         /// </summary>
         private enum ScriptKeys : uint
         {
+            [Description("getscriptdialogs")] GETSCRIPTDIALOGS,
+            [Description("getscriptpermissionrequests")] GETSCRIPTPERMISSIONREQUESTS,
+            [Description("getteleportlures")] GETTELEPORTLURES,
+            [Description("replytogroupinvite")] REPLYTOGROUPINVITE,
+            [Description("getgroupinvites")] GETGROUPINVITES,
             [Description("getmemberroles")] GETMEMBERROLES,
             [Description("execute")] EXECUTE,
             [Description("parameter")] PARAMETER,
@@ -12083,9 +12586,9 @@ namespace Corrade
             [Description("getrolemembers")] GETROLEMEMBERS,
             [Description("status")] STATUS,
             [Description("getmembers")] GETMEMBERS,
-            [Description("replytolure")] REPLYTOLURE,
+            [Description("replytoteleportlure")] REPLYTOTELEPORTLURE,
             [Description("session")] SESSION,
-            [Description("replytopermission")] REPLYTOPERMISSION,
+            [Description("replytoscriptpermissionrequest")] REPLYTOSCRIPTPERMISSIONREQUEST,
             [Description("task")] TASK,
             [Description("getparcellist")] GETPARCELLIST,
             [Description("parcelrelease")] PARCELRELEASE,
@@ -12152,7 +12655,7 @@ namespace Corrade
             [Description("rez")] REZ,
             [Description("rotation")] ROTATION,
             [Description("index")] INDEX,
-            [Description("replytodialog")] REPLYTODIALOG,
+            [Description("replytoscriptdialog")] REPLYTOSCRIPTDIALOG,
             [Description("owner")] OWNER,
             [Description("button")] BUTTON,
             [Description("getanimations")] GETANIMATIONS,
@@ -12256,6 +12759,29 @@ namespace Corrade
             [Description("effect")] EFFECT,
             [Description("id")] ID,
             [Description("terrain")] TERRAIN,
+        }
+
+        /// <summary>
+        ///     A structure for script permission requests.
+        /// </summary>
+        private struct ScriptPermissionRequest
+        {
+            public UUID ItemUUID;
+            public string ObjectName;
+            public string OwnerName;
+            public ScriptPermission Permissions;
+            public UUID TaskUUID;
+        }
+
+        /// <summary>
+        ///     A structure for teleport lures.
+        /// </summary>
+        private struct TeleportLure
+        {
+            public UUID Agent;
+            public string FirstName;
+            public string LastName;
+            public UUID Session;
         }
 
         /// <summary>
