@@ -27,6 +27,7 @@ using Mono.Unix;
 using Mono.Unix.Native;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
+using ThreadState = System.Threading.ThreadState;
 
 #endregion
 
@@ -34,6 +35,16 @@ namespace Corrade
 {
     public partial class Corrade : ServiceBase
     {
+        /// <summary>
+        ///     An event for the group membership notification.
+        /// </summary>
+        public class GroupMembershipEventArgs : EventArgs
+        {
+            public string AgentName;
+            public UUID AgentUUID;
+            public Action Action;
+        }
+
         public delegate bool EventHandler(NativeMethods.CtrlType ctrlType);
 
         /// <summary>
@@ -115,7 +126,16 @@ namespace Corrade
 
         private static readonly object ScriptDialogLock = new object();
 
+        private static readonly Dictionary<UUID, HashSet<UUID>> GroupMembers =
+            new Dictionary<UUID, HashSet<UUID>>();
+
         public static EventHandler ConsoleEventHandler;
+
+        private volatile bool runGroupMemberSweepThread = true;
+
+        private volatile bool runNotificationThread = true;
+
+        private volatile bool runCallbackThread = true;
 
         private static readonly System.Action ActivateCurrentLandGroup = () => new Thread(activate =>
         {
@@ -168,38 +188,58 @@ namespace Corrade
             return true;
         }
 
-        // This extension method is broken out so you can use a similar pattern with
-        // other MetaData elements in the future. This is your base method for each.
-        private static T GetAttribute<T>(Enum value) where T : Attribute
-        {
-            System.Type type = value.GetType();
-            MemberInfo[] memberInfo = type.GetMember(value.ToString());
-            object[] attributes = memberInfo[0].GetCustomAttributes(typeof (T), false);
-            return (T) attributes[0];
-        }
-
-        // This method creates a specific call to the above method, requesting the
-        // Description MetaData attribute.
-        private static string GetEnumDescription(Enum value)
-        {
-            DescriptionAttribute attribute = GetAttribute<DescriptionAttribute>(value);
-            return attribute == null ? value.ToString() : attribute.Description;
-        }
-
         ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
-        ///     Gets an enumeration value from a description.
+        ///     Get the description from an enumeration value.
         /// </summary>
-        /// <typeparam name="T">the enumeration to search in</typeparam>
-        /// <param name="description">the description to search for</param>
-        /// <returns>the value of the field corresponding to the description</returns>
-        private static uint wasGetEnumValueFromDescription<T>(string description)
+        /// <param name="value">an enumeration value</param>
+        /// <returns>the description or the empty string</returns>
+        private static string wasGetDescriptionFromEnumValue(Enum value)
         {
-            return (from fi in typeof (T).GetFields(BindingFlags.Static | BindingFlags.Public)
-                where GetEnumDescription((Enum) fi.GetValue(null)).Equals(description)
-                select (uint) fi.GetValue(null)).FirstOrDefault();
+            DescriptionAttribute attribute = value.GetType()
+                .GetField(value.ToString())
+                .GetCustomAttributes(typeof (DescriptionAttribute), false)
+                .SingleOrDefault() as DescriptionAttribute;
+            return attribute != null ? attribute.Description : string.Empty;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Get enumeration value from its description.
+        /// </summary>
+        /// <typeparam name="T">the enumeration type</typeparam>
+        /// <param name="description">the description of a member</param>
+        /// <returns>the value or the default of T if case no description found</returns>
+        private static T wasGetEnumValueFromDescription<T>(string description)
+        {
+            var field = typeof (T).GetFields()
+                .SelectMany(f => f.GetCustomAttributes(
+                    typeof (DescriptionAttribute), false), (
+                        f, a) => new {Field = f, Att = a}).SingleOrDefault(a => ((DescriptionAttribute) a.Att)
+                            .Description == description);
+            return field != null ? (T) field.Field.GetRawConstantValue() : default(T);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Get the description of structure member.
+        /// </summary>
+        /// <typeparam name="T">the type of the structure to search</typeparam>
+        /// <param name="structure">the structure to search</param>
+        /// <param name="item">the value of the item to search</param>
+        /// <returns>the description or the empty string</returns>
+        public static string wasGetStructureMemberDescription<T>(T structure, object item) where T : struct
+        {
+            var field = typeof (T).GetFields()
+                .SelectMany(f => f.GetCustomAttributes(typeof (DescriptionAttribute), false),
+                    (f, a) => new {Field = f, Att = a}).SingleOrDefault(f => f.Field.GetValue(structure).Equals(item));
+            return field != null ? ((DescriptionAttribute) field.Att).Description : string.Empty;
         }
 
         /// <summary>
@@ -470,7 +510,7 @@ namespace Corrade
         private static IEnumerable<string> wasGetEnumDescriptions<T>()
         {
             return typeof (T).GetFields(BindingFlags.Static | BindingFlags.Public)
-                .Select(o => GetEnumDescription((Enum) o.GetValue(null)));
+                .Select(o => wasGetDescriptionFromEnumValue((Enum) o.GetValue(null)));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -645,14 +685,14 @@ namespace Corrade
                         Configuration.SERVICES_TIMEOUT).FirstOrDefault() as InventoryItem;
                     if (item == null)
                     {
-                        throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                     }
                     UUIDData = item.UUID;
                 }
                 if (UUIDData.Equals(UUID.Zero))
                 {
                     throw new Exception(
-                        GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                        wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                 }
                 wasSetInfoValue(info, ref @object, UUIDData);
             }
@@ -1603,7 +1643,7 @@ namespace Corrade
             // Check TOS
             if (!Configuration.TOS_ACCEPTED)
             {
-                Feedback(GetEnumDescription(ConsoleError.TOS_NOT_ACCEPTED));
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TOS_NOT_ACCEPTED));
                 Environment.Exit(1);
             }
             // Proceed to log-in.
@@ -1626,19 +1666,19 @@ namespace Corrade
             {
                 login.MAC = Utils.MD5String(Configuration.NETWORK_CARD_MAC);
             }
-            Feedback(GetEnumDescription(ConsoleError.LOGGING_IN));
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGGING_IN));
             Client.Network.Login(login);
             // Start the HTTP Server if it is supported
             Thread HTTPListenerThread = null;
             HttpListener HTTPListener = null;
             if (Configuration.ENABLE_HTTP_SERVER && !HttpListener.IsSupported)
             {
-                Feedback(GetEnumDescription(ConsoleError.HTTP_SERVER_ERROR),
-                    GetEnumDescription(ConsoleError.HTTP_SERVER_NOT_SUPPORTED));
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR),
+                    wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_NOT_SUPPORTED));
             }
             if (Configuration.ENABLE_HTTP_SERVER && HttpListener.IsSupported)
             {
-                Feedback(GetEnumDescription(ConsoleError.STARTING_HTTP_SERVER));
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.STARTING_HTTP_SERVER));
                 HTTPListenerThread = new Thread(() =>
                 {
                     try
@@ -1656,13 +1696,12 @@ namespace Corrade
                     }
                     catch (Exception e)
                     {
-                        Feedback(GetEnumDescription(ConsoleError.HTTP_SERVER_ERROR), e.Message);
+                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR), e.Message);
                     }
-                });
+                }) {IsBackground = true};
                 HTTPListenerThread.Start();
             }
             // Start the callback thread to send callbacks.
-            bool runCallbackThread = true;
             Thread CallbackThread = new Thread(() =>
             {
                 while (runCallbackThread)
@@ -1684,15 +1723,15 @@ namespace Corrade
                         }
                         catch (Exception e)
                         {
-                            Feedback(GetEnumDescription(ConsoleError.CALLBACK_ERROR), callbackQueueElement.URL,
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CALLBACK_ERROR),
+                                callbackQueueElement.URL,
                                 e.Message);
                         }
                     }
                     Thread.Sleep(Configuration.CALLBACK_THROTTLE);
                 }
-            });
+            }) {IsBackground = true};
             CallbackThread.Start();
-            bool runNotificationThread = true;
             Thread NotificationThread = new Thread(() =>
             {
                 while (runNotificationThread)
@@ -1714,14 +1753,141 @@ namespace Corrade
                         }
                         catch (Exception e)
                         {
-                            Feedback(GetEnumDescription(ConsoleError.NOTIFICATION_ERROR), notificationQueueElement.URL,
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_ERROR),
+                                notificationQueueElement.URL,
                                 e.Message);
                         }
                     }
                     Thread.Sleep(Configuration.NOTIFICATION_THROTTLE);
                 }
-            });
+            }) {IsBackground = true};
             NotificationThread.Start();
+            Thread GroupMemberSweepThread = new Thread(() =>
+            {
+                while (runGroupMemberSweepThread)
+                {
+                    if (!Client.Network.Connected || Configuration.GROUPS.Count.Equals(0)) continue;
+
+                    Queue<UUID> groupUUIDs = new Queue<UUID>(Configuration.GROUPS.Select(o => o.UUID));
+                    Queue<int> memberCount = new Queue<int>(Configuration.GROUPS.Count);
+                    foreach (KeyValuePair<UUID, HashSet<UUID>> groupMembers in GroupMembers)
+                    {
+                        foreach (UUID groupUUID in groupUUIDs)
+                        {
+                            if (groupUUID.Equals(groupMembers.Key))
+                            {
+                                memberCount.Enqueue(groupMembers.Value.Count);
+                            }
+                        }
+                    }
+
+                    while (!groupUUIDs.Count.Equals(0) && runGroupMemberSweepThread)
+                    {
+                        UUID groupUUID = groupUUIDs.Dequeue();
+                        // The total list of members.
+                        HashSet<UUID> groupMembers = null;
+                        // New members that have joined the group.
+                        HashSet<UUID> joinedMembers = new HashSet<UUID>();
+                        // Members that have parted the group.
+                        HashSet<UUID> partedMembers = new HashSet<UUID>();
+                        ManualResetEvent GroupMembersReplyEvent = new ManualResetEvent(false);
+                        EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
+                        {
+                            KeyValuePair<UUID, HashSet<UUID>> currentGroupMembers =
+                                GroupMembers.FirstOrDefault(p => p.Key.Equals(args.GroupID));
+                            if (!currentGroupMembers.Equals(default(KeyValuePair<UUID, HashSet<UUID>>)))
+                            {
+                                object LockObject = new object();
+                                Parallel.ForEach(args.Members.Values, o =>
+                                {
+                                    if (!currentGroupMembers.Value.Contains(o.ID))
+                                    {
+                                        lock (LockObject)
+                                        {
+                                            joinedMembers.Add(o.ID);
+                                        }
+                                    }
+                                });
+                                Parallel.ForEach(currentGroupMembers.Value, o =>
+                                {
+                                    if (!args.Members.Values.Any(p => p.ID.Equals(o)))
+                                    {
+                                        lock (LockObject)
+                                        {
+                                            partedMembers.Add(o);
+                                        }
+                                    }
+                                });
+                            }
+                            groupMembers = new HashSet<UUID>(args.Members.Values.Select(o => o.ID));
+                            GroupMembersReplyEvent.Set();
+                        };
+                        lock (ServicesLock)
+                        {
+                            Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+                            Client.Groups.RequestGroupMembers(groupUUID);
+                            GroupMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                            Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+                        }
+                        if (!GroupMembers.ContainsKey(groupUUID))
+                        {
+                            GroupMembers.Add(groupUUID, groupMembers);
+                            continue;
+                        }
+                        if (!memberCount.Count.Equals(0))
+                        {
+                            if (!memberCount.Dequeue().Equals(groupMembers.Count))
+                            {
+                                if (!joinedMembers.Count.Equals(0))
+                                {
+                                    Parallel.ForEach(joinedMembers, o =>
+                                    {
+                                        string agentName = string.Empty;
+                                        if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT, ref agentName))
+                                        {
+                                            new Thread(
+                                                p =>
+                                                    SendNotification(Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
+                                                        new GroupMembershipEventArgs
+                                                        {
+                                                            AgentName = agentName,
+                                                            AgentUUID = o,
+                                                            Action = Action.JOINED
+                                                        }))
+                                                .Start();
+                                        }
+                                    });
+                                }
+                                if (!partedMembers.Count.Equals(0))
+                                {
+                                    Parallel.ForEach(partedMembers, o =>
+                                    {
+                                        string agentName = string.Empty;
+                                        if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT, ref agentName))
+                                        {
+                                            new Thread(
+                                                p =>
+                                                    SendNotification(Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
+                                                        new GroupMembershipEventArgs
+                                                        {
+                                                            AgentName = agentName,
+                                                            AgentUUID = o,
+                                                            Action = Action.PARTED
+                                                        }))
+                                                .Start();
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                        GroupMembers[groupUUID] = groupMembers;
+                        Thread.Sleep(Configuration.MEMBERSHIP_SWEEP_INTERVAL);
+                    }
+
+                    Thread.Sleep(1);
+                }
+            }) {IsBackground = true};
+            GroupMemberSweepThread.Start();
             /*
              * The main thread spins around waiting for the semaphores to become invalidated,
              * at which point Corrade will consider its connection to the grid severed and
@@ -1730,7 +1896,7 @@ namespace Corrade
              */
             WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => (WaitHandle) o).ToArray());
             // Now log-out.
-            Feedback(GetEnumDescription(ConsoleError.LOGGING_OUT));
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGGING_OUT));
             // Uninstall all installed handlers
             Client.Self.IM -= HandleSelfIM;
             Client.Self.MoneyBalanceReply -= HandleMoneyBalance;
@@ -1760,31 +1926,78 @@ namespace Corrade
             Client.Network.LoginProgress -= HandleLoginProgress;
             Client.Appearance.AppearanceSet -= HandleAppearanceSet;
             Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
+            // Stop the group sweep thread.
+            runGroupMemberSweepThread = false;
+            if (
+                (GroupMemberSweepThread.ThreadState.Equals(ThreadState.Running) ||
+                 GroupMemberSweepThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+            {
+                if (!GroupMemberSweepThread.Join(1000))
+                {
+                    try
+                    {
+                        GroupMemberSweepThread.Abort();
+                    }
+                    catch (ThreadStateException)
+                    {
+                    }
+                }
+            }
             // Stop the notification thread.
             runNotificationThread = false;
-            NotificationThread.Join(Configuration.SERVICES_TIMEOUT);
-            if (NotificationThread.IsAlive)
+            if (
+                (NotificationThread.ThreadState.Equals(ThreadState.Running) ||
+                 NotificationThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
             {
-                NotificationThread.Abort();
+                if (!NotificationThread.Join(1000))
+                {
+                    try
+                    {
+                        NotificationThread.Abort();
+                    }
+                    catch (ThreadStateException)
+                    {
+                    }
+                }
             }
             // Stop the callback thread.
             runCallbackThread = false;
-            CallbackThread.Join(Configuration.SERVICES_TIMEOUT);
-            if (CallbackThread.IsAlive)
+            if (
+                (CallbackThread.ThreadState.Equals(ThreadState.Running) ||
+                 CallbackThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
             {
-                CallbackThread.Abort();
+                if (!CallbackThread.Join(1000))
+                {
+                    try
+                    {
+                        CallbackThread.Abort();
+                    }
+                    catch (ThreadStateException)
+                    {
+                    }
+                }
             }
             // Close HTTP server
             if (Configuration.ENABLE_HTTP_SERVER && HttpListener.IsSupported)
             {
-                Feedback(GetEnumDescription(ConsoleError.STOPPING_HTTP_SERVER));
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.STOPPING_HTTP_SERVER));
                 if (HTTPListenerThread != null)
                 {
                     HTTPListener.Stop();
-                    HTTPListenerThread.Join(Configuration.SERVICES_TIMEOUT);
-                    if (HTTPListenerThread.IsAlive)
+                    if (
+                        (HTTPListenerThread.ThreadState.Equals(ThreadState.Running) ||
+                         HTTPListenerThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
                     {
-                        HTTPListenerThread.Abort();
+                        if (!HTTPListenerThread.Join(1000))
+                        {
+                            try
+                            {
+                                HTTPListenerThread.Abort();
+                            }
+                            catch (ThreadStateException)
+                            {
+                            }
+                        }
                     }
                 }
             }
@@ -1810,7 +2023,7 @@ namespace Corrade
                 if (!LoggedOutEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                 {
                     Client.Network.LoggedOut -= LoggedOutEventHandler;
-                    Feedback(GetEnumDescription(ConsoleError.TIMEOUT_LOGGING_OUT));
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TIMEOUT_LOGGING_OUT));
                 }
                 Client.Network.LoggedOut -= LoggedOutEventHandler;
             }
@@ -1872,7 +2085,7 @@ namespace Corrade
             }
             catch (Exception)
             {
-                Feedback(GetEnumDescription(ConsoleError.HTTP_SERVER_PROCESSING_ABORTED));
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_PROCESSING_ABORTED));
             }
         }
 
@@ -1887,29 +2100,29 @@ namespace Corrade
                 Dictionary<string, string> notificationData = new Dictionary<string, string>
                 {
                     {
-                        GetEnumDescription(ScriptKeys.TYPE),
-                        GetEnumDescription(notification)
+                        wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
+                        wasGetDescriptionFromEnumValue(notification)
                     }
                 };
                 switch (notification)
                 {
                     case Notifications.NOTIFICATION_SCRIPT_DIALOG:
                         ScriptDialogEventArgs scriptDialogEventArgs = (ScriptDialogEventArgs) args;
-                        notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
                             scriptDialogEventArgs.Message);
-                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                             scriptDialogEventArgs.FirstName);
-                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                             scriptDialogEventArgs.LastName);
-                        notificationData.Add(GetEnumDescription(ScriptKeys.CHANNEL),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CHANNEL),
                             scriptDialogEventArgs.Channel.ToString(CultureInfo.InvariantCulture));
-                        notificationData.Add(GetEnumDescription(ScriptKeys.NAME),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
                             scriptDialogEventArgs.ObjectName);
-                        notificationData.Add(GetEnumDescription(ScriptKeys.ITEM),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
                             scriptDialogEventArgs.ObjectID.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.OWNER),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
                             scriptDialogEventArgs.OwnerID.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.BUTTON),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BUTTON),
                             string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                 scriptDialogEventArgs.ButtonLabels.ToArray()));
                         break;
@@ -1917,24 +2130,31 @@ namespace Corrade
                         ChatEventArgs chatEventArgs = (ChatEventArgs) args;
                         List<string> chatName =
                             new List<string>(chatEventArgs.FromName.Split(new[] {' ', '.'},
-                                StringSplitOptions.RemoveEmptyEntries));
-                        notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
+                                StringSplitOptions.RemoveEmptyEntries)
+                                .GroupBy(p => p)
+                                .Where(p => !p.Count().Equals(0))
+                                .Select(p => new[]
+                                {
+                                    p.First(),
+                                    p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                                }).SelectMany(p => p));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
                             chatEventArgs.Message);
-                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME), chatName.First());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME), chatName.Last());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.OWNER),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME), chatName.First());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), chatName.Last());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
                             chatEventArgs.OwnerID.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.ITEM),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
                             chatEventArgs.SourceID.ToString());
                         break;
                     case Notifications.NOTIFICATION_BALANCE:
                         BalanceEventArgs balanceEventArgs = (BalanceEventArgs) args;
-                        notificationData.Add(GetEnumDescription(ScriptKeys.BALANCE),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BALANCE),
                             balanceEventArgs.Balance.ToString(CultureInfo.InvariantCulture));
                         break;
                     case Notifications.NOTIFICATION_ALERT_MESSAGE:
                         AlertMessageEventArgs alertMessageEventArgs = (AlertMessageEventArgs) args;
-                        notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
                             alertMessageEventArgs.Message);
                         break;
                     case Notifications.NOTIFICATION_INVENTORY:
@@ -1945,19 +2165,26 @@ namespace Corrade
                             List<string> inventoryOfferName =
                                 new List<string>(
                                     inventoryOfferEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
-                                        StringSplitOptions.RemoveEmptyEntries));
-                            notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                        StringSplitOptions.RemoveEmptyEntries)
+                                        .GroupBy(p => p)
+                                        .Where(p => !p.Count().Equals(0))
+                                        .Select(p => new[]
+                                        {
+                                            p.First(),
+                                            p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                                        }).SelectMany(p => p));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                                 inventoryOfferName.First());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                 inventoryOfferName.Last());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                                 inventoryOfferEventArgs.IM.FromAgentID.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                 inventoryOfferEventArgs.IM.Dialog == InstantMessageDialog.InventoryAccepted
-                                    ? GetEnumDescription(Action.ACCEPT)
-                                    : GetEnumDescription(Action.DECLINE));
-                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
-                                GetEnumDescription(Action.REPLY));
+                                    ? wasGetDescriptionFromEnumValue(Action.ACCEPT)
+                                    : wasGetDescriptionFromEnumValue(Action.DECLINE));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.REPLY));
                             break;
                         }
                         if (inventoryOfferedType == typeof (InventoryObjectOfferedEventArgs))
@@ -1966,32 +2193,38 @@ namespace Corrade
                                 (InventoryObjectOfferedEventArgs) args;
                             List<string> inventoryObjectOfferedName =
                                 new List<string>(
-                                    inventoryObjectOfferedEventArgs.Offer.FromAgentName.Split(
-                                        new[] {' ', '.'},
-                                        StringSplitOptions.RemoveEmptyEntries));
-                            notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                    inventoryObjectOfferedEventArgs.Offer.FromAgentName.Split(new[] {' ', '.'},
+                                        StringSplitOptions.RemoveEmptyEntries)
+                                        .GroupBy(p => p)
+                                        .Where(p => !p.Count().Equals(0))
+                                        .Select(p => new[]
+                                        {
+                                            p.First(),
+                                            p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                                        }).SelectMany(p => p));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                                 inventoryObjectOfferedName.First());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                 inventoryObjectOfferedName.Last());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                                 inventoryObjectOfferedEventArgs.Offer.FromAgentID.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.ASSET),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ASSET),
                                 inventoryObjectOfferedEventArgs.AssetType.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.NAME),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
                                 inventoryObjectOfferedEventArgs.Offer.Message);
-                            notificationData.Add(GetEnumDescription(ScriptKeys.SESSION),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
                                 inventoryObjectOfferedEventArgs.Offer.IMSessionID.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
-                                GetEnumDescription(Action.OFFER));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.OFFER));
                         }
                         break;
                     case Notifications.NOTIFICATION_SCRIPT_PERMISSION:
                         ScriptQuestionEventArgs scriptQuestionEventArgs = (ScriptQuestionEventArgs) args;
-                        notificationData.Add(GetEnumDescription(ScriptKeys.ITEM),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
                             scriptQuestionEventArgs.ItemID.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.TASK),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TASK),
                             scriptQuestionEventArgs.TaskID.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.PERMISSIONS),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS),
                             string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                 typeof (ScriptPermission).GetFields(BindingFlags.Public |
                                                                     BindingFlags.Static)
@@ -2008,16 +2241,23 @@ namespace Corrade
                             FriendInfoEventArgs friendInfoEventArgs = (FriendInfoEventArgs) args;
                             List<string> name =
                                 new List<string>(friendInfoEventArgs.Friend.Name.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries));
-                            notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME), name.First());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME), name.Last());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                                    StringSplitOptions.RemoveEmptyEntries)
+                                    .GroupBy(p => p)
+                                    .Where(p => !p.Count().Equals(0))
+                                    .Select(p => new[]
+                                    {
+                                        p.First(),
+                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                                    }).SelectMany(p => p));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME), name.First());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), name.Last());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                                 friendInfoEventArgs.Friend.UUID.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.STATUS),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.STATUS),
                                 friendInfoEventArgs.Friend.IsOnline
-                                    ? GetEnumDescription(Action.ONLINE)
-                                    : GetEnumDescription(Action.OFFLINE));
-                            notificationData.Add(GetEnumDescription(ScriptKeys.RIGHTS),
+                                    ? wasGetDescriptionFromEnumValue(Action.ONLINE)
+                                    : wasGetDescriptionFromEnumValue(Action.OFFLINE));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.RIGHTS),
                                 // Return the friend rights as a nice CSV string.
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     typeof (FriendRights).GetFields(BindingFlags.Public |
@@ -2030,8 +2270,8 @@ namespace Corrade
                                                         0))
                                         .Select(p => p.Name)
                                         .ToArray()));
-                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
-                                GetEnumDescription(Action.UPDATE));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.UPDATE));
                             break;
                         }
                         if (friendshipNotificationType == typeof (FriendshipResponseEventArgs))
@@ -2041,15 +2281,22 @@ namespace Corrade
                             List<string> friendshipResponseName =
                                 new List<string>(
                                     friendshipResponseEventArgs.AgentName.Split(new[] {' ', '.'},
-                                        StringSplitOptions.RemoveEmptyEntries));
-                            notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                        StringSplitOptions.RemoveEmptyEntries)
+                                        .GroupBy(p => p)
+                                        .Where(p => !p.Count().Equals(0))
+                                        .Select(p => new[]
+                                        {
+                                            p.First(),
+                                            p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                                        }).SelectMany(p => p));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                                 friendshipResponseName.First());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                 friendshipResponseName.Last());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                                 friendshipResponseEventArgs.AgentID.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
-                                GetEnumDescription(Action.RESPONSE));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.RESPONSE));
                             break;
                         }
                         if (friendshipNotificationType == typeof (FriendshipOfferedEventArgs))
@@ -2057,17 +2304,23 @@ namespace Corrade
                             FriendshipOfferedEventArgs friendshipOfferedEventArgs =
                                 (FriendshipOfferedEventArgs) args;
                             List<string> friendshipOfferedName =
-                                new List<string>(friendshipOfferedEventArgs.AgentName.Split(
-                                    new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries));
-                            notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                new List<string>(friendshipOfferedEventArgs.AgentName.Split(new[] {' ', '.'},
+                                    StringSplitOptions.RemoveEmptyEntries)
+                                    .GroupBy(p => p)
+                                    .Where(p => !p.Count().Equals(0))
+                                    .Select(p => new[]
+                                    {
+                                        p.First(),
+                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                                    }).SelectMany(p => p));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                                 friendshipOfferedName.First());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                 friendshipOfferedName.Last());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                                 friendshipOfferedEventArgs.AgentID.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
-                                GetEnumDescription(Action.REQUEST));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.REQUEST));
                         }
                         break;
                     case Notifications.NOTIFICATION_TELEPORT_LURE:
@@ -2075,14 +2328,21 @@ namespace Corrade
                         List<string> teleportLureName =
                             new List<string>(
                                 teleportLureEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries));
-                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                    StringSplitOptions.RemoveEmptyEntries)
+                                    .GroupBy(p => p)
+                                    .Where(p => !p.Count().Equals(0))
+                                    .Select(p => new[]
+                                    {
+                                        p.First(),
+                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                                    }).SelectMany(p => p));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                             teleportLureName.First());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                             teleportLureName.Last());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                             teleportLureEventArgs.IM.FromAgentID.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.SESSION),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
                             teleportLureEventArgs.IM.IMSessionID.ToString());
                         break;
                     case Notifications.NOTIFICATION_GROUP_NOTICE:
@@ -2091,35 +2351,42 @@ namespace Corrade
                         List<string> notificationGroupNoticeName =
                             new List<string>(
                                 notificationGroupNoticeEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries));
-                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                    StringSplitOptions.RemoveEmptyEntries)
+                                    .GroupBy(p => p)
+                                    .Where(p => !p.Count().Equals(0))
+                                    .Select(p => new[]
+                                    {
+                                        p.First(),
+                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                                    }).SelectMany(p => p));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                             notificationGroupNoticeName.First());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                             notificationGroupNoticeName.Last());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                             notificationGroupNoticeEventArgs.IM.FromAgentID.ToString());
                         string[] noticeData = notificationGroupNoticeEventArgs.IM.Message.Split('|');
                         if (noticeData.Length > 0 && !string.IsNullOrEmpty(noticeData[0]))
                         {
-                            notificationData.Add(GetEnumDescription(ScriptKeys.SUBJECT), noticeData[0]);
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SUBJECT), noticeData[0]);
                         }
                         if (noticeData.Length > 1 && !string.IsNullOrEmpty(noticeData[1]))
                         {
-                            notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE), noticeData[1]);
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE), noticeData[1]);
                         }
                         switch (notificationGroupNoticeEventArgs.IM.Dialog)
                         {
                             case InstantMessageDialog.GroupNoticeInventoryAccepted:
                             case InstantMessageDialog.GroupNoticeInventoryDeclined:
-                                notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                     !notificationGroupNoticeEventArgs.IM.Dialog.Equals(
                                         InstantMessageDialog.GroupNoticeInventoryAccepted)
-                                        ? GetEnumDescription(Action.DECLINE)
-                                        : GetEnumDescription(Action.ACCEPT));
+                                        ? wasGetDescriptionFromEnumValue(Action.DECLINE)
+                                        : wasGetDescriptionFromEnumValue(Action.ACCEPT));
                                 break;
                             case InstantMessageDialog.GroupNotice:
-                                notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
-                                    GetEnumDescription(Action.RECEIVED));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                    wasGetDescriptionFromEnumValue(Action.RECEIVED));
                                 break;
                         }
                         break;
@@ -2129,14 +2396,21 @@ namespace Corrade
                         List<string> notificationInstantMessageName =
                             new List<string>(
                                 notificationInstantMessage.IM.FromAgentName.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries));
-                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                    StringSplitOptions.RemoveEmptyEntries)
+                                    .GroupBy(p => p)
+                                    .Where(p => !p.Count().Equals(0))
+                                    .Select(p => new[]
+                                    {
+                                        p.First(),
+                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                                    }).SelectMany(p => p));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                             notificationInstantMessageName.First());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                             notificationInstantMessageName.Last());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                             notificationInstantMessage.IM.FromAgentID.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
                             notificationInstantMessage.IM.Message);
                         break;
                     case Notifications.NOTIFICATION_REGION_MESSAGE:
@@ -2145,14 +2419,21 @@ namespace Corrade
                         List<string> notificationRegionMessageName =
                             new List<string>(
                                 notificationRegionMessage.IM.FromAgentName.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries));
-                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                    StringSplitOptions.RemoveEmptyEntries)
+                                    .GroupBy(p => p)
+                                    .Where(p => !p.Count().Equals(0))
+                                    .Select(p => new[]
+                                    {
+                                        p.First(),
+                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                                    }).SelectMany(p => p));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                             notificationRegionMessageName.First());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                             notificationRegionMessageName.Last());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                             notificationRegionMessage.IM.FromAgentID.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
                             notificationRegionMessage.IM.Message);
                         break;
                     case Notifications.NOTIFICATION_GROUP_MESSAGE:
@@ -2161,15 +2442,22 @@ namespace Corrade
                         List<string> notificationGroupMessageName =
                             new List<string>(
                                 notificationGroupMessage.IM.FromAgentName.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries));
-                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                    StringSplitOptions.RemoveEmptyEntries)
+                                    .GroupBy(p => p)
+                                    .Where(p => !p.Count().Equals(0))
+                                    .Select(p => new[]
+                                    {
+                                        p.First(),
+                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                                    }).SelectMany(p => p));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                             notificationGroupMessageName.First());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                             notificationGroupMessageName.Last());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                             notificationGroupMessage.IM.FromAgentID.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.GROUP), o.GROUP);
-                        notificationData.Add(GetEnumDescription(ScriptKeys.MESSAGE),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP), o.GROUP);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
                             notificationGroupMessage.IM.Message);
                         break;
                     case Notifications.NOTIFICATION_VIEWER_EFFECT:
@@ -2178,73 +2466,73 @@ namespace Corrade
                         {
                             ViewerEffectEventArgs notificationViewerEffectEventArgs =
                                 (ViewerEffectEventArgs) args;
-                            notificationData.Add(GetEnumDescription(ScriptKeys.EFFECT),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.EFFECT),
                                 notificationViewerEffectEventArgs.Type.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.SOURCE),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
                                 notificationViewerEffectEventArgs.SourceID.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.TARGET),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
                                 notificationViewerEffectEventArgs.TargetID.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.POSITION),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
                                 notificationViewerEffectEventArgs.TargetPosition.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.DURATION),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
                                 notificationViewerEffectEventArgs.Duration.ToString(
                                     CultureInfo.InvariantCulture));
-                            notificationData.Add(GetEnumDescription(ScriptKeys.ID),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
                                 notificationViewerEffectEventArgs.EffectID.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
-                                GetEnumDescription(Action.GENERIC));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.GENERIC));
                             break;
                         }
                         if (viewerEffectType == typeof (ViewerEffectPointAtEventArgs))
                         {
                             ViewerEffectPointAtEventArgs notificationViewerPointAtEventArgs =
                                 (ViewerEffectPointAtEventArgs) args;
-                            notificationData.Add(GetEnumDescription(ScriptKeys.SOURCE),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
                                 notificationViewerPointAtEventArgs.SourceID.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.TARGET),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
                                 notificationViewerPointAtEventArgs.TargetID.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.POSITION),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
                                 notificationViewerPointAtEventArgs.TargetPosition.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.DURATION),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
                                 notificationViewerPointAtEventArgs.Duration.ToString(
                                     CultureInfo.InvariantCulture));
-                            notificationData.Add(GetEnumDescription(ScriptKeys.ID),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
                                 notificationViewerPointAtEventArgs.EffectID.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
-                                GetEnumDescription(Action.POINT));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.POINT));
                             break;
                         }
                         if (viewerEffectType == typeof (ViewerEffectLookAtEventArgs))
                         {
                             ViewerEffectLookAtEventArgs notificationViewerLookAtEventArgs =
                                 (ViewerEffectLookAtEventArgs) args;
-                            notificationData.Add(GetEnumDescription(ScriptKeys.SOURCE),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
                                 notificationViewerLookAtEventArgs.SourceID.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.TARGET),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
                                 notificationViewerLookAtEventArgs.TargetID.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.POSITION),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
                                 notificationViewerLookAtEventArgs.TargetPosition.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.DURATION),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
                                 notificationViewerLookAtEventArgs.Duration.ToString(
                                     CultureInfo.InvariantCulture));
-                            notificationData.Add(GetEnumDescription(ScriptKeys.ID),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
                                 notificationViewerLookAtEventArgs.EffectID.ToString());
-                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
-                                GetEnumDescription(Action.LOOK));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.LOOK));
                         }
                         break;
                     case Notifications.NOTIFICATION_MEAN_COLLISION:
                         MeanCollisionEventArgs meanCollisionEventArgs =
                             (MeanCollisionEventArgs) args;
-                        notificationData.Add(GetEnumDescription(ScriptKeys.AGGRESSOR),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGGRESSOR),
                             meanCollisionEventArgs.Aggressor.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.MAGNITUDE),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MAGNITUDE),
                             meanCollisionEventArgs.Magnitude.ToString(CultureInfo.InvariantCulture));
-                        notificationData.Add(GetEnumDescription(ScriptKeys.TIME),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TIME),
                             meanCollisionEventArgs.Time.ToLongDateString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.ENTITY),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
                             meanCollisionEventArgs.Type.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.VICTIM),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.VICTIM),
                             meanCollisionEventArgs.Victim.ToString());
                         break;
                     case Notifications.NOTIFICATION_REGION_CROSSED:
@@ -2252,36 +2540,36 @@ namespace Corrade
                         if (regionChangeType == typeof (SimChangedEventArgs))
                         {
                             SimChangedEventArgs simChangedEventArgs = (SimChangedEventArgs) args;
-                            notificationData.Add(GetEnumDescription(ScriptKeys.OLD),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OLD),
                                 simChangedEventArgs.PreviousSimulator.Name);
-                            notificationData.Add(GetEnumDescription(ScriptKeys.NEW),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NEW),
                                 Client.Network.CurrentSim.Name);
-                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
-                                GetEnumDescription(Action.CHANGED));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.CHANGED));
                             break;
                         }
                         if (regionChangeType == typeof (RegionCrossedEventArgs))
                         {
                             RegionCrossedEventArgs regionCrossedEventArgs =
                                 (RegionCrossedEventArgs) args;
-                            notificationData.Add(GetEnumDescription(ScriptKeys.OLD),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OLD),
                                 regionCrossedEventArgs.OldSimulator.Name);
-                            notificationData.Add(GetEnumDescription(ScriptKeys.NEW),
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NEW),
                                 regionCrossedEventArgs.NewSimulator.Name);
-                            notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
-                                GetEnumDescription(Action.CROSSED));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.CROSSED));
                         }
                         break;
                     case Notifications.NOTIFICATION_TERSE_UPDATES:
                         TerseObjectUpdateEventArgs terseObjectUpdateEventArgs =
                             (TerseObjectUpdateEventArgs) args;
-                        notificationData.Add(GetEnumDescription(ScriptKeys.ID),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
                             terseObjectUpdateEventArgs.Prim.ID.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.POSITION),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
                             terseObjectUpdateEventArgs.Prim.Position.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.ROTATION),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
                             terseObjectUpdateEventArgs.Prim.Rotation.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.ENTITY),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
                             terseObjectUpdateEventArgs.Prim.PrimData.PCode.ToString());
                         break;
                     case Notifications.NOTIFICATION_TYPING:
@@ -2289,22 +2577,29 @@ namespace Corrade
                         List<string> notificationTypingMessageName =
                             new List<string>(
                                 notificationTypingMessageEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries));
-                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                    StringSplitOptions.RemoveEmptyEntries)
+                                    .GroupBy(p => p)
+                                    .Where(p => !p.Count().Equals(0))
+                                    .Select(p => new[]
+                                    {
+                                        p.First(),
+                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                                    }).SelectMany(p => p));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                             notificationTypingMessageName.First());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                             notificationTypingMessageName.Last());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                             notificationTypingMessageEventArgs.IM.FromAgentID.ToString());
                         switch (notificationTypingMessageEventArgs.IM.Dialog)
                         {
                             case InstantMessageDialog.StartTyping:
                             case InstantMessageDialog.StopTyping:
-                                notificationData.Add(GetEnumDescription(ScriptKeys.ACTION),
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                     !notificationTypingMessageEventArgs.IM.Dialog.Equals(
                                         InstantMessageDialog.StartTyping)
-                                        ? GetEnumDescription(Action.STOP)
-                                        : GetEnumDescription(Action.START));
+                                        ? wasGetDescriptionFromEnumValue(Action.STOP)
+                                        : wasGetDescriptionFromEnumValue(Action.START));
                                 break;
                         }
                         break;
@@ -2313,44 +2608,84 @@ namespace Corrade
                         List<string> notificationGroupInviteName =
                             new List<string>(
                                 notificationGroupInviteEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries));
-                        notificationData.Add(GetEnumDescription(ScriptKeys.FIRSTNAME),
+                                    StringSplitOptions.RemoveEmptyEntries)
+                                    .GroupBy(p => p)
+                                    .Where(p => !p.Count().Equals(0))
+                                    .Select(p => new[]
+                                    {
+                                        p.First(),
+                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                                    }).SelectMany(p => p));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                             notificationGroupInviteName.First());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.LASTNAME),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                             notificationGroupInviteName.Last());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.AGENT),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                             notificationGroupInviteEventArgs.IM.FromAgentID.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.GROUP),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
                             GroupInvites.FirstOrDefault(
                                 p => p.Session.Equals(notificationGroupInviteEventArgs.IM.IMSessionID))
                                 .Group);
-                        notificationData.Add(GetEnumDescription(ScriptKeys.SESSION),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
                             notificationGroupInviteEventArgs.IM.IMSessionID.ToString());
                         break;
                     case Notifications.NOTIFICATION_ECONOMY:
                         MoneyBalanceReplyEventArgs notificationMoneyBalanceEventArgs = (MoneyBalanceReplyEventArgs) args;
-                        notificationData.Add(GetEnumDescription(ScriptKeys.BALANCE),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BALANCE),
                             notificationMoneyBalanceEventArgs.Balance.ToString(CultureInfo.InvariantCulture));
-                        notificationData.Add(GetEnumDescription(ScriptKeys.DESCRIPTION),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
                             notificationMoneyBalanceEventArgs.Description);
-                        notificationData.Add(GetEnumDescription(ScriptKeys.COMMITTED),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.COMMITTED),
                             notificationMoneyBalanceEventArgs.MetersCommitted.ToString(CultureInfo.InvariantCulture));
-                        notificationData.Add(GetEnumDescription(ScriptKeys.CREDIT),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CREDIT),
                             notificationMoneyBalanceEventArgs.MetersCredit.ToString(CultureInfo.InvariantCulture));
-                        notificationData.Add(GetEnumDescription(ScriptKeys.SUCCESS),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SUCCESS),
                             notificationMoneyBalanceEventArgs.Success.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.ID),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
                             notificationMoneyBalanceEventArgs.TransactionID.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.AMOUNT),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT),
                             notificationMoneyBalanceEventArgs.TransactionInfo.Amount.ToString(
                                 CultureInfo.InvariantCulture));
-                        notificationData.Add(GetEnumDescription(ScriptKeys.TARGET),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
                             notificationMoneyBalanceEventArgs.TransactionInfo.DestID.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.SOURCE),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
                             notificationMoneyBalanceEventArgs.TransactionInfo.SourceID.ToString());
-                        notificationData.Add(GetEnumDescription(ScriptKeys.TRANSACTION),
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TRANSACTION),
                             Enum.GetName(typeof (MoneyTransactionType),
                                 notificationMoneyBalanceEventArgs.TransactionInfo.TransactionType));
+                        break;
+                    case Notifications.NOTIFICATION_GROUP_MEMBERSHIP:
+                        GroupMembershipEventArgs groupMembershipEventArgs = (GroupMembershipEventArgs) args;
+                        List<string> groupMembershipName =
+                            new List<string>(
+                                groupMembershipEventArgs.AgentName.Split(new[] {' ', '.'},
+                                    StringSplitOptions.RemoveEmptyEntries)
+                                    .GroupBy(p => p)
+                                    .Where(p => !p.Count().Equals(0))
+                                    .Select(p => new[]
+                                    {
+                                        p.First(),
+                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                                    }).SelectMany(p => p));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                            groupMembershipName.First());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                            groupMembershipName.Last());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                            groupMembershipEventArgs.AgentUUID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
+                            o.GROUP);
+                        switch (groupMembershipEventArgs.Action)
+                        {
+                            case Action.JOINED:
+                            case Action.PARTED:
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                    !groupMembershipEventArgs.Action.Equals(
+                                        Action.JOINED)
+                                        ? wasGetDescriptionFromEnumValue(Action.PARTED)
+                                        : wasGetDescriptionFromEnumValue(Action.JOINED));
+                                break;
+                        }
                         break;
                 }
                 if (NotificationQueue.Count < Configuration.NOTIFICATION_QUEUE_LENGTH)
@@ -2374,12 +2709,15 @@ namespace Corrade
                 ScriptDialogs.Add(new ScriptDialog
                 {
                     Message = e.Message,
-                    FirstName = e.FirstName,
-                    LastName = e.LastName,
+                    Agent = new Agent
+                    {
+                        FirstName = e.FirstName,
+                        LastName = e.LastName,
+                        UUID = e.OwnerID
+                    },
                     Channel = e.Channel,
                     Name = e.ObjectName,
                     Item = e.ObjectID,
-                    Owner = e.OwnerID,
                     Button = e.ButtonLabels
                 });
             }
@@ -2492,15 +2830,35 @@ namespace Corrade
 
         private static void HandleScriptQuestion(object sender, ScriptQuestionEventArgs e)
         {
+            List<string> owner = new List<string>(e.ObjectOwnerName.Split(new[] {' ', '.'},
+                StringSplitOptions.RemoveEmptyEntries)
+                .GroupBy(p => p)
+                .Where(p => !p.Count().Equals(0))
+                .Select(p => new[]
+                {
+                    p.First(),
+                    p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                }).SelectMany(p => p));
+            UUID ownerUUID = UUID.Zero;
+            // Don't add permission requests from unknown agents.
+            if (!AgentNameToUUID(owner.First(), owner.Last(), Configuration.SERVICES_TIMEOUT, ref ownerUUID))
+            {
+                return;
+            }
             lock (ScriptPermissionRequestLock)
             {
                 ScriptPermissionRequests.Add(new ScriptPermissionRequest
                 {
-                    ObjectName = e.ObjectName,
-                    OwnerName = e.ObjectOwnerName,
-                    ItemUUID = e.ItemID,
-                    TaskUUID = e.TaskID,
-                    Permissions = e.Questions
+                    Name = e.ObjectName,
+                    Agent = new Agent
+                    {
+                        FirstName = owner.First(),
+                        LastName = owner.Last(),
+                        UUID = ownerUUID
+                    },
+                    Item = e.ItemID,
+                    Task = e.TaskID,
+                    Permission = e.Questions
                 });
             }
             new Thread(o => SendNotification(Notifications.NOTIFICATION_SCRIPT_PERMISSION, e)).Start();
@@ -2508,24 +2866,24 @@ namespace Corrade
 
         private static void HandleConfigurationFileChanged(object sender, FileSystemEventArgs e)
         {
-            Feedback(GetEnumDescription(ConsoleError.CONFIGURATION_FILE_MODIFIED));
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
             Configuration.Load(e.Name);
         }
 
         private static void HandleDisconnected(object sender, DisconnectedEventArgs e)
         {
-            Feedback(GetEnumDescription(ConsoleError.DISCONNECTED));
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.DISCONNECTED));
             ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('l')).Value.Set();
         }
 
         private static void HandleEventQueueRunning(object sender, EventQueueRunningEventArgs e)
         {
-            Feedback(GetEnumDescription(ConsoleError.EVENT_QUEUE_STARTED));
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.EVENT_QUEUE_STARTED));
         }
 
         private static void HandleSimulatorConnected(object sender, SimConnectedEventArgs e)
         {
-            Feedback(GetEnumDescription(ConsoleError.SIMULATOR_CONNECTED));
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.SIMULATOR_CONNECTED));
         }
 
         private static void HandleSimulatorDisconnected(object sender, SimDisconnectedEventArgs e)
@@ -2533,7 +2891,7 @@ namespace Corrade
             // if any simulators are still connected, we are not disconnected
             if (Client.Network.Simulators.Any())
                 return;
-            Feedback(GetEnumDescription(ConsoleError.ALL_SIMULATORS_DISCONNECTED));
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ALL_SIMULATORS_DISCONNECTED));
             ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('s')).Value.Set();
         }
 
@@ -2541,10 +2899,10 @@ namespace Corrade
         {
             if (e.Success)
             {
-                Feedback(GetEnumDescription(ConsoleError.APPEARANCE_SET_SUCCEEDED));
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.APPEARANCE_SET_SUCCEEDED));
                 return;
             }
-            Feedback(GetEnumDescription(ConsoleError.APPEARANCE_SET_FAILED));
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.APPEARANCE_SET_FAILED));
         }
 
         private static void HandleLoginProgress(object sender, LoginProgressEventArgs e)
@@ -2552,14 +2910,14 @@ namespace Corrade
             switch (e.Status)
             {
                 case LoginStatus.Success:
-                    Feedback(GetEnumDescription(ConsoleError.LOGIN_SUCCEEDED));
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_SUCCEEDED));
                     if (Configuration.AUTO_ACTIVATE_GROUP)
                     {
                         ActivateCurrentLandGroup.Invoke();
                     }
                     break;
                 case LoginStatus.Failed:
-                    Feedback(GetEnumDescription(ConsoleError.LOGIN_FAILED), e.FailReason);
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_FAILED), e.FailReason);
                     ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('l')).Value.Set();
                     break;
             }
@@ -2590,7 +2948,7 @@ namespace Corrade
                     o => string.Format(CultureInfo.InvariantCulture, "{0} {1}", o.FirstName, o.LastName))
                     .Any(p => p.Equals(e.AgentName, StringComparison.CurrentCultureIgnoreCase)))
                 return;
-            Feedback(GetEnumDescription(ConsoleError.ACCEPTED_FRIENDSHIP), e.AgentName);
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ACCEPTED_FRIENDSHIP), e.AgentName);
             Client.Friends.AcceptFriendship(e.AgentID, e.SessionID);
         }
 
@@ -2599,14 +2957,14 @@ namespace Corrade
             switch (e.Status)
             {
                 case TeleportStatus.Finished:
-                    Feedback(GetEnumDescription(ConsoleError.TELEPORT_SUCCEEDED));
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_SUCCEEDED));
                     if (Configuration.AUTO_ACTIVATE_GROUP)
                     {
                         ActivateCurrentLandGroup.Invoke();
                     }
                     break;
                 case TeleportStatus.Failed:
-                    Feedback(GetEnumDescription(ConsoleError.TELEPORT_FAILED));
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_FAILED));
                     break;
             }
         }
@@ -2634,24 +2992,34 @@ namespace Corrade
                     new Thread(o => SendNotification(Notifications.NOTIFICATION_INVENTORY, args)).Start();
                     return;
                 case InstantMessageDialog.MessageBox:
-                    Feedback(GetEnumDescription(ConsoleError.GOT_SERVER_MESSAGE),
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.GOT_SERVER_MESSAGE),
                         message.Replace(Environment.NewLine, " : "));
                     return;
                 case InstantMessageDialog.RequestTeleport:
-                    Feedback(GetEnumDescription(ConsoleError.GOT_TELEPORT_LURE),
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.GOT_TELEPORT_LURE),
                         message.Replace(Environment.NewLine, " : "));
                     List<string> teleportLureName =
                         new List<string>(
                             args.IM.FromAgentName.Split(new[] {' ', '.'},
-                                StringSplitOptions.RemoveEmptyEntries));
+                                StringSplitOptions.RemoveEmptyEntries)
+                                .GroupBy(p => p)
+                                .Where(p => !p.Count().Equals(0))
+                                .Select(p => new[]
+                                {
+                                    p.First(),
+                                    p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                                }).SelectMany(p => p));
                     // Store teleport lure.
                     lock (TeleportLureLock)
                     {
                         TeleportLures.Add(new TeleportLure
                         {
-                            FirstName = teleportLureName.First(),
-                            LastName = teleportLureName.Last(),
-                            Agent = args.IM.FromAgentID,
+                            Agent = new Agent
+                            {
+                                FirstName = teleportLureName.First(),
+                                LastName = teleportLureName.Last(),
+                                UUID = args.IM.FromAgentID,
+                            },
                             Session = args.IM.IMSessionID
                         });
                     }
@@ -2664,7 +3032,8 @@ namespace Corrade
                         .
                         Any(p => p.Equals(args.IM.FromAgentName, StringComparison.OrdinalIgnoreCase)))
                     {
-                        Feedback(GetEnumDescription(ConsoleError.ACCEPTING_TELEPORT_LURE), args.IM.FromAgentName);
+                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ACCEPTING_TELEPORT_LURE),
+                            args.IM.FromAgentName);
                         if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                         {
                             Client.Self.Stand();
@@ -2682,7 +3051,14 @@ namespace Corrade
                     List<string> groupInviteName =
                         new List<string>(
                             args.IM.FromAgentName.Split(new[] {' ', '.'},
-                                StringSplitOptions.RemoveEmptyEntries));
+                                StringSplitOptions.RemoveEmptyEntries)
+                                .GroupBy(p => p)
+                                .Where(p => !p.Count().Equals(0))
+                                .Select(p => new[]
+                                {
+                                    p.First(),
+                                    p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                                }).SelectMany(p => p));
                     UUID inviteGroupAgent = UUID.Zero;
                     if (
                         !AgentNameToUUID(groupInviteName.First(), groupInviteName.Last(), Configuration.SERVICES_TIMEOUT,
@@ -2692,9 +3068,12 @@ namespace Corrade
                     {
                         GroupInvites.Add(new GroupInvite
                         {
-                            FirstName = groupInviteName.First(),
-                            LastName = groupInviteName.Last(),
-                            Agent = inviteGroupAgent,
+                            Agent = new Agent
+                            {
+                                FirstName = groupInviteName.First(),
+                                LastName = groupInviteName.Last(),
+                                UUID = inviteGroupAgent
+                            },
                             Group = inviteGroup.Name,
                             Session = args.IM.IMSessionID,
                             Fee = inviteGroup.MembershipFee
@@ -2710,7 +3089,7 @@ namespace Corrade
                             .
                             Any(p => p.Equals(args.IM.FromAgentName, StringComparison.OrdinalIgnoreCase)))
                         return;
-                    Feedback(GetEnumDescription(ConsoleError.ACCEPTING_GROUP_INVITE), args.IM.FromAgentName);
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ACCEPTING_GROUP_INVITE), args.IM.FromAgentName);
                     Client.Self.GroupInviteRespond(inviteGroup.ID, args.IM.IMSessionID, true);
                     return;
                     // Group notice inventory accepted, declined or notice received.
@@ -2745,7 +3124,7 @@ namespace Corrade
                     Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
                     if (messageFromGroup)
                     {
-                        Feedback(GetEnumDescription(ConsoleError.GOT_GROUP_MESSAGE),
+                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.GOT_GROUP_MESSAGE),
                             message.Replace(Environment.NewLine, " : "));
                         // Send group notice notifications.
                         new Thread(o => SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, args)).Start();
@@ -2772,7 +3151,9 @@ namespace Corrade
                                 catch (Exception e)
                                 {
                                     // or fail and append the fail message.
-                                    Feedback(GetEnumDescription(ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOGFILE),
+                                    Feedback(
+                                        wasGetDescriptionFromEnumValue(
+                                            ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOGFILE),
                                         e.Message);
                                 }
                             });
@@ -2781,7 +3162,7 @@ namespace Corrade
                     // Check if this is an instant message.
                     if (args.IM.ToAgentID.Equals(Client.Self.AgentID))
                     {
-                        Feedback(GetEnumDescription(ConsoleError.GOT_INSTANT_MESSAGE),
+                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.GOT_INSTANT_MESSAGE),
                             message.Replace(Environment.NewLine, " : "));
                         new Thread(o => SendNotification(Notifications.NOTIFICATION_INSTANT_MESSAGE, args)).Start();
                         return;
@@ -2789,7 +3170,7 @@ namespace Corrade
                     // Check if this is a region message.
                     if (args.IM.IMSessionID.Equals(UUID.Zero))
                     {
-                        Feedback(GetEnumDescription(ConsoleError.GOT_REGION_MESSAGE),
+                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.GOT_REGION_MESSAGE),
                             message.Replace(Environment.NewLine, " : "));
                         new Thread(o => SendNotification(Notifications.NOTIFICATION_REGION_MESSAGE, args)).Start();
                         return;
@@ -2805,21 +3186,24 @@ namespace Corrade
         {
             // Now we can start processing commands.
             // Get group and password.
-            string group = wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.GROUP), message));
+            string group =
+                wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP), message));
             // Bail if no group set.
             if (string.IsNullOrEmpty(group)) return null;
             // Get password.
-            string password = wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.PASSWORD), message));
+            string password =
+                wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD), message));
             // Bail if no password set.
             if (string.IsNullOrEmpty(password)) return null;
             // Authenticate the request against the group password.
             if (!Authenticate(group, password))
             {
-                Feedback(group, GetEnumDescription(ConsoleError.ACCESS_DENIED));
+                Feedback(group, wasGetDescriptionFromEnumValue(ConsoleError.ACCESS_DENIED));
                 return null;
             }
             // Censor password.
-            message = wasKeyValueSet(GetEnumDescription(ScriptKeys.PASSWORD), CORRADE_CONSTANTS.PASSWORD_CENSOR, message);
+            message = wasKeyValueSet(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD),
+                CORRADE_CONSTANTS.PASSWORD_CENSOR, message);
             /*
              * OpenSim sends the primitive UUID through args.IM.FromAgentID while Second Life properly sends 
              * the agent UUID - which just shows how crap OpenSim really is. This tries to resolve 
@@ -2832,7 +3216,7 @@ namespace Corrade
                 if (UUID.TryParse(identifier, out fromAgentID) &&
                     !AgentUUIDToName(fromAgentID, Configuration.SERVICES_TIMEOUT, ref sender))
                 {
-                    Feedback(GetEnumDescription(ConsoleError.AGENT_NOT_FOUND), fromAgentID.ToString());
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AGENT_NOT_FOUND), fromAgentID.ToString());
                     return null;
                 }
             }
@@ -2844,7 +3228,8 @@ namespace Corrade
             // Perform the command.
             Dictionary<string, string> result = ProcessCommand(message);
             // send callback if registered
-            string url = wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.CALLBACK), message));
+            string url =
+                wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.CALLBACK), message));
             if (!string.IsNullOrEmpty(url) && CallbackQueue.Count < Configuration.CALLBACK_QUEUE_LENGTH)
             {
                 lock (CallbackQueueLock)
@@ -2867,27 +3252,29 @@ namespace Corrade
         private static Dictionary<string, string> ProcessCommand(string message)
         {
             Dictionary<string, string> result = new Dictionary<string, string>();
-            string command = wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.COMMAND), message));
+            string command =
+                wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND), message));
             if (!string.IsNullOrEmpty(command))
             {
-                result.Add(GetEnumDescription(ScriptKeys.COMMAND), command);
+                result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND), command);
             }
-            string group = wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.GROUP), message));
+            string group =
+                wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP), message));
             if (!string.IsNullOrEmpty(group))
             {
-                result.Add(GetEnumDescription(ScriptKeys.GROUP), group);
+                result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP), group);
             }
 
             System.Action execute;
 
-            switch ((ScriptKeys) wasGetEnumValueFromDescription<ScriptKeys>(command))
+            switch (wasGetEnumValueFromDescription<ScriptKeys>(command))
             {
                 case ScriptKeys.JOIN:
                     execute = () =>
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -2895,20 +3282,20 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.ALREADY_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ALREADY_IN_GROUP));
                         }
                         OpenMetaverse.Group commandGroup = new OpenMetaverse.Group();
                         if (!RequestGroup(groupUUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (!commandGroup.OpenEnrollment)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_OPEN));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_OPEN));
                         }
                         ManualResetEvent GroupJoinedReplyEvent = new ManualResetEvent(false);
                         EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
@@ -2920,13 +3307,13 @@ namespace Corrade
                             if (!GroupJoinedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_JOINING_GROUP));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_JOINING_GROUP));
                             }
                             Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
                         }
                         if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_JOIN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_JOIN_GROUP));
                         }
                     };
                     break;
@@ -2935,27 +3322,29 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         if (
                             !HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         if (!UpdateBalance(Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE));
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE));
                         }
                         if (Client.Self.Balance < Configuration.GROUP_CREATE_FEE)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INSUFFICIENT_FUNDS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INSUFFICIENT_FUNDS));
                         }
                         OpenMetaverse.Group commandGroup = new OpenMetaverse.Group
                         {
                             Name = group
                         };
                         wasCSVToStructure(
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)),
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                message)),
                             ref commandGroup);
                         bool succeeded = false;
                         ManualResetEvent GroupCreatedReplyEvent = new ManualResetEvent(false);
@@ -2971,13 +3360,13 @@ namespace Corrade
                             if (!GroupCreatedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_CREATING_GROUP));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_CREATING_GROUP));
                             }
                             Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
                         }
                         if (!succeeded)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_CREATE_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_CREATE_GROUP));
                         }
                     };
                     break;
@@ -2986,7 +3375,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -2994,40 +3383,44 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.Invite,
                                 Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         if (AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.ALREADY_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ALREADY_IN_GROUP));
                         }
                         // role is optional
                         string role =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ROLE), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE),
+                                message));
                         UUID roleUUID = UUID.Zero;
                         if (!string.IsNullOrEmpty(role) && !UUID.TryParse(role, out roleUUID) &&
                             !RoleNameToRoleUUID(role, groupUUID,
                                 Configuration.SERVICES_TIMEOUT, ref roleUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.ROLE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
                         }
                         // If the role is not everybody, then check for powers to assign to the specified role.
                         if (roleUUID.Equals(UUID.Zero))
@@ -3036,7 +3429,8 @@ namespace Corrade
                                 !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
                                     Configuration.SERVICES_TIMEOUT))
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                             }
                         }
                         Client.Groups.Invite(groupUUID, new List<UUID> {roleUUID}, agentUUID);
@@ -3047,11 +3441,12 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         uint action =
-                            wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
+                            (uint) wasGetEnumValueFromDescription<Action>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
                                     .ToLower(CultureInfo.InvariantCulture));
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -3059,39 +3454,41 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.ALREADY_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ALREADY_IN_GROUP));
                         }
                         UUID sessionUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.SESSION),
-                                    message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
+                                        message)),
                                 out sessionUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_SESSION_SPECIFIED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_SESSION_SPECIFIED));
                         }
                         if (!GroupInvites.Any(o => o.Session.Equals(sessionUUID)))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_GROUP_INVITE_SESSION));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_GROUP_INVITE_SESSION));
                         }
                         int amount = GroupInvites.FirstOrDefault(o => o.Session.Equals(sessionUUID)).Fee;
                         if (!amount.Equals(0) && action.Equals((uint) Action.ACCEPT))
                         {
                             if (!HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                             }
                             if (!UpdateBalance(Configuration.SERVICES_TIMEOUT))
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE));
                             }
                             if (Client.Self.Balance < amount)
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.INSUFFICIENT_FUNDS));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INSUFFICIENT_FUNDS));
                             }
                         }
                         Client.Self.GroupInviteRespond(groupUUID, sessionUUID,
@@ -3103,7 +3500,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         List<string> csv = new List<string>();
                         object LockObject = new object();
@@ -3111,17 +3508,25 @@ namespace Corrade
                         {
                             lock (LockObject)
                             {
-                                csv.Add(o.FirstName);
-                                csv.Add(o.LastName);
-                                csv.Add(o.Agent.ToString());
-                                csv.Add(o.Group);
-                                csv.Add(o.Session.ToString());
-                                csv.Add(o.Fee.ToString(CultureInfo.InvariantCulture));
+                                csv.AddRange(new[]
+                                {wasGetStructureMemberDescription(o.Agent, o.Agent.FirstName), o.Agent.FirstName});
+                                csv.AddRange(new[]
+                                {wasGetStructureMemberDescription(o.Agent, o.Agent.LastName), o.Agent.LastName});
+                                csv.AddRange(new[]
+                                {wasGetStructureMemberDescription(o.Agent, o.Agent.UUID), o.Agent.UUID.ToString()});
+                                csv.AddRange(new[] {wasGetStructureMemberDescription(o, o.Group), o.Group});
+                                csv.AddRange(new[]
+                                {wasGetStructureMemberDescription(o, o.Session), o.Session.ToString()});
+                                csv.AddRange(new[]
+                                {
+                                    wasGetStructureMemberDescription(o, o.Fee),
+                                    o.Fee.ToString(CultureInfo.InvariantCulture)
+                                });
                             }
                         });
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.INVITES),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.INVITES),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -3131,7 +3536,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -3139,7 +3544,7 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.Eject,
@@ -3147,29 +3552,32 @@ namespace Corrade
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RemoveMember,
                                 Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         if (!AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         OpenMetaverse.Group commandGroup = new OpenMetaverse.Group();
                         if (!RequestGroup(groupUUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler = (sender, args) =>
@@ -3177,7 +3585,7 @@ namespace Corrade
                             if (args.RolesMembers.Any(
                                 o => o.Key.Equals(commandGroup.OwnerRole) && o.Value.Equals(agentUUID)))
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.CANNOT_EJECT_OWNERS));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.CANNOT_EJECT_OWNERS));
                             }
                             Parallel.ForEach(
                                 args.RolesMembers.Where(
@@ -3192,7 +3600,8 @@ namespace Corrade
                             if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS));
                             }
                             Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                         }
@@ -3210,13 +3619,13 @@ namespace Corrade
                             if (!GroupEjectEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_EJECTING_AGENT));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_EJECTING_AGENT));
                             }
                             Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                         }
                         if (!succeeded)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_EJECT_AGENT));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_EJECT_AGENT));
                         }
                     };
                     break;
@@ -3225,7 +3634,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -3233,23 +3642,25 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         int days;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DAYS), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.DAYS), message)),
                                 out days))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_DAYS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_DAYS));
                         }
                         int interval;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.INTERVAL), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.INTERVAL), message)),
                                 out interval))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_INTERVAL));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_INTERVAL));
                         }
                         ManualResetEvent RequestGroupAccountSummaryEvent = new ManualResetEvent(false);
                         GroupAccountSummary summary = new GroupAccountSummary();
@@ -3266,16 +3677,18 @@ namespace Corrade
                             if (!RequestGroupAccountSummaryEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_GROUP_ACCOUNT_SUMMARY));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_ACCOUNT_SUMMARY));
                             }
                             Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
                         }
                         List<string> data = new List<string>(GetStructuredData(summary,
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)))
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                message)))
                             );
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -3286,7 +3699,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -3294,25 +3707,26 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ChangeIdentity,
                                 Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         OpenMetaverse.Group commandGroup = new OpenMetaverse.Group();
                         if (!RequestGroup(groupUUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         wasCSVToStructure(
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)),
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                message)),
                             ref commandGroup);
                         Client.Groups.UpdateGroup(groupUUID, commandGroup);
                     };
@@ -3322,7 +3736,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -3330,11 +3744,11 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         ManualResetEvent GroupLeaveReplyEvent = new ManualResetEvent(false);
                         bool succeeded = false;
@@ -3350,13 +3764,13 @@ namespace Corrade
                             if (!GroupLeaveReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupLeaveReply -= GroupOperationEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_LEAVING_GROUP));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_LEAVING_GROUP));
                             }
                             Client.Groups.GroupLeaveReply -= GroupOperationEventHandler;
                         }
                         if (!succeeded)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_LEAVE_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_LEAVE_GROUP));
                         }
                     };
                     break;
@@ -3365,7 +3779,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -3373,17 +3787,17 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.CreateRole,
                                 Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         ManualResetEvent GroupRoleDataReplyEvent = new ManualResetEvent(false);
                         int roleCount = 0;
@@ -3399,23 +3813,27 @@ namespace Corrade
                             if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_GROUP_ROLES));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_ROLES));
                             }
                             Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                         }
                         if (roleCount >= LINDEN_CONSTANTS.GROUPS.MAXIMUM_NUMBER_OF_ROLES)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.MAXIMUM_NUMBER_OF_ROLES_EXCEEDED));
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.MAXIMUM_NUMBER_OF_ROLES_EXCEEDED));
                         }
                         string role =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ROLE), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE),
+                                message));
                         if (string.IsNullOrEmpty(role))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_ROLE_NAME_SPECIFIED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ROLE_NAME_SPECIFIED));
                         }
                         ulong powers = 0;
                         Parallel.ForEach(
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POWERS), message))
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POWERS),
+                                message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
                             o =>
                                 Parallel.ForEach(
@@ -3425,26 +3843,28 @@ namespace Corrade
                         if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ChangeActions,
                             Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         Client.Groups.CreateRole(groupUUID, new GroupRole
                         {
                             Name = role,
                             Description =
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION),
-                                    message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
+                                        message)),
                             GroupID = groupUUID,
                             ID = UUID.Random(),
                             Powers = (GroupPowers) powers,
                             Title =
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TITLE), message))
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.TITLE), message))
                         });
                         UUID roleUUID = UUID.Zero;
                         if (
                             !RoleNameToRoleUUID(role, groupUUID,
                                 Configuration.SERVICES_TIMEOUT, ref roleUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_CREATE_ROLE));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_CREATE_ROLE));
                         }
                     };
                     break;
@@ -3453,7 +3873,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -3461,11 +3881,11 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         ManualResetEvent GroupRoleDataReplyEvent = new ManualResetEvent(false);
                         List<string> csv = new List<string>();
@@ -3487,13 +3907,14 @@ namespace Corrade
                             if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_GROUP_ROLES));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_ROLES));
                             }
                             Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.ROLES),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.ROLES),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -3503,7 +3924,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
@@ -3511,13 +3932,13 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID,
                                 Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         ManualResetEvent agentInGroupEvent = new ManualResetEvent(false);
                         List<string> csv = new List<string>();
@@ -3540,13 +3961,14 @@ namespace Corrade
                             if (!agentInGroupEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS));
                             }
                             Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.MEMBERS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.MEMBERS),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -3556,7 +3978,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -3564,28 +3986,31 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         if (!AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
                         }
                         HashSet<string> csv = new HashSet<string>();
                         // get roles for a member
@@ -3612,13 +4037,14 @@ namespace Corrade
                             if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS));
                             }
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.ROLES),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.ROLES),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -3628,7 +4054,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
@@ -3636,19 +4062,20 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID,
                                 Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         string role =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ROLE), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE),
+                                message));
                         if (string.IsNullOrEmpty(role))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_ROLE_NAME_SPECIFIED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ROLE_NAME_SPECIFIED));
                         }
                         List<string> csv = new List<string>();
                         ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
@@ -3679,13 +4106,14 @@ namespace Corrade
                             if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS));
                             }
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.MEMBERS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.MEMBERS),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -3695,7 +4123,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -3703,13 +4131,13 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID,
                                 Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         List<string> csv = new List<string>();
                         ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
@@ -3739,13 +4167,14 @@ namespace Corrade
                             if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS));
                             }
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.MEMBERS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.MEMBERS),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -3755,7 +4184,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -3763,27 +4192,28 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RoleProperties,
                                 Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID,
                                 Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         string role =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ROLE), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE),
+                                message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
                             Configuration.SERVICES_TIMEOUT, ref roleUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.ROLE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
                         }
                         List<string> csv = new List<string>();
                         ManualResetEvent GroupRoleDataReplyEvent = new ManualResetEvent(false);
@@ -3805,13 +4235,14 @@ namespace Corrade
                             if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_ROLE_POWERS));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_ROLE_POWERS));
                             }
                             Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.POWERS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.POWERS),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -3821,7 +4252,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -3829,11 +4260,11 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.DeleteRole,
@@ -3841,28 +4272,30 @@ namespace Corrade
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RemoveMember,
                                 Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         string role =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ROLE), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE),
+                                message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
                             Configuration.SERVICES_TIMEOUT, ref roleUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.ROLE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
                         }
                         if (roleUUID.Equals(UUID.Zero))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.CANNOT_DELETE_THE_EVERYONE_ROLE));
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.CANNOT_DELETE_THE_EVERYONE_ROLE));
                         }
                         OpenMetaverse.Group commandGroup = new OpenMetaverse.Group();
                         if (!RequestGroup(groupUUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (commandGroup.OwnerRole.Equals(roleUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.CANNOT_REMOVE_OWNER_ROLE));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.CANNOT_REMOVE_OWNER_ROLE));
                         }
                         // remove member from role
                         ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
@@ -3879,7 +4312,7 @@ namespace Corrade
                             if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_EJECTING_AGENT));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_EJECTING_AGENT));
                             }
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                         }
@@ -3891,7 +4324,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -3899,43 +4332,48 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
                                 Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         string role =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ROLE), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE),
+                                message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
                             Configuration.SERVICES_TIMEOUT, ref roleUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.ROLE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
                         }
                         if (roleUUID.Equals(UUID.Zero))
                         {
                             throw new Exception(
-                                GetEnumDescription(ScriptError.GROUP_MEMBERS_ARE_BY_DEFAULT_IN_THE_EVERYONE_ROLE));
+                                wasGetDescriptionFromEnumValue(
+                                    ScriptError.GROUP_MEMBERS_ARE_BY_DEFAULT_IN_THE_EVERYONE_ROLE));
                         }
                         Client.Groups.AddToRole(groupUUID, roleUUID, agentUUID);
                     };
@@ -3945,7 +4383,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -3953,52 +4391,58 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RemoveMember,
                                 Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         string role =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ROLE), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE),
+                                message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
                             Configuration.SERVICES_TIMEOUT, ref roleUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.ROLE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
                         }
                         if (roleUUID.Equals(UUID.Zero))
                         {
                             throw new Exception(
-                                GetEnumDescription(ScriptError.CANNOT_DELETE_A_GROUP_MEMBER_FROM_THE_EVERYONE_ROLE));
+                                wasGetDescriptionFromEnumValue(
+                                    ScriptError.CANNOT_DELETE_A_GROUP_MEMBER_FROM_THE_EVERYONE_ROLE));
                         }
                         OpenMetaverse.Group commandGroup = new OpenMetaverse.Group();
                         if (!RequestGroup(groupUUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (commandGroup.OwnerRole.Equals(roleUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.CANNOT_REMOVE_USER_FROM_OWNER_ROLE));
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.CANNOT_REMOVE_USER_FROM_OWNER_ROLE));
                         }
                         Client.Groups.RemoveFromRole(groupUUID, roleUUID,
                             agentUUID);
@@ -4009,32 +4453,36 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_TALK))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         switch (
-                            (Entity)
-                                wasGetEnumValueFromDescription<Entity>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ENTITY),
+                            wasGetEnumValueFromDescription<Entity>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
                                         message)).ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Entity.AVATAR:
                                 UUID agentUUID;
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT),
-                                            message)), out agentUUID) && !AgentNameToUUID(
-                                                wasUriUnescapeDataString(
-                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                                        message)),
-                                                wasUriUnescapeDataString(
-                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
-                                                Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                                message)), out agentUUID) && !AgentNameToUUID(
+                                                    wasUriUnescapeDataString(
+                                                        wasKeyValueGet(
+                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            message)),
+                                                    wasUriUnescapeDataString(
+                                                        wasKeyValueGet(
+                                                            wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
+                                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
                                 Client.Self.InstantMessage(agentUUID,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.MESSAGE),
-                                        message)));
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                            message)));
                                 break;
                             case Entity.GROUP:
                                 UUID groupUUID =
@@ -4043,11 +4491,11 @@ namespace Corrade
                                 if (groupUUID.Equals(UUID.Zero) &&
                                     !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                                 }
                                 if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NOT_IN_GROUP));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                                 }
                                 if (!Client.Self.GroupChatSessions.ContainsKey(groupUUID))
                                 {
@@ -4055,7 +4503,8 @@ namespace Corrade
                                         !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.JoinChat,
                                             Configuration.SERVICES_TIMEOUT))
                                     {
-                                        throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                     }
                                     bool succeeded = false;
                                     ManualResetEvent GroupChatJoinedEvent = new ManualResetEvent(false);
@@ -4073,25 +4522,28 @@ namespace Corrade
                                         {
                                             Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
                                             throw new Exception(
-                                                GetEnumDescription(ScriptError.TIMEOUT_JOINING_GROUP_CHAT));
+                                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_JOINING_GROUP_CHAT));
                                         }
                                         Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
                                     }
                                     if (!succeeded)
                                     {
-                                        throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_JOIN_GROUP_CHAT));
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_JOIN_GROUP_CHAT));
                                     }
                                 }
                                 Client.Self.InstantMessageGroup(groupUUID,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.MESSAGE),
-                                        message)));
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                            message)));
                                 break;
                             case Entity.LOCAL:
                                 int chatChannel;
                                 if (
                                     !int.TryParse(
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.CHANNEL),
-                                            message)),
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.CHANNEL),
+                                                message)),
                                         out chatChannel))
                                 {
                                     chatChannel = 0;
@@ -4102,11 +4554,13 @@ namespace Corrade
                                         o =>
                                             o.Name.Equals(
                                                 wasUriUnescapeDataString(
-                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message)),
+                                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
+                                                        message)),
                                                 StringComparison.Ordinal));
                                 Client.Self.Chat(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.MESSAGE),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                            message)),
                                     chatChannel,
                                     chatTypeInfo != null
                                         ? (ChatType)
@@ -4116,16 +4570,18 @@ namespace Corrade
                                 break;
                             case Entity.ESTATE:
                                 Client.Estate.EstateMessage(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.MESSAGE),
-                                        message)));
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                            message)));
                                 break;
                             case Entity.REGION:
                                 Client.Estate.SimulatorMessage(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.MESSAGE),
-                                        message)));
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                            message)));
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ENTITY));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
                         }
                     };
                     break;
@@ -4134,7 +4590,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -4142,28 +4598,31 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.SendNotices,
                                 Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         GroupNotice notice = new GroupNotice
                         {
                             Message =
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.MESSAGE), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE), message)),
                             Subject =
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.SUBJECT), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.SUBJECT), message)),
                             OwnerID = Client.Self.AgentID
                         };
                         string item =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                message));
                         if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out notice.AttachmentID))
                         {
                             InventoryBase inventoryBaseItem =
@@ -4171,7 +4630,7 @@ namespace Corrade
                                     Configuration.SERVICES_TIMEOUT).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                             }
                             notice.AttachmentID = inventoryBaseItem.UUID;
                         }
@@ -4184,33 +4643,35 @@ namespace Corrade
                         if (
                             !HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         int amount;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AMOUNT), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT), message)),
                                 out amount))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_PAY_AMOUNT));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PAY_AMOUNT));
                         }
                         if (amount.Equals(0))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_PAY_AMOUNT));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PAY_AMOUNT));
                         }
                         if (!UpdateBalance(Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE));
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE));
                         }
                         if (Client.Self.Balance < amount)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INSUFFICIENT_FUNDS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INSUFFICIENT_FUNDS));
                         }
                         UUID targetUUID;
                         switch (
-                            (Entity)
-                                wasGetEnumValueFromDescription<Entity>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ENTITY),
+                            wasGetEnumValueFromDescription<Entity>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
                                         message)).ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Entity.GROUP:
@@ -4220,45 +4681,52 @@ namespace Corrade
                                 if (targetUUID.Equals(UUID.Zero) &&
                                     !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref targetUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                                 }
                                 Client.Self.GiveGroupMoney(targetUUID, amount,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.REASON),
-                                        message)));
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REASON),
+                                            message)));
                                 break;
                             case Entity.AVATAR:
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT),
-                                            message)), out targetUUID) && !AgentNameToUUID(
-                                                wasUriUnescapeDataString(
-                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                                        message)),
-                                                wasUriUnescapeDataString(
-                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
-                                                Configuration.SERVICES_TIMEOUT, ref targetUUID))
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                                message)), out targetUUID) && !AgentNameToUUID(
+                                                    wasUriUnescapeDataString(
+                                                        wasKeyValueGet(
+                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            message)),
+                                                    wasUriUnescapeDataString(
+                                                        wasKeyValueGet(
+                                                            wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
+                                                    Configuration.SERVICES_TIMEOUT, ref targetUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
                                 Client.Self.GiveAvatarMoney(targetUUID, amount,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.REASON),
-                                        message)));
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REASON),
+                                            message)));
                                 break;
                             case Entity.OBJECT:
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TARGET),
-                                            message)),
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                                message)),
                                         out targetUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.INVALID_PAY_TARGET));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PAY_TARGET));
                                 }
                                 Client.Self.GiveObjectMoney(targetUUID, amount,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.REASON),
-                                        message)));
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REASON),
+                                            message)));
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ENTITY));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
                         }
                     };
                     break;
@@ -4268,13 +4736,14 @@ namespace Corrade
                         if (
                             !HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         if (!UpdateBalance(Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE));
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE));
                         }
-                        result.Add(GetEnumDescription(ResultKeys.BALANCE),
+                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.BALANCE),
                             Client.Self.Balance.ToString(CultureInfo.InvariantCulture));
                     };
                     break;
@@ -4285,18 +4754,20 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string region =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.REGION), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REGION),
+                                message));
                         if (string.IsNullOrEmpty(region))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_REGION_SPECIFIED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_REGION_SPECIFIED));
                         }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -4327,13 +4798,13 @@ namespace Corrade
                             if (!TeleportEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Self.TeleportProgress -= TeleportEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_DURING_TELEPORT));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_DURING_TELEPORT));
                             }
                             Client.Self.TeleportProgress -= TeleportEventHandler;
                         }
                         if (!succeeded)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.TELEPORT_FAILED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TELEPORT_FAILED));
                         }
                     };
                     break;
@@ -4344,23 +4815,27 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         Client.Self.SendTeleportLure(agentUUID,
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.MESSAGE), message)));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                message)));
                     };
                     break;
                 case ScriptKeys.SETHOME:
@@ -4370,7 +4845,7 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         bool succeeded = true;
                         ManualResetEvent AlertMessageEvent = new ManualResetEvent(false);
@@ -4395,13 +4870,14 @@ namespace Corrade
                             if (!AlertMessageEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Self.AlertMessage -= AlertMessageEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_REQUESTING_TO_SET_HOME));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_REQUESTING_TO_SET_HOME));
                             }
                             Client.Self.AlertMessage -= AlertMessageEventHandler;
                         }
                         if (!succeeded)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_SET_HOME));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_SET_HOME));
                         }
                     };
                     break;
@@ -4412,7 +4888,7 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                         {
@@ -4427,7 +4903,7 @@ namespace Corrade
                         }
                         if (!succeeded)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_GO_HOME));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_GO_HOME));
                         }
                     };
                     break;
@@ -4436,14 +4912,15 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         List<string> data = new List<string>(GetStructuredData(Client.Network.CurrentSim,
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)))
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                message)))
                             );
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -4454,10 +4931,11 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string region =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.REGION), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REGION),
+                                message));
                         if (string.IsNullOrEmpty(region))
                         {
                             region = Client.Network.CurrentSim.Name;
@@ -4476,15 +4954,16 @@ namespace Corrade
                             if (!GridRegionEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Grid.GridRegion -= GridRegionEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_REGION));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_REGION));
                             }
                             Client.Grid.GridRegion -= GridRegionEventHandler;
                         }
                         List<string> data = new List<string>(GetStructuredData(gridRegion,
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                message))));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -4497,25 +4976,27 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         ManualResetEvent SitEvent = new ManualResetEvent(false);
                         bool succeeded = false;
@@ -4547,14 +5028,14 @@ namespace Corrade
                             {
                                 Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                                 Client.Self.AlertMessage -= AlertMessageEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_REQUESTING_SIT));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_REQUESTING_SIT));
                             }
                             Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                             Client.Self.AlertMessage -= AlertMessageEventHandler;
                         }
                         if (!succeeded)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_SIT));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_SIT));
                         }
                         Client.Self.Sit();
                     };
@@ -4566,7 +5047,7 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                         {
@@ -4581,7 +5062,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
@@ -4589,12 +5070,13 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -4603,19 +5085,20 @@ namespace Corrade
                         if (
                             !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
                         FieldInfo accessField = typeof (AccessList).GetFields(
                             BindingFlags.Public | BindingFlags.Static)
                             .FirstOrDefault(
                                 o =>
                                     o.Name.Equals(
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE),
-                                            message)),
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
+                                                message)),
                                         StringComparison.Ordinal));
                         if (accessField == null)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ACCESS_LIST_TYPE));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACCESS_LIST_TYPE));
                         }
                         AccessList accessType = (AccessList) accessField.GetValue(null);
                         if (!Client.Network.CurrentSim.IsEstateManager)
@@ -4624,7 +5107,8 @@ namespace Corrade
                             {
                                 if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                                 switch (accessType)
                                 {
@@ -4634,7 +5118,7 @@ namespace Corrade
                                                 GroupPowers.LandManageAllowed, Configuration.SERVICES_TIMEOUT))
                                         {
                                             throw new Exception(
-                                                GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                                wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                         }
                                         break;
                                     case AccessList.Ban:
@@ -4643,7 +5127,7 @@ namespace Corrade
                                                 Configuration.SERVICES_TIMEOUT))
                                         {
                                             throw new Exception(
-                                                GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                                wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                         }
                                         break;
                                     case AccessList.Both:
@@ -4652,14 +5136,14 @@ namespace Corrade
                                                 GroupPowers.LandManageAllowed, Configuration.SERVICES_TIMEOUT))
                                         {
                                             throw new Exception(
-                                                GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                                wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                         }
                                         if (
                                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandManageBanned,
                                                 Configuration.SERVICES_TIMEOUT))
                                         {
                                             throw new Exception(
-                                                GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                                wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                         }
                                         break;
                                 }
@@ -4689,13 +5173,13 @@ namespace Corrade
                             if (!ParcelAccessListEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_PARCELS));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
                             }
                             Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.LIST),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.LIST),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     csv.ToArray()));
                         }
@@ -4706,12 +5190,13 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -4720,11 +5205,11 @@ namespace Corrade
                         if (
                             !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
                         if (!Client.Network.CurrentSim.IsEstateManager)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_LAND_RIGHTS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_LAND_RIGHTS));
                         }
                         Client.Parcels.Reclaim(Client.Network.CurrentSim, parcel.LocalID);
                     };
@@ -4734,7 +5219,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
@@ -4742,12 +5227,13 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -4756,7 +5242,7 @@ namespace Corrade
                         if (
                             !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
                         if (!Client.Network.CurrentSim.IsEstateManager)
                         {
@@ -4764,13 +5250,15 @@ namespace Corrade
                             {
                                 if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                                 if (
                                     !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandRelease,
                                         Configuration.SERVICES_TIMEOUT))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                             }
                         }
@@ -4782,7 +5270,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
@@ -4790,12 +5278,13 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -4804,7 +5293,7 @@ namespace Corrade
                         if (
                             !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
                         if (!Client.Network.CurrentSim.IsEstateManager)
                         {
@@ -4812,7 +5301,8 @@ namespace Corrade
                             {
                                 if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                             }
                         }
@@ -4820,7 +5310,7 @@ namespace Corrade
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandDeed,
                                 Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         Client.Parcels.DeedToGroup(Client.Network.CurrentSim, parcel.LocalID, groupUUID);
                     };
@@ -4830,7 +5320,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -4838,12 +5328,13 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -4852,26 +5343,29 @@ namespace Corrade
                         if (
                             !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
                         bool forGroup;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FORGROUP), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FORGROUP), message)),
                                 out forGroup))
                         {
                             if (
                                 !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandDeed,
                                     Configuration.SERVICES_TIMEOUT))
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                             }
                             forGroup = true;
                         }
                         bool removeContribution;
                         if (!bool.TryParse(
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.REMOVECONTRIBUTION),
-                                message)),
+                            wasUriUnescapeDataString(
+                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REMOVECONTRIBUTION),
+                                    message)),
                             out removeContribution))
                         {
                             removeContribution = true;
@@ -4890,7 +5384,7 @@ namespace Corrade
                             if (!ParcelInfoEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_PARCELS));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
                             }
                             Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                         }
@@ -4928,21 +5422,22 @@ namespace Corrade
                             if (!DirLandReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Directory.DirLandReply -= DirLandReplyEventArgs;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_PARCELS));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
                             }
                             Client.Directory.DirLandReply -= DirLandReplyEventArgs;
                         }
                         if (!forSale)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PARCEL_NOT_FOR_SALE));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PARCEL_NOT_FOR_SALE));
                         }
                         if (!UpdateBalance(Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE));
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE));
                         }
                         if (Client.Self.Balance < parcel.SalePrice)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INSUFFICIENT_FUNDS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INSUFFICIENT_FUNDS));
                         }
                         Client.Parcels.Buy(Client.Network.CurrentSim, parcel.LocalID, forGroup, groupUUID,
                             removeContribution, parcel.Area, parcel.SalePrice);
@@ -4953,7 +5448,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -4961,12 +5456,13 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -4975,7 +5471,7 @@ namespace Corrade
                         if (
                             !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
                         if (!Client.Network.CurrentSim.IsEstateManager)
                         {
@@ -4983,32 +5479,38 @@ namespace Corrade
                             {
                                 if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                                 if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandEjectAndFreeze,
                                     Configuration.SERVICES_TIMEOUT))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                             }
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         bool alsoban;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.BAN), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.BAN),
+                                    message)),
                                 out alsoban))
                         {
                             alsoban = false;
@@ -5021,7 +5523,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -5029,12 +5531,13 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -5043,7 +5546,7 @@ namespace Corrade
                         if (
                             !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
                         if (!Client.Network.CurrentSim.IsEstateManager)
                         {
@@ -5051,32 +5554,38 @@ namespace Corrade
                             {
                                 if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                                 if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandEjectAndFreeze,
                                     Configuration.SERVICES_TIMEOUT))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                             }
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         bool freeze;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FREEZE), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FREEZE), message)),
                                 out freeze))
                         {
                             freeze = false;
@@ -5091,7 +5600,7 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         ManualResetEvent[] AvatarProfileDataEvent =
                         {
@@ -5121,13 +5630,14 @@ namespace Corrade
                             {
                                 Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
                                 Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_PROFILE));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PROFILE));
                             }
                             Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
                             Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
                         }
                         string fields =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                message));
                         wasCSVToStructure(fields, ref properties);
                         wasCSVToStructure(fields, ref interests);
                         Client.Self.UpdateProfile(properties);
@@ -5141,20 +5651,23 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         ManualResetEvent[] AvatarProfileDataEvent =
                         {
@@ -5184,19 +5697,20 @@ namespace Corrade
                             {
                                 Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
                                 Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_PROFILE));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PROFILE));
                             }
                             Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
                             Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
                         }
                         string fields =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                message));
                         List<string> csv = new List<string>();
                         csv.AddRange(GetStructuredData(properties, fields));
                         csv.AddRange(GetStructuredData(interests, fields));
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -5208,36 +5722,40 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_INVENTORY))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         InventoryBase inventoryBaseItem =
                             FindInventoryBase(Client.Inventory.Store.RootFolder,
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 Configuration.SERVICES_TIMEOUT).FirstOrDefault();
                         if (inventoryBaseItem == null)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                         }
                         switch (
-                            (Entity)
-                                wasGetEnumValueFromDescription<Entity>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ENTITY),
+                            wasGetEnumValueFromDescription<Entity>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
                                         message)).ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Entity.AVATAR:
                                 UUID agentUUID;
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT),
-                                            message)), out agentUUID) && !AgentNameToUUID(
-                                                wasUriUnescapeDataString(
-                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                                        message)),
-                                                wasUriUnescapeDataString(
-                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
-                                                Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                                message)), out agentUUID) && !AgentNameToUUID(
+                                                    wasUriUnescapeDataString(
+                                                        wasKeyValueGet(
+                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            message)),
+                                                    wasUriUnescapeDataString(
+                                                        wasKeyValueGet(
+                                                            wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
+                                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
                                 InventoryItem inventoryItem = inventoryBaseItem as InventoryItem;
                                 if (inventoryItem != null)
@@ -5250,28 +5768,30 @@ namespace Corrade
                                 float range;
                                 if (
                                     !float.TryParse(
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE),
-                                            message)),
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE),
+                                                message)),
                                         out range))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                                 }
                                 Primitive primitive = null;
                                 if (
                                     !FindPrimitive(
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TARGET),
-                                            message)),
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                                message)),
                                         range,
                                         Configuration.SERVICES_TIMEOUT,
                                         ref primitive))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                                 }
                                 Client.Inventory.UpdateTaskInventory(primitive.LocalID,
                                     inventoryBaseItem as InventoryItem);
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ENTITY));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
                         }
                     };
                     break;
@@ -5282,15 +5802,16 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_INVENTORY))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         HashSet<InventoryItem> items =
                             new HashSet<InventoryItem>(FindInventoryBase(Client.Inventory.Store.RootFolder,
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 Configuration.SERVICES_TIMEOUT).Cast<InventoryItem>());
                         if (items.Count.Equals(0))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                         }
                         Parallel.ForEach(items, o =>
                         {
@@ -5315,7 +5836,7 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_INVENTORY))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Client.Inventory.EmptyTrash();
                     };
@@ -5327,11 +5848,12 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         uint action =
-                            wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
+                            (uint) wasGetEnumValueFromDescription<Action>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
                                     .ToLower(CultureInfo.InvariantCulture));
                         switch ((Action) action)
                         {
@@ -5346,7 +5868,7 @@ namespace Corrade
                                 Client.Self.Fly(action.Equals((uint) Action.START));
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.FLY_ACTION_START_OR_STOP));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FLY_ACTION_START_OR_STOP));
                         }
                     };
                     break;
@@ -5357,10 +5879,11 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string item =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                message));
                         UUID textureUUID = UUID.Zero;
                         if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out textureUUID))
                         {
@@ -5369,17 +5892,18 @@ namespace Corrade
                                     Configuration.SERVICES_TIMEOUT).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.TEXTURE_NOT_FOUND));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TEXTURE_NOT_FOUND));
                             }
                             textureUUID = inventoryBaseItem.UUID;
                         }
                         ManualResetEvent AvatarPicksReplyEvent = new ManualResetEvent(false);
                         UUID pickUUID = UUID.Zero;
                         string pickName =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                message));
                         if (string.IsNullOrEmpty(pickName))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.EMPTY_PICK_NAME));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_PICK_NAME));
                         }
                         EventHandler<AvatarPicksReplyEventArgs> AvatarPicksEventHandler = (sender, args) =>
                         {
@@ -5395,7 +5919,7 @@ namespace Corrade
                             if (!AvatarPicksReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_PICKS));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PICKS));
                             }
                             Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
                         }
@@ -5405,7 +5929,8 @@ namespace Corrade
                         }
                         Client.Self.PickInfoUpdate(pickUUID, false, UUID.Zero, pickName,
                             Client.Self.GlobalPosition, textureUUID,
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION), message)));
+                            wasUriUnescapeDataString(
+                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION), message)));
                     };
                     break;
                 case ScriptKeys.DELETEPICK:
@@ -5415,14 +5940,15 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         ManualResetEvent AvatarPicksReplyEvent = new ManualResetEvent(false);
                         string pickName =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                message));
                         if (string.IsNullOrEmpty(pickName))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.EMPTY_PICK_NAME));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_PICK_NAME));
                         }
                         UUID pickUUID = UUID.Zero;
                         EventHandler<AvatarPicksReplyEventArgs> AvatarPicksEventHandler = (sender, args) =>
@@ -5439,7 +5965,7 @@ namespace Corrade
                             if (!AvatarPicksReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_PICKS));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PICKS));
                             }
                             Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
                         }
@@ -5455,10 +5981,11 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string item =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                message));
                         UUID textureUUID = UUID.Zero;
                         if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out textureUUID))
                         {
@@ -5467,18 +5994,20 @@ namespace Corrade
                                     Configuration.SERVICES_TIMEOUT).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.TEXTURE_NOT_FOUND));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TEXTURE_NOT_FOUND));
                             }
                             textureUUID = inventoryBaseItem.UUID;
                         }
                         string classifiedName =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                message));
                         if (string.IsNullOrEmpty(classifiedName))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.EMPTY_CLASSIFIED_NAME));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_CLASSIFIED_NAME));
                         }
                         string classifiedDescription =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION), message));
+                            wasUriUnescapeDataString(
+                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION), message));
                         ManualResetEvent AvatarClassifiedReplyEvent = new ManualResetEvent(false);
                         UUID classifiedUUID = UUID.Zero;
                         EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedEventHandler = (sender, args) =>
@@ -5496,7 +6025,8 @@ namespace Corrade
                             if (!AvatarClassifiedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_CLASSIFIEDS));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_CLASSIFIEDS));
                             }
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
                         }
@@ -5507,19 +6037,21 @@ namespace Corrade
                         int price;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.PRICE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.PRICE), message)),
                                 out price))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_PRICE));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PRICE));
                         }
                         if (price < 0)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_PRICE));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PRICE));
                         }
                         bool renew;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RENEW), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RENEW), message)),
                                 out renew))
                         {
                             renew = false;
@@ -5529,7 +6061,8 @@ namespace Corrade
                             BindingFlags.Static)
                             .FirstOrDefault(o =>
                                 o.Name.Equals(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message)),
                                     StringComparison.Ordinal));
                         Client.Self.UpdateClassifiedInfo(classifiedUUID, classifiedCategoriesField != null
                             ? (DirectoryManager.ClassifiedCategories)
@@ -5543,13 +6076,14 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string classifiedName =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                message));
                         if (string.IsNullOrEmpty(classifiedName))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.EMPTY_CLASSIFIED_NAME));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_CLASSIFIED_NAME));
                         }
                         ManualResetEvent AvatarClassifiedReplyEvent = new ManualResetEvent(false);
                         UUID classifiedUUID = UUID.Zero;
@@ -5568,13 +6102,14 @@ namespace Corrade
                             if (!AvatarClassifiedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_CLASSIFIEDS));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_CLASSIFIEDS));
                             }
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
                         }
                         if (classifiedUUID.Equals(UUID.Zero))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_CLASSIFIED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_CLASSIFIED));
                         }
                         Client.Self.DeleteClassfied(classifiedUUID);
                     };
@@ -5585,25 +6120,27 @@ namespace Corrade
                         if (
                             !HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         Client.Self.Touch(primitive.LocalID);
                     };
@@ -5613,7 +6150,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -5621,52 +6158,58 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ModerateChat,
                                 Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         if (!AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
                         }
                         bool silence;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.SILENCE), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.SILENCE), message)),
                                 out silence))
                         {
                             silence = false;
                         }
                         uint type =
-                            wasGetEnumValueFromDescription<Type>(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message))
+                            (uint) wasGetEnumValueFromDescription<Type>(
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
                                     .ToLower(CultureInfo.InvariantCulture));
                         switch ((Type) type)
                         {
                             case Type.TEXT:
                             case Type.VOICE:
-                                Client.Self.ModerateChatSessions(groupUUID, agentUUID, GetEnumDescription((Type) type),
+                                Client.Self.ModerateChatSessions(groupUUID, agentUUID,
+                                    wasGetDescriptionFromEnumValue((Type) type),
                                     silence);
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.TYPE_CAN_BE_VOICE_OR_TEXT));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TYPE_CAN_BE_VOICE_OR_TEXT));
                         }
                     };
                     break;
@@ -5677,7 +6220,7 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Rebake.Invoke();
                     };
@@ -5687,7 +6230,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         List<string> data =
                             new List<string>(GetWearables(Client.Inventory.Store.RootFolder,
@@ -5699,7 +6242,7 @@ namespace Corrade
                                 }).SelectMany(o => o));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.WEARABLES),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.WEARABLES),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -5710,18 +6253,20 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string wearables =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.WEARABLES), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(
+                                wasGetDescriptionFromEnumValue(ScriptKeys.WEARABLES), message));
                         if (string.IsNullOrEmpty(wearables))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.EMPTY_WEARABLES));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_WEARABLES));
                         }
                         bool replace;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.REPLACE), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REPLACE), message)),
                                 out replace))
                         {
                             replace = true;
@@ -5748,13 +6293,14 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string wearables =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.WEARABLES), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(
+                                wasGetDescriptionFromEnumValue(ScriptKeys.WEARABLES), message));
                         if (string.IsNullOrEmpty(wearables))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.EMPTY_WEARABLES));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_WEARABLES));
                         }
                         Parallel.ForEach(
                             wearables.Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER},
@@ -5780,7 +6326,7 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         List<string> attachments = GetAttachments(
                             Configuration.SERVICES_TIMEOUT).Select(o => new[]
@@ -5790,7 +6336,7 @@ namespace Corrade
                             }).SelectMany(o => o).ToList();
                         if (!attachments.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.ATTACHMENTS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.ATTACHMENTS),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, attachments.ToArray()));
                         }
                     };
@@ -5802,18 +6348,20 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string attachments =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ATTACHMENTS), message));
+                            wasUriUnescapeDataString(
+                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ATTACHMENTS), message));
                         if (string.IsNullOrEmpty(attachments))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.EMPTY_ATTACHMENTS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_ATTACHMENTS));
                         }
                         bool replace;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.REPLACE), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REPLACE), message)),
                                 out replace))
                         {
                             replace = true;
@@ -5848,13 +6396,14 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string attachments =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ATTACHMENTS), message));
+                            wasUriUnescapeDataString(
+                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ATTACHMENTS), message));
                         if (string.IsNullOrEmpty(attachments))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.EMPTY_ATTACHMENTS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_ATTACHMENTS));
                         }
                         Parallel.ForEach(
                             attachments.Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER},
@@ -5876,7 +6425,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -5884,35 +6433,40 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         string type =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
+                                message));
                         switch (
-                            (Entity)
-                                wasGetEnumValueFromDescription<Entity>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ENTITY),
+                            wasGetEnumValueFromDescription<Entity>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
                                         message)).ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Entity.PARCEL:
                                 Vector3 position;
                                 HashSet<Parcel> parcels = new HashSet<Parcel>();
                                 switch (Vector3.TryParse(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                            message)),
                                     out position))
                                 {
                                     case false:
@@ -5933,7 +6487,7 @@ namespace Corrade
                                             {
                                                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                                 throw new Exception(
-                                                    GetEnumDescription(ScriptError.TIMEOUT_GETTING_PARCELS));
+                                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
                                             }
                                             Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                         }
@@ -5943,7 +6497,8 @@ namespace Corrade
                                         Parcel parcel = null;
                                         if (!GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                                         {
-                                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                                         }
                                         parcels.Add(parcel);
                                         break;
@@ -5968,7 +6523,7 @@ namespace Corrade
                                         if (!o.IsGroupOwned || !o.GroupID.Equals(groupUUID))
                                         {
                                             throw new Exception(
-                                                GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                                wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                         }
                                         GroupPowers power = new GroupPowers();
                                         switch (returnType)
@@ -5987,7 +6542,7 @@ namespace Corrade
                                             Configuration.SERVICES_TIMEOUT))
                                         {
                                             throw new Exception(
-                                                GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                                wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                         }
                                     });
                                 }
@@ -6001,13 +6556,14 @@ namespace Corrade
                             case Entity.ESTATE:
                                 if (!Client.Network.CurrentSim.IsEstateManager)
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_LAND_RIGHTS));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_LAND_RIGHTS));
                                 }
                                 bool allEstates;
                                 if (
                                     !bool.TryParse(
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ALL),
-                                            message)),
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ALL),
+                                                message)),
                                         out allEstates))
                                 {
                                     allEstates = false;
@@ -6025,7 +6581,7 @@ namespace Corrade
                                     : EstateTools.EstateReturnFlags.ReturnScriptedAndOnOthers, allEstates);
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ENTITY));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
                         }
                     };
                     break;
@@ -6034,7 +6590,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -6042,12 +6598,13 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         Vector3 position;
                         HashSet<Parcel> parcels = new HashSet<Parcel>();
                         switch (Vector3.TryParse(
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                            wasUriUnescapeDataString(wasKeyValueGet(
+                                wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                             out position))
                         {
                             case false:
@@ -6066,7 +6623,8 @@ namespace Corrade
                                     if (!SimParcelsDownloadedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
-                                        throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_PARCELS));
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
                                     }
                                     Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                 }
@@ -6076,7 +6634,7 @@ namespace Corrade
                                 Parcel parcel = null;
                                 if (!GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                                 }
                                 parcels.Add(parcel);
                                 break;
@@ -6087,7 +6645,8 @@ namespace Corrade
                             {
                                 if (!o.IsGroupOwned || !o.GroupID.Equals(groupUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                                 bool permissions = false;
                                 Parallel.ForEach(
@@ -6106,7 +6665,8 @@ namespace Corrade
                                     });
                                 if (!permissions)
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                             });
                         }
@@ -6139,14 +6699,15 @@ namespace Corrade
                                 if (!ParcelObjectOwnersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
                                     Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
-                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_LAND_USERS));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_LAND_USERS));
                                 }
                                 Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
                             }
                         }
                         if (primitives.Count.Equals(0))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_GET_LAND_USERS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_LAND_USERS));
                         }
                         List<string> data = new List<string>(primitives.Select(
                             p =>
@@ -6154,7 +6715,7 @@ namespace Corrade
                                     new[] {p.Key, p.Value.ToString(CultureInfo.InvariantCulture)})));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.OWNERS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.OWNERS),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()
                                     ));
@@ -6166,7 +6727,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -6174,18 +6735,19 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         OpenMetaverse.Group dataGroup = new OpenMetaverse.Group();
                         if (!RequestGroup(groupUUID, Configuration.SERVICES_TIMEOUT, ref dataGroup))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         List<string> data = new List<string>(GetStructuredData(dataGroup,
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                message))));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -6198,31 +6760,34 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         List<string> data = new List<string>(GetStructuredData(primitive,
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                message))));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -6233,12 +6798,13 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -6247,13 +6813,14 @@ namespace Corrade
                         if (
                             !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
                         List<string> data = new List<string>(GetStructuredData(parcel,
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                message))));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -6264,7 +6831,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -6272,12 +6839,13 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -6286,7 +6854,7 @@ namespace Corrade
                         if (
                             !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
                         if (!Client.Network.CurrentSim.IsEstateManager)
                         {
@@ -6294,12 +6862,14 @@ namespace Corrade
                             {
                                 if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                             }
                         }
                         string fields =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                message));
                         wasCSVToStructure(fields, ref parcel);
                         parcel.Update(Client.Network.CurrentSim, true);
                     };
@@ -6309,7 +6879,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         // Get all sim parcels
                         ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
@@ -6326,7 +6896,7 @@ namespace Corrade
                             if (!SimParcelsDownloadedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_PARCELS));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
                             }
                             Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                         }
@@ -6334,7 +6904,7 @@ namespace Corrade
                         Client.Network.CurrentSim.Parcels.ForEach(o => csv.AddRange(new[] {o.AABBMin, o.AABBMax}));
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.PLOTS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.PLOTS),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     csv.Select(o => o.ToString()).ToArray()));
                         }
@@ -6346,13 +6916,14 @@ namespace Corrade
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(
-                                GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                                wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string item =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                message));
                         if (string.IsNullOrEmpty(item))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_ITEM_SPECIFIED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
                         }
                         UUID itemUUID;
                         InventoryItem inventoryItem = null;
@@ -6362,12 +6933,12 @@ namespace Corrade
                                 Configuration.SERVICES_TIMEOUT).FirstOrDefault();
                             if (inventoryBase == null)
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                             }
                             inventoryItem = inventoryBase as InventoryItem;
                             if (inventoryItem == null)
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                             }
                             itemUUID = inventoryItem.AssetUUID;
                         }
@@ -6377,11 +6948,11 @@ namespace Corrade
                                 o =>
                                     o.Name.Equals(
                                         wasUriUnescapeDataString(
-                                            wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message)),
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message)),
                                         StringComparison.Ordinal));
                         if (assetTypeInfo == null)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ASSET_TYPE));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ASSET_TYPE));
                         }
                         AssetType assetType = (AssetType) assetTypeInfo.GetValue(null);
                         ManualResetEvent RequestAssetEvent = new ManualResetEvent(false);
@@ -6402,7 +6973,8 @@ namespace Corrade
                                 });
                                 if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
                                 }
                                 break;
                                 // All of these can only be fetched if they exist locally.
@@ -6411,7 +6983,7 @@ namespace Corrade
                                 if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
                                 {
                                     throw new Exception(
-                                        GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                                 }
                                 Client.Assets.RequestInventoryAsset(inventoryItem, true,
                                     delegate(AssetDownload transfer, Asset asset)
@@ -6425,7 +6997,8 @@ namespace Corrade
                                     });
                                 if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
                                 }
                                 break;
                                 // All images go through RequestImage and can be fetched directly from the asset server.
@@ -6441,7 +7014,8 @@ namespace Corrade
                                     });
                                 if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
                                 }
                                 break;
                                 // All of these can be fetched directly from the asset server.
@@ -6464,17 +7038,18 @@ namespace Corrade
                                     });
                                 if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
                                 }
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ASSET_TYPE));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ASSET_TYPE));
                         }
                         if (!succeeded)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.FAILED_TO_DOWNLOAD_ASSET));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FAILED_TO_DOWNLOAD_ASSET));
                         }
-                        result.Add(GetEnumDescription(ScriptKeys.DATA), Convert.ToBase64String(assetData));
+                        result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA), Convert.ToBase64String(assetData));
                     };
                     break;
                 case ScriptKeys.UPLOAD:
@@ -6483,17 +7058,19 @@ namespace Corrade
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(
-                                GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                                wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string name =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                message));
                         if (string.IsNullOrEmpty(name))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_NAME_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_NAME_PROVIDED));
                         }
                         uint permissions = 0;
                         Parallel.ForEach(
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.PERMISSIONS), message))
+                            wasUriUnescapeDataString(
+                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS), message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
                             o =>
                                 Parallel.ForEach(
@@ -6506,25 +7083,25 @@ namespace Corrade
                                 o.Name.Equals(
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(
-                                            GetEnumDescription(
+                                            wasGetDescriptionFromEnumValue(
                                                 ScriptKeys.TYPE),
                                             message)),
                                     StringComparison.Ordinal));
                         if (assetTypeInfo == null)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ASSET_TYPE));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ASSET_TYPE));
                         }
                         AssetType assetType = (AssetType) assetTypeInfo.GetValue(null);
                         byte[] data;
                         try
                         {
                             data = Convert.FromBase64String(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA),
+                                wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     message)));
                         }
                         catch (Exception)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_ASSET_DATA));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_ASSET_DATA));
                         }
                         bool succeeded = false;
                         switch (assetType)
@@ -6536,21 +7113,23 @@ namespace Corrade
                                 if (!HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
                                 {
                                     throw new Exception(
-                                        GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                                 }
                                 if (!UpdateBalance(Configuration.SERVICES_TIMEOUT))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE));
                                 }
                                 if (Client.Self.Balance < Client.Settings.UPLOAD_COST)
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.INSUFFICIENT_FUNDS));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INSUFFICIENT_FUNDS));
                                 }
                                 // now create and upload the asset
                                 ManualResetEvent CreateItemFromAssetEvent = new ManualResetEvent(false);
                                 Client.Inventory.RequestCreateItemFromAsset(data, name,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
+                                            message)),
                                     assetType,
                                     (InventoryType)
                                         (typeof (InventoryType).GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -6565,7 +7144,8 @@ namespace Corrade
                                     });
                                 if (!CreateItemFromAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPLOADING_ASSET));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPLOADING_ASSET));
                                 }
                                 break;
                             case AssetType.Bodypart:
@@ -6576,22 +7156,24 @@ namespace Corrade
                                         o =>
                                             o.Name.Equals(
                                                 wasUriUnescapeDataString(
-                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.WEAR), message)),
+                                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.WEAR),
+                                                        message)),
                                                 StringComparison.Ordinal));
                                 if (wearTypeInfo == null)
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_WEARABLE_TYPE));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_WEARABLE_TYPE));
                                 }
                                 UUID wearableUUID = Client.Assets.RequestUpload(assetType, data, false);
                                 if (wearableUUID.Equals(UUID.Zero))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.ASSET_UPLOAD_FAILED));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ASSET_UPLOAD_FAILED));
                                 }
                                 ManualResetEvent CreateWearableEvent = new ManualResetEvent(false);
                                 Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
                                     name,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
+                                            message)),
                                     assetType,
                                     wearableUUID, InventoryType.Wearable, (WearableType) wearTypeInfo.GetValue(null),
                                     permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
@@ -6602,20 +7184,21 @@ namespace Corrade
                                     });
                                 if (!CreateWearableEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_CREATING_ITEM));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_CREATING_ITEM));
                                 }
                                 break;
                             case AssetType.Landmark:
                                 UUID landmarkUUID = Client.Assets.RequestUpload(assetType, data, false);
                                 if (landmarkUUID.Equals(UUID.Zero))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.ASSET_UPLOAD_FAILED));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ASSET_UPLOAD_FAILED));
                                 }
                                 ManualResetEvent CreateLandmarkEvent = new ManualResetEvent(false);
                                 Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
                                     name,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
+                                            message)),
                                     assetType,
                                     landmarkUUID, InventoryType.Landmark, PermissionMask.All,
                                     delegate(bool completed, InventoryItem createdItem)
@@ -6625,7 +7208,7 @@ namespace Corrade
                                     });
                                 if (!CreateLandmarkEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_CREATING_ITEM));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_CREATING_ITEM));
                                 }
                                 break;
                             case AssetType.Gesture:
@@ -6633,8 +7216,9 @@ namespace Corrade
                                 InventoryItem newGesture = null;
                                 Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
                                     name,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
+                                            message)),
                                     assetType,
                                     UUID.Random(), InventoryType.Gesture,
                                     permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
@@ -6646,11 +7230,11 @@ namespace Corrade
                                     });
                                 if (!CreateGestureEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_CREATING_ITEM));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_CREATING_ITEM));
                                 }
                                 if (!succeeded)
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_CREATE_ITEM));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_CREATE_ITEM));
                                 }
                                 ManualResetEvent UploadGestureAssetEvent = new ManualResetEvent(false);
                                 Client.Inventory.RequestUploadGestureAsset(data, newGesture.UUID,
@@ -6661,7 +7245,8 @@ namespace Corrade
                                     });
                                 if (!UploadGestureAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPLOADING_ASSET));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPLOADING_ASSET));
                                 }
                                 break;
                             case AssetType.Notecard:
@@ -6669,8 +7254,9 @@ namespace Corrade
                                 InventoryItem newNotecard = null;
                                 Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
                                     name,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
+                                            message)),
                                     assetType,
                                     UUID.Random(), InventoryType.Notecard,
                                     permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
@@ -6682,11 +7268,11 @@ namespace Corrade
                                     });
                                 if (!CreateNotecardEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_CREATING_ITEM));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_CREATING_ITEM));
                                 }
                                 if (!succeeded)
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_CREATE_ITEM));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_CREATE_ITEM));
                                 }
                                 ManualResetEvent UploadNotecardAssetEvent = new ManualResetEvent(false);
                                 Client.Inventory.RequestUploadNotecardAsset(data, newNotecard.UUID,
@@ -6697,7 +7283,8 @@ namespace Corrade
                                     });
                                 if (!UploadNotecardAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPLOADING_ASSET));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPLOADING_ASSET));
                                 }
                                 break;
                             case AssetType.LSLText:
@@ -6705,8 +7292,9 @@ namespace Corrade
                                 InventoryItem newScript = null;
                                 Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
                                     name,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
+                                            message)),
                                     assetType,
                                     UUID.Random(), InventoryType.LSL,
                                     permissions == 0 ? PermissionMask.Transfer : (PermissionMask) permissions,
@@ -6718,7 +7306,7 @@ namespace Corrade
                                     });
                                 if (!CreateScriptEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_CREATING_ITEM));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_CREATING_ITEM));
                                 }
                                 ManualResetEvent UpdateScriptEvent = new ManualResetEvent(false);
                                 Client.Inventory.RequestUpdateScriptAgentInventory(data, newScript.UUID, true,
@@ -6730,15 +7318,16 @@ namespace Corrade
                                     });
                                 if (!UpdateScriptEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPLOADING_ASSET));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPLOADING_ASSET));
                                 }
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_INVENTORY_TYPE));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_INVENTORY_TYPE));
                         }
                         if (!succeeded)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.ASSET_UPLOAD_FAILED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ASSET_UPLOAD_FAILED));
                         }
                     };
                     break;
@@ -6748,7 +7337,7 @@ namespace Corrade
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(
-                                GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                                wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -6756,28 +7345,31 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         InventoryBase inventoryBaseItem =
                             FindInventoryBase(Client.Inventory.Store.RootFolder,
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 Configuration.SERVICES_TIMEOUT).FirstOrDefault();
                         if (inventoryBaseItem == null)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                         }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                                 out position))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_POSITION));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
                         }
                         Quaternion rotation;
                         if (
                             !Quaternion.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ROTATION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION), message)),
                                 out rotation))
                         {
                             rotation = Quaternion.CreateFromEulers(0, 0, 0);
@@ -6785,7 +7377,7 @@ namespace Corrade
                         Parcel parcel = null;
                         if (!GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
                         if (((uint) parcel.Flags & (uint) ParcelFlags.CreateObjects).Equals(0))
                         {
@@ -6795,12 +7387,14 @@ namespace Corrade
                                 {
                                     if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
                                     {
-                                        throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                     }
                                     if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AllowRez,
                                         Configuration.SERVICES_TIMEOUT))
                                     {
-                                        throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                     }
                                 }
                             }
@@ -6816,19 +7410,21 @@ namespace Corrade
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(
-                                GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                                wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         UUID folderUUID;
                         string folder =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FOLDER), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER),
+                                message));
                         if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
                         {
                             folderUUID =
@@ -6845,7 +7441,7 @@ namespace Corrade
                                 InventoryItem item = inventoryBaseItem as InventoryItem;
                                 if (item == null || !item.AssetType.Equals(AssetType.Folder))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.FOLDER_NOT_FOUND));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FOLDER_NOT_FOUND));
                                 }
                                 folderUUID = inventoryBaseItem.UUID;
                             }
@@ -6856,17 +7452,18 @@ namespace Corrade
                                 o =>
                                     o.Name.Equals(
                                         wasUriUnescapeDataString(
-                                            wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message)),
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message)),
                                         StringComparison.Ordinal));
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         Client.Inventory.RequestDeRezToInventory(primitive.LocalID, deRezDestionationTypeInfo != null
                             ? (DeRezDestination)
@@ -6881,36 +7478,39 @@ namespace Corrade
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(
-                                GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                                wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         string entity =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ENTITY), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                message));
                         UUID entityUUID;
                         if (!UUID.TryParse(entity, out entityUUID))
                         {
                             if (string.IsNullOrEmpty(entity))
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ENTITY));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
                             }
                             entityUUID = UUID.Zero;
                         }
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         List<InventoryBase> inventory =
                             Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
@@ -6920,7 +7520,7 @@ namespace Corrade
                             : inventory.FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
                         if (item == null)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                         }
                         switch (item.AssetType)
                         {
@@ -6928,11 +7528,12 @@ namespace Corrade
                             case AssetType.LSLText:
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.ITEM_IS_NOT_A_SCRIPT));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ITEM_IS_NOT_A_SCRIPT));
                         }
                         uint action =
-                            wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
+                            (uint) wasGetEnumValueFromDescription<Action>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
                                     .ToLower(CultureInfo.InvariantCulture));
                         switch ((Action) action)
                         {
@@ -6942,7 +7543,7 @@ namespace Corrade
                                     action.Equals((uint) Action.START));
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ACTION));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
                         }
                         ManualResetEvent ScriptRunningReplyEvent = new ManualResetEvent(false);
                         bool succeeded = false;
@@ -6966,13 +7567,14 @@ namespace Corrade
                             if (!ScriptRunningReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_SCRIPT_STATE));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_SCRIPT_STATE));
                             }
                             Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
                         }
                         if (!succeeded)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_SET_SCRIPT_STATE));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_SET_SCRIPT_STATE));
                         }
                     };
                     break;
@@ -6982,36 +7584,39 @@ namespace Corrade
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(
-                                GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                                wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         string entity =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ENTITY), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                message));
                         UUID entityUUID;
                         if (!UUID.TryParse(entity, out entityUUID))
                         {
                             if (string.IsNullOrEmpty(entity))
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ENTITY));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
                             }
                             entityUUID = UUID.Zero;
                         }
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         List<InventoryBase> inventory =
                             Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
@@ -7021,7 +7626,7 @@ namespace Corrade
                             : inventory.FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
                         if (item == null)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                         }
                         switch (item.AssetType)
                         {
@@ -7029,7 +7634,7 @@ namespace Corrade
                             case AssetType.LSLText:
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.ITEM_IS_NOT_A_SCRIPT));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ITEM_IS_NOT_A_SCRIPT));
                         }
                         ManualResetEvent ScriptRunningReplyEvent = new ManualResetEvent(false);
                         bool running = false;
@@ -7045,11 +7650,12 @@ namespace Corrade
                             if (!ScriptRunningReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_SCRIPT_STATE));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_SCRIPT_STATE));
                             }
                             Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
                         }
-                        result.Add(GetEnumDescription(ResultKeys.RUNNING), running.ToString());
+                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.RUNNING), running.ToString());
                     };
                     break;
                 case ScriptKeys.GETPRIMITIVEINVENTORY:
@@ -7058,25 +7664,27 @@ namespace Corrade
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(
-                                GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                                wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         List<string> data =
                             new List<string>(Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
@@ -7087,7 +7695,7 @@ namespace Corrade
                                 }).SelectMany(o => o));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.INVENTORY),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.INVENTORY),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -7099,34 +7707,37 @@ namespace Corrade
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(
-                                GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                                wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         string entity =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ENTITY), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                message));
                         UUID entityUUID;
                         if (!UUID.TryParse(entity, out entityUUID))
                         {
                             if (string.IsNullOrEmpty(entity))
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ENTITY));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
                             }
                             entityUUID = UUID.Zero;
                         }
@@ -7138,13 +7749,14 @@ namespace Corrade
                             : inventory.FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
                         if (item == null)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                         }
                         List<string> data = new List<string>(GetStructuredData(item,
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                message))));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -7156,41 +7768,44 @@ namespace Corrade
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(
-                                GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                                wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         string entity =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ENTITY), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                message));
                         UUID entityUUID;
                         if (!UUID.TryParse(entity, out entityUUID))
                         {
                             if (string.IsNullOrEmpty(entity))
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ENTITY));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
                             }
                             entityUUID = UUID.Zero;
                         }
                         switch (
-                            (Action)
-                                wasGetEnumValueFromDescription<Action>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION),
+                            wasGetEnumValueFromDescription<Action>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                         message)).ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Action.ADD:
@@ -7200,7 +7815,8 @@ namespace Corrade
                                         Configuration.SERVICES_TIMEOUT).FirstOrDefault();
                                 if (inventoryBaseItem == null)
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                                 }
                                 Client.Inventory.UpdateTaskInventory(primitive.LocalID,
                                     inventoryBaseItem as InventoryItem);
@@ -7212,7 +7828,8 @@ namespace Corrade
                                         Configuration.SERVICES_TIMEOUT).FirstOrDefault(o => o.Name.Equals(entity)).UUID;
                                     if (entityUUID.Equals(UUID.Zero))
                                     {
-                                        throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                                     }
                                 }
                                 Client.Inventory.RemoveTaskInventory(primitive.LocalID, entityUUID,
@@ -7227,12 +7844,14 @@ namespace Corrade
                                 InventoryItem inventoryItem = inventoryBase as InventoryItem;
                                 if (inventoryItem == null)
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                                 }
                                 UUID folderUUID;
                                 string folder =
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FOLDER),
-                                        message));
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER),
+                                            message));
                                 if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
                                 {
                                     folderUUID =
@@ -7244,7 +7863,7 @@ namespace Corrade
                                     Client.Network.CurrentSim);
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ACTION));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
                         }
                     };
                     break;
@@ -7254,21 +7873,23 @@ namespace Corrade
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(
-                                GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                                wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         InventoryBase inventoryBaseItem =
                             FindInventoryBase(Client.Inventory.Store.RootFolder,
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 Configuration.SERVICES_TIMEOUT).FirstOrDefault();
                         if (inventoryBaseItem == null)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                         }
                         List<string> data = new List<string>(GetStructuredData(inventoryBaseItem as InventoryItem,
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                message))));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -7280,11 +7901,12 @@ namespace Corrade
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(
-                                GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                                wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         HashSet<AssetType> assetTypes = new HashSet<AssetType>();
                         Parallel.ForEach(
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message))
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
+                                message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
                             o => Parallel.ForEach(
                                 typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -7295,10 +7917,11 @@ namespace Corrade
                             assetTypes.Add(AssetType.Unknown);
                         }
                         string pattern =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.PATTERN), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.PATTERN),
+                                message));
                         if (string.IsNullOrEmpty(pattern))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_PATTERN_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_PATTERN_PROVIDED));
                         }
                         Regex search;
                         try
@@ -7307,7 +7930,8 @@ namespace Corrade
                         }
                         catch
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION));
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION));
                         }
                         List<string> csv = new List<string>();
                         foreach (
@@ -7322,7 +7946,7 @@ namespace Corrade
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.INVENTORY),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.INVENTORY),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     csv.ToArray()));
                         }
@@ -7333,25 +7957,27 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         StringBuilder particleSystem = new StringBuilder();
                         particleSystem.Append("PSYS_PART_FLAGS, 0");
@@ -7475,7 +8101,7 @@ namespace Corrade
                         particleSystem.Append("PSYS_SRC_TEXTURE, (key)\"" + primitive.ParticleSys.Texture + "\"" +
                                               LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
                         particleSystem.Append("PSYS_SRC_TARGET_KEY, (key)\"" + primitive.ParticleSys.Target + "\"");
-                        result.Add(GetEnumDescription(ResultKeys.PARTICLESYSTEM), particleSystem.ToString());
+                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.PARTICLESYSTEM), particleSystem.ToString());
                     };
                     break;
                 case ScriptKeys.CREATENOTECARD:
@@ -7484,20 +8110,22 @@ namespace Corrade
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(
-                                GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                                wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string name =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                message));
                         if (string.IsNullOrEmpty(name))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_NAME_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_NAME_PROVIDED));
                         }
                         ManualResetEvent CreateNotecardEvent = new ManualResetEvent(false);
                         bool succeeded = false;
                         InventoryItem newItem = null;
                         Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(AssetType.Notecard),
                             name,
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION), message)),
+                            wasUriUnescapeDataString(
+                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION), message)),
                             AssetType.Notecard,
                             UUID.Random(), InventoryType.Notecard, PermissionMask.All,
                             delegate(bool completed, InventoryItem createdItem)
@@ -7508,11 +8136,11 @@ namespace Corrade
                             });
                         if (!CreateNotecardEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_CREATING_ITEM));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_CREATING_ITEM));
                         }
                         if (!succeeded)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_CREATE_ITEM));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_CREATE_ITEM));
                         }
                         AssetNotecard blank = new AssetNotecard
                         {
@@ -7529,14 +8157,15 @@ namespace Corrade
                             });
                         if (!UploadBlankNotecardEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPLOADING_ITEM));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPLOADING_ITEM));
                         }
                         if (!succeeded)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_UPLOAD_ITEM));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_UPLOAD_ITEM));
                         }
                         string text =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TEXT), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TEXT),
+                                message));
                         if (!string.IsNullOrEmpty(text))
                         {
                             AssetNotecard notecard = new AssetNotecard
@@ -7554,11 +8183,13 @@ namespace Corrade
                                 });
                             if (!UploadNotecardDataEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPLOADING_ITEM_DATA));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPLOADING_ITEM_DATA));
                             }
                             if (!succeeded)
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.UNABLE_TO_UPLOAD_ITEM_DATA));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_UPLOAD_ITEM_DATA));
                             }
                         }
                     };
@@ -7570,7 +8201,7 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -7578,11 +8209,11 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
                         }
                         Client.Groups.ActivateGroup(groupUUID);
                     };
@@ -7594,7 +8225,7 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -7602,11 +8233,11 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
                         }
                         ManualResetEvent GroupRoleDataReplyEvent = new ManualResetEvent(false);
                         Dictionary<string, UUID> roleData = new Dictionary<string, UUID>();
@@ -7622,7 +8253,8 @@ namespace Corrade
                             if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleDataReply -= Groups_GroupRoleDataReply;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_GROUP_ROLES));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_ROLES));
                             }
                             Client.Groups.GroupRoleDataReply -= Groups_GroupRoleDataReply;
                         }
@@ -7630,13 +8262,14 @@ namespace Corrade
                             roleData.FirstOrDefault(
                                 o =>
                                     o.Key.Equals(
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TITLE),
-                                            message)),
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TITLE),
+                                                message)),
                                         StringComparison.Ordinal))
                                 .Value;
                         if (roleUUID.Equals(UUID.Zero))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_TITLE));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_TITLE));
                         }
                         Client.Groups.ActivateTitle(groupUUID, roleUUID);
                     };
@@ -7648,12 +8281,12 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         switch (
-                            (Action)
-                                wasGetEnumValueFromDescription<Action>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION),
+                            wasGetEnumValueFromDescription<Action>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                         message)).ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Action.START:
@@ -7661,10 +8294,10 @@ namespace Corrade
                                 if (
                                     !Vector3.TryParse(
                                         wasUriUnescapeDataString(wasKeyValueGet(
-                                            GetEnumDescription(ScriptKeys.POSITION), message)),
+                                            wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                                         out position))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.INVALID_POSITION));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
                                 }
                                 uint moveRegionX, moveRegionY;
                                 Utils.LongToUInts(Client.Network.CurrentSim.Handle, out moveRegionX, out moveRegionY);
@@ -7682,7 +8315,7 @@ namespace Corrade
                                 Client.Self.AutoPilotCancel();
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_MOVE_ACTION));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_MOVE_ACTION));
                         }
                     };
                     break;
@@ -7693,15 +8326,16 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                                 out position))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_POSITION));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
                         }
                         Client.Self.Movement.TurnToward(position, true);
                     };
@@ -7713,13 +8347,13 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        switch ((Direction)
-                            wasGetEnumValueFromDescription<Direction>(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DIRECTION),
-                                    message))
-                                    .ToLower(CultureInfo.InvariantCulture)))
+                        switch (wasGetEnumValueFromDescription<Direction>(
+                            wasUriUnescapeDataString(wasKeyValueGet(
+                                wasGetDescriptionFromEnumValue(ScriptKeys.DIRECTION),
+                                message))
+                                .ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Direction.BACK:
                                 Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.AGENT_CONTROL_AT_NEG,
@@ -7775,7 +8409,7 @@ namespace Corrade
                                     AgentState.None, true);
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_DIRECTION));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_DIRECTION));
                         }
                     };
                     break;
@@ -7784,7 +8418,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -7792,47 +8426,51 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NOT_IN_GROUP));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.StartProposal,
                                 Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         int duration;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DURATION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION), message)),
                                 out duration))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_PROPOSAL_DURATION));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PROPOSAL_DURATION));
                         }
                         float majority;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.MAJORITY), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MAJORITY), message)),
                                 out majority))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_PROPOSAL_MAJORITY));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PROPOSAL_MAJORITY));
                         }
                         int quorum;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.QUORUM), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.QUORUM), message)),
                                 out quorum))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_PROPOSAL_QUORUM));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PROPOSAL_QUORUM));
                         }
                         string text =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TEXT), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TEXT),
+                                message));
                         if (string.IsNullOrEmpty(text))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_PROPOSAL_TEXT));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PROPOSAL_TEXT));
                         }
                         Client.Groups.StartProposal(groupUUID, new GroupProposal
                         {
@@ -7849,20 +8487,21 @@ namespace Corrade
                         if (
                             !HasCorradePermission(group, (int) Permissions.PERMISSION_MUTE))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID targetUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TARGET), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET), message)),
                                 out targetUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_MUTE_TARGET));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_MUTE_TARGET));
                         }
                         switch (
-                            (Action)
-                                wasGetEnumValueFromDescription<Action>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION),
+                            wasGetEnumValueFromDescription<Action>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                         message)).ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Action.MUTE:
@@ -7872,7 +8511,8 @@ namespace Corrade
                                         o =>
                                             o.Name.Equals(
                                                 wasUriUnescapeDataString(
-                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message)),
+                                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
+                                                        message)),
                                                 StringComparison.Ordinal));
                                 ManualResetEvent MuteListUpdatedEvent = new ManualResetEvent(false);
                                 EventHandler<EventArgs> MuteListUpdatedEventHandler =
@@ -7885,22 +8525,25 @@ namespace Corrade
                                             muteTypeInfo
                                                 .GetValue(null)
                                         : MuteType.ByName, targetUUID,
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME),
-                                            message)));
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                                message)));
                                     if (!MuteListUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
-                                        throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPDATING_MUTE_LIST));
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPDATING_MUTE_LIST));
                                     }
                                     Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                                 }
                                 break;
                             case Action.UNMUTE:
                                 Client.Self.RemoveMuteListEntry(targetUUID,
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message)));
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME), message)));
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ACTION));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
                         }
                     };
                     break;
@@ -7909,7 +8552,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MUTE))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         List<string> data = new List<string>(Client.Self.MuteList.Copy().Select(o => new[]
                         {
@@ -7918,7 +8561,7 @@ namespace Corrade
                         }).SelectMany(o => o));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.MUTES),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.MUTES),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -7929,14 +8572,14 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_DATABASE))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string databaseFile =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).DatabaseFile;
                         if (string.IsNullOrEmpty(databaseFile))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_DATABASE_FILE_CONFIGURED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_DATABASE_FILE_CONFIGURED));
                         }
                         if (!File.Exists(databaseFile))
                         {
@@ -7944,17 +8587,19 @@ namespace Corrade
                             File.Create(databaseFile).Close();
                         }
                         switch (
-                            (Action)
-                                wasGetEnumValueFromDescription<Action>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION),
+                            wasGetEnumValueFromDescription<Action>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                         message)).ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Action.GET:
                                 string databaseGetkey =
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.KEY), message));
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.KEY), message));
                                 if (string.IsNullOrEmpty(databaseGetkey))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_DATABASE_KEY_SPECIFIED));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_DATABASE_KEY_SPECIFIED));
                                 }
                                 lock (DatabaseFileLock)
                                 {
@@ -7983,17 +8628,21 @@ namespace Corrade
                                 break;
                             case Action.SET:
                                 string databaseSetKey =
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.KEY), message));
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.KEY), message));
                                 if (string.IsNullOrEmpty(databaseSetKey))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_DATABASE_KEY_SPECIFIED));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_DATABASE_KEY_SPECIFIED));
                                 }
                                 string databaseSetValue =
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.VALUE),
-                                        message));
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.VALUE),
+                                            message));
                                 if (string.IsNullOrEmpty(databaseSetValue))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_DATABASE_VALUE_SPECIFIED));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_DATABASE_VALUE_SPECIFIED));
                                 }
                                 lock (DatabaseFileLock)
                                 {
@@ -8023,10 +8672,12 @@ namespace Corrade
                                 break;
                             case Action.DELETE:
                                 string databaseDeleteKey =
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.KEY), message));
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.KEY), message));
                                 if (string.IsNullOrEmpty(databaseDeleteKey))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_DATABASE_KEY_SPECIFIED));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_DATABASE_KEY_SPECIFIED));
                                 }
                                 lock (DatabaseFileLock)
                                 {
@@ -8054,7 +8705,7 @@ namespace Corrade
                                 }
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_DATABASE_ACTION));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_DATABASE_ACTION));
                         }
                     };
                     break;
@@ -8063,32 +8714,35 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_NOTIFICATIONS))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         switch (
-                            (Action)
-                                wasGetEnumValueFromDescription<Action>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION),
+                            wasGetEnumValueFromDescription<Action>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                         message)).ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Action.SET:
                                 string url =
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.URL), message));
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.URL), message));
                                 if (string.IsNullOrEmpty(url))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.INVALID_URL_PROVIDED));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_URL_PROVIDED));
                                 }
                                 Uri notifyURL;
                                 if (!Uri.TryCreate(url, UriKind.Absolute, out notifyURL))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.INVALID_URL_PROVIDED));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_URL_PROVIDED));
                                 }
                                 string notificationTypes =
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message))
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
                                         .ToLower(CultureInfo.InvariantCulture);
                                 if (string.IsNullOrEmpty(notificationTypes))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.INVALID_NOTIFICATION_TYPES));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.INVALID_NOTIFICATION_TYPES));
                                 }
                                 uint notifications = 0;
                                 Parallel.ForEach(
@@ -8096,10 +8750,11 @@ namespace Corrade
                                         StringSplitOptions.RemoveEmptyEntries),
                                     o =>
                                     {
-                                        uint notificationValue = wasGetEnumValueFromDescription<Notifications>(o);
+                                        uint notificationValue = (uint) wasGetEnumValueFromDescription<Notifications>(o);
                                         if (!HasCorradeNotification(group, notificationValue))
                                         {
-                                            throw new Exception(GetEnumDescription(ScriptError.NOTIFICATION_NOT_ALLOWED));
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.NOTIFICATION_NOT_ALLOWED));
                                         }
                                         notifications |= notificationValue;
                                     });
@@ -8130,16 +8785,17 @@ namespace Corrade
                                             p =>
                                                 p.GROUP.Equals(group, StringComparison.Ordinal) &&
                                                 (p.NOTIFICATION_MASK &
-                                                 wasGetEnumValueFromDescription<Notifications>(o)).Equals(0))));
+                                                 (uint) wasGetEnumValueFromDescription<Notifications>(o)).Equals(0))));
                                 if (!data.Count.Equals(0))
                                 {
-                                    result.Add(GetEnumDescription(ResultKeys.NOTIFICATIONS),
+                                    result.Add(wasGetDescriptionFromEnumValue(ResultKeys.NOTIFICATIONS),
                                         string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                             data.ToArray()));
                                 }
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_NOTIFICATIONS_ACTION));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_NOTIFICATIONS_ACTION));
                         }
                     };
                     break;
@@ -8148,31 +8804,36 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MOVEMENT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         UUID sessionUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.SESSION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION), message)),
                                 out sessionUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_SESSION_SPECIFIED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_SESSION_SPECIFIED));
                         }
                         Client.Self.TeleportLureRespond(agentUUID, sessionUUID, wasGetEnumValueFromDescription<Action>(
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                message))
                                 .ToLower(CultureInfo.InvariantCulture)).Equals(Action.ACCEPT));
                     };
                     break;
@@ -8181,7 +8842,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MOVEMENT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         List<string> csv = new List<string>();
                         object LockObject = new object();
@@ -8189,15 +8850,19 @@ namespace Corrade
                         {
                             lock (LockObject)
                             {
-                                csv.Add(o.FirstName);
-                                csv.Add(o.LastName);
-                                csv.Add(o.Agent.ToString());
-                                csv.Add(o.Session.ToString());
+                                csv.AddRange(new[]
+                                {wasGetStructureMemberDescription(o.Agent, o.Agent.FirstName), o.Agent.FirstName});
+                                csv.AddRange(new[]
+                                {wasGetStructureMemberDescription(o.Agent, o.Agent.LastName), o.Agent.LastName});
+                                csv.AddRange(new[]
+                                {wasGetStructureMemberDescription(o.Agent, o.Agent.UUID), o.Agent.UUID.ToString()});
+                                csv.AddRange(new[]
+                                {wasGetStructureMemberDescription(o, o.Session), o.Session.ToString()});
                             }
                         });
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.LURES),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.LURES),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -8207,27 +8872,30 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID itemUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 out itemUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_ITEM_SPECIFIED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
                         }
                         UUID taskUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TASK), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.TASK), message)),
                                 out taskUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_TASK_SPECIFIED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_TASK_SPECIFIED));
                         }
                         int permissionMask = 0;
                         Parallel.ForEach(
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.PERMISSIONS), message))
+                            wasUriUnescapeDataString(
+                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS), message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
                             o =>
                                 Parallel.ForEach(
@@ -8243,7 +8911,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         List<string> csv = new List<string>();
                         object LockObject = new object();
@@ -8251,22 +8919,28 @@ namespace Corrade
                         {
                             lock (LockObject)
                             {
-                                csv.Add(o.ObjectName);
-                                csv.Add(o.OwnerName);
-                                csv.Add(o.ItemUUID.ToString());
-                                csv.Add(o.TaskUUID.ToString());
+                                csv.AddRange(new[] {wasGetStructureMemberDescription(o, o.Name), o.Name});
+                                csv.AddRange(new[]
+                                {wasGetStructureMemberDescription(o.Agent, o.Agent.FirstName), o.Agent.FirstName});
+                                csv.AddRange(new[]
+                                {wasGetStructureMemberDescription(o.Agent, o.Agent.LastName), o.Agent.LastName});
+                                csv.AddRange(new[]
+                                {wasGetStructureMemberDescription(o.Agent, o.Agent.UUID), o.Agent.UUID.ToString()});
+                                csv.AddRange(new[] {wasGetStructureMemberDescription(o, o.Item), o.Item.ToString()});
+                                csv.AddRange(new[] {wasGetStructureMemberDescription(o, o.Task), o.Task.ToString()});
+                                csv.Add(wasGetStructureMemberDescription(o, o.Permission));
                                 csv.AddRange(typeof (ScriptPermission).GetFields(BindingFlags.Public |
                                                                                  BindingFlags.Static)
                                     .Where(
                                         p =>
                                             !(((int) p.GetValue(null) &
-                                               (int) o.Permissions)).Equals(0))
+                                               (int) o.Permission)).Equals(0))
                                     .Select(p => p.Name).ToArray());
                             }
                         });
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.PERMISSIONS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.PERMISSIONS),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -8276,37 +8950,41 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         int channel;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.CHANNEL), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.CHANNEL), message)),
                                 out channel))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CHANNEL_SPECIFIED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CHANNEL_SPECIFIED));
                         }
                         int index;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.INDEX), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.INDEX), message)),
                                 out index))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_BUTTON_INDEX_SPECIFIED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_BUTTON_INDEX_SPECIFIED));
                         }
                         string label =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.BUTTON), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.BUTTON),
+                                message));
                         if (string.IsNullOrEmpty(label))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_BUTTON_SPECIFIED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_BUTTON_SPECIFIED));
                         }
                         UUID itemUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 out itemUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_ITEM_SPECIFIED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
                         }
                         Client.Self.ReplyToScriptDialog(channel, index, label, itemUUID);
                     };
@@ -8316,7 +8994,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         List<string> csv = new List<string>();
                         object LockObject = new object();
@@ -8324,19 +9002,27 @@ namespace Corrade
                         {
                             lock (LockObject)
                             {
-                                csv.Add(o.Message);
-                                csv.Add(o.FirstName);
-                                csv.Add(o.LastName);
-                                csv.Add(o.Channel.ToString(CultureInfo.InvariantCulture));
-                                csv.Add(o.Name);
-                                csv.Add(o.Item.ToString());
-                                csv.Add(o.Owner.ToString());
+                                csv.AddRange(new[] {wasGetStructureMemberDescription(o, o.Message), o.Message});
+                                csv.AddRange(new[]
+                                {wasGetStructureMemberDescription(o.Agent, o.Agent.FirstName), o.Agent.FirstName});
+                                csv.AddRange(new[]
+                                {wasGetStructureMemberDescription(o.Agent, o.Agent.LastName), o.Agent.LastName});
+                                csv.AddRange(new[]
+                                {wasGetStructureMemberDescription(o.Agent, o.Agent.UUID), o.Agent.UUID.ToString()});
+                                csv.AddRange(new[]
+                                {
+                                    wasGetStructureMemberDescription(o, o.Channel),
+                                    o.Channel.ToString(CultureInfo.InvariantCulture)
+                                });
+                                csv.AddRange(new[] {wasGetStructureMemberDescription(o, o.Name), o.Name});
+                                csv.AddRange(new[] {wasGetStructureMemberDescription(o, o.Item), o.Item.ToString()});
+                                csv.Add(wasGetStructureMemberDescription(o, o.Button));
                                 csv.AddRange(o.Button.ToArray());
                             }
                         });
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.DIALOGS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DIALOGS),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -8346,13 +9032,14 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string item =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                message));
                         if (string.IsNullOrEmpty(item))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_ITEM_SPECIFIED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
                         }
                         UUID itemUUID;
                         if (!UUID.TryParse(item, out itemUUID))
@@ -8362,14 +9049,14 @@ namespace Corrade
                                     Configuration.SERVICES_TIMEOUT).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                             }
                             itemUUID = inventoryBaseItem.UUID;
                         }
                         switch (
-                            (Action)
-                                wasGetEnumValueFromDescription<Action>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION),
+                            wasGetEnumValueFromDescription<Action>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                         message)).ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Action.START:
@@ -8379,7 +9066,7 @@ namespace Corrade
                                 Client.Self.AnimationStop(itemUUID, true);
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ANIMATION_ACTION));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ANIMATION_ACTION));
                         }
                     };
                     break;
@@ -8388,13 +9075,14 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string item =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                message));
                         if (string.IsNullOrEmpty(item))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_ITEM_SPECIFIED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
                         }
                         UUID itemUUID;
                         if (!UUID.TryParse(item, out itemUUID))
@@ -8404,7 +9092,7 @@ namespace Corrade
                                     Configuration.SERVICES_TIMEOUT).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                             }
                             itemUUID = inventoryBaseItem.UUID;
                         }
@@ -8416,7 +9104,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         List<string> csv = new List<string>();
                         Client.Self.SignaledAnimations.ForEach(
@@ -8428,7 +9116,7 @@ namespace Corrade
                                 }));
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.ANIMATIONS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.ANIMATIONS),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -8438,24 +9126,25 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         if (!Client.Network.CurrentSim.IsEstateManager)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_LAND_RIGHTS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_LAND_RIGHTS));
                         }
                         int delay;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DELAY), message))
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.DELAY), message))
                                     .ToLower(CultureInfo.InvariantCulture), out delay))
                         {
                             delay = LINDEN_CONSTANTS.ESTATE.REGION_RESTART_DELAY;
                         }
                         switch (
-                            (Action)
-                                wasGetEnumValueFromDescription<Action>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION),
+                            wasGetEnumValueFromDescription<Action>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                         message)).ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Action.RESTART:
@@ -8468,7 +9157,7 @@ namespace Corrade
                                 Client.Estate.CancelRestart();
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_RESTART_ACTION));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_RESTART_ACTION));
                         }
                     };
                     break;
@@ -8477,16 +9166,17 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         if (!Client.Network.CurrentSim.IsEstateManager)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_LAND_RIGHTS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_LAND_RIGHTS));
                         }
                         bool scripts;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.SCRIPTS), message))
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.SCRIPTS), message))
                                     .ToLower(CultureInfo.InvariantCulture), out scripts))
                         {
                             scripts = false;
@@ -8494,8 +9184,9 @@ namespace Corrade
                         bool collisions;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.COLLISIONS),
-                                    message))
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.COLLISIONS),
+                                        message))
                                     .ToLower(CultureInfo.InvariantCulture), out collisions))
                         {
                             collisions = false;
@@ -8503,7 +9194,8 @@ namespace Corrade
                         bool physics;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.PHYSICS), message))
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.PHYSICS), message))
                                     .ToLower(CultureInfo.InvariantCulture), out physics))
                         {
                             physics = false;
@@ -8516,26 +9208,27 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         if (!Client.Network.CurrentSim.IsEstateManager)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_LAND_RIGHTS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_LAND_RIGHTS));
                         }
                         int amount;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AMOUNT), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT), message)),
                                 out amount))
                         {
                             amount = 5;
                         }
                         Dictionary<UUID, EstateTask> topTasks = new Dictionary<UUID, EstateTask>();
                         switch (
-                            (Type)
-                                wasGetEnumValueFromDescription<Type>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message))
-                                        .ToLower(CultureInfo.InvariantCulture)))
+                            wasGetEnumValueFromDescription<Type>(
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
+                                    .ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Type.SCRIPTS:
                                 ManualResetEvent TopScriptsReplyEvent = new ManualResetEvent(false);
@@ -8553,7 +9246,8 @@ namespace Corrade
                                     if (!TopScriptsReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Estate.TopScriptsReply -= TopScriptsReplyEventHandler;
-                                        throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_TOP_SCRIPTS));
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_TOP_SCRIPTS));
                                     }
                                     Client.Estate.TopScriptsReply -= TopScriptsReplyEventHandler;
                                 }
@@ -8575,13 +9269,14 @@ namespace Corrade
                                     if (!TopCollidersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Estate.TopCollidersReply -= TopCollidersReplyEventHandler;
-                                        throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_TOP_SCRIPTS));
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_TOP_SCRIPTS));
                                     }
                                     Client.Estate.TopCollidersReply -= TopCollidersReplyEventHandler;
                                 }
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_TOP_TYPE));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_TOP_TYPE));
                         }
                         List<string> data = new List<string>(topTasks.Take(amount).Select(o => new[]
                         {
@@ -8593,7 +9288,7 @@ namespace Corrade
                         }).SelectMany(o => o));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.TOP),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.TOP),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, data.ToArray()));
                         }
                     };
@@ -8603,47 +9298,50 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         if (!Client.Network.CurrentSim.IsEstateManager)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_LAND_RIGHTS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_LAND_RIGHTS));
                         }
                         bool allEstates;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ALL), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ALL),
+                                    message)),
                                 out allEstates))
                         {
                             allEstates = false;
                         }
                         UUID targetUUID;
                         switch (
-                            (Type)
-                                wasGetEnumValueFromDescription<Type>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message))
-                                        .ToLower(CultureInfo.InvariantCulture)))
+                            wasGetEnumValueFromDescription<Type>(
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
+                                    .ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Type.BAN:
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT),
-                                            message)), out targetUUID) && !AgentNameToUUID(
-                                                wasUriUnescapeDataString(
-                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                                        message)),
-                                                wasUriUnescapeDataString(
-                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
-                                                Configuration.SERVICES_TIMEOUT, ref targetUUID))
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                                message)), out targetUUID) && !AgentNameToUUID(
+                                                    wasUriUnescapeDataString(
+                                                        wasKeyValueGet(
+                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            message)),
+                                                    wasUriUnescapeDataString(
+                                                        wasKeyValueGet(
+                                                            wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
+                                                    Configuration.SERVICES_TIMEOUT, ref targetUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
                                 switch (
-                                    (Action)
-                                        wasGetEnumValueFromDescription<Action>(
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
-                                                .ToLower(CultureInfo.InvariantCulture)))
+                                    wasGetEnumValueFromDescription<Action>(
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
+                                            .ToLower(CultureInfo.InvariantCulture)))
                                 {
                                     case Action.ADD:
                                         Client.Estate.BanUser(targetUUID, allEstates);
@@ -8652,27 +9350,29 @@ namespace Corrade
                                         Client.Estate.UnbanUser(targetUUID, allEstates);
                                         break;
                                     default:
-                                        throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ESTATE_LIST_ACTION));
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ESTATE_LIST_ACTION));
                                 }
                                 break;
                             case Type.GROUP:
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TARGET),
-                                            message)),
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                                message)),
                                         out targetUUID) && !GroupNameToUUID(
                                             wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.TARGET), message)),
+                                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                                    message)),
                                             Configuration.SERVICES_TIMEOUT, ref targetUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                                 }
                                 switch (
-                                    (Action)
-                                        wasGetEnumValueFromDescription<Action>(
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
-                                                .ToLower(CultureInfo.InvariantCulture)))
+                                    wasGetEnumValueFromDescription<Action>(
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
+                                            .ToLower(CultureInfo.InvariantCulture)))
                                 {
                                     case Action.ADD:
                                         Client.Estate.AddAllowedGroup(targetUUID, allEstates);
@@ -8681,29 +9381,32 @@ namespace Corrade
                                         Client.Estate.RemoveAllowedGroup(targetUUID, allEstates);
                                         break;
                                     default:
-                                        throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ESTATE_LIST_ACTION));
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ESTATE_LIST_ACTION));
                                 }
                                 break;
                             case Type.USER:
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT),
-                                            message)), out targetUUID) && !AgentNameToUUID(
-                                                wasUriUnescapeDataString(
-                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                                        message)),
-                                                wasUriUnescapeDataString(
-                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
-                                                Configuration.SERVICES_TIMEOUT, ref targetUUID))
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                                message)), out targetUUID) && !AgentNameToUUID(
+                                                    wasUriUnescapeDataString(
+                                                        wasKeyValueGet(
+                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            message)),
+                                                    wasUriUnescapeDataString(
+                                                        wasKeyValueGet(
+                                                            wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
+                                                    Configuration.SERVICES_TIMEOUT, ref targetUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
                                 switch (
-                                    (Action)
-                                        wasGetEnumValueFromDescription<Action>(
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
-                                                .ToLower(CultureInfo.InvariantCulture)))
+                                    wasGetEnumValueFromDescription<Action>(
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
+                                            .ToLower(CultureInfo.InvariantCulture)))
                                 {
                                     case Action.ADD:
                                         Client.Estate.AddAllowedUser(targetUUID, allEstates);
@@ -8712,29 +9415,32 @@ namespace Corrade
                                         Client.Estate.RemoveAllowedUser(targetUUID, allEstates);
                                         break;
                                     default:
-                                        throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ESTATE_LIST_ACTION));
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ESTATE_LIST_ACTION));
                                 }
                                 break;
                             case Type.MANAGER:
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT),
-                                            message)), out targetUUID) && !AgentNameToUUID(
-                                                wasUriUnescapeDataString(
-                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                                        message)),
-                                                wasUriUnescapeDataString(
-                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
-                                                Configuration.SERVICES_TIMEOUT, ref targetUUID))
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                                message)), out targetUUID) && !AgentNameToUUID(
+                                                    wasUriUnescapeDataString(
+                                                        wasKeyValueGet(
+                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            message)),
+                                                    wasUriUnescapeDataString(
+                                                        wasKeyValueGet(
+                                                            wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
+                                                    Configuration.SERVICES_TIMEOUT, ref targetUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
                                 switch (
-                                    (Action)
-                                        wasGetEnumValueFromDescription<Action>(
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
-                                                .ToLower(CultureInfo.InvariantCulture)))
+                                    wasGetEnumValueFromDescription<Action>(
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
+                                            .ToLower(CultureInfo.InvariantCulture)))
                                 {
                                     case Action.ADD:
                                         Client.Estate.AddEstateManager(targetUUID, allEstates);
@@ -8743,11 +9449,12 @@ namespace Corrade
                                         Client.Estate.RemoveEstateManager(targetUUID, allEstates);
                                         break;
                                     default:
-                                        throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ESTATE_LIST_ACTION));
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ESTATE_LIST_ACTION));
                                 }
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ESTATE_LIST));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ESTATE_LIST));
                         }
                     };
                     break;
@@ -8756,16 +9463,17 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         if (!Client.Network.CurrentSim.IsEstateManager)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_LAND_RIGHTS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_LAND_RIGHTS));
                         }
                         int timeout;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TIMEOUT), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TIMEOUT), message)),
                                 out timeout))
                         {
                             timeout = Configuration.SERVICES_TIMEOUT;
@@ -8774,10 +9482,10 @@ namespace Corrade
                         ManualResetEvent EstateListReplyEvent = new ManualResetEvent(false);
                         object LockObject = new object();
                         switch (
-                            (Type)
-                                wasGetEnumValueFromDescription<Type>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message))
-                                        .ToLower(CultureInfo.InvariantCulture)))
+                            wasGetEnumValueFromDescription<Type>(
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
+                                    .ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Type.BAN:
                                 EventHandler<EstateBansReplyEventArgs> EstateBansReplyEventHandler = (sender, args) =>
@@ -8867,14 +9575,14 @@ namespace Corrade
                                 }
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ESTATE_LIST));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ESTATE_LIST));
                         }
                         lock (LockObject)
                         {
                             List<string> data = new List<string>(estateList.ConvertAll(o => o.ToString()));
                             if (!data.Count.Equals(0))
                             {
-                                result.Add(GetEnumDescription(ResultKeys.LIST),
+                                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.LIST),
                                     string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                         data.ToArray()));
                             }
@@ -8886,31 +9594,35 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         Avatar avatar = Client.Network.CurrentSim.ObjectsAvatars.Find(o => o.ID.Equals(agentUUID));
                         if (avatar == null)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AVATAR_NOT_IN_RANGE));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AVATAR_NOT_IN_RANGE));
                         }
                         List<string> data = new List<string>(GetStructuredData(avatar,
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                message))));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -8921,19 +9633,21 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
                         }
                         uint entity =
-                            wasGetEnumValueFromDescription<Entity>(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ENTITY), message))
+                            (uint) wasGetEnumValueFromDescription<Entity>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY), message))
                                     .ToLower(CultureInfo.InvariantCulture));
                         Parcel parcel = null;
                         UUID agentUUID = UUID.Zero;
@@ -8944,27 +9658,30 @@ namespace Corrade
                             case Entity.AVATAR:
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT),
-                                            message)), out agentUUID) && !AgentNameToUUID(
-                                                wasUriUnescapeDataString(
-                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                                        message)),
-                                                wasUriUnescapeDataString(
-                                                    wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME), message)),
-                                                Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                                message)), out agentUUID) && !AgentNameToUUID(
+                                                    wasUriUnescapeDataString(
+                                                        wasKeyValueGet(
+                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            message)),
+                                                    wasUriUnescapeDataString(
+                                                        wasKeyValueGet(
+                                                            wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
+                                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
                                 break;
                             case Entity.PARCEL:
                                 if (
                                     !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                                 }
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ENTITY));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
                         }
                         List<string> csv = new List<string>();
                         object LockObject = new object();
@@ -8985,7 +9702,7 @@ namespace Corrade
                                         Configuration.SERVICES_TIMEOUT, false))
                                 {
                                     Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
-                                    throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                                 }
                                 Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
                             }
@@ -9028,7 +9745,7 @@ namespace Corrade
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.PRIMITIVES),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.PRIMITIVES),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -9038,19 +9755,21 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
                         }
                         uint entity =
-                            wasGetEnumValueFromDescription<Entity>(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ENTITY), message))
+                            (uint) wasGetEnumValueFromDescription<Entity>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY), message))
                                     .ToLower(CultureInfo.InvariantCulture));
                         Parcel parcel = null;
                         switch ((Entity) entity)
@@ -9061,11 +9780,11 @@ namespace Corrade
                                 if (
                                     !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_FIND_PARCEL));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                                 }
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ENTITY));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
                         }
                         List<string> csv = new List<string>();
                         Dictionary<UUID, Vector3> avatarPositions = new Dictionary<UUID, Vector3>();
@@ -9093,7 +9812,7 @@ namespace Corrade
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.POSITIONS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.POSITIONS),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -9103,10 +9822,11 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string region =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.REGION), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REGION),
+                                message));
                         if (string.IsNullOrEmpty(region))
                         {
                             region = Client.Network.CurrentSim.Name;
@@ -9125,20 +9845,20 @@ namespace Corrade
                             if (!GridRegionEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Grid.GridRegion -= GridRegionEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_REGION));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_REGION));
                             }
                             Client.Grid.GridRegion -= GridRegionEventHandler;
                         }
                         if (regionHandle.Equals(0))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.REGION_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
                         }
                         HashSet<MapItem> mapItems =
                             new HashSet<MapItem>(Client.Grid.MapItems(regionHandle, GridItemType.AgentLocations,
                                 GridLayerType.Objects, Configuration.SERVICES_TIMEOUT));
                         if (mapItems.Count.Equals(0))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_MAP_ITEMS_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_MAP_ITEMS_FOUND));
                         }
                         List<string> data =
                             new List<string>(mapItems.Where(o => (o as MapAgentLocation) != null).Select(o => new[]
@@ -9148,7 +9868,7 @@ namespace Corrade
                             }).SelectMany(o => o));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.AVATARS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.AVATARS),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -9159,13 +9879,14 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         List<string> data = new List<string>(GetStructuredData(Client.Self,
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                message))));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -9176,7 +9897,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string previous = string.Empty;
                         Client.Avatars.GetDisplayNames(new List<UUID> {Client.Self.AgentID},
@@ -9184,25 +9905,27 @@ namespace Corrade
                             {
                                 if (!succeded || names.Length < 1)
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.FAILED_TO_GET_DISPLAY_NAME));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.FAILED_TO_GET_DISPLAY_NAME));
                                 }
                                 previous = names[0].DisplayName;
                             });
                         switch (
-                            (Action)
-                                wasGetEnumValueFromDescription<Action>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION),
+                            wasGetEnumValueFromDescription<Action>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                         message)).ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Action.GET:
-                                result.Add(GetEnumDescription(ResultKeys.DISPLAYNAME), previous);
+                                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DISPLAYNAME), previous);
                                 break;
                             case Action.SET:
                                 string name =
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message));
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME), message));
                                 if (string.IsNullOrEmpty(name))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_NAME_PROVIDED));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_NAME_PROVIDED));
                                 }
                                 bool succeeded = true;
                                 ManualResetEvent SetDisplayNameEvent = new ManualResetEvent(false);
@@ -9220,17 +9943,18 @@ namespace Corrade
                                     {
                                         Client.Self.SetDisplayNameReply -= SetDisplayNameEventHandler;
                                         throw new Exception(
-                                            GetEnumDescription(ScriptError.TIMEOUT_WAITING_FOR_ESTATE_LIST));
+                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_WAITING_FOR_ESTATE_LIST));
                                     }
                                     Client.Self.SetDisplayNameReply -= SetDisplayNameEventHandler;
                                 }
                                 if (!succeeded)
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.COULD_NOT_SET_DISPLAY_NAME));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_SET_DISPLAY_NAME));
                                 }
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ACTION));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
                         }
                     };
                     break;
@@ -9239,23 +9963,38 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         object LockObject = new object();
                         List<string> csv = new List<string>();
                         Parallel.ForEach(InventoryOffers, o =>
                         {
+                            List<string> name =
+                                new List<string>(
+                                    o.Key.Offer.FromAgentName.Split(new[] {' ', '.'},
+                                        StringSplitOptions.RemoveEmptyEntries)
+                                        .GroupBy(p => p)
+                                        .Where(p => !p.Count().Equals(0))
+                                        .Select(p => new[]
+                                        {
+                                            p.First(),
+                                            p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                                        }).SelectMany(p => p));
                             lock (LockObject)
                             {
-                                csv.Add(o.Key.Offer.FromAgentName);
-                                csv.Add(o.Key.AssetType.ToString());
-                                csv.Add(o.Key.Offer.Message);
-                                csv.Add(o.Key.Offer.IMSessionID.ToString());
+                                csv.AddRange(new[] {wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME), name.First()});
+                                csv.AddRange(new[] {wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME), name.Last()});
+                                csv.AddRange(new[]
+                                {wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), o.Key.AssetType.ToString()});
+                                csv.AddRange(new[]
+                                {wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE), o.Key.Offer.Message});
+                                csv.AddRange(new[]
+                                {wasGetDescriptionFromEnumValue(ScriptKeys.SESSION), o.Key.Offer.IMSessionID.ToString()});
                             }
                         });
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.OFFERS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.OFFERS),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -9265,25 +10004,27 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID session;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.SESSION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION), message)),
                                 out session))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_SESSION_SPECIFIED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_SESSION_SPECIFIED));
                         }
                         if (!InventoryOffers.Any(o => o.Key.Offer.IMSessionID.Equals(session)))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVENTORY_OFFER_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_OFFER_NOT_FOUND));
                         }
                         KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent> offer =
                             InventoryOffers.FirstOrDefault(o => o.Key.Offer.IMSessionID.Equals(session));
                         UUID folderUUID;
                         string folder =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FOLDER), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER),
+                                message));
                         if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
                         {
                             folderUUID =
@@ -9305,9 +10046,9 @@ namespace Corrade
                             }
                         }
                         switch (
-                            (Action)
-                                wasGetEnumValueFromDescription<Action>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION),
+                            wasGetEnumValueFromDescription<Action>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                         message)).ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Action.ACCEPT:
@@ -9329,7 +10070,7 @@ namespace Corrade
                                 }
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ACTION));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
                         }
                     };
                     break;
@@ -9338,7 +10079,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FRIENDSHIP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         List<string> csv = new List<string>();
                         Client.Friends.FriendList.ForEach(o =>
@@ -9348,7 +10089,7 @@ namespace Corrade
                         });
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.FRIENDS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.FRIENDS),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -9358,7 +10099,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FRIENDSHIP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         List<string> csv = new List<string>();
                         Client.Friends.FriendRequests.ForEach(o =>
@@ -9373,7 +10114,7 @@ namespace Corrade
                         });
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.REQUESTS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.REQUESTS),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -9383,20 +10124,23 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FRIENDSHIP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         UUID session = UUID.Zero;
                         Client.Friends.FriendRequests.ForEach(o =>
@@ -9408,12 +10152,12 @@ namespace Corrade
                         });
                         if (session.Equals(UUID.Zero))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_FRIENDSHIP_OFFER_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_FRIENDSHIP_OFFER_FOUND));
                         }
                         switch (
-                            (Action)
-                                wasGetEnumValueFromDescription<Action>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION),
+                            wasGetEnumValueFromDescription<Action>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                         message)).ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Action.ACCEPT:
@@ -9423,7 +10167,7 @@ namespace Corrade
                                 Client.Friends.DeclineFriendship(agentUUID, session);
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ACTION));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
                         }
                     };
                     break;
@@ -9432,31 +10176,35 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FRIENDSHIP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         FriendInfo friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
                         if (friend == null)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.FRIEND_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FRIEND_NOT_FOUND));
                         }
                         List<string> data = new List<string>(GetStructuredData(friend,
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message))));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                message))));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -9467,28 +10215,32 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FRIENDSHIP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         FriendInfo friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
                         if (friend != null)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_ALREADY_FRIEND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_ALREADY_FRIEND));
                         }
                         Client.Friends.OfferFriendship(agentUUID,
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.MESSAGE), message)));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                message)));
                     };
                     break;
                 case ScriptKeys.TERMINATEFRIENDSHIP:
@@ -9496,25 +10248,28 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FRIENDSHIP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         FriendInfo friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
                         if (friend == null)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.FRIEND_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FRIEND_NOT_FOUND));
                         }
                         Client.Friends.TerminateFriendship(agentUUID);
                     };
@@ -9524,29 +10279,33 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FRIENDSHIP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         FriendInfo friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
                         if (friend == null)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.FRIEND_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FRIEND_NOT_FOUND));
                         }
                         int rights = 0;
                         Parallel.ForEach(
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RIGHTS), message))
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.RIGHTS),
+                                message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
                             o =>
                                 Parallel.ForEach(
@@ -9561,29 +10320,32 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FRIENDSHIP))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.AGENT), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FIRSTNAME),
-                                        message)),
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.LASTNAME),
-                                        message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            message)),
                                     Configuration.SERVICES_TIMEOUT, ref agentUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.AGENT_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         FriendInfo friend = Client.Friends.FriendList.Find(o => o.UUID.Equals(agentUUID));
                         if (friend == null)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.FRIEND_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FRIEND_NOT_FOUND));
                         }
                         if (!friend.CanSeeThemOnMap)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.FRIEND_DOES_NOT_ALLOW_MAPPING));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FRIEND_DOES_NOT_ALLOW_MAPPING));
                         }
                         ulong regionHandle = 0;
                         Vector3 position = Vector3.Zero;
@@ -9608,13 +10370,13 @@ namespace Corrade
                             if (!FriendFoundEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Friends.FriendFoundReply -= FriendFoundEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_MAPPING_FRIEND));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_MAPPING_FRIEND));
                             }
                             Client.Friends.FriendFoundReply -= FriendFoundEventHandler;
                         }
                         if (offline)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.FRIEND_OFFLINE));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FRIEND_OFFLINE));
                         }
                         UUID parcelUUID = Client.Parcels.RequestRemoteParcelID(position, regionHandle, UUID.Zero);
                         ManualResetEvent ParcelInfoEvent = new ManualResetEvent(false);
@@ -9631,11 +10393,11 @@ namespace Corrade
                             if (!ParcelInfoEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
-                                throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_GETTING_PARCELS));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
                             }
                             Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                         }
-                        result.Add(GetEnumDescription(ResultKeys.DATA),
+                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                             string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, new[] {regionName, position.ToString()}));
                     };
                     break;
@@ -9646,29 +10408,32 @@ namespace Corrade
                             !HasCorradePermission(group,
                                 (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         byte who = 0;
                         Parallel.ForEach(
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.WHO), message))
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.WHO),
+                                message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
                             o =>
                                 Parallel.ForEach(
@@ -9677,7 +10442,8 @@ namespace Corrade
                                     q => { who |= ((byte) q.GetValue(null)); }));
                         uint permissions = 0;
                         Parallel.ForEach(
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.PERMISSIONS), message))
+                            wasUriUnescapeDataString(
+                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS), message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
                             o =>
                                 Parallel.ForEach(
@@ -9693,7 +10459,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -9701,25 +10467,27 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         Client.Objects.DeedObject(Client.Network.CurrentSim, primitive.LocalID, groupUUID);
                     };
@@ -9729,7 +10497,7 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -9737,25 +10505,27 @@ namespace Corrade
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.GROUP_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         Client.Objects.SetObjectsGroup(Client.Network.CurrentSim, new List<uint> {primitive.LocalID},
                             groupUUID);
@@ -9766,43 +10536,47 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         int price;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.PRICE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.PRICE), message)),
                                 out price))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_PRICE));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PRICE));
                         }
                         if (price < 0)
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_PRICE));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PRICE));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         FieldInfo saleTypeInfo = typeof (SaleType).GetFields(BindingFlags.Public |
                                                                              BindingFlags.Static)
                             .FirstOrDefault(o =>
                                 o.Name.Equals(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message)),
                                     StringComparison.Ordinal));
                         Client.Objects.SetSaleInfo(Client.Network.CurrentSim, primitive.LocalID, saleTypeInfo != null
                             ? (SaleType)
@@ -9815,30 +10589,33 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -9851,33 +10628,36 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         Quaternion rotation;
                         if (
                             !Quaternion.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ROTATION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION), message)),
                                 out rotation))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.INVALID_ROTATION));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_ROTATION));
                         }
                         Client.Objects.SetRotation(Client.Network.CurrentSim, primitive.LocalID, rotation);
                     };
@@ -9887,31 +10667,34 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         string name =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                message));
                         if (string.IsNullOrEmpty(name))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_NAME_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_NAME_PROVIDED));
                         }
                         Client.Objects.SetName(Client.Network.CurrentSim, primitive.LocalID, name);
                     };
@@ -9921,31 +10704,34 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.RANGE), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
                                 out range))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_RANGE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message)),
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.PRIMITIVE_NOT_FOUND));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         string description =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DESCRIPTION), message));
+                            wasUriUnescapeDataString(
+                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION), message));
                         if (string.IsNullOrEmpty(description))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_DESCRIPTION_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_DESCRIPTION_PROVIDED));
                         }
                         Client.Objects.SetDescription(Client.Network.CurrentSim, primitive.LocalID, description);
                     };
@@ -9955,13 +10741,14 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string folder =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FOLDER), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER),
+                                message));
                         if (string.IsNullOrEmpty(folder))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_FOLDER_SPECIFIED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_FOLDER_SPECIFIED));
                         }
                         // Check for items that can be worn.
                         List<InventoryBase> items =
@@ -9969,7 +10756,7 @@ namespace Corrade
                                 Configuration.SERVICES_TIMEOUT).Cast<InventoryBase>().Where(CanBeWorn).ToList();
                         if (items.Count.Equals(0))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_EQUIPABLE_ITEMS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_EQUIPABLE_ITEMS));
                         }
                         // Now remove the current outfit items.
                         Client.Inventory.Store.GetContents(GetOrCreateOutfitFolder())
@@ -10020,26 +10807,29 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.POSITION), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
                         }
                         float gain;
                         if (!float.TryParse(
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.GAIN), message)),
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.GAIN),
+                                message)),
                             out gain))
                         {
                             gain = 1;
                         }
                         UUID itemUUID;
                         string item =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ITEM), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                message));
                         if (!UUID.TryParse(item, out itemUUID))
                         {
                             InventoryBase inventoryBaseItem =
@@ -10047,7 +10837,7 @@ namespace Corrade
                                     Configuration.SERVICES_TIMEOUT).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
-                                throw new Exception(GetEnumDescription(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                             }
                             itemUUID = inventoryBaseItem.UUID;
                         }
@@ -10059,11 +10849,12 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         byte[] data = null;
-                        switch ((Action) wasGetEnumValueFromDescription<Action>(
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
+                        switch (wasGetEnumValueFromDescription<Action>(
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                message))
                                 .ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Action.GET:
@@ -10098,31 +10889,33 @@ namespace Corrade
                                     {
                                         Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
                                         Client.Assets.XferReceived -= XferReceivedEventHandler;
-                                        throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_DOWNLOADING_ASSET));
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_DOWNLOADING_ASSET));
                                     }
                                     Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
                                     Client.Assets.XferReceived -= XferReceivedEventHandler;
                                 }
                                 if (data == null || !data.Length.Equals(0))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.EMPTY_ASSET_DATA));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_ASSET_DATA));
                                 }
-                                result.Add(GetEnumDescription(ResultKeys.DATA), Convert.ToBase64String(data));
+                                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), Convert.ToBase64String(data));
                                 break;
                             case Action.SET:
                                 try
                                 {
                                     data = Convert.FromBase64String(
-                                        wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA),
-                                            message)));
+                                        wasUriUnescapeDataString(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                                message)));
                                 }
                                 catch (Exception)
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.INVALID_ASSET_DATA));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_ASSET_DATA));
                                 }
                                 if (data == null || !data.Length.Equals(0))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.EMPTY_ASSET_DATA));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_ASSET_DATA));
                                 }
                                 ManualResetEvent AssetUploadEvent = new ManualResetEvent(false);
                                 EventHandler<AssetUploadEventArgs> AssetUploadEventHandler = (sender, args) =>
@@ -10139,13 +10932,14 @@ namespace Corrade
                                     if (!AssetUploadEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Assets.UploadProgress -= AssetUploadEventHandler;
-                                        throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_UPLOADING_ASSET));
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPLOADING_ASSET));
                                     }
                                     Client.Assets.UploadProgress -= AssetUploadEventHandler;
                                 }
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ACTION));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
                         }
                     };
                     break;
@@ -10154,13 +10948,14 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Vector3 southwest;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.SOUTHWEST),
-                                    message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.SOUTHWEST),
+                                        message)),
                                 out southwest))
                         {
                             southwest = new Vector3(0, 0, 0);
@@ -10168,8 +10963,9 @@ namespace Corrade
                         Vector3 northeast;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NORTHEAST),
-                                    message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NORTHEAST),
+                                        message)),
                                 out northeast))
                         {
                             northeast = new Vector3(255, 255, 0);
@@ -10203,7 +10999,7 @@ namespace Corrade
 
                         if (!csv.Length.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.DATA),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     csv.Select(o => o.ToString(CultureInfo.InvariantCulture)).ToArray()));
                         }
@@ -10214,11 +11010,12 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MOVEMENT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         uint action =
-                            wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
+                            (uint) wasGetEnumValueFromDescription<Action>(
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
                                     .ToLower(CultureInfo.InvariantCulture));
                         switch ((Action) action)
                         {
@@ -10233,7 +11030,7 @@ namespace Corrade
                                 Client.Self.Crouch(action.Equals((uint) Action.START));
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.FLY_ACTION_START_OR_STOP));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FLY_ACTION_START_OR_STOP));
                         }
                     };
                     break;
@@ -10242,11 +11039,11 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MOVEMENT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         uint action =
-                            wasGetEnumValueFromDescription<Action>(wasUriUnescapeDataString(
-                                wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
+                            (uint) wasGetEnumValueFromDescription<Action>(wasUriUnescapeDataString(
+                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
                                 .ToLower(CultureInfo.InvariantCulture));
                         switch ((Action) action)
                         {
@@ -10261,7 +11058,7 @@ namespace Corrade
                                 Client.Self.Jump(action.Equals((uint) Action.START));
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.FLY_ACTION_START_OR_STOP));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FLY_ACTION_START_OR_STOP));
                         }
                     };
                     break;
@@ -10270,16 +11067,18 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_EXECUTE))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string file =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.FILE), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FILE),
+                                message));
                         if (string.IsNullOrEmpty(file))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_EXECUTABLE_FILE_PROVIDED));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_EXECUTABLE_FILE_PROVIDED));
                         }
                         ProcessStartInfo p = new ProcessStartInfo(file,
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.PARAMETER), message)))
+                            wasUriUnescapeDataString(wasKeyValueGet(
+                                wasGetDescriptionFromEnumValue(ScriptKeys.PARAMETER), message)))
                         {
                             RedirectStandardOutput = true,
                             RedirectStandardError = true,
@@ -10316,15 +11115,15 @@ namespace Corrade
                         q.BeginOutputReadLine();
                         if (!q.WaitForExit(Configuration.SERVICES_TIMEOUT))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.TIMEOUT_WAITING_FOR_EXECUTION));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_WAITING_FOR_EXECUTION));
                         }
                         if (StdEvent[0].WaitOne(Configuration.SERVICES_TIMEOUT) && !stdout.Length.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.OUTPUT), stdout.ToString());
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.OUTPUT), stdout.ToString());
                         }
                         if (StdEvent[1].WaitOne(Configuration.SERVICES_TIMEOUT) && !stderr.Length.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.ERROR), stderr.ToString());
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.ERROR), stderr.ToString());
                         }
                     };
                     break;
@@ -10333,25 +11132,26 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_SYSTEM))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        switch ((Action) wasGetEnumValueFromDescription<Action>(wasUriUnescapeDataString(
-                            wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
+                        switch (wasGetEnumValueFromDescription<Action>(wasUriUnescapeDataString(
+                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
                             .ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Action.READ:
-                                result.Add(GetEnumDescription(ResultKeys.DATA),
+                                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                     Convert.ToBase64String(
                                         Encoding.ASCII.GetBytes(Configuration.Read(CORRADE_CONSTANTS.CONFIGURATION_FILE))));
                                 break;
                             case Action.WRITE:
                                 Configuration.Write(CORRADE_CONSTANTS.CONFIGURATION_FILE,
                                     Encoding.ASCII.GetString(
-                                        Convert.FromBase64String(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA),
-                                            message))));
+                                        Convert.FromBase64String(
+                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                                message))));
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ACTION));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
                         }
                     };
                     break;
@@ -10360,17 +11160,17 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_SYSTEM))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        switch ((Action) wasGetEnumValueFromDescription<Action>(wasUriUnescapeDataString(
-                            wasKeyValueGet(GetEnumDescription(ScriptKeys.ACTION), message))
+                        switch (wasGetEnumValueFromDescription<Action>(wasUriUnescapeDataString(
+                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
                             .ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Action.PURGE:
                                 Cache.Purge();
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_ACTION));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
                         }
                     };
                     break;
@@ -10379,25 +11179,26 @@ namespace Corrade
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_SYSTEM))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
                     };
                     break;
                 case ScriptKeys.VERSION:
-                    execute = () => result.Add(GetEnumDescription(ResultKeys.VERSION), CORRADE_VERSION);
+                    execute = () => result.Add(wasGetDescriptionFromEnumValue(ResultKeys.VERSION), CORRADE_VERSION);
                     break;
                 case ScriptKeys.DIRECTORYSEARCH:
                     execute = () =>
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_DIRECTORY))
                         {
-                            throw new Exception(GetEnumDescription(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         int timeout;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TIMEOUT), message)),
+                                wasUriUnescapeDataString(
+                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TIMEOUT), message)),
                                 out timeout))
                         {
                             timeout = Configuration.SERVICES_TIMEOUT;
@@ -10407,19 +11208,22 @@ namespace Corrade
                         int handledEvents = 0;
                         int counter = 1;
                         string name =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.NAME), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                message));
                         string fields =
-                            wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message));
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                message));
                         switch (
-                            (Type)
-                                wasGetEnumValueFromDescription<Type>(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.TYPE), message))
-                                        .ToLower(CultureInfo.InvariantCulture)))
+                            wasGetEnumValueFromDescription<Type>(
+                                wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
+                                    .ToLower(CultureInfo.InvariantCulture)))
                         {
                             case Type.CLASSIFIED:
                                 DirectoryManager.Classified searchClassified = new DirectoryManager.Classified();
                                 wasCSVToStructure(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA), message)),
                                     ref searchClassified);
                                 Dictionary<DirectoryManager.Classified, int> classifieds =
                                     new Dictionary<DirectoryManager.Classified, int>();
@@ -10470,7 +11274,8 @@ namespace Corrade
                             case Type.EVENT:
                                 DirectoryManager.EventsSearchData searchEvent = new DirectoryManager.EventsSearchData();
                                 wasCSVToStructure(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA), message)),
                                     ref searchEvent);
                                 Dictionary<DirectoryManager.EventsSearchData, int> events =
                                     new Dictionary<DirectoryManager.EventsSearchData, int>();
@@ -10530,11 +11335,13 @@ namespace Corrade
                             case Type.GROUP:
                                 if (string.IsNullOrEmpty(name))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_SEARCH_TEXT_PROVIDED));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_SEARCH_TEXT_PROVIDED));
                                 }
                                 DirectoryManager.GroupSearchData searchGroup = new DirectoryManager.GroupSearchData();
                                 wasCSVToStructure(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA), message)),
                                     ref searchGroup);
                                 Dictionary<DirectoryManager.GroupSearchData, int> groups =
                                     new Dictionary<DirectoryManager.GroupSearchData, int>();
@@ -10593,7 +11400,8 @@ namespace Corrade
                             case Type.LAND:
                                 DirectoryManager.DirectoryParcel searchLand = new DirectoryManager.DirectoryParcel();
                                 wasCSVToStructure(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA), message)),
                                     ref searchLand);
                                 Dictionary<DirectoryManager.DirectoryParcel, int> lands =
                                     new Dictionary<DirectoryManager.DirectoryParcel, int>();
@@ -10655,7 +11463,8 @@ namespace Corrade
                             case Type.PEOPLE:
                                 if (string.IsNullOrEmpty(name))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_SEARCH_TEXT_PROVIDED));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_SEARCH_TEXT_PROVIDED));
                                 }
                                 DirectoryManager.AgentSearchData searchAgent = new DirectoryManager.AgentSearchData();
                                 Dictionary<DirectoryManager.AgentSearchData, int> agents =
@@ -10715,11 +11524,13 @@ namespace Corrade
                             case Type.PLACE:
                                 if (string.IsNullOrEmpty(name))
                                 {
-                                    throw new Exception(GetEnumDescription(ScriptError.NO_SEARCH_TEXT_PROVIDED));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_SEARCH_TEXT_PROVIDED));
                                 }
                                 DirectoryManager.PlacesSearchData searchPlaces = new DirectoryManager.PlacesSearchData();
                                 wasCSVToStructure(
-                                    wasUriUnescapeDataString(wasKeyValueGet(GetEnumDescription(ScriptKeys.DATA), message)),
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA), message)),
                                     ref searchPlaces);
                                 Dictionary<DirectoryManager.PlacesSearchData, int> places =
                                     new Dictionary<DirectoryManager.PlacesSearchData, int>();
@@ -10766,17 +11577,19 @@ namespace Corrade
                                     });
                                 break;
                             default:
-                                throw new Exception(GetEnumDescription(ScriptError.UNKNOWN_DIRECTORY_SEARCH_TYPE));
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_DIRECTORY_SEARCH_TYPE));
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(GetEnumDescription(ResultKeys.SEARCH),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.SEARCH),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
                     break;
                 default:
-                    execute = () => { throw new Exception(GetEnumDescription(ScriptError.COMMAND_NOT_FOUND)); };
+                    execute =
+                        () => { throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COMMAND_NOT_FOUND)); };
                     break;
             }
 
@@ -10789,10 +11602,11 @@ namespace Corrade
             }
             catch (Exception e)
             {
-                result.Add(GetEnumDescription(ResultKeys.ERROR), e.Message);
+                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.ERROR), e.Message);
             }
             // add the final success status
-            result.Add(GetEnumDescription(ResultKeys.SUCCESS), success.ToString(CultureInfo.InvariantCulture));
+            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.SUCCESS),
+                success.ToString(CultureInfo.InvariantCulture));
 
             // build afterburn
             object AfterBurnLock = new object();
@@ -11227,7 +12041,15 @@ namespace Corrade
             if (succeeded)
             {
                 List<string> name =
-                    new List<string>(agentName.Split(new[] {' ', '.'}, StringSplitOptions.RemoveEmptyEntries));
+                    new List<string>(agentName.Split(new[] {' ', '.'},
+                        StringSplitOptions.RemoveEmptyEntries)
+                        .GroupBy(p => p)
+                        .Where(p => !p.Count().Equals(0))
+                        .Select(p => new[]
+                        {
+                            p.First(),
+                            p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                        }).SelectMany(p => p));
                 lock (Cache.Locks.AgentCacheLock)
                 {
                     Cache.AgentCache.Add(new Cache.Agents
@@ -11555,7 +12377,7 @@ namespace Corrade
         /// <summary>
         ///     Possible actions.
         /// </summary>
-        private enum Action : uint
+        public enum Action : uint
         {
             [Description("get")] GET,
             [Description("set")] SET,
@@ -11586,7 +12408,9 @@ namespace Corrade
             [Description("point")] POINT,
             [Description("look")] LOOK,
             [Description("update")] UPDATE,
-            [Description("received")] RECEIVED
+            [Description("received")] RECEIVED,
+            [Description("joined")] JOINED,
+            [Description("parted")] PARTED
         }
 
         /// <summary>
@@ -11691,6 +12515,7 @@ namespace Corrade
             public static bool USE_NAGGLE;
             public static bool USE_EXPECT100CONTINUE;
             public static int SERVICES_TIMEOUT;
+            public static int MEMBERSHIP_SWEEP_INTERVAL;
             public static bool TOS_ACCEPTED;
             public static string START_LOCATION;
             public static string NETWORK_CARD_MAC;
@@ -11734,6 +12559,7 @@ namespace Corrade
                 CONNECTION_LIMIT = 100;
                 USE_NAGGLE = true;
                 SERVICES_TIMEOUT = 60000;
+                MEMBERSHIP_SWEEP_INTERVAL = 1000;
                 TOS_ACCEPTED = false;
                 START_LOCATION = "last";
                 NETWORK_CARD_MAC = string.Empty;
@@ -11752,7 +12578,7 @@ namespace Corrade
                 }
                 catch (Exception e)
                 {
-                    Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
                     Environment.Exit(1);
                 }
 
@@ -11763,14 +12589,14 @@ namespace Corrade
                 }
                 catch (XmlException e)
                 {
-                    Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
                     Environment.Exit(1);
                 }
 
                 XmlNode root = conf.DocumentElement;
                 if (root == null)
                 {
-                    Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE));
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE));
                     Environment.Exit(1);
                 }
 
@@ -11848,7 +12674,7 @@ namespace Corrade
                     }
                     catch (Exception e)
                     {
-                        Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
                     }
 
                     // Process server.
@@ -11879,7 +12705,7 @@ namespace Corrade
                         }
                         catch (Exception e)
                         {
-                            Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
                         }
                     }
 
@@ -11916,7 +12742,7 @@ namespace Corrade
                         }
                         catch (Exception e)
                         {
-                            Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
                         }
                     }
 
@@ -12064,12 +12890,33 @@ namespace Corrade
                                             }
                                         }
                                         break;
+                                    case ConfigurationKeys.MEMBERSHIP:
+                                        XmlNodeList membershipLimitNodeList = limitsNode.SelectNodes("*");
+                                        if (membershipLimitNodeList == null)
+                                        {
+                                            throw new Exception("error in membership limits section");
+                                        }
+                                        foreach (XmlNode servicesLimitNode in membershipLimitNodeList)
+                                        {
+                                            switch (servicesLimitNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                            {
+                                                case ConfigurationKeys.SWEEP:
+                                                    if (
+                                                        !int.TryParse(servicesLimitNode.InnerText,
+                                                            out MEMBERSHIP_SWEEP_INTERVAL))
+                                                    {
+                                                        throw new Exception("error in membership limits section");
+                                                    }
+                                                    break;
+                                            }
+                                        }
+                                        break;
                                 }
                             }
                         }
                         catch (Exception e)
                         {
-                            Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
                         }
                     }
 
@@ -12107,7 +12954,7 @@ namespace Corrade
                         }
                         catch (Exception e)
                         {
-                            Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
                         }
                     }
 
@@ -12182,8 +13029,9 @@ namespace Corrade
                                                                 if (granted)
                                                                 {
                                                                     permissionMask = permissionMask |
-                                                                                     wasGetEnumValueFromDescription
-                                                                                         <Permissions>(name);
+                                                                                     (uint)
+                                                                                         wasGetEnumValueFromDescription
+                                                                                             <Permissions>(name);
                                                                 }
                                                             });
                                             }
@@ -12213,8 +13061,9 @@ namespace Corrade
                                                                 if (granted)
                                                                 {
                                                                     notificationMask = notificationMask |
-                                                                                       wasGetEnumValueFromDescription
-                                                                                           <Notifications>(name);
+                                                                                       (uint)
+                                                                                           wasGetEnumValueFromDescription
+                                                                                               <Notifications>(name);
                                                                 }
                                                             });
                                             }
@@ -12227,11 +13076,11 @@ namespace Corrade
                         }
                         catch (Exception e)
                         {
-                            Feedback(GetEnumDescription(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
                         }
                     }
                 }
-                Feedback(GetEnumDescription(ConsoleError.READ_CONFIGURATION_FILE));
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_CONFIGURATION_FILE));
             }
         }
 
@@ -12268,6 +13117,8 @@ namespace Corrade
             public const string EXPECT100CONTINUE = @"expect100continue";
             public const string MAC = @"MAC";
             public const string SERVER = @"server";
+            public const string MEMBERSHIP = @"membership";
+            public const string SWEEP = @"sweep";
         }
 
         /// <summary>
@@ -12354,16 +13205,24 @@ namespace Corrade
         }
 
         /// <summary>
+        ///     Agent structure.
+        /// </summary>
+        private struct Agent
+        {
+            [Description("firstname")] public string FirstName;
+            [Description("lastname")] public string LastName;
+            [Description("uuid")] public UUID UUID;
+        }
+
+        /// <summary>
         ///     A structure for group invites.
         /// </summary>
         private struct GroupInvite
         {
-            public int Fee;
-            public string FirstName;
-            public string Group;
-            public string LastName;
-            public UUID Agent;
-            public UUID Session;
+            [Description("fee")] public int Fee;
+            public Agent Agent;
+            [Description("group")] public string Group;
+            [Description("session")] public UUID Session;
         }
 
         /// <summary>
@@ -12392,6 +13251,7 @@ namespace Corrade
             public struct AVATARS
             {
                 public const int SET_DISPLAY_NAME_SUCCESS = 200;
+                public const string LASTNAME_PLACEHOLDER = @"Resident";
             }
 
             public struct DIRECTORY
@@ -12495,7 +13355,8 @@ namespace Corrade
             [Description("terse")] NOTIFICATION_TERSE_UPDATES = 32768,
             [Description("typing")] NOTIFICATION_TYPING = 65536,
             [Description("invite")] NOTIFICATION_GROUP_INVITE = 131072,
-            [Description("economy")] NOTIFICATION_ECONOMY = 262144
+            [Description("economy")] NOTIFICATION_ECONOMY = 262144,
+            [Description("membership")] NOTIFICATION_GROUP_MEMBERSHIP = 524288
         }
 
         /// <summary>
@@ -12566,14 +13427,12 @@ namespace Corrade
         /// </summary>
         private struct ScriptDialog
         {
-            public List<string> Button;
-            public int Channel;
-            public string FirstName;
-            public UUID Item;
-            public string LastName;
-            public string Message;
-            public string Name;
-            public UUID Owner;
+            [Description("button")] public List<string> Button;
+            [Description("channel")] public int Channel;
+            public Agent Agent;
+            [Description("item")] public UUID Item;
+            [Description("message")] public string Message;
+            [Description("name")] public string Name;
         }
 
         /// <summary>
@@ -12965,11 +13824,11 @@ namespace Corrade
         /// </summary>
         private struct ScriptPermissionRequest
         {
-            public UUID ItemUUID;
-            public string ObjectName;
-            public string OwnerName;
-            public ScriptPermission Permissions;
-            public UUID TaskUUID;
+            [Description("item")] public UUID Item;
+            [Description("name")] public string Name;
+            public Agent Agent;
+            [Description("permission")] public ScriptPermission Permission;
+            [Description("task")] public UUID Task;
         }
 
         /// <summary>
@@ -12977,9 +13836,7 @@ namespace Corrade
         /// </summary>
         private struct TeleportLure
         {
-            public UUID Agent;
-            public string FirstName;
-            public string LastName;
+            public Agent Agent;
             public UUID Session;
         }
 
