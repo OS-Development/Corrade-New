@@ -1121,6 +1121,50 @@ namespace Corrade
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
+        ///     Requests the groups that Corrade is a member of.
+        /// </summary>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="groups">a hash set to hold the current groups</param>
+        /// <returns>true if the current groups could have been successfully retrieved</returns>
+        private static bool lookupRequestCurrentGroups(int millisecondsTimeout, ref HashSet<OpenMetaverse.Group> groups)
+        {
+            ManualResetEvent CurrentGroupsEvent = new ManualResetEvent(false);
+            HashSet<OpenMetaverse.Group> localGroups = new HashSet<OpenMetaverse.Group>();
+            EventHandler<CurrentGroupsEventArgs> CurrentGroupsEventHandler = (s, a) =>
+            {
+                localGroups = new HashSet<OpenMetaverse.Group>(a.Groups.Select(o => o.Value));
+                CurrentGroupsEvent.Set();
+            };
+            Client.Groups.CurrentGroups += CurrentGroupsEventHandler;
+            Client.Groups.RequestCurrentGroups();
+            if (!CurrentGroupsEvent.WaitOne(millisecondsTimeout, false))
+            {
+                Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
+                return false;
+            }
+            Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
+            groups = localGroups;
+            return true;
+        }
+
+        /// <summary>
+        ///     Wrapper for requesting current groups - used for locking down services.
+        /// </summary>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="groups">a hash set to hold the current groups</param>
+        /// <returns>true if the current groups could have been successfully retrieved</returns>
+        private static bool RequestCurrentGroups(int millisecondsTimeout, ref HashSet<OpenMetaverse.Group> groups)
+        {
+            lock (ServicesLock)
+            {
+                return lookupRequestCurrentGroups(millisecondsTimeout, ref groups);
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
         ///     Get all worn attachments.
         /// </summary>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
@@ -1766,10 +1810,30 @@ namespace Corrade
             {
                 while (runGroupMemberSweepThread)
                 {
+                    Thread.Sleep(1);
+
                     if (!Client.Network.Connected || Configuration.GROUPS.Count.Equals(0)) continue;
 
-                    Queue<UUID> groupUUIDs = new Queue<UUID>(Configuration.GROUPS.Select(o => o.UUID));
-                    Queue<int> memberCount = new Queue<int>(Configuration.GROUPS.Count);
+                    // Request all the current groups.
+                    HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>();
+                    if (!RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, ref groups)) continue;
+
+                    // Enqueue configured groups that are currently joined groups.
+                    Queue<UUID> groupUUIDs = new Queue<UUID>();
+                    foreach (Group group in Configuration.GROUPS)
+                    {
+                        UUID groupUUID = group.UUID;
+                        if (groups.Any(o => o.ID.Equals(groupUUID)))
+                        {
+                            groupUUIDs.Enqueue(group.UUID);
+                        }
+                    }
+
+                    // Bail if no configured groups are also joined.
+                    if (groupUUIDs.Count.Equals(0)) continue;
+
+                    // Get the last member count.
+                    Queue<int> memberCount = new Queue<int>();
                     foreach (KeyValuePair<UUID, HashSet<UUID>> groupMembers in GroupMembers)
                     {
                         foreach (UUID groupUUID in groupUUIDs)
@@ -1785,7 +1849,7 @@ namespace Corrade
                     {
                         UUID groupUUID = groupUUIDs.Dequeue();
                         // The total list of members.
-                        HashSet<UUID> groupMembers = null;
+                        HashSet<UUID> groupMembers = new HashSet<UUID>();
                         // New members that have joined the group.
                         HashSet<UUID> joinedMembers = new HashSet<UUID>();
                         // Members that have parted the group.
@@ -1883,8 +1947,6 @@ namespace Corrade
                         GroupMembers[groupUUID] = groupMembers;
                         Thread.Sleep(Configuration.MEMBERSHIP_SWEEP_INTERVAL);
                     }
-
-                    Thread.Sleep(1);
                 }
             }) {IsBackground = true};
             GroupMemberSweepThread.Start();
@@ -2991,13 +3053,11 @@ namespace Corrade
                 case InstantMessageDialog.InventoryOffered:
                     new Thread(o => SendNotification(Notifications.NOTIFICATION_INVENTORY, args)).Start();
                     return;
-                case InstantMessageDialog.MessageBox:
+                    /*case InstantMessageDialog.MessageBox:
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.GOT_SERVER_MESSAGE),
                         message.Replace(Environment.NewLine, " : "));
-                    return;
+                    return;*/
                 case InstantMessageDialog.RequestTeleport:
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.GOT_TELEPORT_LURE),
-                        message.Replace(Environment.NewLine, " : "));
                     List<string> teleportLureName =
                         new List<string>(
                             args.IM.FromAgentName.Split(new[] {' ', '.'},
@@ -3032,8 +3092,6 @@ namespace Corrade
                         .
                         Any(p => p.Equals(args.IM.FromAgentName, StringComparison.OrdinalIgnoreCase)))
                     {
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ACCEPTING_TELEPORT_LURE),
-                            args.IM.FromAgentName);
                         if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                         {
                             Client.Self.Stand();
@@ -3089,7 +3147,6 @@ namespace Corrade
                             .
                             Any(p => p.Equals(args.IM.FromAgentName, StringComparison.OrdinalIgnoreCase)))
                         return;
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ACCEPTING_GROUP_INVITE), args.IM.FromAgentName);
                     Client.Self.GroupInviteRespond(inviteGroup.ID, args.IM.IMSessionID, true);
                     return;
                     // Group notice inventory accepted, declined or notice received.
@@ -3105,27 +3162,12 @@ namespace Corrade
                     // such that the only way to determine if we have a group message is to check that the UUID
                     // of the session is actually the UUID of a current group. Furthermore, what's worse is that 
                     // group mesages can appear both through SessionSend and from MessageFromAgent. Hence the problem.
-                    OpenMetaverse.Group messageGroup = new OpenMetaverse.Group();
-                    bool messageFromGroup = false;
-                    ManualResetEvent CurrentGroupsEvent = new ManualResetEvent(false);
-                    EventHandler<CurrentGroupsEventArgs> CurrentGroupsEventHandler = (s, a) =>
-                    {
-                        messageFromGroup = a.Groups.Any(o => o.Key.Equals(args.IM.IMSessionID));
-                        messageGroup = a.Groups.FirstOrDefault(o => o.Key.Equals(args.IM.IMSessionID)).Value;
-                        CurrentGroupsEvent.Set();
-                    };
-                    Client.Groups.CurrentGroups += CurrentGroupsEventHandler;
-                    Client.Groups.RequestCurrentGroups();
-                    if (!CurrentGroupsEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                    {
-                        Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
-                        return;
-                    }
-                    Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
+                    HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>();
+                    if (!RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, ref groups)) return;
+                    bool messageFromGroup = groups.Any(o => o.ID.Equals(args.IM.IMSessionID));
+                    OpenMetaverse.Group messageGroup = groups.FirstOrDefault(o => o.ID.Equals(args.IM.IMSessionID));
                     if (messageFromGroup)
                     {
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.GOT_GROUP_MESSAGE),
-                            message.Replace(Environment.NewLine, " : "));
                         // Send group notice notifications.
                         new Thread(o => SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, args)).Start();
                         // Log group messages
@@ -3162,16 +3204,12 @@ namespace Corrade
                     // Check if this is an instant message.
                     if (args.IM.ToAgentID.Equals(Client.Self.AgentID))
                     {
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.GOT_INSTANT_MESSAGE),
-                            message.Replace(Environment.NewLine, " : "));
                         new Thread(o => SendNotification(Notifications.NOTIFICATION_INSTANT_MESSAGE, args)).Start();
                         return;
                     }
                     // Check if this is a region message.
                     if (args.IM.IMSessionID.Equals(UUID.Zero))
                     {
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.GOT_REGION_MESSAGE),
-                            message.Replace(Environment.NewLine, " : "));
                         new Thread(o => SendNotification(Notifications.NOTIFICATION_REGION_MESSAGE, args)).Start();
                         return;
                     }
@@ -13131,8 +13169,6 @@ namespace Corrade
             [Description("the Terms of Service (TOS) have not been accepted, please check your configuration file")] TOS_NOT_ACCEPTED,
             [Description("teleport failed")] TELEPORT_FAILED,
             [Description("teleport succeeded")] TELEPORT_SUCCEEDED,
-            [Description("accepting teleport lure")] ACCEPTING_TELEPORT_LURE,
-            [Description("got server message")] GOT_SERVER_MESSAGE,
             [Description("accepted friendship")] ACCEPTED_FRIENDSHIP,
             [Description("login failed")] LOGIN_FAILED,
             [Description("login succeeded")] LOGIN_SUCCEEDED,
@@ -13145,14 +13181,9 @@ namespace Corrade
             [Description("logging out")] LOGGING_OUT,
             [Description("logging in")] LOGGING_IN,
             [Description("could not write to group chat logfile")] COULD_NOT_WRITE_TO_GROUP_CHAT_LOGFILE,
-            [Description("acceping group invite")] ACCEPTING_GROUP_INVITE,
             [Description("agent not found")] AGENT_NOT_FOUND,
-            [Description("got group message")] GOT_GROUP_MESSAGE,
-            [Description("got teleport lure")] GOT_TELEPORT_LURE,
             [Description("read configuration file")] READ_CONFIGURATION_FILE,
             [Description("configuration file modified")] CONFIGURATION_FILE_MODIFIED,
-            [Description("got region message")] GOT_REGION_MESSAGE,
-            [Description("got insant message")] GOT_INSTANT_MESSAGE,
             [Description("HTTP server error")] HTTP_SERVER_ERROR,
             [Description("HTTP server not supported")] HTTP_SERVER_NOT_SUPPORTED,
             [Description("starting HTTP server")] STARTING_HTTP_SERVER,
