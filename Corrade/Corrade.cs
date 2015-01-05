@@ -23,6 +23,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Xml;
+using System.Xml.Serialization;
 using Mono.Unix;
 using Mono.Unix.Native;
 using OpenMetaverse;
@@ -81,7 +82,11 @@ namespace Corrade
 
         private static readonly object ServicesLock = new object();
 
+        private static readonly object InventoryLock = new object();
+
         private static readonly object ConfigurationFileLock = new object();
+
+        private static readonly object InventoryCacheLock = new object();
 
         private static readonly object LogFileLock = new object();
 
@@ -137,7 +142,7 @@ namespace Corrade
 
         private volatile bool runCallbackThread = true;
 
-        private static readonly System.Action ActivateCurrentLandGroup = () => new Thread(activate =>
+        private static readonly System.Action ActivateCurrentLandGroup = () => (new Thread(() =>
         {
             // relax 5 seconds
             Thread.Sleep(5000 + Client.Network.CurrentSim.Stats.LastLag);
@@ -148,14 +153,91 @@ namespace Corrade
             {
                 Client.Groups.ActivateGroup(groupUUID);
             }
-        }).Start();
+        }) {IsBackground = true}).Start();
 
-        private static readonly System.Action Rebake = () => new Thread(rebake =>
+        private static readonly System.Action Rebake = () => (new Thread(() =>
         {
             // relax 5 seconds
             Thread.Sleep(5000 + Client.Network.CurrentSim.Stats.LastLag);
             Client.Appearance.RequestSetAppearance(true);
-        }).Start();
+        }) {IsBackground = true}).Start();
+
+        private static readonly System.Action LoadInventoryCache = () => (new Thread(() =>
+        {
+            int itemsLoaded;
+            lock (InventoryCacheLock)
+            {
+                itemsLoaded = Client.Inventory.Store.RestoreFromDisk(CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
+            }
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_LOADED),
+                itemsLoaded < 0 ? "0" : itemsLoaded.ToString(CultureInfo.InvariantCulture));
+        }) {IsBackground = true}).Start();
+
+        private static readonly System.Action UpdateInventoryCache = () => (new Thread(() =>
+        {
+            Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
+            inventoryFolders.Enqueue(Client.Inventory.Store.RootFolder);
+            int itemsSaved = 0;
+            do
+            {
+                InventoryFolder currentFolder = inventoryFolders.Dequeue();
+                if (currentFolder == null) continue;
+                ManualResetEvent FolderUpdatedEvent = new ManualResetEvent(false);
+                EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (sender, args) =>
+                {
+                    if (!args.FolderID.Equals(currentFolder.UUID)) return;
+                    Parallel.ForEach(Client.Inventory.Store.GetContents(currentFolder.UUID), o =>
+                    {
+                        ++itemsSaved;
+                        InventoryFolder addFolder = o as InventoryFolder;
+                        if (addFolder != null)
+                        {
+                            inventoryFolders.Enqueue(addFolder);
+                        }
+                    });
+                    FolderUpdatedEvent.Set();
+                };
+                lock (ServicesLock)
+                {
+                    Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                    Client.Inventory.RequestFolderContents(currentFolder.UUID, Client.Self.AgentID, true, true,
+                        InventorySortOrder.ByDate);
+                    FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                }
+            } while (!inventoryFolders.Count.Equals(0));
+
+            lock (InventoryCacheLock)
+            {
+                Client.Inventory.Store.SaveToDisk(CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_SAVED),
+                    itemsSaved.ToString(CultureInfo.InvariantCulture));
+            }
+        }) {IsBackground = true}).Start();
+
+        private static readonly System.Action LoadCorradeCache = () =>
+        {
+            lock (Cache.Locks.AgentCacheLock)
+            {
+                Cache.AgentCache = Cache.Load(CORRADE_CONSTANTS.AGENT_CACHE_FILE, Cache.AgentCache);
+            }
+            lock (Cache.Locks.GroupCacheLock)
+            {
+                Cache.GroupCache = Cache.Load(CORRADE_CONSTANTS.GROUP_CACHE_FILE, Cache.GroupCache);
+            }
+        };
+
+        private static readonly System.Action SaveCorradeCache = () =>
+        {
+            lock (Cache.Locks.AgentCacheLock)
+            {
+                Cache.Save(CORRADE_CONSTANTS.AGENT_CACHE_FILE, Cache.AgentCache);
+            }
+            lock (Cache.Locks.GroupCacheLock)
+            {
+                Cache.Save(CORRADE_CONSTANTS.GROUP_CACHE_FILE, Cache.GroupCache);
+            }
+        };
 
         public Corrade()
         {
@@ -246,24 +328,53 @@ namespace Corrade
         ///     Gets or creates the outfit folder.
         /// </summary>
         /// <returns>the outfit folder or null if the folder did not exist and could not be created</returns>
-        private static InventoryFolder GetOrCreateOutfitFolder()
+        private static InventoryFolder GetOrCreateOutfitFolder(int millisecondsTimeout)
         {
-            InventoryBase item =
-                Client.Inventory.Store.GetContents(Client.Inventory.Store.RootFolder.UUID)
-                    .FirstOrDefault(
+            HashSet<InventoryBase> root = new HashSet<InventoryBase>();
+            ManualResetEvent FolderUpdatedEvent = new ManualResetEvent(false);
+            EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (sender, e) =>
+            {
+                if (e.FolderID != Client.Inventory.Store.RootFolder.UUID) return;
+                if (e.Success)
+                {
+                    root =
+                        new HashSet<InventoryBase>(
+                            Client.Inventory.Store.GetContents(Client.Inventory.Store.RootFolder.UUID));
+                }
+                FolderUpdatedEvent.Set();
+            };
+
+            lock (ServicesLock)
+            {
+                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                Client.Inventory.RequestFolderContents(Client.Inventory.Store.RootFolder.UUID, Client.Self.AgentID,
+                    true, true, InventorySortOrder.ByName);
+                FolderUpdatedEvent.WaitOne(millisecondsTimeout);
+                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+            }
+
+            if (!root.Count.Equals(0))
+            {
+                InventoryFolder inventoryFolder =
+                    root.FirstOrDefault(
                         o =>
                             o is InventoryFolder &&
-                            ((InventoryFolder) o).PreferredType.Equals(AssetType.CurrentOutfitFolder));
-            if (item != null)
-            {
-                return (InventoryFolder) item;
+                            ((InventoryFolder) o).PreferredType == AssetType.CurrentOutfitFolder) as InventoryFolder;
+                if (inventoryFolder != null)
+                {
+                    return inventoryFolder;
+                }
             }
-            UUID currentOutfitFolderUUID = Client.Inventory.CreateFolder(Client.Inventory.Store.RootFolder.UUID,
-                CORRADE_CONSTANTS.CURRENT_OUTFIT_FOLDER_NAME, AssetType.CurrentOutfitFolder);
-            if (Client.Inventory.Store.Items.ContainsKey(currentOutfitFolderUUID) &&
-                Client.Inventory.Store.Items[currentOutfitFolderUUID].Data is InventoryFolder)
+
+            lock (InventoryLock)
             {
-                return (InventoryFolder) Client.Inventory.Store.Items[currentOutfitFolderUUID].Data;
+                UUID currentOutfitFolderUUID = Client.Inventory.CreateFolder(Client.Inventory.Store.RootFolder.UUID,
+                    CORRADE_CONSTANTS.CURRENT_OUTFIT_FOLDER_NAME, AssetType.CurrentOutfitFolder);
+                if (Client.Inventory.Store.Items.ContainsKey(currentOutfitFolderUUID) &&
+                    Client.Inventory.Store.Items[currentOutfitFolderUUID].Data is InventoryFolder)
+                {
+                    return (InventoryFolder) Client.Inventory.Store.Items[currentOutfitFolderUUID].Data;
+                }
             }
 
             return null;
@@ -300,34 +411,34 @@ namespace Corrade
         ///     Get current outfit folder links.
         /// </summary>
         /// <returns>a list of inventory items that can be part of appearance (attachments, wearables)</returns>
-        public static List<InventoryItem> GetCurrentOutfitFolderLinks()
+        public static List<InventoryItem> GetCurrentOutfitFolderLinks(int millisecondsTimeout)
         {
             List<InventoryItem> ret = new List<InventoryItem>();
-            InventoryFolder COF = GetOrCreateOutfitFolder();
+            InventoryFolder COF = GetOrCreateOutfitFolder(millisecondsTimeout);
             if (COF == null) return ret;
 
-            Client.Inventory.Store.GetContents(GetOrCreateOutfitFolder())
+            Client.Inventory.Store.GetContents(GetOrCreateOutfitFolder(millisecondsTimeout))
                 .FindAll(b => CanBeWorn(b) && ((InventoryItem) b).AssetType.Equals(AssetType.Link))
                 .ForEach(item => ret.Add((InventoryItem) item));
 
             return ret;
         }
 
-        private static void Attach(InventoryItem item, AttachmentPoint point, bool replace)
+        private static void Attach(InventoryItem item, AttachmentPoint point, bool replace, int millisecondsTimeout)
         {
             Client.Appearance.Attach(ResolveItemLink(item), point, replace);
-            AddLink(item);
+            AddLink(item, millisecondsTimeout);
         }
 
-        private static void Detach(InventoryItem item)
+        private static void Detach(InventoryItem item, int millisecondsTimeout)
         {
-            RemoveLink(item);
+            RemoveLink(item, millisecondsTimeout);
             Client.Appearance.Detach(ResolveItemLink(item));
         }
 
-        private static void Wear(InventoryItem item, bool replace)
+        private static void Wear(InventoryItem item, bool replace, int millisecondsTimeout)
         {
-            List<InventoryItem> currentOutfit = GetCurrentOutfitFolderLinks();
+            List<InventoryItem> currentOutfit = GetCurrentOutfitFolderLinks(millisecondsTimeout);
             HashSet<InventoryItem> removeItems = new HashSet<InventoryItem>();
             object RemoveItemsLock = new object();
 
@@ -355,15 +466,15 @@ namespace Corrade
                 });
             }
 
-            RemoveLink(removeItems);
+            RemoveLink(removeItems, millisecondsTimeout);
 
-            AddLink(item);
+            AddLink(item, millisecondsTimeout);
             Client.Appearance.AddToOutfit(item, replace);
         }
 
-        private static void UnWear(InventoryItem item)
+        private static void UnWear(InventoryItem item, int millisecondsTimeout)
         {
-            List<InventoryItem> currentOutfit = GetCurrentOutfitFolderLinks();
+            List<InventoryItem> currentOutfit = GetCurrentOutfitFolderLinks(millisecondsTimeout);
             HashSet<InventoryItem> removeItems = new HashSet<InventoryItem>();
             object RemoveItemsLock = new object();
 
@@ -391,7 +502,7 @@ namespace Corrade
                 });
             }
             Client.Appearance.RemoveFromOutfit(item);
-            RemoveLink(removeItems);
+            RemoveLink(removeItems, millisecondsTimeout);
         }
 
         /// <summary>
@@ -414,14 +525,16 @@ namespace Corrade
         ///     Creates a new current outfit folder link.
         /// </summary>
         /// <param name="item">Original item to be linked from COF</param>
-        public static void AddLink(InventoryItem item)
+        /// <param name="millisecondsTimeout">timeout in milliseconds</param>
+        public static void AddLink(InventoryItem item, int millisecondsTimeout)
         {
             if (item.InventoryType.Equals(InventoryType.Wearable) && !IsBodyPart(item))
             {
-                AddLink(item, string.Format("@{0}{1:00}", (int) ((InventoryWearable) item).WearableType, 0));
+                AddLink(item, string.Format("@{0}{1:00}", (int) ((InventoryWearable) item).WearableType, 0),
+                    millisecondsTimeout);
                 return;
             }
-            AddLink(item, string.Empty);
+            AddLink(item, string.Empty, millisecondsTimeout);
         }
 
         /// <summary>
@@ -429,13 +542,15 @@ namespace Corrade
         /// </summary>
         /// <param name="item">item to be linked</param>
         /// <param name="description">description for the link</param>
-        public static void AddLink(InventoryItem item, string description)
+        /// <param name="millisecondsTimeout">timeout in milliseconds</param>
+        public static void lookupAddLink(InventoryItem item, string description, int millisecondsTimeout)
         {
-            InventoryFolder COF = GetOrCreateOutfitFolder();
-            if (GetOrCreateOutfitFolder() == null) return;
+            InventoryFolder COF = GetOrCreateOutfitFolder(millisecondsTimeout);
+            if (GetOrCreateOutfitFolder(millisecondsTimeout) == null) return;
 
             bool linkExists = null !=
-                              GetCurrentOutfitFolderLinks().Find(itemLink => itemLink.AssetUUID.Equals(item.UUID));
+                              GetCurrentOutfitFolderLinks(millisecondsTimeout)
+                                  .Find(itemLink => itemLink.AssetUUID.Equals(item.UUID));
 
             if (!linkExists)
             {
@@ -450,29 +565,39 @@ namespace Corrade
             }
         }
 
+        public static void AddLink(InventoryItem item, string description, int millisecondsTimeout)
+        {
+            lock (InventoryLock)
+            {
+                lookupAddLink(item, description, millisecondsTimeout);
+            }
+        }
+
         /// <summary>
         ///     Remove a current outfit folder link of the specified inventory item.
         /// </summary>
         /// <param name="item">the inventory item for which to remove the link</param>
-        public static void RemoveLink(InventoryItem item)
+        /// <param name="millisecondsTimeout">timeout in milliseconds</param>
+        public static void RemoveLink(InventoryItem item, int millisecondsTimeout)
         {
-            RemoveLink(new HashSet<InventoryItem> {item});
+            RemoveLink(new HashSet<InventoryItem> {item}, millisecondsTimeout);
         }
 
         /// <summary>
         ///     Remove current outfit folder links for multiple specified inventory item.
         /// </summary>
         /// <param name="items">list of items whose links should be removed</param>
-        public static void RemoveLink(IEnumerable<InventoryItem> items)
+        /// <param name="millisecondsTimeout">timeout in milliseconds</param>
+        public static void lookupRemoveLink(IEnumerable<InventoryItem> items, int millisecondsTimeout)
         {
-            InventoryFolder COF = GetOrCreateOutfitFolder();
+            InventoryFolder COF = GetOrCreateOutfitFolder(millisecondsTimeout);
             if (COF == null) return;
 
             List<UUID> removeItems = new List<UUID>();
             object LockObject = new object();
             Parallel.ForEach(items,
                 item =>
-                    GetCurrentOutfitFolderLinks()
+                    GetCurrentOutfitFolderLinks(millisecondsTimeout)
                         .FindAll(itemLink => itemLink.AssetUUID.Equals(item.UUID))
                         .ForEach(link =>
                         {
@@ -483,6 +608,14 @@ namespace Corrade
                         }));
 
             Client.Inventory.Remove(removeItems, null);
+        }
+
+        public static void RemoveLink(IEnumerable<InventoryItem> items, int millisecondsTimeout)
+        {
+            lock (InventoryLock)
+            {
+                lookupRemoveLink(items, millisecondsTimeout);
+            }
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1220,7 +1353,7 @@ namespace Corrade
         /// <param name="rootFolder">the folder to start the search from</param>
         /// <param name="millisecondsTimeout">the timeout for searching the wearables</param>
         /// <returns>key value pairs of wearables by name</returns>
-        private static IEnumerable<KeyValuePair<WearableType, string>> GetWearables(InventoryBase rootFolder,
+        private static IEnumerable<KeyValuePair<WearableType, string>> lookupGetWearables(InventoryBase rootFolder,
             int millisecondsTimeout)
         {
             HashSet<InventoryBase> contents =
@@ -1253,6 +1386,15 @@ namespace Corrade
             }
         }
 
+        private static IEnumerable<KeyValuePair<WearableType, string>> GetWearables(InventoryBase rootFolder,
+            int millisecondsTimeout)
+        {
+            lock (InventoryLock)
+            {
+                return lookupGetWearables(rootFolder, millisecondsTimeout);
+            }
+        }
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -1265,7 +1407,7 @@ namespace Corrade
         /// <param name="itemBase">the name  or UUID of the item to be found</param>
         /// <param name="millisecondsTimeout">timeout for the search</param>
         /// <returns>a list of items matching the item name</returns>
-        private static IEnumerable<InventoryBase> FindInventoryBase(InventoryBase rootFolder, string itemBase,
+        private static IEnumerable<InventoryBase> lookupFindInventoryBase(InventoryBase rootFolder, string itemBase,
             int millisecondsTimeout)
         {
             HashSet<InventoryBase> contents =
@@ -1301,6 +1443,15 @@ namespace Corrade
             }
         }
 
+        private static IEnumerable<InventoryBase> FindInventoryBase(InventoryBase rootFolder, string itemBase,
+            int millisecondsTimeout)
+        {
+            lock (InventoryLock)
+            {
+                return lookupFindInventoryBase(rootFolder, itemBase, millisecondsTimeout);
+            }
+        }
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -1314,7 +1465,8 @@ namespace Corrade
         /// <param name="assetTypes">the type of the asset to find</param>
         /// <param name="millisecondsTimeout">timeout for the search</param>
         /// <returns>a list of items matching the item name</returns>
-        private static IEnumerable<InventoryBase> FindInventoryBase(InventoryBase rootFolder, Regex assetExpression,
+        private static IEnumerable<InventoryBase> lookupFindInventoryBase(InventoryBase rootFolder,
+            Regex assetExpression,
             HashSet<AssetType> assetTypes,
             int millisecondsTimeout)
         {
@@ -1352,6 +1504,16 @@ namespace Corrade
             }
         }
 
+        private static IEnumerable<InventoryBase> FindInventoryBase(InventoryBase rootFolder, Regex assetExpression,
+            HashSet<AssetType> assetTypes,
+            int millisecondsTimeout)
+        {
+            lock (InventoryLock)
+            {
+                return lookupFindInventoryBase(rootFolder, assetExpression, assetTypes, millisecondsTimeout);
+            }
+        }
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -1362,7 +1524,8 @@ namespace Corrade
         /// <param name="folder">the folder to search for</param>
         /// <param name="millisecondsTimeout">timeout for the search</param>
         /// <returns>a list of items from folder</returns>
-        private static IEnumerable<InventoryItem> GetInventoryFolderContents(InventoryBase rootFolder, string folder,
+        private static IEnumerable<InventoryItem> lookupGetInventoryFolderContents(InventoryBase rootFolder,
+            string folder,
             int millisecondsTimeout)
         {
             HashSet<InventoryBase> contents =
@@ -1385,6 +1548,15 @@ namespace Corrade
                 {
                     yield return inventoryItem;
                 }
+            }
+        }
+
+        private static IEnumerable<InventoryItem> GetInventoryFolderContents(InventoryBase rootFolder, string folder,
+            int millisecondsTimeout)
+        {
+            lock (InventoryLock)
+            {
+                return lookupGetInventoryFolderContents(rootFolder, folder, millisecondsTimeout);
             }
         }
 
@@ -1950,6 +2122,8 @@ namespace Corrade
                 }
             }) {IsBackground = true};
             GroupMemberSweepThread.Start();
+            // Load Corrade Caches
+            LoadCorradeCache.Invoke();
             /*
              * The main thread spins around waiting for the semaphores to become invalidated,
              * at which point Corrade will consider its connection to the grid severed and
@@ -1957,6 +2131,8 @@ namespace Corrade
              *
              */
             WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => (WaitHandle) o).ToArray());
+            // Save Corrade Caches
+            SaveCorradeCache.Invoke();
             // Now log-out.
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGGING_OUT));
             // Uninstall all installed handlers
@@ -2977,6 +3153,8 @@ namespace Corrade
                     {
                         ActivateCurrentLandGroup.Invoke();
                     }
+                    LoadInventoryCache.Invoke();
+                    UpdateInventoryCache.Invoke();
                     break;
                 case LoginStatus.Failed:
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_FAILED), e.FailReason);
@@ -6321,7 +6499,7 @@ namespace Corrade
                                     InventoryWearable wearable = inventoryBaseItem as InventoryWearable;
                                     if (wearable == null)
                                         return;
-                                    Wear(inventoryBaseItem as InventoryItem, replace);
+                                    Wear(inventoryBaseItem as InventoryItem, replace, Configuration.SERVICES_TIMEOUT);
                                 });
                         Rebake.Invoke();
                     };
@@ -6352,7 +6530,7 @@ namespace Corrade
                                     InventoryWearable wearable = inventoryBaseItem as InventoryWearable;
                                     if (wearable == null)
                                         return;
-                                    UnWear(inventoryBaseItem as InventoryItem);
+                                    UnWear(inventoryBaseItem as InventoryItem, Configuration.SERVICES_TIMEOUT);
                                 });
                         Rebake.Invoke();
                     };
@@ -6418,11 +6596,15 @@ namespace Corrade
                                     {
                                         InventoryBase inventoryBaseItem =
                                             FindInventoryBase(Client.Inventory.Store.RootFolder, o.Value,
-                                                Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                                                Configuration.SERVICES_TIMEOUT)
+                                                .FirstOrDefault(
+                                                    r =>
+                                                        (r is InventoryItem) &&
+                                                        ((InventoryItem) r).AssetType.Equals(AssetType.Object));
                                         if (inventoryBaseItem == null)
                                             return;
                                         Attach(inventoryBaseItem as InventoryItem, (AttachmentPoint) q.GetValue(null),
-                                            replace);
+                                            replace, Configuration.SERVICES_TIMEOUT);
                                     }));
                         Rebake.Invoke();
                     };
@@ -6449,11 +6631,14 @@ namespace Corrade
                                 {
                                     InventoryBase inventoryBaseItem =
                                         FindInventoryBase(Client.Inventory.Store.RootFolder, o,
-                                            Configuration.SERVICES_TIMEOUT).FirstOrDefault();
-                                    if (inventoryBaseItem != null)
-                                    {
-                                        Detach(inventoryBaseItem as InventoryItem);
-                                    }
+                                            Configuration.SERVICES_TIMEOUT)
+                                            .FirstOrDefault(
+                                                p =>
+                                                    (p is InventoryItem) &&
+                                                    ((InventoryItem) p).AssetType.Equals(AssetType.Object));
+                                    if (inventoryBaseItem == null)
+                                        return;
+                                    Detach(inventoryBaseItem as InventoryItem, Configuration.SERVICES_TIMEOUT);
                                 });
                         Rebake.Invoke();
                     };
@@ -10797,7 +10982,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_EQUIPABLE_ITEMS));
                         }
                         // Now remove the current outfit items.
-                        Client.Inventory.Store.GetContents(GetOrCreateOutfitFolder())
+                        Client.Inventory.Store.GetContents(GetOrCreateOutfitFolder(Configuration.SERVICES_TIMEOUT))
                             .FindAll(o => CanBeWorn(o) && ((InventoryItem) o).AssetType.Equals(AssetType.Link))
                             .ForEach(p =>
                             {
@@ -10806,7 +10991,7 @@ namespace Corrade
                                 {
                                     if (!IsBodyPart(item))
                                     {
-                                        UnWear(item);
+                                        UnWear(item, Configuration.SERVICES_TIMEOUT);
                                         return;
                                     }
                                     if (items.Any(q =>
@@ -10814,12 +10999,12 @@ namespace Corrade
                                         InventoryWearable i = q as InventoryWearable;
                                         return i != null &&
                                                ((InventoryWearable) item).WearableType.Equals(i.WearableType);
-                                    })) UnWear(item);
+                                    })) UnWear(item, Configuration.SERVICES_TIMEOUT);
                                     return;
                                 }
                                 if (item as InventoryAttachment != null || item as InventoryObject != null)
                                 {
-                                    Detach(item);
+                                    Detach(item, Configuration.SERVICES_TIMEOUT);
                                 }
                             });
                         // And equip the specified folder.
@@ -10828,12 +11013,12 @@ namespace Corrade
                             InventoryItem item = o as InventoryItem;
                             if (item as InventoryWearable != null)
                             {
-                                Wear(item, false);
+                                Wear(item, false, Configuration.SERVICES_TIMEOUT);
                                 return;
                             }
                             if (item as InventoryAttachment != null || item as InventoryObject != null)
                             {
-                                Attach(item, AttachmentPoint.Default, false);
+                                Attach(item, AttachmentPoint.Default, false, Configuration.SERVICES_TIMEOUT);
                             }
                         });
                         // And rebake.
@@ -12478,6 +12663,9 @@ namespace Corrade
             public const string TEXT_HTML = @"text/html";
             public const string CONFIGURATION_FILE = @"Corrade.ini";
             public const string DATE_TIME_STAMP = @"dd-MM-yyyy HH:mm";
+            public const string INVENTORY_CACHE_FILE = @"Inventory.cache";
+            public const string AGENT_CACHE_FILE = @"Agent.cache";
+            public const string GROUP_CACHE_FILE = @"Group.cache";
 
             public struct HTTP_CODES
             {
@@ -12488,10 +12676,10 @@ namespace Corrade
         /// <summary>
         ///     Corrade's caches.
         /// </summary>
-        private struct Cache
+        public struct Cache
         {
-            public static readonly HashSet<Agents> AgentCache = new HashSet<Agents>();
-            public static readonly HashSet<Groups> GroupCache = new HashSet<Groups>();
+            public static HashSet<Agents> AgentCache = new HashSet<Agents>();
+            public static HashSet<Groups> GroupCache = new HashSet<Groups>();
 
             internal static void Purge()
             {
@@ -12505,14 +12693,14 @@ namespace Corrade
                 }
             }
 
-            internal struct Agents
+            public struct Agents
             {
                 public string FirstName;
                 public string LastName;
                 public UUID UUID;
             }
 
-            internal struct Groups
+            public struct Groups
             {
                 public string Name;
                 public UUID UUID;
@@ -12522,6 +12710,52 @@ namespace Corrade
             {
                 public static readonly object AgentCacheLock = new object();
                 public static readonly object GroupCacheLock = new object();
+            }
+
+            /// <summary>
+            ///     Serializes to a file.
+            /// </summary>
+            /// <param name="FileName">File path of the new xml file</param>
+            /// <param name="o">the object to save</param>
+            public static void Save<T>(string FileName, T o)
+            {
+                try
+                {
+                    using (StreamWriter writer = new StreamWriter(FileName))
+                    {
+                        XmlSerializer serializer = new XmlSerializer(typeof (T));
+                        serializer.Serialize(writer, o);
+                        writer.Flush();
+                    }
+                }
+                catch (Exception e)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_CACHE), e.Message);
+                }
+            }
+
+            /// <summary>
+            ///     Load an object from an xml file
+            /// </summary>
+            /// <param name="FileName">Xml file name</param>
+            /// <param name="o">the object to load to</param>
+            /// <returns>The object created from the xml file</returns>
+            public static T Load<T>(string FileName, T o)
+            {
+                if (!File.Exists(FileName)) return o;
+                try
+                {
+                    using (FileStream stream = File.OpenRead(FileName))
+                    {
+                        XmlSerializer serializer = new XmlSerializer(typeof (T));
+                        return (T) serializer.Deserialize(stream);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CACHE), e.Message);
+                }
+                return o;
             }
         }
 
@@ -13191,7 +13425,11 @@ namespace Corrade
             [Description("HTTP server processing aborted")] HTTP_SERVER_PROCESSING_ABORTED,
             [Description("timeout logging out")] TIMEOUT_LOGGING_OUT,
             [Description("callback error")] CALLBACK_ERROR,
-            [Description("notification error")] NOTIFICATION_ERROR
+            [Description("notification error")] NOTIFICATION_ERROR,
+            [Description("inventory cache items loaded")] INVENTORY_CACHE_ITEMS_LOADED,
+            [Description("inventory cache items saved")] INVENTORY_CACHE_ITEMS_SAVED,
+            [Description("unable to load Corrade cache")] UNABLE_TO_LOAD_CORRADE_CACHE,
+            [Description("unable to save Corrade cache")] UNABLE_TO_SAVE_CORRADE_CACHE
         }
 
         /// <summary>
