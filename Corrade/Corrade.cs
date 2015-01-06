@@ -36,7 +36,6 @@ namespace Corrade
 {
     public partial class Corrade : ServiceBase
     {
-
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -1548,6 +1547,63 @@ namespace Corrade
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
+        /// ///
+        /// <summary>
+        ///     Searches the current inventory for given asset types.
+        /// </summary>
+        /// <param name="rootFolder">a folder from which to search</param>
+        /// <param name="assetTypes">the type of the asset to find</param>
+        /// <param name="millisecondsTimeout">timeout for the search</param>
+        /// <returns>a list of items matching the asset types</returns>
+        private static IEnumerable<InventoryBase> lookupFindInventoryBase(InventoryBase rootFolder,
+            HashSet<AssetType> assetTypes,
+            int millisecondsTimeout)
+        {
+            HashSet<InventoryBase> contents =
+                new HashSet<InventoryBase>(Client.Inventory.FolderContents(rootFolder.UUID, Client.Self.AgentID,
+                    true, true, InventorySortOrder.ByName, millisecondsTimeout));
+            foreach (InventoryBase inventory in contents)
+            {
+                InventoryFolder inventoryFolder = inventory as InventoryFolder;
+                if (inventoryFolder != null)
+                {
+                    if ((assetTypes.Contains(AssetType.Folder) || assetTypes.Contains(AssetType.Unknown)))
+                    {
+                        yield return inventoryFolder;
+                    }
+                }
+                InventoryItem inventoryItem = inventory as InventoryItem;
+                if (inventoryItem != null)
+                {
+                    if ((assetTypes.Contains(inventoryItem.AssetType) || assetTypes.Contains(AssetType.Unknown)))
+                    {
+                        yield return inventoryItem;
+                    }
+                }
+                if (contents.Count.Equals(0) || inventoryFolder == null)
+                    continue;
+                foreach (
+                    InventoryBase inventoryBase in
+                        FindInventoryBase(inventoryFolder, assetTypes, millisecondsTimeout))
+                {
+                    yield return inventoryBase;
+                }
+            }
+        }
+
+        private static IEnumerable<InventoryBase> FindInventoryBase(InventoryBase rootFolder,
+            HashSet<AssetType> assetTypes,
+            int millisecondsTimeout)
+        {
+            lock (InventoryLock)
+            {
+                return lookupFindInventoryBase(rootFolder, assetTypes, millisecondsTimeout);
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
         /// <summary>
         ///     Gets all the items from an inventory folder and returns the items.
         /// </summary>
@@ -2892,6 +2948,13 @@ namespace Corrade
                 case ChatType.Debug:
                 case ChatType.Normal:
                 case ChatType.OwnerSay:
+                    // MOVEME
+                    if (!e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR))
+                    {
+                        break;
+                    }
+                    HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1));
+                    break;
                 case ChatType.Shout:
                 case ChatType.Whisper:
                     // Send chat notifications.
@@ -3142,10 +3205,9 @@ namespace Corrade
                 case InstantMessageDialog.InventoryOffered:
                     new Thread(o => SendNotification(Notifications.NOTIFICATION_INVENTORY, args)).Start();
                     return;
-                    /*case InstantMessageDialog.MessageBox:
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.GOT_SERVER_MESSAGE),
-                        message.Replace(Environment.NewLine, " : "));
-                    return;*/
+                case InstantMessageDialog.MessageBox:
+                    // Not used.
+                    return;
                 case InstantMessageDialog.RequestTeleport:
                     List<string> teleportLureName =
                         new List<string>(
@@ -3291,6 +3353,569 @@ namespace Corrade
 
             // Everything else, must be a command.
             HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString());
+        }
+
+        private static void HandleRLVCommand(string message)
+        {
+            if (string.IsNullOrEmpty(message)) return;
+
+            // Split all commands.
+            string[] unpack = message.Split(',');
+            // Pop first command to process.
+            string first = unpack.First();
+            // Remove command.
+            unpack = unpack.Where(o => !o.Equals(first)).ToArray();
+            // Keep rest of message.
+            message = string.Join(RLV_CONSTANTS.CSV_DELIMITER, unpack);
+
+            Match match = RLVRegex.Match(first);
+            if (!match.Success) goto CONTINUE;
+            string command = match.Groups["command"].ToString().ToLowerInvariant();
+            string option = match.Groups["option"].ToString().ToLowerInvariant();
+            string param = match.Groups["param"].ToString().ToLowerInvariant();
+
+            System.Action execute;
+
+            switch (wasGetEnumValueFromDescription<RLVCommands>(command))
+            {
+                case RLVCommands.VERSION:
+                case RLVCommands.VERSIONNEW:
+                    execute = () =>
+                    {
+                        int channel;
+                        if (!int.TryParse(param, out channel) || channel < 1)
+                        {
+                            return;
+                        }
+                        Client.Self.Chat(
+                            string.Format("{0} v{1} (Corrade Version: {2} Compiled: {3})", RLV_CONSTANTS.VIEWER,
+                                RLV_CONSTANTS.SHORT_VERSION, CORRADE_VERSION, CORRADE_COMPILE_DATE), channel,
+                            ChatType.Normal);
+                    };
+                    break;
+                case RLVCommands.VERSIONNUM:
+                    execute = () =>
+                    {
+                        int channel;
+                        if (!int.TryParse(param, out channel) || channel < 1)
+                        {
+                            return;
+                        }
+                        Client.Self.Chat(RLV_CONSTANTS.LONG_VERSION, channel, ChatType.Normal);
+                    };
+                    break;
+                case RLVCommands.GETGROUP:
+                    execute = () =>
+                    {
+                        int channel;
+                        if (!int.TryParse(param, out channel) || channel < 1)
+                        {
+                            return;
+                        }
+                        UUID groupUUID = Client.Self.ActiveGroup;
+                        HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>();
+                        if (!RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, ref groups))
+                        {
+                            return;
+                        }
+                        if (!groups.Any(o => o.ID.Equals(groupUUID)))
+                        {
+                            return;
+                        }
+                        Client.Self.Chat(groups.FirstOrDefault(o => o.ID.Equals(groupUUID)).Name, channel,
+                            ChatType.Normal);
+                    };
+                    break;
+                case RLVCommands.SETGROUP:
+                    execute = () =>
+                    {
+                        if (!param.Equals(RLV_CONSTANTS.FORCE))
+                        {
+                            return;
+                        }
+                        HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>();
+                        if (!RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, ref groups))
+                        {
+                            return;
+                        }
+                        UUID groupUUID;
+                        if (!UUID.TryParse(option, out groupUUID))
+                        {
+                            return;
+                        }
+                        if (!groups.Any(o => o.ID.Equals(groupUUID)))
+                        {
+                            return;
+                        }
+                        Client.Groups.ActivateGroup(groups.FirstOrDefault(o => o.ID.Equals(groupUUID)).ID);
+                    };
+                    break;
+                case RLVCommands.GETSITID:
+                    execute = () =>
+                    {
+                        int channel;
+                        if (!int.TryParse(param, out channel) || channel < 1)
+                        {
+                            return;
+                        }
+                        Avatar me;
+                        if (Client.Network.CurrentSim.ObjectsAvatars.TryGetValue(Client.Self.LocalID, out me))
+                        {
+                            if (me.ParentID != 0)
+                            {
+                                Primitive sit;
+                                if (Client.Network.CurrentSim.ObjectsPrimitives.TryGetValue(me.ParentID, out sit))
+                                {
+                                    Client.Self.Chat(sit.ID.ToString(), channel, ChatType.Normal);
+                                    return;
+                                }
+                            }
+                        }
+                        UUID zero = UUID.Zero;
+                        Client.Self.Chat(zero.ToString(), channel, ChatType.Normal);
+                    };
+                    break;
+                case RLVCommands.SIT:
+                    execute = () =>
+                    {
+                        UUID sitTarget;
+                        if (!param.Equals(RLV_CONSTANTS.FORCE) || !UUID.TryParse(option, out sitTarget) ||
+                            sitTarget.Equals(UUID.Zero))
+                        {
+                            return;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(sitTarget.ToString(),
+                                LINDEN_CONSTANTS.LSL.SENSOR_RANGE,
+                                Configuration.SERVICES_TIMEOUT,
+                                ref primitive))
+                        {
+                            return;
+                        }
+                        ManualResetEvent SitEvent = new ManualResetEvent(false);
+                        EventHandler<AvatarSitResponseEventArgs> AvatarSitEventHandler =
+                            (sender, args) => SitEvent.Set();
+                        EventHandler<AlertMessageEventArgs> AlertMessageEventHandler = (sender, args) => SitEvent.Set();
+                        if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
+                        {
+                            Client.Self.Stand();
+                        }
+                        Client.Self.SignaledAnimations.ForEach(
+                            animation => Client.Self.AnimationStop(animation.Key, true));
+                        lock (ServicesLock)
+                        {
+                            Client.Self.AvatarSitResponse += AvatarSitEventHandler;
+                            Client.Self.AlertMessage += AlertMessageEventHandler;
+                            Client.Self.RequestSit(primitive.ID, Vector3.Zero);
+                            SitEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                            Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
+                            Client.Self.AlertMessage -= AlertMessageEventHandler;
+                        }
+                    };
+                    break;
+                case RLVCommands.UNSIT:
+                    execute = () =>
+                    {
+                        if (!param.Equals(RLV_CONSTANTS.FORCE))
+                        {
+                            return;
+                        }
+                        if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
+                        {
+                            Client.Self.Stand();
+                        }
+                        Client.Self.SignaledAnimations.ForEach(
+                            animation => Client.Self.AnimationStop(animation.Key, true));
+                    };
+                    break;
+                case RLVCommands.SETROT:
+                    execute = () =>
+                    {
+                        double rotation = 0;
+                        if (!param.Equals(RLV_CONSTANTS.FORCE) ||
+                            !double.TryParse(option, NumberStyles.Float, CultureInfo.InvariantCulture, out rotation))
+                        {
+                            Client.Self.Movement.UpdateFromHeading(Math.PI/2d - rotation, true);
+                        }
+                    };
+                    break;
+                case RLVCommands.TPTO:
+                    execute = () =>
+                    {
+                        string[] coordinates = option.Split('/');
+                        if (!coordinates.Length.Equals(3))
+                        {
+                            return;
+                        }
+                        float globalX;
+                        if (!float.TryParse(coordinates[0], out globalX))
+                        {
+                            return;
+                        }
+                        float globalY;
+                        if (!float.TryParse(coordinates[1], out globalY))
+                        {
+                            return;
+                        }
+                        float altitude;
+                        if (!float.TryParse(coordinates[2], out altitude))
+                        {
+                            return;
+                        }
+                        float localX, localY;
+                        ulong handle = Helpers.GlobalPosToRegionHandle(globalX, globalY, out localX, out localY);
+                        lock (TeleportLock)
+                        {
+                            Client.Self.RequestTeleport(handle, new Vector3(localX, localY, altitude));
+                        }
+                    };
+                    break;
+                case RLVCommands.GETOUTFIT:
+                    execute = () =>
+                    {
+                        int channel;
+                        if (!int.TryParse(param, out channel) || channel < 1)
+                        {
+                            return;
+                        }
+                        Dictionary<WearableType, AppearanceManager.WearableData> wearables =
+                            Client.Appearance.GetWearables();
+                        StringBuilder response = new StringBuilder();
+                        switch (!string.IsNullOrEmpty(option))
+                        {
+                            case true:
+                                WearableType wearableType =
+                                    RLVWearables.FirstOrDefault(o => o.Name.Equals(option)).WearableType;
+                                if (!wearables.ContainsKey(wearableType))
+                                {
+                                    response.Append(RLV_CONSTANTS.FALSE_MARKER);
+                                    break;
+                                }
+                                response.Append(RLV_CONSTANTS.TRUE_MARKER);
+                                break;
+                            default:
+                                string[] data = new string[RLVWearables.Count];
+                                Parallel.ForEach(Enumerable.Range(0, RLVWearables.Count), o =>
+                                {
+                                    if (!wearables.ContainsKey(RLVWearables[o].WearableType))
+                                    {
+                                        data[o] = RLV_CONSTANTS.FALSE_MARKER;
+                                        return;
+                                    }
+                                    data[o] = RLV_CONSTANTS.TRUE_MARKER;
+                                });
+                                response.Append(string.Join("", data.ToArray()));
+                                break;
+                        }
+                        Client.Self.Chat(response.ToString(), channel, ChatType.Normal);
+                    };
+                    break;
+                case RLVCommands.GETATTACH:
+                    execute = () =>
+                    {
+                        int channel;
+                        if (!int.TryParse(param, out channel) || channel < 1)
+                        {
+                            return;
+                        }
+                        HashSet<Primitive> attachments = new HashSet<Primitive>(
+                            Client.Network.CurrentSim.ObjectsPrimitives.FindAll(
+                                o => o.ParentID.Equals(Client.Self.LocalID)));
+                        StringBuilder response = new StringBuilder();
+                        if (attachments.Count.Equals(0))
+                        {
+                            Client.Self.Chat(response.ToString(), channel, ChatType.Normal);
+                        }
+                        HashSet<AttachmentPoint> attachmentPoints =
+                            new HashSet<AttachmentPoint>(attachments.Select(o => o.PrimData.AttachmentPoint));
+                        switch (!string.IsNullOrEmpty(option))
+                        {
+                            case true:
+                                AttachmentPoint attachmentPoint =
+                                    RLVAttachments.FirstOrDefault(o => o.Name.Equals(option)).AttachmentPoint;
+                                if (!attachmentPoints.Contains(attachmentPoint))
+                                {
+                                    response.Append(RLV_CONSTANTS.FALSE_MARKER);
+                                    break;
+                                }
+                                response.Append(RLV_CONSTANTS.TRUE_MARKER);
+                                break;
+                            default:
+                                string[] data = new string[RLVAttachments.Count];
+                                Parallel.ForEach(Enumerable.Range(0, RLVAttachments.Count), o =>
+                                {
+                                    if (!attachmentPoints.Contains(RLVAttachments[o].AttachmentPoint))
+                                    {
+                                        data[o] = RLV_CONSTANTS.FALSE_MARKER;
+                                        return;
+                                    }
+                                    data[o] = RLV_CONSTANTS.TRUE_MARKER;
+                                });
+                                response.Append(string.Join("", data.ToArray()));
+                                break;
+                        }
+                        Client.Self.Chat(response.ToString(), channel, ChatType.Normal);
+                    };
+                    break;
+                case RLVCommands.REMATTACH:
+                case RLVCommands.DETACH:
+                    execute = () =>
+                    {
+                        if (!param.Equals(RLV_CONSTANTS.FORCE))
+                        {
+                            return;
+                        }
+                        InventoryBase inventoryBaseItem;
+                        InventoryItem inventoryItem;
+                        switch (!string.IsNullOrEmpty(option))
+                        {
+                            case true:
+                                // FIXME
+                                RLVAttachment RLVattachment = RLVAttachments.FirstOrDefault(o => o.Name.Equals(option));
+                                switch (!RLVattachment.Name.Equals(option))
+                                {
+                                    case true:
+                                        Parallel.ForEach(GetAttachments(Configuration.SERVICES_TIMEOUT), o =>
+                                        {
+                                            inventoryBaseItem =
+                                                FindInventoryBase(Client.Inventory.Store.RootFolder,
+                                                    o.Value.Properties.Name,
+                                                    Configuration.SERVICES_TIMEOUT)
+                                                    .FirstOrDefault(
+                                                        p =>
+                                                            (p is InventoryItem) &&
+                                                            ((InventoryItem) p).AssetType.Equals(AssetType.Object));
+                                            inventoryItem = inventoryBaseItem as InventoryItem;
+                                            if (inventoryItem == null)
+                                            {
+                                                return;
+                                            }
+                                            Detach(inventoryItem, Configuration.SERVICES_TIMEOUT);
+                                        });
+                                        break;
+                                    default:
+                                        Primitive attachment =
+                                            GetAttachments(Configuration.SERVICES_TIMEOUT)
+                                                .FirstOrDefault(o => o.Key.Equals(RLVattachment.AttachmentPoint)).Value;
+                                        if (attachment == null)
+                                        {
+                                            break;
+                                        }
+                                        inventoryBaseItem =
+                                            FindInventoryBase(Client.Inventory.Store.RootFolder,
+                                                attachment.Properties.Name,
+                                                Configuration.SERVICES_TIMEOUT)
+                                                .FirstOrDefault(
+                                                    p =>
+                                                        (p is InventoryItem) &&
+                                                        ((InventoryItem) p).AssetType.Equals(AssetType.Object));
+                                        inventoryItem = inventoryBaseItem as InventoryItem;
+                                        if (inventoryItem == null)
+                                        {
+                                            break;
+                                        }
+                                        Detach(inventoryItem, Configuration.SERVICES_TIMEOUT);
+                                        break;
+                                }
+                                break;
+                            default:
+                                HashSet<Primitive> attachments =
+                                    new HashSet<Primitive>(
+                                        GetAttachments(Configuration.SERVICES_TIMEOUT).Select(o => o.Value));
+                                Parallel.ForEach(attachments, o =>
+                                {
+                                    inventoryBaseItem = FindInventoryBase(
+                                        Client.Inventory.Store.RootFolder, option,
+                                        Configuration.SERVICES_TIMEOUT)
+                                        .FirstOrDefault(
+                                            p =>
+                                                (p is InventoryItem) &&
+                                                ((InventoryItem) p).AssetType.Equals(AssetType.Object));
+                                    if (inventoryBaseItem == null)
+                                    {
+                                        return;
+                                    }
+                                    inventoryItem = inventoryBaseItem as InventoryItem;
+                                    if (inventoryItem == null)
+                                    {
+                                        return;
+                                    }
+                                    Detach(inventoryItem, Configuration.SERVICES_TIMEOUT);
+                                });
+                                break;
+                        }
+                    };
+                    break;
+                case RLVCommands.ATTACH:
+                case RLVCommands.ATTACHOVERORREPLACE:
+                case RLVCommands.ATTACHOVER:
+                    execute = () =>
+                    {
+                        if (!param.Equals(RLV_CONSTANTS.FORCE) || string.IsNullOrEmpty(option))
+                        {
+                            return;
+                        }
+                        InventoryBase RLVFolder = FindInventoryBase(Client.Inventory.Store.RootFolder,
+                            RLV_CONSTANTS.RLV_FOLDER,
+                            Configuration.SERVICES_TIMEOUT).FirstOrDefault(o => (o is InventoryFolder));
+                        if (RLVFolder == null)
+                        {
+                            return;
+                        }
+                        InventoryBase inventoryBase =
+                            FindInventoryBase(RLVFolder, option,
+                                Configuration.SERVICES_TIMEOUT).FirstOrDefault(o => (o is InventoryFolder));
+                        if (inventoryBase == null)
+                        {
+                            return;
+                        }
+                        InventoryFolder inventoryFolder = inventoryBase as InventoryFolder;
+                        if (inventoryFolder == null)
+                        {
+                            return;
+                        }
+                        Client.Inventory.Store.GetContents(inventoryFolder)
+                            .FindAll(o => CanBeWorn(o) && ((InventoryItem) o).AssetType.Equals(AssetType.Object))
+                            .ForEach(
+                                o =>
+                                {
+                                    InventoryItem inventoryItem = o as InventoryItem;
+                                    if (inventoryItem == null)
+                                    {
+                                        return;
+                                    }
+                                    // Multiple attachment points not working in libOpenMetaverse, so just replace.
+                                    Attach(inventoryItem, AttachmentPoint.Default, true, Configuration.SERVICES_TIMEOUT);
+                                });
+                    };
+                    break;
+                case RLVCommands.REMOUTFIT:
+                    execute = () =>
+                    {
+                        if (!param.Equals(RLV_CONSTANTS.FORCE))
+                        {
+                            return;
+                        }
+                        InventoryBase inventoryBase;
+                        InventoryItem inventoryItem;
+                        switch (!string.IsNullOrEmpty(option))
+                        {
+                            case true: // A single wearable
+                                FieldInfo wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
+                                                                                         BindingFlags.Static)
+                                    .FirstOrDefault(
+                                        p => p.Name.ToLowerInvariant().Equals(option, StringComparison.Ordinal));
+                                if (wearTypeInfo == null)
+                                {
+                                    break;
+                                }
+                                inventoryBase =
+                                    FindInventoryBase(Client.Inventory.Store.RootFolder,
+                                        GetWearables(Client.Inventory.Store.RootFolder,
+                                            Configuration.SERVICES_TIMEOUT)
+                                            .FirstOrDefault(
+                                                o => o.Key.Equals((WearableType) wearTypeInfo.GetValue(null)))
+                                            .Value,
+                                        Configuration.SERVICES_TIMEOUT)
+                                        .FirstOrDefault(o => (o is InventoryWearable));
+                                inventoryItem = inventoryBase as InventoryItem;
+                                if (inventoryItem == null)
+                                {
+                                    break;
+                                }
+                                UnWear(inventoryItem, Configuration.SERVICES_TIMEOUT);
+                                break;
+                            default:
+                                Parallel.ForEach(GetWearables(Client.Inventory.Store.RootFolder,
+                                    Configuration.SERVICES_TIMEOUT)
+                                    .Select(o => new[]
+                                    {
+                                        o.Value
+                                    }).SelectMany(o => o), o =>
+                                    {
+                                        inventoryBase =
+                                            FindInventoryBase(Client.Inventory.Store.RootFolder, o,
+                                                Configuration.SERVICES_TIMEOUT)
+                                                .FirstOrDefault(p => (p is InventoryWearable));
+                                        inventoryItem = inventoryBase as InventoryItem;
+                                        if (inventoryItem == null)
+                                        {
+                                            return;
+                                        }
+                                        UnWear(inventoryItem, Configuration.SERVICES_TIMEOUT);
+                                    });
+                                break;
+                        }
+                    };
+                    break;
+                case RLVCommands.GETINV:
+                    execute = () =>
+                    {
+                        int channel;
+                        if (!int.TryParse(param, out channel) || channel < 1)
+                        {
+                            return;
+                        }
+                        if (string.IsNullOrEmpty(option))
+                        {
+                            return;
+                        }
+                        InventoryBase RLVFolder = FindInventoryBase(Client.Inventory.Store.RootFolder,
+                            RLV_CONSTANTS.RLV_FOLDER,
+                            Configuration.SERVICES_TIMEOUT).FirstOrDefault(o => (o is InventoryFolder));
+                        if (RLVFolder == null)
+                        {
+                            return;
+                        }
+                        InventoryBase inventoryBase =
+                            FindInventoryBase(RLVFolder, option,
+                                Configuration.SERVICES_TIMEOUT)
+                                .FirstOrDefault(o => (o is InventoryFolder));
+                        if (inventoryBase == null)
+                        {
+                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                            return;
+                        }
+                        InventoryFolder inventoryFolder = inventoryBase as InventoryFolder;
+                        if (inventoryFolder == null)
+                        {
+                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                            return;
+                        }
+                        HashSet<string> csv = new HashSet<string>();
+                        Parallel.ForEach(
+                            FindInventoryBase(Client.Inventory.Store.RootFolder,
+                                new HashSet<AssetType> {AssetType.Folder},
+                                Configuration.SERVICES_TIMEOUT), o =>
+                                {
+                                    if (o.Name.StartsWith(RLV_CONSTANTS.IGNORE_ITEM_MARKER)) return;
+                                    csv.Add(o.Name);
+                                });
+                        Client.Self.Chat(string.Join(RLV_CONSTANTS.CSV_DELIMITER, csv.ToArray()), channel,
+                            ChatType.Normal);
+                    };
+                    break;
+                default:
+                    execute =
+                        () =>
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ConsoleError.COMMAND_NOT_IMPLEMENTED));
+                        };
+                    break;
+            }
+
+            try
+            {
+                execute.Invoke();
+            }
+            catch (Exception e)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.FAILED_TO_EXECUTE_RLV_COMMAND), e.Message);
+            }
+
+            CONTINUE:
+            HandleRLVCommand(message);
         }
 
         private static Dictionary<string, string> HandleCorradeCommand(string message, string sender, string identifier)
@@ -3558,7 +4183,7 @@ namespace Corrade
                             (uint) wasGetEnumValueFromDescription<Action>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
-                                    .ToLower(CultureInfo.InvariantCulture));
+                                    .ToLowerInvariant());
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
@@ -4570,7 +5195,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Entity>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                        message)).ToLower(CultureInfo.InvariantCulture)))
+                                        message)).ToLowerInvariant()))
                         {
                             case Entity.AVATAR:
                                 UUID agentUUID;
@@ -4783,7 +5408,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Entity>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                        message)).ToLower(CultureInfo.InvariantCulture)))
+                                        message)).ToLowerInvariant()))
                         {
                             case Entity.GROUP:
                                 targetUUID =
@@ -5848,7 +6473,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Entity>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                        message)).ToLower(CultureInfo.InvariantCulture)))
+                                        message)).ToLowerInvariant()))
                         {
                             case Entity.AVATAR:
                                 UUID agentUUID;
@@ -5965,7 +6590,7 @@ namespace Corrade
                             (uint) wasGetEnumValueFromDescription<Action>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
-                                    .ToLower(CultureInfo.InvariantCulture));
+                                    .ToLowerInvariant());
                         switch ((Action) action)
                         {
                             case Action.START:
@@ -6310,7 +6935,7 @@ namespace Corrade
                             (uint) wasGetEnumValueFromDescription<Type>(
                                 wasUriUnescapeDataString(wasKeyValueGet(
                                     wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
-                                    .ToLower(CultureInfo.InvariantCulture));
+                                    .ToLowerInvariant());
                         switch ((Type) type)
                         {
                             case Type.TEXT:
@@ -6388,13 +7013,13 @@ namespace Corrade
                                 {
                                     InventoryBase inventoryBaseItem =
                                         FindInventoryBase(Client.Inventory.Store.RootFolder, o,
-                                            Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                                            Configuration.SERVICES_TIMEOUT).FirstOrDefault(p => p is InventoryWearable);
                                     if (inventoryBaseItem == null)
                                         return;
-                                    InventoryWearable wearable = inventoryBaseItem as InventoryWearable;
-                                    if (wearable == null)
+                                    InventoryItem inventoryItem = inventoryBaseItem as InventoryItem;
+                                    if (inventoryItem == null)
                                         return;
-                                    Wear(inventoryBaseItem as InventoryItem, replace, Configuration.SERVICES_TIMEOUT);
+                                    Wear(inventoryItem, replace, Configuration.SERVICES_TIMEOUT);
                                 });
                         Rebake.Invoke();
                     };
@@ -6419,13 +7044,13 @@ namespace Corrade
                                 {
                                     InventoryBase inventoryBaseItem =
                                         FindInventoryBase(Client.Inventory.Store.RootFolder, o,
-                                            Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                                            Configuration.SERVICES_TIMEOUT).FirstOrDefault(p => p is InventoryWearable);
                                     if (inventoryBaseItem == null)
                                         return;
-                                    InventoryWearable wearable = inventoryBaseItem as InventoryWearable;
-                                    if (wearable == null)
+                                    InventoryItem inventoryItem = inventoryBaseItem as InventoryWearable;
+                                    if (inventoryItem == null)
                                         return;
-                                    UnWear(inventoryBaseItem as InventoryItem, Configuration.SERVICES_TIMEOUT);
+                                    UnWear(inventoryItem, Configuration.SERVICES_TIMEOUT);
                                 });
                         Rebake.Invoke();
                     };
@@ -6576,7 +7201,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Entity>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                        message)).ToLower(CultureInfo.InvariantCulture)))
+                                        message)).ToLowerInvariant()))
                         {
                             case Entity.PARCEL:
                                 Vector3 position;
@@ -6627,7 +7252,7 @@ namespace Corrade
                                     .FirstOrDefault(
                                         o =>
                                             o.Name.Equals(type
-                                                .ToLower(CultureInfo.InvariantCulture),
+                                                .ToLowerInvariant(),
                                                 StringComparison.Ordinal));
                                 ObjectReturnType returnType = objectReturnTypeField != null
                                     ? (ObjectReturnType)
@@ -7652,7 +8277,7 @@ namespace Corrade
                             (uint) wasGetEnumValueFromDescription<Action>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
-                                    .ToLower(CultureInfo.InvariantCulture));
+                                    .ToLowerInvariant());
                         switch ((Action) action)
                         {
                             case Action.START:
@@ -7924,7 +8549,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Action>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        message)).ToLower(CultureInfo.InvariantCulture)))
+                                        message)).ToLowerInvariant()))
                         {
                             case Action.ADD:
                                 InventoryBase inventoryBaseItem =
@@ -8405,7 +9030,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Action>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        message)).ToLower(CultureInfo.InvariantCulture)))
+                                        message)).ToLowerInvariant()))
                         {
                             case Action.START:
                                 Vector3 position;
@@ -8471,7 +9096,7 @@ namespace Corrade
                             wasUriUnescapeDataString(wasKeyValueGet(
                                 wasGetDescriptionFromEnumValue(ScriptKeys.DIRECTION),
                                 message))
-                                .ToLower(CultureInfo.InvariantCulture)))
+                                .ToLowerInvariant()))
                         {
                             case Direction.BACK:
                                 Client.Self.Movement.SendManualUpdate(AgentManager.ControlFlags.AGENT_CONTROL_AT_NEG,
@@ -8620,7 +9245,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Action>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        message)).ToLower(CultureInfo.InvariantCulture)))
+                                        message)).ToLowerInvariant()))
                         {
                             case Action.MUTE:
                                 FieldInfo muteTypeInfo = typeof (MuteType).GetFields(BindingFlags.Public |
@@ -8708,7 +9333,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Action>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        message)).ToLower(CultureInfo.InvariantCulture)))
+                                        message)).ToLowerInvariant()))
                         {
                             case Action.GET:
                                 string databaseGetkey =
@@ -8838,7 +9463,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Action>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        message)).ToLower(CultureInfo.InvariantCulture)))
+                                        message)).ToLowerInvariant()))
                         {
                             case Action.SET:
                                 string url =
@@ -8856,7 +9481,7 @@ namespace Corrade
                                 string notificationTypes =
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
-                                        .ToLower(CultureInfo.InvariantCulture);
+                                        .ToLowerInvariant();
                                 if (string.IsNullOrEmpty(notificationTypes))
                                 {
                                     throw new Exception(
@@ -8952,7 +9577,7 @@ namespace Corrade
                         Client.Self.TeleportLureRespond(agentUUID, sessionUUID, wasGetEnumValueFromDescription<Action>(
                             wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                 message))
-                                .ToLower(CultureInfo.InvariantCulture)).Equals(Action.ACCEPT));
+                                .ToLowerInvariant()).Equals(Action.ACCEPT));
                     };
                     break;
                 case ScriptKeys.GETTELEPORTLURES:
@@ -9175,7 +9800,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Action>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        message)).ToLower(CultureInfo.InvariantCulture)))
+                                        message)).ToLowerInvariant()))
                         {
                             case Action.START:
                                 Client.Self.AnimationStart(itemUUID, true);
@@ -9255,7 +9880,7 @@ namespace Corrade
                             !int.TryParse(
                                 wasUriUnescapeDataString(wasKeyValueGet(
                                     wasGetDescriptionFromEnumValue(ScriptKeys.DELAY), message))
-                                    .ToLower(CultureInfo.InvariantCulture), out delay))
+                                    .ToLowerInvariant(), out delay))
                         {
                             delay = LINDEN_CONSTANTS.ESTATE.REGION_RESTART_DELAY;
                         }
@@ -9263,7 +9888,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Action>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        message)).ToLower(CultureInfo.InvariantCulture)))
+                                        message)).ToLowerInvariant()))
                         {
                             case Action.RESTART:
                                 // Manually override Client.Estate.RestartRegion();
@@ -9295,7 +9920,7 @@ namespace Corrade
                             !bool.TryParse(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.SCRIPTS), message))
-                                    .ToLower(CultureInfo.InvariantCulture), out scripts))
+                                    .ToLowerInvariant(), out scripts))
                         {
                             scripts = false;
                         }
@@ -9305,7 +9930,7 @@ namespace Corrade
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.COLLISIONS),
                                         message))
-                                    .ToLower(CultureInfo.InvariantCulture), out collisions))
+                                    .ToLowerInvariant(), out collisions))
                         {
                             collisions = false;
                         }
@@ -9314,7 +9939,7 @@ namespace Corrade
                             !bool.TryParse(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.PHYSICS), message))
-                                    .ToLower(CultureInfo.InvariantCulture), out physics))
+                                    .ToLowerInvariant(), out physics))
                         {
                             physics = false;
                         }
@@ -9346,7 +9971,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Type>(
                                 wasUriUnescapeDataString(wasKeyValueGet(
                                     wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
-                                    .ToLower(CultureInfo.InvariantCulture)))
+                                    .ToLowerInvariant()))
                         {
                             case Type.SCRIPTS:
                                 ManualResetEvent TopScriptsReplyEvent = new ManualResetEvent(false);
@@ -9436,7 +10061,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Type>(
                                 wasUriUnescapeDataString(wasKeyValueGet(
                                     wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
-                                    .ToLower(CultureInfo.InvariantCulture)))
+                                    .ToLowerInvariant()))
                         {
                             case Type.BAN:
                                 if (
@@ -9459,7 +10084,7 @@ namespace Corrade
                                     wasGetEnumValueFromDescription<Action>(
                                         wasUriUnescapeDataString(
                                             wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
-                                            .ToLower(CultureInfo.InvariantCulture)))
+                                            .ToLowerInvariant()))
                                 {
                                     case Action.ADD:
                                         Client.Estate.BanUser(targetUUID, allEstates);
@@ -9490,7 +10115,7 @@ namespace Corrade
                                     wasGetEnumValueFromDescription<Action>(
                                         wasUriUnescapeDataString(
                                             wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
-                                            .ToLower(CultureInfo.InvariantCulture)))
+                                            .ToLowerInvariant()))
                                 {
                                     case Action.ADD:
                                         Client.Estate.AddAllowedGroup(targetUUID, allEstates);
@@ -9524,7 +10149,7 @@ namespace Corrade
                                     wasGetEnumValueFromDescription<Action>(
                                         wasUriUnescapeDataString(
                                             wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
-                                            .ToLower(CultureInfo.InvariantCulture)))
+                                            .ToLowerInvariant()))
                                 {
                                     case Action.ADD:
                                         Client.Estate.AddAllowedUser(targetUUID, allEstates);
@@ -9558,7 +10183,7 @@ namespace Corrade
                                     wasGetEnumValueFromDescription<Action>(
                                         wasUriUnescapeDataString(
                                             wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
-                                            .ToLower(CultureInfo.InvariantCulture)))
+                                            .ToLowerInvariant()))
                                 {
                                     case Action.ADD:
                                         Client.Estate.AddEstateManager(targetUUID, allEstates);
@@ -9603,7 +10228,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Type>(
                                 wasUriUnescapeDataString(wasKeyValueGet(
                                     wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
-                                    .ToLower(CultureInfo.InvariantCulture)))
+                                    .ToLowerInvariant()))
                         {
                             case Type.BAN:
                                 EventHandler<EstateBansReplyEventArgs> EstateBansReplyEventHandler = (sender, args) =>
@@ -9766,7 +10391,7 @@ namespace Corrade
                             (uint) wasGetEnumValueFromDescription<Entity>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY), message))
-                                    .ToLower(CultureInfo.InvariantCulture));
+                                    .ToLowerInvariant());
                         Parcel parcel = null;
                         UUID agentUUID = UUID.Zero;
                         switch ((Entity) entity)
@@ -9888,7 +10513,7 @@ namespace Corrade
                             (uint) wasGetEnumValueFromDescription<Entity>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY), message))
-                                    .ToLower(CultureInfo.InvariantCulture));
+                                    .ToLowerInvariant());
                         Parcel parcel = null;
                         switch ((Entity) entity)
                         {
@@ -10032,7 +10657,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Action>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        message)).ToLower(CultureInfo.InvariantCulture)))
+                                        message)).ToLowerInvariant()))
                         {
                             case Action.GET:
                                 result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DISPLAYNAME), previous);
@@ -10159,7 +10784,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Action>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        message)).ToLower(CultureInfo.InvariantCulture)))
+                                        message)).ToLowerInvariant()))
                         {
                             case Action.ACCEPT:
                                 lock (InventoryOffersLock)
@@ -10268,7 +10893,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Action>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        message)).ToLower(CultureInfo.InvariantCulture)))
+                                        message)).ToLowerInvariant()))
                         {
                             case Action.ACCEPT:
                                 Client.Friends.AcceptFriendship(agentUUID, session);
@@ -10965,7 +11590,7 @@ namespace Corrade
                         switch (wasGetEnumValueFromDescription<Action>(
                             wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                 message))
-                                .ToLower(CultureInfo.InvariantCulture)))
+                                .ToLowerInvariant()))
                         {
                             case Action.GET:
                                 ManualResetEvent[] DownloadTerrainEvents =
@@ -11126,7 +11751,7 @@ namespace Corrade
                             (uint) wasGetEnumValueFromDescription<Action>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
-                                    .ToLower(CultureInfo.InvariantCulture));
+                                    .ToLowerInvariant());
                         switch ((Action) action)
                         {
                             case Action.START:
@@ -11154,7 +11779,7 @@ namespace Corrade
                         uint action =
                             (uint) wasGetEnumValueFromDescription<Action>(wasUriUnescapeDataString(
                                 wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
-                                .ToLower(CultureInfo.InvariantCulture));
+                                .ToLowerInvariant());
                         switch ((Action) action)
                         {
                             case Action.START:
@@ -11246,7 +11871,7 @@ namespace Corrade
                         }
                         switch (wasGetEnumValueFromDescription<Action>(wasUriUnescapeDataString(
                             wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
-                            .ToLower(CultureInfo.InvariantCulture)))
+                            .ToLowerInvariant()))
                         {
                             case Action.READ:
                                 result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -11274,7 +11899,7 @@ namespace Corrade
                         }
                         switch (wasGetEnumValueFromDescription<Action>(wasUriUnescapeDataString(
                             wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
-                            .ToLower(CultureInfo.InvariantCulture)))
+                            .ToLowerInvariant()))
                         {
                             case Action.PURGE:
                                 Cache.Purge();
@@ -11327,7 +11952,7 @@ namespace Corrade
                             wasGetEnumValueFromDescription<Type>(
                                 wasUriUnescapeDataString(wasKeyValueGet(
                                     wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
-                                    .ToLower(CultureInfo.InvariantCulture)))
+                                    .ToLowerInvariant()))
                         {
                             case Type.CLASSIFIED:
                                 DirectoryManager.Classified searchClassified = new DirectoryManager.Classified();
@@ -12560,6 +13185,152 @@ namespace Corrade
             }
         }
 
+        #region RLV STRUCTURES
+
+        /// <summary>
+        ///     Structure for RLV contants.
+        /// </summary>
+        private struct RLV_CONSTANTS
+        {
+            public const string COMMAND_OPERATOR = @"@";
+            public const string VIEWER = @"RestrainedLife viewer";
+            public const string SHORT_VERSION = @"1.23";
+            public const string LONG_VERSION = @"1230100";
+            public const string FORCE = @"force";
+            public const string FALSE_MARKER = @"0";
+            public const string TRUE_MARKER = @"1";
+            public const string CSV_DELIMITER = @",";
+            public const string IGNORE_ITEM_MARKER = @".";
+            public const string PROPORTION_SEPARATOR = @"|";
+            public const string RLV_FOLDER = @"#RLV";
+        }
+
+        /// <summary>
+        ///     Regex used to match RLV commands.
+        /// </summary>
+        private static readonly Regex RLVRegex = new Regex(@"(?<command>[^:=]+)(:(?<option>[^=]*))?=(?<param>\w+)",
+            RegexOptions.Compiled);
+
+        /// <summary>
+        ///     RLV wearable structure.
+        /// </summary>
+        private struct RLVWearable
+        {
+            public string Name;
+            public WearableType WearableType;
+        }
+
+        /// <summary>
+        ///     RLV Wearables.
+        /// </summary>
+        private static readonly List<RLVWearable> RLVWearables = new List<RLVWearable>
+        {
+            new RLVWearable {Name = @"gloves", WearableType = WearableType.Gloves},
+            new RLVWearable {Name = @"jacket", WearableType = WearableType.Jacket},
+            new RLVWearable {Name = @"pants", WearableType = WearableType.Pants},
+            new RLVWearable {Name = @"shirt", WearableType = WearableType.Shirt},
+            new RLVWearable {Name = @"shoes", WearableType = WearableType.Shoes},
+            new RLVWearable {Name = @"skirt", WearableType = WearableType.Skirt},
+            new RLVWearable {Name = @"socks", WearableType = WearableType.Socks},
+            new RLVWearable {Name = @"underpants", WearableType = WearableType.Underpants},
+            new RLVWearable {Name = @"undershirt", WearableType = WearableType.Undershirt},
+            new RLVWearable {Name = @"skin", WearableType = WearableType.Skin},
+            new RLVWearable {Name = @"eyes", WearableType = WearableType.Eyes},
+            new RLVWearable {Name = @"hair", WearableType = WearableType.Hair},
+            new RLVWearable {Name = @"shape", WearableType = WearableType.Shape},
+            new RLVWearable {Name = @"alpha", WearableType = WearableType.Alpha},
+            new RLVWearable {Name = @"tattoo", WearableType = WearableType.Tattoo},
+            new RLVWearable {Name = @"physics", WearableType = WearableType.Physics}
+        };
+
+        /// <summary>
+        ///     RLV attachment structure.
+        /// </summary>
+        private struct RLVAttachment
+        {
+            public string Name;
+            public AttachmentPoint AttachmentPoint;
+        }
+
+        /// <summary>
+        ///     RLV Attachments.
+        /// </summary>
+        private static readonly List<RLVAttachment> RLVAttachments = new List<RLVAttachment>
+        {
+            new RLVAttachment {Name = @"none", AttachmentPoint = AttachmentPoint.Default},
+            new RLVAttachment {Name = @"chest", AttachmentPoint = AttachmentPoint.Chest},
+            new RLVAttachment {Name = @"skull", AttachmentPoint = AttachmentPoint.Skull},
+            new RLVAttachment {Name = @"left shoulder", AttachmentPoint = AttachmentPoint.LeftShoulder},
+            new RLVAttachment {Name = @"right shoulder", AttachmentPoint = AttachmentPoint.RightShoulder},
+            new RLVAttachment {Name = @"left hand", AttachmentPoint = AttachmentPoint.LeftHand},
+            new RLVAttachment {Name = @"right hand", AttachmentPoint = AttachmentPoint.RightHand},
+            new RLVAttachment {Name = @"left foot", AttachmentPoint = AttachmentPoint.LeftFoot},
+            new RLVAttachment {Name = @"right foot", AttachmentPoint = AttachmentPoint.RightFoot},
+            new RLVAttachment {Name = @"spine", AttachmentPoint = AttachmentPoint.Spine},
+            new RLVAttachment {Name = @"pelvis", AttachmentPoint = AttachmentPoint.Pelvis},
+            new RLVAttachment {Name = @"mouth", AttachmentPoint = AttachmentPoint.Mouth},
+            new RLVAttachment {Name = @"chin", AttachmentPoint = AttachmentPoint.Chin},
+            new RLVAttachment {Name = @"left ear", AttachmentPoint = AttachmentPoint.LeftEar},
+            new RLVAttachment {Name = @"right ear", AttachmentPoint = AttachmentPoint.RightEar},
+            new RLVAttachment {Name = @"left eyeball", AttachmentPoint = AttachmentPoint.LeftEyeball},
+            new RLVAttachment {Name = @"right eyeball", AttachmentPoint = AttachmentPoint.RightEyeball},
+            new RLVAttachment {Name = @"nose", AttachmentPoint = AttachmentPoint.Nose},
+            new RLVAttachment {Name = @"r upper arm", AttachmentPoint = AttachmentPoint.RightUpperArm},
+            new RLVAttachment {Name = @"r forearm", AttachmentPoint = AttachmentPoint.RightForearm},
+            new RLVAttachment {Name = @"l upper arm", AttachmentPoint = AttachmentPoint.LeftUpperArm},
+            new RLVAttachment {Name = @"l forearm", AttachmentPoint = AttachmentPoint.LeftForearm},
+            new RLVAttachment {Name = @"right hip", AttachmentPoint = AttachmentPoint.RightHip},
+            new RLVAttachment {Name = @"r upper leg", AttachmentPoint = AttachmentPoint.RightUpperLeg},
+            new RLVAttachment {Name = @"r lower leg", AttachmentPoint = AttachmentPoint.RightLowerLeg},
+            new RLVAttachment {Name = @"left hip", AttachmentPoint = AttachmentPoint.LeftHip},
+            new RLVAttachment {Name = @"l upper leg", AttachmentPoint = AttachmentPoint.LeftUpperLeg},
+            new RLVAttachment {Name = @"l lower leg", AttachmentPoint = AttachmentPoint.LeftLowerLeg},
+            new RLVAttachment {Name = @"stomach", AttachmentPoint = AttachmentPoint.Stomach},
+            new RLVAttachment {Name = @"left pec", AttachmentPoint = AttachmentPoint.LeftPec},
+            new RLVAttachment {Name = @"right pec", AttachmentPoint = AttachmentPoint.RightPec},
+            new RLVAttachment {Name = @"center 2", AttachmentPoint = AttachmentPoint.HUDCenter2},
+            new RLVAttachment {Name = @"top right", AttachmentPoint = AttachmentPoint.HUDTopRight},
+            new RLVAttachment {Name = @"top", AttachmentPoint = AttachmentPoint.HUDTop},
+            new RLVAttachment {Name = @"top left", AttachmentPoint = AttachmentPoint.HUDTopLeft},
+            new RLVAttachment {Name = @"center", AttachmentPoint = AttachmentPoint.HUDCenter},
+            new RLVAttachment {Name = @"bottom left", AttachmentPoint = AttachmentPoint.HUDBottomLeft},
+            new RLVAttachment {Name = @"bottom", AttachmentPoint = AttachmentPoint.HUDBottom},
+            new RLVAttachment {Name = @"bottom right", AttachmentPoint = AttachmentPoint.HUDBottomRight},
+            new RLVAttachment {Name = @"neck", AttachmentPoint = AttachmentPoint.Neck},
+            new RLVAttachment {Name = @"root", AttachmentPoint = AttachmentPoint.Root}
+        };
+
+        /// <summary>
+        ///     Enumeration for supported RLV commands.
+        /// </summary>
+        private enum RLVCommands : uint
+        {
+            [Description("version")] VERSION,
+            [Description("versionnew")] VERSIONNEW,
+            [Description("versionnum")] VERSIONNUM,
+            [Description("getgroup")] GETGROUP,
+            [Description("setgroup")] SETGROUP,
+            [Description("getsitid")] GETSITID,
+            [Description("getstatusall")] GETSTATUSALL,
+            [Description("getstatus")] GETSTATUS,
+            [Description("sit")] SIT,
+            [Description("unsit")] UNSIT,
+            [Description("setrot")] SETROT,
+            [Description("tpto")] TPTO,
+            [Description("getoutfit")] GETOUTFIT,
+            [Description("getattach")] GETATTACH,
+            [Description("remattach")] REMATTACH,
+            [Description("detach")] DETACH,
+            [Description("remoutfit")] REMOUTFIT,
+            [Description("attach")] ATTACH,
+            [Description("attachoverreplace")] ATTACHOVERORREPLACE,
+            [Description("attachover")] ATTACHOVER,
+            [Description("getinv")] GETINV,
+            [Description("getinvworn")] GETINVWORN
+        }
+
+        #endregion
+
         /// <summary>
         ///     Corrade's caches.
         /// </summary>
@@ -12767,7 +13538,7 @@ namespace Corrade
                     try
                     {
                         foreach (XmlNode client in nodeList)
-                            switch (client.Name.ToLower(CultureInfo.InvariantCulture))
+                            switch (client.Name.ToLowerInvariant())
                             {
                                 case ConfigurationKeys.FIRST_NAME:
                                     if (string.IsNullOrEmpty(client.InnerText))
@@ -12844,7 +13615,7 @@ namespace Corrade
                         {
                             foreach (XmlNode serverNode in nodeList)
                             {
-                                switch (serverNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                switch (serverNode.Name.ToLowerInvariant())
                                 {
                                     case ConfigurationKeys.HTTP:
                                         if (!bool.TryParse(serverNode.InnerText, out ENABLE_HTTP_SERVER))
@@ -12876,7 +13647,7 @@ namespace Corrade
                         {
                             foreach (XmlNode networkNode in nodeList)
                             {
-                                switch (networkNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                switch (networkNode.Name.ToLowerInvariant())
                                 {
                                     case ConfigurationKeys.MAC:
                                         if (!string.IsNullOrEmpty(networkNode.InnerText))
@@ -12913,7 +13684,7 @@ namespace Corrade
                         {
                             foreach (XmlNode limitsNode in nodeList)
                             {
-                                switch (limitsNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                switch (limitsNode.Name.ToLowerInvariant())
                                 {
                                     case ConfigurationKeys.CLIENT:
                                         XmlNodeList clientLimitNodeList = limitsNode.SelectNodes("*");
@@ -12923,7 +13694,7 @@ namespace Corrade
                                         }
                                         foreach (XmlNode clientLimitNode in clientLimitNodeList)
                                         {
-                                            switch (clientLimitNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                            switch (clientLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.CONNECTIONS:
                                                     if (
@@ -12944,7 +13715,7 @@ namespace Corrade
                                         }
                                         foreach (XmlNode callbackLimitNode in callbackLimitNodeList)
                                         {
-                                            switch (callbackLimitNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                            switch (callbackLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.TIMEOUT:
                                                     if (!int.TryParse(callbackLimitNode.InnerText, out CALLBACK_TIMEOUT))
@@ -12978,7 +13749,7 @@ namespace Corrade
                                         }
                                         foreach (XmlNode notificationLimitNode in notificationLimitNodeList)
                                         {
-                                            switch (notificationLimitNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                            switch (notificationLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.TIMEOUT:
                                                     if (
@@ -13015,7 +13786,7 @@ namespace Corrade
                                         }
                                         foreach (XmlNode HTTPServerLimitNode in HTTPServerLimitNodeList)
                                         {
-                                            switch (HTTPServerLimitNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                            switch (HTTPServerLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.TIMEOUT:
                                                     if (
@@ -13036,7 +13807,7 @@ namespace Corrade
                                         }
                                         foreach (XmlNode servicesLimitNode in servicesLimitNodeList)
                                         {
-                                            switch (servicesLimitNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                            switch (servicesLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.TIMEOUT:
                                                     if (
@@ -13057,7 +13828,7 @@ namespace Corrade
                                         }
                                         foreach (XmlNode servicesLimitNode in membershipLimitNodeList)
                                         {
-                                            switch (servicesLimitNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                            switch (servicesLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.SWEEP:
                                                     if (
@@ -13090,7 +13861,7 @@ namespace Corrade
                                 Master configMaster = new Master();
                                 foreach (XmlNode masterNode in mastersNode.ChildNodes)
                                 {
-                                    switch (masterNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                    switch (masterNode.Name.ToLowerInvariant())
                                     {
                                         case ConfigurationKeys.FIRST_NAME:
                                             if (string.IsNullOrEmpty(masterNode.InnerText))
@@ -13128,7 +13899,7 @@ namespace Corrade
                                 Group configGroup = new Group();
                                 foreach (XmlNode groupNode in groupsNode.ChildNodes)
                                 {
-                                    switch (groupNode.Name.ToLower(CultureInfo.InvariantCulture))
+                                    switch (groupNode.Name.ToLowerInvariant())
                                     {
                                         case ConfigurationKeys.NAME:
                                             if (string.IsNullOrEmpty(groupNode.InnerText))
@@ -13316,7 +14087,9 @@ namespace Corrade
             [Description("inventory cache items loaded")] INVENTORY_CACHE_ITEMS_LOADED,
             [Description("inventory cache items saved")] INVENTORY_CACHE_ITEMS_SAVED,
             [Description("unable to load Corrade cache")] UNABLE_TO_LOAD_CORRADE_CACHE,
-            [Description("unable to save Corrade cache")] UNABLE_TO_SAVE_CORRADE_CACHE
+            [Description("unable to save Corrade cache")] UNABLE_TO_SAVE_CORRADE_CACHE,
+            [Description("failed to execute RLV command")] FAILED_TO_EXECUTE_RLV_COMMAND,
+            [Description("command not implemented")] COMMAND_NOT_IMPLEMENTED
         }
 
         /// <summary>
@@ -13456,6 +14229,7 @@ namespace Corrade
             public struct LSL
             {
                 public const string CSV_DELIMITER = @", ";
+                public const float SENSOR_RANGE = 96;
             }
         }
 
