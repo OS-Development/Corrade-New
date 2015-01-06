@@ -36,6 +36,37 @@ namespace Corrade
 {
     public partial class Corrade : ServiceBase
     {
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Gets the first name and last name from an avatar name.
+        /// </summary>
+        /// <param name="name">the avatar full name</param>
+        /// <returns>the firstname and the lastname or resident</returns>
+        private static IEnumerable<string> GetAvatarNames(string name)
+        {
+            return
+                Regex.Matches(name,
+                    @"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$")
+                    .Cast<Match>()
+                    .ToDictionary(o => new[]
+                    {
+                        o.Groups["first"].Value,
+                        o.Groups["last"].Value
+                    })
+                    .SelectMany(
+                        o =>
+                            new[]
+                            {
+                                o.Key[0],
+                                !string.IsNullOrEmpty(o.Key[1])
+                                    ? o.Key[1]
+                                    : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                            });
+        }
+
         /// <summary>
         ///     An event for the group membership notification.
         /// </summary>
@@ -2367,15 +2398,7 @@ namespace Corrade
                     case Notifications.NOTIFICATION_LOCAL_CHAT:
                         ChatEventArgs chatEventArgs = (ChatEventArgs) args;
                         List<string> chatName =
-                            new List<string>(chatEventArgs.FromName.Split(new[] {' ', '.'},
-                                StringSplitOptions.RemoveEmptyEntries)
-                                .GroupBy(p => p)
-                                .Where(p => !p.Count().Equals(0))
-                                .Select(p => new[]
-                                {
-                                    p.First(),
-                                    p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                                }).SelectMany(p => p));
+                            new List<string>(GetAvatarNames(chatEventArgs.FromName));
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
                             chatEventArgs.Message);
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME), chatName.First());
@@ -2402,15 +2425,7 @@ namespace Corrade
                             InstantMessageEventArgs inventoryOfferEventArgs = (InstantMessageEventArgs) args;
                             List<string> inventoryOfferName =
                                 new List<string>(
-                                    inventoryOfferEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
-                                        StringSplitOptions.RemoveEmptyEntries)
-                                        .GroupBy(p => p)
-                                        .Where(p => !p.Count().Equals(0))
-                                        .Select(p => new[]
-                                        {
-                                            p.First(),
-                                            p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                                        }).SelectMany(p => p));
+                                    GetAvatarNames(inventoryOfferEventArgs.IM.FromAgentName));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                                 inventoryOfferName.First());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
@@ -2431,15 +2446,7 @@ namespace Corrade
                                 (InventoryObjectOfferedEventArgs) args;
                             List<string> inventoryObjectOfferedName =
                                 new List<string>(
-                                    inventoryObjectOfferedEventArgs.Offer.FromAgentName.Split(new[] {' ', '.'},
-                                        StringSplitOptions.RemoveEmptyEntries)
-                                        .GroupBy(p => p)
-                                        .Where(p => !p.Count().Equals(0))
-                                        .Select(p => new[]
-                                        {
-                                            p.First(),
-                                            p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                                        }).SelectMany(p => p));
+                                    GetAvatarNames(inventoryObjectOfferedEventArgs.Offer.FromAgentName));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                                 inventoryObjectOfferedName.First());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
@@ -2478,15 +2485,7 @@ namespace Corrade
                         {
                             FriendInfoEventArgs friendInfoEventArgs = (FriendInfoEventArgs) args;
                             List<string> name =
-                                new List<string>(friendInfoEventArgs.Friend.Name.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries)
-                                    .GroupBy(p => p)
-                                    .Where(p => !p.Count().Equals(0))
-                                    .Select(p => new[]
-                                    {
-                                        p.First(),
-                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                                    }).SelectMany(p => p));
+                                new List<string>(GetAvatarNames(friendInfoEventArgs.Friend.Name));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME), name.First());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), name.Last());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
@@ -2518,15 +2517,7 @@ namespace Corrade
                                 (FriendshipResponseEventArgs) args;
                             List<string> friendshipResponseName =
                                 new List<string>(
-                                    friendshipResponseEventArgs.AgentName.Split(new[] {' ', '.'},
-                                        StringSplitOptions.RemoveEmptyEntries)
-                                        .GroupBy(p => p)
-                                        .Where(p => !p.Count().Equals(0))
-                                        .Select(p => new[]
-                                        {
-                                            p.First(),
-                                            p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                                        }).SelectMany(p => p));
+                                    GetAvatarNames(friendshipResponseEventArgs.AgentName));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                                 friendshipResponseName.First());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
@@ -2542,15 +2533,7 @@ namespace Corrade
                             FriendshipOfferedEventArgs friendshipOfferedEventArgs =
                                 (FriendshipOfferedEventArgs) args;
                             List<string> friendshipOfferedName =
-                                new List<string>(friendshipOfferedEventArgs.AgentName.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries)
-                                    .GroupBy(p => p)
-                                    .Where(p => !p.Count().Equals(0))
-                                    .Select(p => new[]
-                                    {
-                                        p.First(),
-                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                                    }).SelectMany(p => p));
+                                new List<string>(GetAvatarNames(friendshipOfferedEventArgs.AgentName));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                                 friendshipOfferedName.First());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
@@ -2565,15 +2548,7 @@ namespace Corrade
                         InstantMessageEventArgs teleportLureEventArgs = (InstantMessageEventArgs) args;
                         List<string> teleportLureName =
                             new List<string>(
-                                teleportLureEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries)
-                                    .GroupBy(p => p)
-                                    .Where(p => !p.Count().Equals(0))
-                                    .Select(p => new[]
-                                    {
-                                        p.First(),
-                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                                    }).SelectMany(p => p));
+                                GetAvatarNames(teleportLureEventArgs.IM.FromAgentName));
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                             teleportLureName.First());
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
@@ -2588,15 +2563,7 @@ namespace Corrade
                             (InstantMessageEventArgs) args;
                         List<string> notificationGroupNoticeName =
                             new List<string>(
-                                notificationGroupNoticeEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries)
-                                    .GroupBy(p => p)
-                                    .Where(p => !p.Count().Equals(0))
-                                    .Select(p => new[]
-                                    {
-                                        p.First(),
-                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                                    }).SelectMany(p => p));
+                                GetAvatarNames(notificationGroupNoticeEventArgs.IM.FromAgentName));
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                             notificationGroupNoticeName.First());
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
@@ -2633,15 +2600,7 @@ namespace Corrade
                             (InstantMessageEventArgs) args;
                         List<string> notificationInstantMessageName =
                             new List<string>(
-                                notificationInstantMessage.IM.FromAgentName.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries)
-                                    .GroupBy(p => p)
-                                    .Where(p => !p.Count().Equals(0))
-                                    .Select(p => new[]
-                                    {
-                                        p.First(),
-                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                                    }).SelectMany(p => p));
+                                GetAvatarNames(notificationInstantMessage.IM.FromAgentName));
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                             notificationInstantMessageName.First());
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
@@ -2656,15 +2615,7 @@ namespace Corrade
                             (InstantMessageEventArgs) args;
                         List<string> notificationRegionMessageName =
                             new List<string>(
-                                notificationRegionMessage.IM.FromAgentName.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries)
-                                    .GroupBy(p => p)
-                                    .Where(p => !p.Count().Equals(0))
-                                    .Select(p => new[]
-                                    {
-                                        p.First(),
-                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                                    }).SelectMany(p => p));
+                                GetAvatarNames(notificationRegionMessage.IM.FromAgentName));
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                             notificationRegionMessageName.First());
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
@@ -2679,15 +2630,7 @@ namespace Corrade
                             (InstantMessageEventArgs) args;
                         List<string> notificationGroupMessageName =
                             new List<string>(
-                                notificationGroupMessage.IM.FromAgentName.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries)
-                                    .GroupBy(p => p)
-                                    .Where(p => !p.Count().Equals(0))
-                                    .Select(p => new[]
-                                    {
-                                        p.First(),
-                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                                    }).SelectMany(p => p));
+                                GetAvatarNames(notificationGroupMessage.IM.FromAgentName));
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                             notificationGroupMessageName.First());
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
@@ -2814,15 +2757,7 @@ namespace Corrade
                         InstantMessageEventArgs notificationTypingMessageEventArgs = (InstantMessageEventArgs) args;
                         List<string> notificationTypingMessageName =
                             new List<string>(
-                                notificationTypingMessageEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries)
-                                    .GroupBy(p => p)
-                                    .Where(p => !p.Count().Equals(0))
-                                    .Select(p => new[]
-                                    {
-                                        p.First(),
-                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                                    }).SelectMany(p => p));
+                                GetAvatarNames(notificationTypingMessageEventArgs.IM.FromAgentName));
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                             notificationTypingMessageName.First());
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
@@ -2845,15 +2780,7 @@ namespace Corrade
                         InstantMessageEventArgs notificationGroupInviteEventArgs = (InstantMessageEventArgs) args;
                         List<string> notificationGroupInviteName =
                             new List<string>(
-                                notificationGroupInviteEventArgs.IM.FromAgentName.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries)
-                                    .GroupBy(p => p)
-                                    .Where(p => !p.Count().Equals(0))
-                                    .Select(p => new[]
-                                    {
-                                        p.First(),
-                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                                    }).SelectMany(p => p));
+                                GetAvatarNames(notificationGroupInviteEventArgs.IM.FromAgentName));
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                             notificationGroupInviteName.First());
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
@@ -2896,15 +2823,7 @@ namespace Corrade
                         GroupMembershipEventArgs groupMembershipEventArgs = (GroupMembershipEventArgs) args;
                         List<string> groupMembershipName =
                             new List<string>(
-                                groupMembershipEventArgs.AgentName.Split(new[] {' ', '.'},
-                                    StringSplitOptions.RemoveEmptyEntries)
-                                    .GroupBy(p => p)
-                                    .Where(p => !p.Count().Equals(0))
-                                    .Select(p => new[]
-                                    {
-                                        p.First(),
-                                        p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                                    }).SelectMany(p => p));
+                                GetAvatarNames(groupMembershipEventArgs.AgentName));
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
                             groupMembershipName.First());
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
@@ -3068,15 +2987,7 @@ namespace Corrade
 
         private static void HandleScriptQuestion(object sender, ScriptQuestionEventArgs e)
         {
-            List<string> owner = new List<string>(e.ObjectOwnerName.Split(new[] {' ', '.'},
-                StringSplitOptions.RemoveEmptyEntries)
-                .GroupBy(p => p)
-                .Where(p => !p.Count().Equals(0))
-                .Select(p => new[]
-                {
-                    p.First(),
-                    p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                }).SelectMany(p => p));
+            List<string> owner = new List<string>(GetAvatarNames(e.ObjectOwnerName));
             UUID ownerUUID = UUID.Zero;
             // Don't add permission requests from unknown agents.
             if (!AgentNameToUUID(owner.First(), owner.Last(), Configuration.SERVICES_TIMEOUT, ref ownerUUID))
@@ -3238,15 +3149,7 @@ namespace Corrade
                 case InstantMessageDialog.RequestTeleport:
                     List<string> teleportLureName =
                         new List<string>(
-                            args.IM.FromAgentName.Split(new[] {' ', '.'},
-                                StringSplitOptions.RemoveEmptyEntries)
-                                .GroupBy(p => p)
-                                .Where(p => !p.Count().Equals(0))
-                                .Select(p => new[]
-                                {
-                                    p.First(),
-                                    p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                                }).SelectMany(p => p));
+                            GetAvatarNames(args.IM.FromAgentName));
                     // Store teleport lure.
                     lock (TeleportLureLock)
                     {
@@ -3286,15 +3189,7 @@ namespace Corrade
                     if (!RequestGroup(args.IM.FromAgentID, Configuration.SERVICES_TIMEOUT, ref inviteGroup)) return;
                     List<string> groupInviteName =
                         new List<string>(
-                            args.IM.FromAgentName.Split(new[] {' ', '.'},
-                                StringSplitOptions.RemoveEmptyEntries)
-                                .GroupBy(p => p)
-                                .Where(p => !p.Count().Equals(0))
-                                .Select(p => new[]
-                                {
-                                    p.First(),
-                                    p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                                }).SelectMany(p => p));
+                            GetAvatarNames(args.IM.FromAgentName));
                     UUID inviteGroupAgent = UUID.Zero;
                     if (
                         !AgentNameToUUID(groupInviteName.First(), groupInviteName.Last(), Configuration.SERVICES_TIMEOUT,
@@ -10194,15 +10089,7 @@ namespace Corrade
                         {
                             List<string> name =
                                 new List<string>(
-                                    o.Key.Offer.FromAgentName.Split(new[] {' ', '.'},
-                                        StringSplitOptions.RemoveEmptyEntries)
-                                        .GroupBy(p => p)
-                                        .Where(p => !p.Count().Equals(0))
-                                        .Select(p => new[]
-                                        {
-                                            p.First(),
-                                            p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                                        }).SelectMany(p => p));
+                                    GetAvatarNames(o.Key.Offer.FromAgentName));
                             lock (LockObject)
                             {
                                 csv.AddRange(new[] {wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME), name.First()});
