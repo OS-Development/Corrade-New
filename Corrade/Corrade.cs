@@ -218,7 +218,7 @@ namespace Corrade
                     if (!args.FolderID.Equals(currentFolder.UUID)) return;
                     Parallel.ForEach(Client.Inventory.Store.GetContents(currentFolder.UUID), o =>
                     {
-                        ++itemsSaved;
+                        Interlocked.Increment(ref itemsSaved);
                         InventoryFolder addFolder = o as InventoryFolder;
                         if (addFolder != null)
                         {
@@ -332,7 +332,7 @@ namespace Corrade
                 .SelectMany(f => f.GetCustomAttributes(
                     typeof (DescriptionAttribute), false), (
                         f, a) => new {Field = f, Att = a}).SingleOrDefault(a => ((DescriptionAttribute) a.Att)
-                            .Description == description);
+                            .Description.Equals(description));
             return field != null ? (T) field.Field.GetRawConstantValue() : default(T);
         }
 
@@ -1332,7 +1332,7 @@ namespace Corrade
         /// </summary>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <returns>attachment points by primitives</returns>
-        private static IEnumerable<KeyValuePair<AttachmentPoint, Primitive>> lookupGetAttachments(
+        private static IEnumerable<KeyValuePair<Primitive, AttachmentPoint>> lookupGetAttachments(
             int millisecondsTimeout)
         {
             HashSet<Primitive> primitives = new HashSet<Primitive>(Client.Network.CurrentSim.ObjectsPrimitives.FindAll(
@@ -1352,10 +1352,11 @@ namespace Corrade
                 Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
                 foreach (Primitive primitive in primitives)
                 {
-                    yield return new KeyValuePair<AttachmentPoint, Primitive>(
+                    yield return new KeyValuePair<Primitive, AttachmentPoint>(
+                        primitive,
                         (AttachmentPoint) (((primitive.PrimData.State & 0xF0) >> 4) |
-                                           ((primitive.PrimData.State & ~0xF0) << 4)),
-                        primitive);
+                                           ((primitive.PrimData.State & ~0xF0) << 4))
+                        );
                 }
             }
             Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
@@ -1366,7 +1367,7 @@ namespace Corrade
         /// </summary>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <returns>attachment points by primitives</returns>
-        private static IEnumerable<KeyValuePair<AttachmentPoint, Primitive>> GetAttachments(int millisecondsTimeout)
+        private static IEnumerable<KeyValuePair<Primitive, AttachmentPoint>> GetAttachments(int millisecondsTimeout)
         {
             lock (ServicesLock)
             {
@@ -1433,11 +1434,12 @@ namespace Corrade
         ///     Searches the current inventory for an item by name or UUID and
         ///     returns all the items that match the item name.
         /// </summary>
+        /// <param name="T">the type to search by</param>
         /// <param name="rootFolder">a folder from which to search</param>
-        /// <param name="itemBase">the name  or UUID of the item to be found</param>
+        /// <param name="itemBase">the name, UUID or Regex of the item to be found</param>
         /// <param name="millisecondsTimeout">timeout for the search</param>
         /// <returns>a list of items matching the item name</returns>
-        private static IEnumerable<InventoryBase> lookupFindInventoryBase(InventoryBase rootFolder, string itemBase,
+        private static IEnumerable<InventoryBase> lookupFindInventoryBase<T>(InventoryBase rootFolder, T itemBase,
             int millisecondsTimeout)
         {
             HashSet<InventoryBase> contents =
@@ -1448,8 +1450,16 @@ namespace Corrade
                 InventoryFolder inventoryFolder = inventory as InventoryFolder;
                 if (inventoryFolder != null)
                 {
-                    if (inventoryFolder.Name.Equals(itemBase, StringComparison.Ordinal) ||
-                        inventoryFolder.UUID.ToString().ToLowerInvariant().Equals(itemBase.ToLowerInvariant()))
+                    if (itemBase is Regex && (itemBase as Regex).IsMatch(inventoryFolder.Name))
+                    {
+                        yield return inventoryFolder;
+                    }
+                    if (itemBase is string &&
+                        (itemBase as string).Equals(inventoryFolder.Name, StringComparison.Ordinal))
+                    {
+                        yield return inventoryFolder;
+                    }
+                    if (itemBase is UUID && itemBase.Equals(inventoryFolder.UUID))
                     {
                         yield return inventoryFolder;
                     }
@@ -1457,8 +1467,15 @@ namespace Corrade
                 InventoryItem inventoryItem = inventory as InventoryItem;
                 if (inventoryItem != null)
                 {
-                    if (inventory.Name.Equals(itemBase, StringComparison.Ordinal) ||
-                        inventoryItem.UUID.ToString().ToLowerInvariant().Equals(itemBase.ToLowerInvariant()))
+                    if (itemBase is Regex && (itemBase as Regex).IsMatch(inventoryItem.Name))
+                    {
+                        yield return inventoryItem;
+                    }
+                    if (itemBase is string && (itemBase as string).Equals(inventoryItem.Name, StringComparison.Ordinal))
+                    {
+                        yield return inventoryItem;
+                    }
+                    if (itemBase is UUID && itemBase.Equals(inventoryItem.UUID))
                     {
                         yield return inventoryItem;
                     }
@@ -1473,7 +1490,7 @@ namespace Corrade
             }
         }
 
-        private static IEnumerable<InventoryBase> FindInventoryBase(InventoryBase rootFolder, string itemBase,
+        private static IEnumerable<InventoryBase> FindInventoryBase<T>(InventoryBase rootFolder, T itemBase,
             int millisecondsTimeout)
         {
             lock (InventoryLock)
@@ -1482,122 +1499,90 @@ namespace Corrade
             }
         }
 
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// ///
-        /// <summary>
-        ///     Searches the current inventory for an item by name or UUID and
-        ///     returns all the items that match the item name.
-        /// </summary>
-        /// <param name="rootFolder">a folder from which to search</param>
-        /// <param name="assetExpression">a regular expression to search by</param>
-        /// <param name="assetTypes">the type of the asset to find</param>
-        /// <param name="millisecondsTimeout">timeout for the search</param>
-        /// <returns>a list of items matching the item name</returns>
-        private static IEnumerable<InventoryBase> lookupFindInventoryBase(InventoryBase rootFolder,
-            Regex assetExpression,
-            HashSet<AssetType> assetTypes,
-            int millisecondsTimeout)
-        {
-            HashSet<InventoryBase> contents =
-                new HashSet<InventoryBase>(Client.Inventory.FolderContents(rootFolder.UUID, Client.Self.AgentID,
-                    true, true, InventorySortOrder.ByName, millisecondsTimeout));
-            foreach (InventoryBase inventory in contents)
-            {
-                InventoryFolder inventoryFolder = inventory as InventoryFolder;
-                if (inventoryFolder != null)
-                {
-                    if (assetExpression.IsMatch(inventoryFolder.Name) &&
-                        (assetTypes.Contains(AssetType.Folder) || assetTypes.Contains(AssetType.Unknown)))
-                    {
-                        yield return inventoryFolder;
-                    }
-                }
-                InventoryItem inventoryItem = inventory as InventoryItem;
-                if (inventoryItem != null)
-                {
-                    if (assetExpression.IsMatch(inventory.Name) &&
-                        (assetTypes.Contains(inventoryItem.AssetType) || assetTypes.Contains(AssetType.Unknown)))
-                    {
-                        yield return inventoryItem;
-                    }
-                }
-                if (contents.Count.Equals(0) || inventoryFolder == null)
-                    continue;
-                foreach (
-                    InventoryBase inventoryBase in
-                        FindInventoryBase(inventoryFolder, assetExpression, assetTypes, millisecondsTimeout))
-                {
-                    yield return inventoryBase;
-                }
-            }
-        }
-
-        private static IEnumerable<InventoryBase> FindInventoryBase(InventoryBase rootFolder, Regex assetExpression,
-            HashSet<AssetType> assetTypes,
-            int millisecondsTimeout)
-        {
-            lock (InventoryLock)
-            {
-                return lookupFindInventoryBase(rootFolder, assetExpression, assetTypes, millisecondsTimeout);
-            }
-        }
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// ///
         /// <summary>
-        ///     Searches the current inventory for given asset types.
+        ///     Finds the full path to an inventory item.
         /// </summary>
+        /// <param name="T">the type to search by</param>
         /// <param name="rootFolder">a folder from which to search</param>
-        /// <param name="assetTypes">the type of the asset to find</param>
+        /// <param name="itemBase">the name, UUID or Regex of the item to be found</param>
         /// <param name="millisecondsTimeout">timeout for the search</param>
-        /// <returns>a list of items matching the asset types</returns>
-        private static IEnumerable<InventoryBase> lookupFindInventoryBase(InventoryBase rootFolder,
-            HashSet<AssetType> assetTypes,
-            int millisecondsTimeout)
+        /// <param name="path">an optional path prefix</param>
+        /// <returns>a list of inventory items by full path</returns>
+        private static IEnumerable<KeyValuePair<InventoryBase, LinkedList<string>>> lookupFindInventoryPath<T>(
+            InventoryBase rootFolder, T itemBase,
+            int millisecondsTimeout, LinkedList<string> path)
         {
             HashSet<InventoryBase> contents =
                 new HashSet<InventoryBase>(Client.Inventory.FolderContents(rootFolder.UUID, Client.Self.AgentID,
                     true, true, InventorySortOrder.ByName, millisecondsTimeout));
+
             foreach (InventoryBase inventory in contents)
             {
                 InventoryFolder inventoryFolder = inventory as InventoryFolder;
                 if (inventoryFolder != null)
                 {
-                    if ((assetTypes.Contains(AssetType.Folder) || assetTypes.Contains(AssetType.Unknown)))
+                    if (itemBase is Regex && (itemBase as Regex).IsMatch(inventoryFolder.Name))
                     {
-                        yield return inventoryFolder;
+                        yield return
+                            new KeyValuePair<InventoryBase, LinkedList<string>>(inventory, new LinkedList<string>(
+                                path.OfType<string>().Concat(new[] {inventoryFolder.Name}).Cast<string>()));
+                    }
+                    if (itemBase is string &&
+                        (itemBase as string).Equals(inventoryFolder.Name, StringComparison.Ordinal))
+                    {
+                        yield return
+                            new KeyValuePair<InventoryBase, LinkedList<string>>(inventory, new LinkedList<string>(
+                                path.OfType<string>().Concat(new[] {inventoryFolder.Name}).Cast<string>()));
+                    }
+                    if (itemBase is UUID && itemBase.Equals(inventoryFolder.UUID))
+                    {
+                        yield return
+                            new KeyValuePair<InventoryBase, LinkedList<string>>(inventory, new LinkedList<string>(
+                                path.OfType<string>().Concat(new[] {inventoryFolder.Name}).Cast<string>()));
                     }
                 }
                 InventoryItem inventoryItem = inventory as InventoryItem;
                 if (inventoryItem != null)
                 {
-                    if ((assetTypes.Contains(inventoryItem.AssetType) || assetTypes.Contains(AssetType.Unknown)))
+                    if (itemBase is Regex && (itemBase as Regex).IsMatch(inventoryItem.Name))
                     {
-                        yield return inventoryItem;
+                        yield return new KeyValuePair<InventoryBase, LinkedList<string>>(inventory, path);
+                    }
+                    if (itemBase is string && (itemBase as string).Equals(inventoryItem.Name, StringComparison.Ordinal))
+                    {
+                        yield return new KeyValuePair<InventoryBase, LinkedList<string>>(inventory, path);
+                    }
+                    if (itemBase is UUID && itemBase.Equals(inventoryItem.UUID))
+                    {
+                        yield return new KeyValuePair<InventoryBase, LinkedList<string>>(inventory, path);
                     }
                 }
                 if (contents.Count.Equals(0) || inventoryFolder == null)
                     continue;
+
                 foreach (
-                    InventoryBase inventoryBase in
-                        FindInventoryBase(inventoryFolder, assetTypes, millisecondsTimeout))
+                    KeyValuePair<InventoryBase, LinkedList<string>> o in
+                        FindInventoryPath(inventoryFolder, itemBase, millisecondsTimeout,
+                            new LinkedList<string>(
+                                path.OfType<string>().Concat(new[] {inventoryFolder.Name}).Cast<string>())))
                 {
-                    yield return inventoryBase;
+                    yield return o;
                 }
             }
         }
 
-        private static IEnumerable<InventoryBase> FindInventoryBase(InventoryBase rootFolder,
-            HashSet<AssetType> assetTypes,
-            int millisecondsTimeout)
+        private static IEnumerable<KeyValuePair<InventoryBase, LinkedList<string>>> FindInventoryPath<T>(
+            InventoryBase rootFolder, T itemBase,
+            int millisecondsTimeout, LinkedList<string> path)
         {
             lock (InventoryLock)
             {
-                return lookupFindInventoryBase(rootFolder, assetTypes, millisecondsTimeout);
+                return lookupFindInventoryPath(rootFolder, itemBase, millisecondsTimeout, path);
             }
         }
 
@@ -1610,7 +1595,7 @@ namespace Corrade
         /// <param name="rootFolder">a folder from which to search</param>
         /// <param name="folder">the folder to search for</param>
         /// <param name="millisecondsTimeout">timeout for the search</param>
-        /// <returns>a list of items from folder</returns>
+        /// <returns>a list of items from the folder</returns>
         private static IEnumerable<InventoryItem> lookupGetInventoryFolderContents(InventoryBase rootFolder,
             string folder,
             int millisecondsTimeout)
@@ -1671,7 +1656,7 @@ namespace Corrade
                         StreamWriter logWriter =
                             File.AppendText(Configuration.LOG_FILE))
                     {
-                        logWriter.WriteLine(string.Join(" : ", output.ToArray()));
+                        logWriter.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
                         logWriter.Flush();
                     }
                 }
@@ -1689,17 +1674,18 @@ namespace Corrade
                 switch (Environment.OSVersion.Platform)
                 {
                     case PlatformID.Win32NT:
-                        CorradeLog.WriteEntry(string.Join(" : ", output.ToArray()), EventLogEntryType.Information);
+                        CorradeLog.WriteEntry(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()),
+                            EventLogEntryType.Information);
                         break;
                     case PlatformID.Unix:
                         Syscall.syslog(SyslogFacility.LOG_DAEMON, SyslogLevel.LOG_INFO,
-                            string.Join(" : ", output.ToArray()));
+                            string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
                         break;
                 }
                 return;
             }
 
-            Console.WriteLine(string.Join(" : ", output.ToArray()));
+            Console.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
         }
 
         /// <summary>
@@ -2945,16 +2931,16 @@ namespace Corrade
             if (string.IsNullOrEmpty(e.Message)) return;
             switch (e.Type)
             {
-                case ChatType.Debug:
-                case ChatType.Normal:
                 case ChatType.OwnerSay:
                     // MOVEME
                     if (!e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR))
                     {
                         break;
                     }
-                    HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1));
+                    HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1), e.SourceID);
                     break;
+                case ChatType.Debug:
+                case ChatType.Normal:
                 case ChatType.Shout:
                 case ChatType.Whisper:
                     // Send chat notifications.
@@ -3355,7 +3341,7 @@ namespace Corrade
             HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString());
         }
 
-        private static void HandleRLVCommand(string message)
+        private static void HandleRLVCommand(string message, UUID senderUUID)
         {
             if (string.IsNullOrEmpty(message)) return;
 
@@ -3370,13 +3356,13 @@ namespace Corrade
 
             Match match = RLVRegex.Match(first);
             if (!match.Success) goto CONTINUE;
-            string command = match.Groups["command"].ToString().ToLowerInvariant();
-            string option = match.Groups["option"].ToString().ToLowerInvariant();
-            string param = match.Groups["param"].ToString().ToLowerInvariant();
+            string behaviour = match.Groups["behaviour"].ToString().ToLowerInvariant();
+            string option = match.Groups["option"].ToString();
+            string param = match.Groups["param"].ToString();
 
             System.Action execute;
 
-            switch (wasGetEnumValueFromDescription<RLVCommands>(command))
+            switch (wasGetEnumValueFromDescription<RLVCommands>(behaviour))
             {
                 case RLVCommands.VERSION:
                 case RLVCommands.VERSIONNEW:
@@ -3620,8 +3606,7 @@ namespace Corrade
                             return;
                         }
                         HashSet<Primitive> attachments = new HashSet<Primitive>(
-                            Client.Network.CurrentSim.ObjectsPrimitives.FindAll(
-                                o => o.ParentID.Equals(Client.Self.LocalID)));
+                            GetAttachments(Configuration.SERVICES_TIMEOUT).Select(o => o.Key));
                         StringBuilder response = new StringBuilder();
                         if (attachments.Count.Equals(0))
                         {
@@ -3658,6 +3643,36 @@ namespace Corrade
                         Client.Self.Chat(response.ToString(), channel, ChatType.Normal);
                     };
                     break;
+                case RLVCommands.DETACHME:
+                    execute = () =>
+                    {
+                        if (!param.Equals(RLV_CONSTANTS.FORCE))
+                        {
+                            return;
+                        }
+                        KeyValuePair<Primitive, AttachmentPoint> attachment =
+                            GetAttachments(Configuration.SERVICES_TIMEOUT)
+                                .FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
+                        if (attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
+                        {
+                            return;
+                        }
+                        InventoryBase inventoryBase =
+                            FindInventoryBase(Client.Inventory.Store.RootFolder,
+                                attachment.Key.Properties.ItemID,
+                                Configuration.SERVICES_TIMEOUT)
+                                .FirstOrDefault(
+                                    p =>
+                                        (p is InventoryItem) &&
+                                        ((InventoryItem) p).AssetType.Equals(AssetType.Object));
+                        InventoryItem inventoryItem = inventoryBase as InventoryItem;
+                        if (inventoryItem == null)
+                        {
+                            return;
+                        }
+                        Detach(inventoryItem, Configuration.SERVICES_TIMEOUT);
+                    };
+                    break;
                 case RLVCommands.REMATTACH:
                 case RLVCommands.DETACH:
                     execute = () =>
@@ -3666,27 +3681,26 @@ namespace Corrade
                         {
                             return;
                         }
-                        InventoryBase inventoryBaseItem;
+                        InventoryBase inventoryBase;
                         InventoryItem inventoryItem;
                         switch (!string.IsNullOrEmpty(option))
                         {
                             case true:
-                                // FIXME
                                 RLVAttachment RLVattachment = RLVAttachments.FirstOrDefault(o => o.Name.Equals(option));
                                 switch (!RLVattachment.Name.Equals(option))
                                 {
                                     case true:
                                         Parallel.ForEach(GetAttachments(Configuration.SERVICES_TIMEOUT), o =>
                                         {
-                                            inventoryBaseItem =
+                                            inventoryBase =
                                                 FindInventoryBase(Client.Inventory.Store.RootFolder,
-                                                    o.Value.Properties.Name,
+                                                    o.Key.Properties.Name,
                                                     Configuration.SERVICES_TIMEOUT)
                                                     .FirstOrDefault(
                                                         p =>
                                                             (p is InventoryItem) &&
                                                             ((InventoryItem) p).AssetType.Equals(AssetType.Object));
-                                            inventoryItem = inventoryBaseItem as InventoryItem;
+                                            inventoryItem = inventoryBase as InventoryItem;
                                             if (inventoryItem == null)
                                             {
                                                 return;
@@ -3695,22 +3709,22 @@ namespace Corrade
                                         });
                                         break;
                                     default:
-                                        Primitive attachment =
+                                        KeyValuePair<Primitive, AttachmentPoint> attachment =
                                             GetAttachments(Configuration.SERVICES_TIMEOUT)
-                                                .FirstOrDefault(o => o.Key.Equals(RLVattachment.AttachmentPoint)).Value;
-                                        if (attachment == null)
+                                                .FirstOrDefault(o => o.Value.Equals(RLVattachment.AttachmentPoint));
+                                        if (attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                                         {
                                             break;
                                         }
-                                        inventoryBaseItem =
+                                        inventoryBase =
                                             FindInventoryBase(Client.Inventory.Store.RootFolder,
-                                                attachment.Properties.Name,
+                                                attachment.Key.Properties.Name,
                                                 Configuration.SERVICES_TIMEOUT)
                                                 .FirstOrDefault(
                                                     p =>
                                                         (p is InventoryItem) &&
                                                         ((InventoryItem) p).AssetType.Equals(AssetType.Object));
-                                        inventoryItem = inventoryBaseItem as InventoryItem;
+                                        inventoryItem = inventoryBase as InventoryItem;
                                         if (inventoryItem == null)
                                         {
                                             break;
@@ -3722,21 +3736,21 @@ namespace Corrade
                             default:
                                 HashSet<Primitive> attachments =
                                     new HashSet<Primitive>(
-                                        GetAttachments(Configuration.SERVICES_TIMEOUT).Select(o => o.Value));
+                                        GetAttachments(Configuration.SERVICES_TIMEOUT).Select(o => o.Key));
                                 Parallel.ForEach(attachments, o =>
                                 {
-                                    inventoryBaseItem = FindInventoryBase(
+                                    inventoryBase = FindInventoryBase(
                                         Client.Inventory.Store.RootFolder, option,
                                         Configuration.SERVICES_TIMEOUT)
                                         .FirstOrDefault(
                                             p =>
                                                 (p is InventoryItem) &&
                                                 ((InventoryItem) p).AssetType.Equals(AssetType.Object));
-                                    if (inventoryBaseItem == null)
+                                    if (inventoryBase == null)
                                     {
                                         return;
                                     }
-                                    inventoryItem = inventoryBaseItem as InventoryItem;
+                                    inventoryItem = inventoryBase as InventoryItem;
                                     if (inventoryItem == null)
                                     {
                                         return;
@@ -3849,6 +3863,162 @@ namespace Corrade
                         }
                     };
                     break;
+                case RLVCommands.GETPATHNEW:
+                case RLVCommands.GETPATH:
+                    execute = () =>
+                    {
+                        int channel;
+                        if (!int.TryParse(param, out channel) || channel < 1)
+                        {
+                            return;
+                        }
+                        // Find RLV folder
+                        InventoryBase RLVFolder = FindInventoryBase(Client.Inventory.Store.RootFolder,
+                            RLV_CONSTANTS.RLV_FOLDER,
+                            Configuration.SERVICES_TIMEOUT).FirstOrDefault(o => (o is InventoryFolder));
+                        if (RLVFolder == null)
+                        {
+                            return;
+                        }
+                        // General variables
+                        InventoryBase inventoryBase = null;
+                        KeyValuePair<Primitive, AttachmentPoint> attachment;
+                        switch (!string.IsNullOrEmpty(option))
+                        {
+                            case true:
+                                // Try attachments
+                                RLVAttachment RLVattachment = RLVAttachments.FirstOrDefault(o => o.Name.Equals(option));
+                                if (!RLVattachment.Equals(default(RLVAttachment)))
+                                {
+                                    attachment =
+                                        GetAttachments(Configuration.SERVICES_TIMEOUT)
+                                            .FirstOrDefault(o => o.Value.Equals(RLVattachment.AttachmentPoint));
+                                    if (attachment.Equals(default(KeyValuePair<AttachmentPoint, Primitive>)))
+                                    {
+                                        return;
+                                    }
+                                    inventoryBase = FindInventoryBase(
+                                        RLVFolder, option,
+                                        Configuration.SERVICES_TIMEOUT)
+                                        .FirstOrDefault(
+                                            p =>
+                                                (p is InventoryItem) &&
+                                                ((InventoryItem) p).AssetType.Equals(AssetType.Object));
+                                    break;
+                                }
+                                RLVWearable RLVwearable = RLVWearables.FirstOrDefault(o => o.Name.Equals(option));
+                                if (!RLVwearable.Equals(default(RLVWearable)))
+                                {
+                                    FieldInfo wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
+                                                                                             BindingFlags.Static)
+                                        .FirstOrDefault(
+                                            p => p.Name.ToLowerInvariant().Equals(option, StringComparison.Ordinal));
+                                    if (wearTypeInfo == null)
+                                    {
+                                        return;
+                                    }
+                                    inventoryBase =
+                                        FindInventoryBase(RLVFolder,
+                                            GetWearables(RLVFolder,
+                                                Configuration.SERVICES_TIMEOUT)
+                                                .FirstOrDefault(
+                                                    o => o.Key.Equals((WearableType) wearTypeInfo.GetValue(null)))
+                                                .Value,
+                                            Configuration.SERVICES_TIMEOUT)
+                                            .FirstOrDefault(o => (o is InventoryWearable));
+                                }
+                                break;
+                            default:
+                                attachment =
+                                    GetAttachments(Configuration.SERVICES_TIMEOUT)
+                                        .FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
+                                if (attachment.Equals(default(KeyValuePair<AttachmentPoint, Primitive>)))
+                                {
+                                    return;
+                                }
+                                inventoryBase = FindInventoryBase(
+                                    Client.Inventory.Store.RootFolder, attachment.Key.Properties.ItemID,
+                                    Configuration.SERVICES_TIMEOUT)
+                                    .FirstOrDefault(
+                                        p =>
+                                            (p is InventoryItem) &&
+                                            ((InventoryItem) p).AssetType.Equals(AssetType.Object));
+                                break;
+                        }
+                        if (inventoryBase == null)
+                        {
+                            return;
+                        }
+                        KeyValuePair<InventoryBase, LinkedList<string>> path =
+                            FindInventoryPath(RLVFolder, inventoryBase.Name, Configuration.SERVICES_TIMEOUT,
+                                new LinkedList<string>()).FirstOrDefault();
+                        if (path.Equals(default(KeyValuePair<InventoryBase, LinkedList<string>>)))
+                        {
+                            return;
+                        }
+                        Client.Self.Chat(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR, path.Value.ToArray()), channel,
+                            ChatType.Normal);
+                    };
+                    break;
+                case RLVCommands.FINDFOLDER:
+                    execute = () =>
+                    {
+                        int channel;
+                        if (!int.TryParse(param, out channel) || channel < 1)
+                        {
+                            return;
+                        }
+                        if (string.IsNullOrEmpty(option))
+                        {
+                            return;
+                        }
+                        InventoryBase RLVFolder = FindInventoryBase(Client.Inventory.Store.RootFolder,
+                            RLV_CONSTANTS.RLV_FOLDER,
+                            Configuration.SERVICES_TIMEOUT).FirstOrDefault(o => (o is InventoryFolder));
+                        if (RLVFolder == null)
+                        {
+                            return;
+                        }
+                        List<string> folders = new List<string>();
+                        HashSet<string> parts =
+                            new HashSet<string>(option.Split(RLV_CONSTANTS.AND_OPERATOR.ToCharArray()));
+                        object LockObject = new object();
+                        Parallel.ForEach(FindInventoryPath(RLVFolder,
+                            new Regex(".+?", RegexOptions.Compiled), Configuration.SERVICES_TIMEOUT,
+                            new LinkedList<string>())
+                            .Where(
+                                o =>
+                                    o.Key is InventoryFolder &&
+                                    !o.Key.Name.Substring(1).Equals(RLV_CONSTANTS.DOT_MARKER) &&
+                                    !o.Key.Name.Substring(1).Equals(RLV_CONSTANTS.TILDE_MARKER)), o =>
+                                    {
+                                        int count = 0;
+                                        Parallel.ForEach(parts, p =>
+                                        {
+                                            Parallel.ForEach(o.Value, q =>
+                                            {
+                                                if (q.Contains(p))
+                                                {
+                                                    Interlocked.Increment(ref count);
+                                                }
+                                            });
+                                        });
+                                        if (count.Equals(parts.Count))
+                                        {
+                                            lock (LockObject)
+                                            {
+                                                folders.Add(o.Key.Name);
+                                            }
+                                        }
+                                    });
+                        if (!folders.Count.Equals(0))
+                        {
+                            Client.Self.Chat(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR, folders.ToArray()),
+                                channel,
+                                ChatType.Normal);
+                        }
+                    };
+                    break;
                 case RLVCommands.GETINV:
                     execute = () =>
                     {
@@ -3889,7 +4059,7 @@ namespace Corrade
                                 new HashSet<AssetType> {AssetType.Folder},
                                 Configuration.SERVICES_TIMEOUT), o =>
                                 {
-                                    if (o.Name.StartsWith(RLV_CONSTANTS.IGNORE_ITEM_MARKER)) return;
+                                    if (o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)) return;
                                     csv.Add(o.Name);
                                 });
                         Client.Self.Chat(string.Join(RLV_CONSTANTS.CSV_DELIMITER, csv.ToArray()), channel,
@@ -3900,7 +4070,9 @@ namespace Corrade
                     execute =
                         () =>
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ConsoleError.COMMAND_NOT_IMPLEMENTED));
+                            throw new Exception(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR,
+                                new[]
+                                {wasGetDescriptionFromEnumValue(ConsoleError.BEHAVIOUR_NOT_IMPLEMENTED), behaviour}));
                         };
                     break;
             }
@@ -3915,7 +4087,7 @@ namespace Corrade
             }
 
             CONTINUE:
-            HandleRLVCommand(message);
+            HandleRLVCommand(message, senderUUID);
         }
 
         private static Dictionary<string, string> HandleCorradeCommand(string message, string sender, string identifier)
@@ -4262,7 +4434,7 @@ namespace Corrade
                         });
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.INVITES),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -4650,7 +4822,7 @@ namespace Corrade
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.ROLES),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -4704,7 +4876,7 @@ namespace Corrade
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.MEMBERS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -4780,7 +4952,7 @@ namespace Corrade
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.ROLES),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -4849,7 +5021,7 @@ namespace Corrade
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.MEMBERS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -4910,7 +5082,7 @@ namespace Corrade
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.MEMBERS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -4978,7 +5150,7 @@ namespace Corrade
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.POWERS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -5479,7 +5651,7 @@ namespace Corrade
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE));
                         }
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.BALANCE),
+                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                             Client.Self.Balance.ToString(CultureInfo.InvariantCulture));
                     };
                     break;
@@ -5915,7 +6087,7 @@ namespace Corrade
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.LIST),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     csv.ToArray()));
                         }
@@ -6978,7 +7150,7 @@ namespace Corrade
                                 }).SelectMany(o => o));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.WEARABLES),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -7067,12 +7239,12 @@ namespace Corrade
                         List<string> attachments = GetAttachments(
                             Configuration.SERVICES_TIMEOUT).Select(o => new[]
                             {
-                                o.Key.ToString(),
-                                o.Value.Properties.Name
+                                o.Value.ToString(),
+                                o.Key.Properties.Name
                             }).SelectMany(o => o).ToList();
                         if (!attachments.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.ATTACHMENTS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, attachments.ToArray()));
                         }
                     };
@@ -7458,7 +7630,7 @@ namespace Corrade
                                     new[] {p.Key, p.Value.ToString(CultureInfo.InvariantCulture)})));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.OWNERS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()
                                     ));
@@ -7647,7 +7819,7 @@ namespace Corrade
                         Client.Network.CurrentSim.Parcels.ForEach(o => csv.AddRange(new[] {o.AABBMin, o.AABBMax}));
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.PLOTS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     csv.Select(o => o.ToString()).ToArray()));
                         }
@@ -8398,7 +8570,7 @@ namespace Corrade
                             }
                             Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
                         }
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.RUNNING), running.ToString());
+                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), running.ToString());
                     };
                     break;
                 case ScriptKeys.GETPRIMITIVEINVENTORY:
@@ -8438,7 +8610,7 @@ namespace Corrade
                                 }).SelectMany(o => o));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.INVENTORY),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -8655,10 +8827,6 @@ namespace Corrade
                                 typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                 q => assetTypes.Add((AssetType) q.GetValue(null))));
-                        if (assetTypes.Count.Equals(0))
-                        {
-                            assetTypes.Add(AssetType.Unknown);
-                        }
                         string pattern =
                             wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.PATTERN),
                                 message));
@@ -8677,22 +8845,71 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION));
                         }
                         List<string> csv = new List<string>();
-                        foreach (
-                            InventoryBase item in
-                                FindInventoryBase(Client.Inventory.Store.RootFolder, search, assetTypes,
-                                    Configuration.SERVICES_TIMEOUT))
-                        {
-                            InventoryItem inventoryItem = item as InventoryItem;
-                            if (inventoryItem == null) continue;
-                            csv.Add(Enum.GetName(typeof (AssetType), inventoryItem.AssetType));
-                            csv.Add(item.Name);
-                        }
+                        object LockObject = new object();
+                        Parallel.ForEach(FindInventoryBase(Client.Inventory.Store.RootFolder, search,
+                            Configuration.SERVICES_TIMEOUT),
+                            o =>
+                            {
+                                InventoryItem inventoryItem = o as InventoryItem;
+                                if (inventoryItem == null) return;
+                                if (!assetTypes.Count.Equals(0) && !assetTypes.Contains(inventoryItem.AssetType))
+                                    return;
+                                lock (LockObject)
+                                {
+                                    csv.Add(Enum.GetName(typeof (AssetType), inventoryItem.AssetType));
+                                    csv.Add(inventoryItem.Name);
+                                    csv.Add(inventoryItem.AssetUUID.ToString());
+                                }
+                            });
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.INVENTORY),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     csv.ToArray()));
                         }
+                    };
+                    break;
+                case ScriptKeys.GETINVENTORYPATH:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        HashSet<AssetType> assetTypes = new HashSet<AssetType>();
+                        Parallel.ForEach(
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
+                                message))
+                                .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
+                            o => Parallel.ForEach(
+                                typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                    .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                q => assetTypes.Add((AssetType) q.GetValue(null))));
+                        string pattern =
+                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.PATTERN),
+                                message));
+                        if (string.IsNullOrEmpty(pattern))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_PATTERN_PROVIDED));
+                        }
+                        Regex search;
+                        try
+                        {
+                            search = new Regex(pattern, RegexOptions.Compiled);
+                        }
+                        catch
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION));
+                        }
+                        List<string> csv = new List<string>();
+                        Parallel.ForEach(FindInventoryPath(Client.Inventory.Store.RootFolder,
+                            search, Configuration.SERVICES_TIMEOUT, new LinkedList<string>()).Select(o => o.Value),
+                            o => { csv.Add(string.Join("/", o.ToArray())); });
+                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                csv.ToArray()));
                     };
                     break;
                 case ScriptKeys.GETPARTICLESYSTEM:
@@ -8844,7 +9061,7 @@ namespace Corrade
                         particleSystem.Append("PSYS_SRC_TEXTURE, (key)\"" + primitive.ParticleSys.Texture + "\"" +
                                               LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
                         particleSystem.Append("PSYS_SRC_TARGET_KEY, (key)\"" + primitive.ParticleSys.Target + "\"");
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.PARTICLESYSTEM), particleSystem.ToString());
+                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), particleSystem.ToString());
                     };
                     break;
                 case ScriptKeys.CREATENOTECARD:
@@ -9304,7 +9521,7 @@ namespace Corrade
                         }).SelectMany(o => o));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.MUTES),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -9531,7 +9748,7 @@ namespace Corrade
                                                  (uint) wasGetEnumValueFromDescription<Notifications>(o)).Equals(0))));
                                 if (!data.Count.Equals(0))
                                 {
-                                    result.Add(wasGetDescriptionFromEnumValue(ResultKeys.NOTIFICATIONS),
+                                    result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                         string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                             data.ToArray()));
                                 }
@@ -9605,7 +9822,7 @@ namespace Corrade
                         });
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.LURES),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -9683,7 +9900,7 @@ namespace Corrade
                         });
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.PERMISSIONS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -9765,7 +9982,7 @@ namespace Corrade
                         });
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DIALOGS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -9859,7 +10076,7 @@ namespace Corrade
                                 }));
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.ANIMATIONS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -10031,7 +10248,7 @@ namespace Corrade
                         }).SelectMany(o => o));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.TOP),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, data.ToArray()));
                         }
                     };
@@ -10325,7 +10542,7 @@ namespace Corrade
                             List<string> data = new List<string>(estateList.ConvertAll(o => o.ToString()));
                             if (!data.Count.Equals(0))
                             {
-                                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.LIST),
+                                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                     string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                         data.ToArray()));
                             }
@@ -10488,7 +10705,7 @@ namespace Corrade
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.PRIMITIVES),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -10555,7 +10772,7 @@ namespace Corrade
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.POSITIONS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -10611,7 +10828,7 @@ namespace Corrade
                             }).SelectMany(o => o));
                         if (!data.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.AVATARS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     data.ToArray()));
                         }
@@ -10660,7 +10877,7 @@ namespace Corrade
                                         message)).ToLowerInvariant()))
                         {
                             case Action.GET:
-                                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DISPLAYNAME), previous);
+                                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), previous);
                                 break;
                             case Action.SET:
                                 string name =
@@ -10729,7 +10946,7 @@ namespace Corrade
                         });
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.OFFERS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -10824,7 +11041,7 @@ namespace Corrade
                         });
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.FRIENDS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -10849,7 +11066,7 @@ namespace Corrade
                         });
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.REQUESTS),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -11854,11 +12071,11 @@ namespace Corrade
                         }
                         if (StdEvent[0].WaitOne(Configuration.SERVICES_TIMEOUT) && !stdout.Length.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.OUTPUT), stdout.ToString());
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), stdout.ToString());
                         }
                         if (StdEvent[1].WaitOne(Configuration.SERVICES_TIMEOUT) && !stderr.Length.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.ERROR), stderr.ToString());
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), stderr.ToString());
                         }
                     };
                     break;
@@ -11920,7 +12137,7 @@ namespace Corrade
                     };
                     break;
                 case ScriptKeys.VERSION:
-                    execute = () => result.Add(wasGetDescriptionFromEnumValue(ResultKeys.VERSION), CORRADE_VERSION);
+                    execute = () => result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), CORRADE_VERSION);
                     break;
                 case ScriptKeys.DIRECTORYSEARCH:
                     execute = () =>
@@ -12317,7 +12534,7 @@ namespace Corrade
                         }
                         if (!csv.Count.Equals(0))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.SEARCH),
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
                         }
                     };
@@ -13114,6 +13331,7 @@ namespace Corrade
         /// </summary>
         public enum Action : uint
         {
+            [Description("none")] NONE = 0,
             [Description("get")] GET,
             [Description("set")] SET,
             [Description("add")] ADD,
@@ -13178,6 +13396,8 @@ namespace Corrade
             public const string INVENTORY_CACHE_FILE = @"Inventory.cache";
             public const string AGENT_CACHE_FILE = @"Agent.cache";
             public const string GROUP_CACHE_FILE = @"Group.cache";
+            public const string PATH_SEPARATOR = @"/";
+            public const string ERROR_SEPARATOR = @" : ";
 
             public struct HTTP_CODES
             {
@@ -13200,15 +13420,17 @@ namespace Corrade
             public const string FALSE_MARKER = @"0";
             public const string TRUE_MARKER = @"1";
             public const string CSV_DELIMITER = @",";
-            public const string IGNORE_ITEM_MARKER = @".";
+            public const string DOT_MARKER = @".";
+            public const string TILDE_MARKER = @"~";
             public const string PROPORTION_SEPARATOR = @"|";
             public const string RLV_FOLDER = @"#RLV";
+            public const string AND_OPERATOR = @"&&";
         }
 
         /// <summary>
         ///     Regex used to match RLV commands.
         /// </summary>
-        private static readonly Regex RLVRegex = new Regex(@"(?<command>[^:=]+)(:(?<option>[^=]*))?=(?<param>\w+)",
+        private static readonly Regex RLVRegex = new Regex(@"(?<behaviour>[^:=]+)(:(?<option>[^=]*))?=(?<param>\w+)",
             RegexOptions.Compiled);
 
         /// <summary>
@@ -13305,6 +13527,7 @@ namespace Corrade
         /// </summary>
         private enum RLVCommands : uint
         {
+            [Description("none")] NONE = 0,
             [Description("version")] VERSION,
             [Description("versionnew")] VERSIONNEW,
             [Description("versionnum")] VERSIONNUM,
@@ -13321,12 +13544,16 @@ namespace Corrade
             [Description("getattach")] GETATTACH,
             [Description("remattach")] REMATTACH,
             [Description("detach")] DETACH,
+            [Description("detachme")] DETACHME,
             [Description("remoutfit")] REMOUTFIT,
             [Description("attach")] ATTACH,
             [Description("attachoverreplace")] ATTACHOVERORREPLACE,
             [Description("attachover")] ATTACHOVER,
             [Description("getinv")] GETINV,
-            [Description("getinvworn")] GETINVWORN
+            [Description("getinvworn")] GETINVWORN,
+            [Description("getpath")] GETPATH,
+            [Description("getpathnew")] GETPATHNEW,
+            [Description("findfolder")] FINDFOLDER
         }
 
         #endregion
@@ -13577,7 +13804,7 @@ namespace Corrade
                                 case ConfigurationKeys.GROUP_CREATE_FEE:
                                     if (!int.TryParse(client.InnerText, out GROUP_CREATE_FEE))
                                     {
-                                        throw new Exception("error in client section");
+                                        throw new Exception("err r in client section");
                                     }
                                     break;
                                 case ConfigurationKeys.AUTO_ACTIVATE_GROUP:
@@ -14056,6 +14283,7 @@ namespace Corrade
         /// </summary>
         private enum ConsoleError
         {
+            [Description("none")] NONE = 0,
             [Description("access denied")] ACCESS_DENIED = 1,
             [Description("invalid configuration file")] INVALID_CONFIGURATION_FILE,
             [Description("the Terms of Service (TOS) have not been accepted, please check your configuration file")] TOS_NOT_ACCEPTED,
@@ -14089,7 +14317,7 @@ namespace Corrade
             [Description("unable to load Corrade cache")] UNABLE_TO_LOAD_CORRADE_CACHE,
             [Description("unable to save Corrade cache")] UNABLE_TO_SAVE_CORRADE_CACHE,
             [Description("failed to execute RLV command")] FAILED_TO_EXECUTE_RLV_COMMAND,
-            [Description("command not implemented")] COMMAND_NOT_IMPLEMENTED
+            [Description("behaviour not implemented")] BEHAVIOUR_NOT_IMPLEMENTED
         }
 
         /// <summary>
@@ -14097,6 +14325,7 @@ namespace Corrade
         /// </summary>
         private enum Direction : uint
         {
+            [Description("none")] NONE = 0,
             [Description("back")] BACK,
             [Description("forward")] FORWARD,
             [Description("left")] LEFT,
@@ -14110,6 +14339,7 @@ namespace Corrade
         /// </summary>
         private enum Entity : uint
         {
+            [Description("none")] NONE = 0,
             [Description("avatar")] AVATAR,
             [Description("local")] LOCAL,
             [Description("group")] GROUP,
@@ -14317,39 +14547,10 @@ namespace Corrade
         /// </summary>
         private enum ResultKeys : uint
         {
-            [Description("dialogs")] DIALOGS,
-            [Description("permissions")] PERMISSIONS,
-            [Description("lures")] LURES,
-            [Description("invites")] INVITES,
-            [Description("output")] OUTPUT,
-            [Description("plots")] PLOTS,
-            [Description("version")] VERSION,
-            [Description("positions")] POSITIONS,
-            [Description("primitives")] PRIMITIVES,
-            [Description("avatars")] AVATARS,
-            [Description("requests")] REQUESTS,
-            [Description("friends")] FRIENDS,
-            [Description("displayname")] DISPLAYNAME,
-            [Description("inventory")] INVENTORY,
-            [Description("running")] RUNNING,
-            [Description("particlesystem")] PARTICLESYSTEM,
-            [Description("search")] SEARCH,
-            [Description("list")] LIST,
-            [Description("top")] TOP,
-            [Description("animations")] ANIMATIONS,
+            [Description("none")] NONE = 0,
             [Description("data")] DATA,
-            [Description("attachments")] ATTACHMENTS,
-            [Description("roles")] ROLES,
-            [Description("members")] MEMBERS,
-            [Description("powers")] POWERS,
-            [Description("balance")] BALANCE,
-            [Description("owners")] OWNERS,
-            [Description("error")] ERROR,
             [Description("success")] SUCCESS,
-            [Description("mutes")] MUTES,
-            [Description("notifications")] NOTIFICATIONS,
-            [Description("wearables")] WEARABLES,
-            [Description("offers")] OFFERS
+            [Description("error")] ERROR
         }
 
         /// <summary>
@@ -14370,6 +14571,7 @@ namespace Corrade
         /// </summary>
         private enum ScriptError
         {
+            [Description("none")] NONE = 0,
             [Description("could not join group")] COULD_NOT_JOIN_GROUP,
             [Description("could not leave group")] COULD_NOT_LEAVE_GROUP,
             [Description("agent not found")] AGENT_NOT_FOUND,
@@ -14518,7 +14720,8 @@ namespace Corrade
             [Description("no executable file provided")] NO_EXECUTABLE_FILE_PROVIDED,
             [Description("timeout waiting for execution")] TIMEOUT_WAITING_FOR_EXECUTION,
             [Description("unknown group invite session")] UNKNOWN_GROUP_INVITE_SESSION,
-            [Description("unable to obtain money balance")] UNABLE_TO_OBTAIN_MONEY_BALANCE
+            [Description("unable to obtain money balance")] UNABLE_TO_OBTAIN_MONEY_BALANCE,
+            [Description("no item found")] NO_ITEM_FOUND
         }
 
         /// <summary>
@@ -14526,8 +14729,10 @@ namespace Corrade
         /// </summary>
         private enum ScriptKeys : uint
         {
-            [Description("COMMITTED")] COMMITTED,
-            [Description("CREDIT")] CREDIT,
+            [Description("none")] NONE = 0,
+            [Description("getinventorypath")] GETINVENTORYPATH,
+            [Description("committed")] COMMITTED,
+            [Description("credit")] CREDIT,
             [Description("success")] SUCCESS,
             [Description("transaction")] TRANSACTION,
             [Description("getscriptdialogs")] GETSCRIPTDIALOGS,
@@ -14775,6 +14980,7 @@ namespace Corrade
         /// </summary>
         private enum Type : uint
         {
+            [Description("none")] NONE = 0,
             [Description("text")] TEXT,
             [Description("voice")] VOICE,
             [Description("scripts")] SCRIPTS,
