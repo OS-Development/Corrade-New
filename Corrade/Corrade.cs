@@ -79,7 +79,9 @@ namespace Corrade
             [Description("update")] UPDATE,
             [Description("received")] RECEIVED,
             [Description("joined")] JOINED,
-            [Description("parted")] PARTED
+            [Description("parted")] PARTED,
+            [Description("save")] SAVE,
+            [Description("load")] LOAD
         }
 
         /// <summary>
@@ -195,7 +197,9 @@ namespace Corrade
             int itemsLoaded;
             lock (InventoryCacheLock)
             {
-                itemsLoaded = Client.Inventory.Store.RestoreFromDisk(CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
+                itemsLoaded =
+                    Client.Inventory.Store.RestoreFromDisk(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                        CORRADE_CONSTANTS.INVENTORY_CACHE_FILE));
             }
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_LOADED),
                 itemsLoaded < 0 ? "0" : itemsLoaded.ToString(CultureInfo.InvariantCulture));
@@ -205,7 +209,6 @@ namespace Corrade
         {
             Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
             inventoryFolders.Enqueue(Client.Inventory.Store.RootFolder);
-            int itemsSaved = 0;
             do
             {
                 InventoryFolder currentFolder = inventoryFolders.Dequeue();
@@ -216,7 +219,6 @@ namespace Corrade
                     if (!args.FolderID.Equals(currentFolder.UUID)) return;
                     Parallel.ForEach(Client.Inventory.Store.GetContents(currentFolder.UUID), o =>
                     {
-                        Interlocked.Increment(ref itemsSaved);
                         InventoryFolder addFolder = o as InventoryFolder;
                         if (addFolder != null)
                         {
@@ -237,7 +239,14 @@ namespace Corrade
 
             lock (InventoryCacheLock)
             {
-                Client.Inventory.Store.SaveToDisk(CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
+                string path = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                    CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
+                int itemsSaved = 0;
+                if (!string.IsNullOrEmpty(path))
+                {
+                    itemsSaved = Client.Inventory.Store.Items.Count;
+                    Client.Inventory.Store.SaveToDisk(path);
+                }
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_SAVED),
                     itemsSaved.ToString(CultureInfo.InvariantCulture));
             }
@@ -247,11 +256,15 @@ namespace Corrade
         {
             lock (Cache.Locks.AgentCacheLock)
             {
-                Cache.AgentCache = Cache.Load(CORRADE_CONSTANTS.AGENT_CACHE_FILE, Cache.AgentCache);
+                Cache.AgentCache =
+                    Cache.Load(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
+                        Cache.AgentCache);
             }
             lock (Cache.Locks.GroupCacheLock)
             {
-                Cache.GroupCache = Cache.Load(CORRADE_CONSTANTS.GROUP_CACHE_FILE, Cache.GroupCache);
+                Cache.GroupCache =
+                    Cache.Load(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
+                        Cache.GroupCache);
             }
         };
 
@@ -259,11 +272,13 @@ namespace Corrade
         {
             lock (Cache.Locks.AgentCacheLock)
             {
-                Cache.Save(CORRADE_CONSTANTS.AGENT_CACHE_FILE, Cache.AgentCache);
+                Cache.Save(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
+                    Cache.AgentCache);
             }
             lock (Cache.Locks.GroupCacheLock)
             {
-                Cache.Save(CORRADE_CONSTANTS.GROUP_CACHE_FILE, Cache.GroupCache);
+                Cache.Save(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
+                    Cache.GroupCache);
             }
         };
 
@@ -873,7 +888,7 @@ namespace Corrade
                 UUID UUIDData;
                 if (!UUID.TryParse(setting, out UUIDData))
                 {
-                    InventoryItem item = FindInventoryBase(Client.Inventory.Store.RootNode,
+                    InventoryItem item = FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                         setting).FirstOrDefault() as InventoryItem;
                     if (item == null)
                     {
@@ -1461,35 +1476,41 @@ namespace Corrade
         /// ///
         /// <summary>
         ///     Fetches items by searching the inventory starting with an inventory
-        ///     node for the criteria:
-        ///     - name where T : string
-        ///     - name where T : Regex
-        ///     - UUID where T : UUID
+        ///     node where the search criteria finds:
+        ///     - name as string
+        ///     - name as Regex
+        ///     - UUID as UUID
         /// </summary>
         /// <param name="root">the node to start the search from</param>
         /// <param name="criteria">the name, UUID or Regex of the item to be found</param>
         /// <returns>a list of items matching the item name</returns>
-        private static IEnumerable<InventoryBase> lookupFindInventoryBase<T>(InventoryNode root, T criteria)
+        private static IEnumerable<T> lookupFindInventory<T>(InventoryNode root, object criteria)
         {
             if ((criteria is Regex && (criteria as Regex).IsMatch(root.Data.Name)) ||
                 (criteria is string &&
                  (criteria as string).Equals(root.Data.Name, StringComparison.Ordinal)) ||
                 (criteria is UUID && criteria.Equals(root.Data.UUID)))
             {
-                yield return Client.Inventory.Store[root.Data.UUID];
+                if (typeof (T) == typeof (InventoryNode))
+                {
+                    yield return (T) (object) root;
+                }
+                if (typeof (T) == typeof (InventoryBase))
+                {
+                    yield return (T) (object) Client.Inventory.Store[root.Data.UUID];
+                }
             }
-            foreach (
-                InventoryBase inventoryBase in root.Nodes.Values.SelectMany(o => lookupFindInventoryBase(o, criteria)))
+            foreach (T item in root.Nodes.Values.SelectMany(node => lookupFindInventory<T>(node, criteria)))
             {
-                yield return inventoryBase;
+                yield return item;
             }
         }
 
-        private static IEnumerable<InventoryBase> FindInventoryBase<T>(InventoryNode root, T criteria)
+        private static IEnumerable<T> FindInventory<T>(InventoryNode root, object criteria)
         {
             lock (InventoryLock)
             {
-                return lookupFindInventoryBase(root, criteria);
+                return lookupFindInventory<T>(root, criteria);
             }
         }
 
@@ -1499,45 +1520,56 @@ namespace Corrade
         /// ///
         /// <summary>
         ///     Fetches items and their full path from the inventory starting with
-        ///     an inventory node for the criteria:
-        ///     - name where T : string
-        ///     - name where T : Regex
-        ///     - UUID where T : UUID
+        ///     an inventory node where the search criteria finds:
+        ///     - name as string
+        ///     - name as Regex
+        ///     - UUID as UUID
         /// </summary>
         /// <param name="root">the node to start the search from</param>
         /// <param name="criteria">the name, UUID or Regex of the item to be found</param>
         /// <param name="prefix">any prefix to append to the found paths</param>
         /// <returns>items matching criteria and their full inventoy path</returns>
-        private static IEnumerable<KeyValuePair<InventoryBase, LinkedList<string>>> lookupFindInventoryPath<T>(
-            InventoryNode root, T criteria, LinkedList<string> prefix)
+        private static IEnumerable<KeyValuePair<T, LinkedList<string>>> lookupFindInventoryPath<T>(
+            InventoryNode root, object criteria, LinkedList<string> prefix)
         {
             if ((criteria is Regex && (criteria as Regex).IsMatch(root.Data.Name)) ||
                 (criteria is string &&
                  (criteria as string).Equals(root.Data.Name, StringComparison.Ordinal)) ||
                 (criteria is UUID && criteria.Equals(root.Data.UUID)))
             {
-                yield return
-                    new KeyValuePair<InventoryBase, LinkedList<string>>(Client.Inventory.Store[root.Data.UUID],
-                        new LinkedList<string>(
-                            prefix.Concat(new[] {root.Data.Name})));
+                if (typeof (T) == typeof (InventoryBase))
+                {
+                    yield return
+                        new KeyValuePair<T, LinkedList<string>>((T) (object) Client.Inventory.Store[root.Data.UUID],
+                            new LinkedList<string>(
+                                prefix.Concat(new[] {root.Data.Name})));
+                }
+                if (typeof (T) == typeof (InventoryNode))
+                {
+                    yield return
+                        new KeyValuePair<T, LinkedList<string>>((T) (object) root,
+                            new LinkedList<string>(
+                                prefix.Concat(new[] {root.Data.Name})));
+                }
             }
             foreach (
-                KeyValuePair<InventoryBase, LinkedList<string>> o in
-                    root.Nodes.Values.SelectMany(o => lookupFindInventoryPath(o, criteria, new LinkedList<string>(
+                KeyValuePair<T, LinkedList<string>> o in
+                    root.Nodes.Values.SelectMany(o => lookupFindInventoryPath<T>(o, criteria, new LinkedList<string>(
                         prefix.Concat(new[] {root.Data.Name})))))
             {
                 yield return o;
             }
         }
 
-        private static IEnumerable<KeyValuePair<InventoryBase, LinkedList<string>>> FindInventoryPath<T>(
-            InventoryNode root, T citeria, LinkedList<string> path)
+        private static IEnumerable<KeyValuePair<T, LinkedList<string>>> FindInventoryPath<T>(
+            InventoryNode root, object citeria, LinkedList<string> path)
         {
             lock (InventoryLock)
             {
-                return lookupFindInventoryPath(root, citeria, path);
+                return lookupFindInventoryPath<T>(root, citeria, path);
             }
         }
+
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
@@ -2937,7 +2969,7 @@ namespace Corrade
 
             // Find the item in the inventory.
             InventoryBase inventoryBaseItem =
-                FindInventoryBase(Client.Inventory.Store.RootNode, ((Func<string>) (() =>
+                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, ((Func<string>) (() =>
                 {
                     GroupCollection groups = Regex.Match(e.Offer.Message, @"'{0,1}(.+)'{0,1}").Groups;
                     return groups.Count >= 1 ? groups[1].Value : string.Empty;
@@ -2973,7 +3005,7 @@ namespace Corrade
                 }
                 // Otherwise, locate the folder and move.
                 InventoryBase inventoryBaseFolder =
-                    FindInventoryBase(Client.Inventory.Store.RootNode, e.FolderID
+                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, e.FolderID
                         ).FirstOrDefault();
                 if (inventoryBaseFolder != null)
                 {
@@ -3611,7 +3643,7 @@ namespace Corrade
                             return;
                         }
                         InventoryBase inventoryBase =
-                            FindInventoryBase(Client.Inventory.Store.RootNode,
+                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                 attachment.Key.Properties.ItemID
                                 )
                                 .FirstOrDefault(
@@ -3646,7 +3678,7 @@ namespace Corrade
                                         Parallel.ForEach(GetAttachments(Configuration.SERVICES_TIMEOUT), o =>
                                         {
                                             inventoryBase =
-                                                FindInventoryBase(Client.Inventory.Store.RootNode,
+                                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                                     o.Key.Properties.Name
                                                     )
                                                     .FirstOrDefault(
@@ -3670,7 +3702,7 @@ namespace Corrade
                                             break;
                                         }
                                         inventoryBase =
-                                            FindInventoryBase(Client.Inventory.Store.RootNode,
+                                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                                 attachment.Key.Properties.Name
                                                 )
                                                 .FirstOrDefault(
@@ -3692,7 +3724,7 @@ namespace Corrade
                                         GetAttachments(Configuration.SERVICES_TIMEOUT).Select(o => o.Key));
                                 Parallel.ForEach(attachments, o =>
                                 {
-                                    inventoryBase = FindInventoryBase(
+                                    inventoryBase = FindInventory<InventoryBase>(
                                         Client.Inventory.Store.RootNode, option
                                         )
                                         .FirstOrDefault(
@@ -3730,7 +3762,7 @@ namespace Corrade
                             return;
                         }
                         InventoryBase inventoryBase =
-                            FindInventoryBase(RLVFolder, option
+                            FindInventory<InventoryBase>(RLVFolder, option
                                 ).FirstOrDefault(o => (o is InventoryFolder));
                         if (inventoryBase == null)
                         {
@@ -3777,7 +3809,7 @@ namespace Corrade
                                     break;
                                 }
                                 inventoryBase =
-                                    FindInventoryBase(Client.Inventory.Store.RootNode,
+                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                         GetWearables(Client.Inventory.Store.RootFolder,
                                             Configuration.SERVICES_TIMEOUT)
                                             .FirstOrDefault(
@@ -3800,7 +3832,7 @@ namespace Corrade
                                     }).SelectMany(o => o), o =>
                                     {
                                         inventoryBase =
-                                            FindInventoryBase(Client.Inventory.Store.RootNode, o
+                                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
                                                 )
                                                 .FirstOrDefault(p => (p is InventoryWearable));
                                         inventoryItem = inventoryBase as InventoryItem;
@@ -3828,6 +3860,7 @@ namespace Corrade
                             o => o.Data.Name.Equals(RLV_CONSTANTS.SHARED_FOLDER_NAME) && o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
+                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                             return;
                         }
                         // General variables
@@ -3847,7 +3880,7 @@ namespace Corrade
                                     {
                                         return;
                                     }
-                                    inventoryBase = FindInventoryBase(
+                                    inventoryBase = FindInventory<InventoryBase>(
                                         RLVFolder, option
                                         )
                                         .FirstOrDefault(
@@ -3868,7 +3901,7 @@ namespace Corrade
                                         return;
                                     }
                                     inventoryBase =
-                                        FindInventoryBase(RLVFolder,
+                                        FindInventory<InventoryBase>(RLVFolder,
                                             GetWearables(Client.Inventory.Store[RLVFolder.Data.UUID],
                                                 Configuration.SERVICES_TIMEOUT)
                                                 .FirstOrDefault(
@@ -3883,9 +3916,9 @@ namespace Corrade
                                         .FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
                                 if (attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                                 {
-                                    return;
+                                    break;
                                 }
-                                inventoryBase = FindInventoryBase(
+                                inventoryBase = FindInventory<InventoryBase>(
                                     Client.Inventory.Store.RootNode, attachment.Key.Properties.ItemID
                                     )
                                     .FirstOrDefault(
@@ -3896,13 +3929,15 @@ namespace Corrade
                         }
                         if (inventoryBase == null)
                         {
+                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                             return;
                         }
                         KeyValuePair<InventoryBase, LinkedList<string>> path =
-                            FindInventoryPath(RLVFolder, inventoryBase.Name,
+                            FindInventoryPath<InventoryBase>(RLVFolder, inventoryBase.Name,
                                 new LinkedList<string>()).FirstOrDefault();
                         if (path.Equals(default(KeyValuePair<InventoryBase, LinkedList<string>>)))
                         {
+                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                             return;
                         }
                         Client.Self.Chat(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR, path.Value.ToArray()), channel,
@@ -3919,19 +3954,21 @@ namespace Corrade
                         }
                         if (string.IsNullOrEmpty(option))
                         {
+                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                             return;
                         }
                         InventoryNode RLVFolder = Client.Inventory.Store.RootNode.Nodes.Values.FirstOrDefault(
                             o => o.Data.Name.Equals(RLV_CONSTANTS.SHARED_FOLDER_NAME) && o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
+                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                             return;
                         }
                         List<string> folders = new List<string>();
                         HashSet<string> parts =
                             new HashSet<string>(option.Split(RLV_CONSTANTS.AND_OPERATOR.ToCharArray()));
                         object LockObject = new object();
-                        Parallel.ForEach(FindInventoryPath(RLVFolder,
+                        Parallel.ForEach(FindInventoryPath<InventoryBase>(RLVFolder,
                             new Regex(".+?", RegexOptions.Compiled),
                             new LinkedList<string>())
                             .Where(
@@ -3948,12 +3985,10 @@ namespace Corrade
                                                 Interlocked.Increment(ref count);
                                             }
                                         }));
-                                        if (count.Equals(parts.Count))
+                                        if (!count.Equals(parts.Count)) return;
+                                        lock (LockObject)
                                         {
-                                            lock (LockObject)
-                                            {
-                                                folders.Add(o.Key.Name);
-                                            }
+                                            folders.Add(o.Key.Name);
                                         }
                                     });
                         if (!folders.Count.Equals(0))
@@ -3974,39 +4009,145 @@ namespace Corrade
                         }
                         if (string.IsNullOrEmpty(option))
                         {
+                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                             return;
                         }
                         InventoryNode RLVFolder = Client.Inventory.Store.RootNode.Nodes.Values.FirstOrDefault(
                             o => o.Data.Name.Equals(RLV_CONSTANTS.SHARED_FOLDER_NAME) && o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
-                            return;
-                        }
-                        InventoryBase inventoryBase =
-                            FindInventoryBase(RLVFolder, option
-                                )
-                                .FirstOrDefault(o => (o is InventoryFolder));
-                        if (inventoryBase == null)
-                        {
                             Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                             return;
                         }
-                        InventoryFolder inventoryFolder = inventoryBase as InventoryFolder;
-                        if (inventoryFolder == null)
+                        InventoryNode optionFolderNode =
+                            FindInventory<InventoryNode>(RLVFolder, option).FirstOrDefault();
+                        if (optionFolderNode == null)
                         {
                             Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                             return;
                         }
                         HashSet<string> csv = new HashSet<string>();
+                        object LockObject = new object();
                         Parallel.ForEach(
-                            FindInventoryBase(Client.Inventory.Store.RootNode,
-                                new HashSet<AssetType> {AssetType.Folder}
-                                ), o =>
+                            FindInventory<InventoryBase>(optionFolderNode, new Regex(".+?", RegexOptions.Compiled)),
+                            o =>
+                            {
+                                if (o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)) return;
+                                lock (LockObject)
                                 {
-                                    if (o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)) return;
                                     csv.Add(o.Name);
-                                });
+                                }
+                            });
                         Client.Self.Chat(string.Join(RLV_CONSTANTS.CSV_DELIMITER, csv.ToArray()), channel,
+                            ChatType.Normal);
+                    };
+                    break;
+                case RLVCommands.GETINVWORN:
+                    execute = () =>
+                    {
+                        int channel;
+                        if (!int.TryParse(param, out channel) || channel < 1)
+                        {
+                            return;
+                        }
+                        InventoryNode RLVFolder = Client.Inventory.Store.RootNode.Nodes.Values.FirstOrDefault(
+                            o => o.Data.Name.Equals(RLV_CONSTANTS.SHARED_FOLDER_NAME) && o.Data is InventoryFolder);
+                        if (RLVFolder == null)
+                        {
+                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                            return;
+                        }
+                        KeyValuePair<InventoryNode, LinkedList<string>> folderPath = FindInventoryPath<InventoryNode>(
+                            RLVFolder,
+                            new Regex(".+?", RegexOptions.Compiled),
+                            new LinkedList<string>())
+                            .Where(o => o.Key.Data is InventoryFolder)
+                            .FirstOrDefault(
+                                o => string.Join(RLV_CONSTANTS.PATH_SEPARATOR, o.Value.Skip(1).ToArray()).Equals(option));
+                        if (folderPath.Equals(default(KeyValuePair<InventoryNode, LinkedList<string>>)))
+                        {
+                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                            return;
+                        }
+                        Func<InventoryNode, string> GetWornIndicator = node =>
+                        {
+                            Dictionary<WearableType, AppearanceManager.WearableData> currentWearables =
+                                Client.Appearance.GetWearables();
+                            List<Primitive> currentAttachments =
+                                Client.Network.CurrentSim.ObjectsPrimitives.FindAll(
+                                    o => o.ParentID.Equals(Client.Self.LocalID));
+
+                            int myItemsCount = 0;
+                            int myItemsWornCount = 0;
+
+                            Parallel.ForEach(
+                                node.Nodes.Values.Where(
+                                    n =>
+                                        n.Data is InventoryItem && CanBeWorn(n.Data) &&
+                                        !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)), n =>
+                                        {
+                                            Interlocked.Increment(ref myItemsCount);
+                                            if (n.Data is InventoryWearable &&
+                                                currentWearables.Values.Any(
+                                                    o => o.ItemID.Equals(n.Data.UUID)) ||
+                                                currentAttachments.Any(
+                                                    o =>
+                                                        GetAttachments(Configuration.SERVICES_TIMEOUT)
+                                                            .Any(
+                                                                p =>
+                                                                    p.Key.Properties.ItemID.Equals(
+                                                                        n.Data.UUID))))
+                                            {
+                                                Interlocked.Increment(ref myItemsWornCount);
+                                            }
+                                        });
+
+                            int allItemsCount = 0;
+                            int allItemsWornCount = 0;
+
+                            Parallel.ForEach(FindInventory<InventoryBase>(node,
+                                new Regex(".+?", RegexOptions.Compiled))
+                                .Where(o => !o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
+                                .Where(
+                                    o =>
+                                        o is InventoryItem && CanBeWorn(o) &&
+                                        !o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)), n =>
+                                        {
+                                            Interlocked.Increment(ref allItemsCount);
+                                            if (n is InventoryWearable &&
+                                                currentWearables.Values.Any(o => o.ItemID.Equals(n.UUID)) ||
+                                                currentAttachments.Any(
+                                                    o =>
+                                                        GetAttachments(Configuration.SERVICES_TIMEOUT)
+                                                            .Any(p => p.Key.Properties.ItemID.Equals(n.UUID))))
+                                            {
+                                                Interlocked.Increment(ref allItemsWornCount);
+                                            }
+                                        });
+
+                            Func<int, int, string> WornIndicator =
+                                (all, one) => all > 0 ? (all.Equals(one) ? "3" : (one > 0 ? "2" : "1")) : "0";
+
+                            return WornIndicator(myItemsCount, myItemsWornCount) +
+                                   WornIndicator(allItemsCount, allItemsWornCount);
+                        };
+                        List<string> response = new List<string>
+                        {
+                            string.Format("{0}{1}", RLV_CONSTANTS.PROPORTION_SEPARATOR,
+                                GetWornIndicator(folderPath.Key))
+                        };
+                        foreach (InventoryNode node in folderPath.Key.Nodes.Values)
+                        {
+                            response.AddRange(
+                                FindInventory<InventoryNode>(node, new Regex(".+?", RegexOptions.Compiled))
+                                    .Where(o => o.Data is InventoryFolder)
+                                    .Select(
+                                        o =>
+                                            string.Format("{0}{1}{2}", o.Data.Name,
+                                                RLV_CONSTANTS.PROPORTION_SEPARATOR, GetWornIndicator(o))));
+                        }
+                        Client.Self.Chat(string.Join(RLV_CONSTANTS.CSV_DELIMITER, response.ToArray()),
+                            channel,
                             ChatType.Normal);
                     };
                     break;
@@ -5478,7 +5619,7 @@ namespace Corrade
                         if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out notice.AttachmentID))
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventoryBase(Client.Inventory.Store.RootNode, item
+                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
                                     ).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
@@ -6577,7 +6718,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         InventoryBase inventoryBaseItem =
-                            FindInventoryBase(Client.Inventory.Store.RootNode,
+                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                 wasUriUnescapeDataString(wasKeyValueGet(
                                     wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))
                                 ).FirstOrDefault();
@@ -6657,7 +6798,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         HashSet<InventoryItem> items =
-                            new HashSet<InventoryItem>(FindInventoryBase(Client.Inventory.Store.RootNode,
+                            new HashSet<InventoryItem>(FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                 wasUriUnescapeDataString(wasKeyValueGet(
                                     wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))
                                 ).Cast<InventoryItem>());
@@ -6740,7 +6881,7 @@ namespace Corrade
                         if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out textureUUID))
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventoryBase(Client.Inventory.Store.RootNode, item
+                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
                                     ).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
@@ -6842,7 +6983,7 @@ namespace Corrade
                         if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out textureUUID))
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventoryBase(Client.Inventory.Store.RootNode, item
+                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
                                     ).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
@@ -7128,7 +7269,7 @@ namespace Corrade
                                 StringSplitOptions.RemoveEmptyEntries), o =>
                                 {
                                     InventoryBase inventoryBaseItem =
-                                        FindInventoryBase(Client.Inventory.Store.RootNode, o
+                                        FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
                                             ).FirstOrDefault(p => p is InventoryWearable);
                                     if (inventoryBaseItem == null)
                                         return;
@@ -7159,7 +7300,7 @@ namespace Corrade
                                 StringSplitOptions.RemoveEmptyEntries), o =>
                                 {
                                     InventoryBase inventoryBaseItem =
-                                        FindInventoryBase(Client.Inventory.Store.RootNode, o
+                                        FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
                                             ).FirstOrDefault(p => p is InventoryWearable);
                                     if (inventoryBaseItem == null)
                                         return;
@@ -7231,7 +7372,7 @@ namespace Corrade
                                     q =>
                                     {
                                         InventoryBase inventoryBaseItem =
-                                            FindInventoryBase(Client.Inventory.Store.RootNode, o.Value
+                                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o.Value
                                                 )
                                                 .FirstOrDefault(
                                                     r =>
@@ -7266,7 +7407,7 @@ namespace Corrade
                                 StringSplitOptions.RemoveEmptyEntries), o =>
                                 {
                                     InventoryBase inventoryBaseItem =
-                                        FindInventoryBase(Client.Inventory.Store.RootNode, o
+                                        FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
                                             )
                                             .FirstOrDefault(
                                                 p =>
@@ -7788,8 +7929,9 @@ namespace Corrade
                         InventoryItem inventoryItem = null;
                         if (!UUID.TryParse(item, out itemUUID))
                         {
-                            InventoryBase inventoryBase = FindInventoryBase(Client.Inventory.Store.RootNode, item
-                                ).FirstOrDefault();
+                            InventoryBase inventoryBase =
+                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
+                                    ).FirstOrDefault();
                             if (inventoryBase == null)
                             {
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
@@ -8207,7 +8349,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         InventoryBase inventoryBaseItem =
-                            FindInventoryBase(Client.Inventory.Store.RootNode,
+                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                 wasUriUnescapeDataString(wasKeyValueGet(
                                     wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))
                                 ).FirstOrDefault();
@@ -8293,7 +8435,7 @@ namespace Corrade
                         if (folderUUID.Equals(UUID.Zero))
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventoryBase(Client.Inventory.Store.RootNode, folder
+                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, folder
                                     ).FirstOrDefault();
                             if (inventoryBaseItem != null)
                             {
@@ -8669,7 +8811,7 @@ namespace Corrade
                         {
                             case Action.ADD:
                                 InventoryBase inventoryBaseItem =
-                                    FindInventoryBase(Client.Inventory.Store.RootNode,
+                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                         !entityUUID.Equals(UUID.Zero) ? entityUUID.ToString() : entity
                                         ).FirstOrDefault();
                                 if (inventoryBaseItem == null)
@@ -8735,7 +8877,7 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         InventoryBase inventoryBaseItem =
-                            FindInventoryBase(Client.Inventory.Store.RootNode,
+                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                 wasUriUnescapeDataString(wasKeyValueGet(
                                     wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))
                                 ).FirstOrDefault();
@@ -8790,7 +8932,7 @@ namespace Corrade
                         }
                         List<string> csv = new List<string>();
                         object LockObject = new object();
-                        Parallel.ForEach(FindInventoryBase(Client.Inventory.Store.RootNode, search
+                        Parallel.ForEach(FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, search
                             ),
                             o =>
                             {
@@ -8848,9 +8990,9 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION));
                         }
                         List<string> csv = new List<string>();
-                        Parallel.ForEach(FindInventoryPath(Client.Inventory.Store.RootNode,
+                        Parallel.ForEach(FindInventoryPath<InventoryBase>(Client.Inventory.Store.RootNode,
                             search, new LinkedList<string>()).Select(o => o.Value),
-                            o => csv.Add(string.Join("/", o.ToArray())));
+                            o => csv.Add(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR, o.ToArray())));
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                             string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                 csv.ToArray()));
@@ -9949,7 +10091,7 @@ namespace Corrade
                         if (!UUID.TryParse(item, out itemUUID))
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventoryBase(Client.Inventory.Store.RootNode, item
+                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
                                     ).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
@@ -9992,7 +10134,7 @@ namespace Corrade
                         if (!UUID.TryParse(item, out itemUUID))
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventoryBase(Client.Inventory.Store.RootNode, item
+                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
                                     ).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
@@ -10930,7 +11072,7 @@ namespace Corrade
                         if (folderUUID.Equals(UUID.Zero))
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventoryBase(Client.Inventory.Store.RootNode, folder
+                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, folder
                                     ).FirstOrDefault();
                             if (inventoryBaseItem != null)
                             {
@@ -11729,7 +11871,7 @@ namespace Corrade
                         if (!UUID.TryParse(item, out itemUUID))
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventoryBase(Client.Inventory.Store.RootNode, item
+                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
                                     ).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
@@ -12064,6 +12206,12 @@ namespace Corrade
                         {
                             case Action.PURGE:
                                 Cache.Purge();
+                                break;
+                            case Action.SAVE:
+                                SaveCorradeCache.Invoke();
+                                break;
+                            case Action.LOAD:
+                                LoadCorradeCache.Invoke();
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
@@ -12936,16 +13084,7 @@ namespace Corrade
             }
             if (succeeded)
             {
-                List<string> name =
-                    new List<string>(agentName.Split(new[] {' ', '.'},
-                        StringSplitOptions.RemoveEmptyEntries)
-                        .GroupBy(p => p)
-                        .Where(p => !p.Count().Equals(0))
-                        .Select(p => new[]
-                        {
-                            p.First(),
-                            p.Count() != 1 ? p.Last() : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                        }).SelectMany(p => p));
+                List<string> name = new List<string>(GetAvatarNames(agentName));
                 lock (Cache.Locks.AgentCacheLock)
                 {
                     Cache.AgentCache.Add(new Cache.Agents
@@ -13312,6 +13451,7 @@ namespace Corrade
             public const string GROUP_CACHE_FILE = @"Group.cache";
             public const string PATH_SEPARATOR = @"/";
             public const string ERROR_SEPARATOR = @" : ";
+            public const string CACHE_DIRECTORY = @"cache";
 
             public struct HTTP_CODES
             {
@@ -14047,7 +14187,10 @@ namespace Corrade
             [Description("none")] NONE = 0,
             [Description("access denied")] ACCESS_DENIED = 1,
             [Description("invalid configuration file")] INVALID_CONFIGURATION_FILE,
-            [Description("the Terms of Service (TOS) for the grid you are connecting to have not been accepted, please check your configuration file")] TOS_NOT_ACCEPTED,
+
+            [Description(
+                "the Terms of Service (TOS) for the grid you are connecting to have not been accepted, please check your configuration file"
+                )] TOS_NOT_ACCEPTED,
             [Description("teleport failed")] TELEPORT_FAILED,
             [Description("teleport succeeded")] TELEPORT_SUCCEEDED,
             [Description("accepted friendship")] ACCEPTED_FRIENDSHIP,
@@ -14905,6 +15048,7 @@ namespace Corrade
             public const string PROPORTION_SEPARATOR = @"|";
             public const string SHARED_FOLDER_NAME = @"#RLV";
             public const string AND_OPERATOR = @"&&";
+            public const string PATH_SEPARATOR = @"/";
         }
 
         #endregion

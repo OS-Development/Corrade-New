@@ -417,6 +417,7 @@
     <Content Include="Corrade.ico" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="cache\" />
     <Folder Include="databases\" />
     <Folder Include="groupchat\" />
   </ItemGroup>
