@@ -39,44 +39,48 @@ namespace Corrade
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Gets the first name and last name from an avatar name.
-        /// </summary>
-        /// <param name="name">the avatar full name</param>
-        /// <returns>the firstname and the lastname or resident</returns>
-        private static IEnumerable<string> GetAvatarNames(string name)
-        {
-            return
-                Regex.Matches(name,
-                    @"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$")
-                    .Cast<Match>()
-                    .ToDictionary(o => new[]
-                    {
-                        o.Groups["first"].Value,
-                        o.Groups["last"].Value
-                    })
-                    .SelectMany(
-                        o =>
-                            new[]
-                            {
-                                o.Key[0],
-                                !string.IsNullOrEmpty(o.Key[1])
-                                    ? o.Key[1]
-                                    : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                            });
-        }
-
-        /// <summary>
-        ///     An event for the group membership notification.
-        /// </summary>
-        public class GroupMembershipEventArgs : EventArgs
-        {
-            public string AgentName;
-            public UUID AgentUUID;
-            public Action Action;
-        }
 
         public delegate bool EventHandler(NativeMethods.CtrlType ctrlType);
+
+        /// <summary>
+        ///     Possible actions.
+        /// </summary>
+        public enum Action : uint
+        {
+            [Description("none")] NONE = 0,
+            [Description("get")] GET,
+            [Description("set")] SET,
+            [Description("add")] ADD,
+            [Description("remove")] REMOVE,
+            [Description("start")] START,
+            [Description("stop")] STOP,
+            [Description("mute")] MUTE,
+            [Description("unmute")] UNMUTE,
+            [Description("restart")] RESTART,
+            [Description("cancel")] CANCEL,
+            [Description("accept")] ACCEPT,
+            [Description("decline")] DECLINE,
+            [Description("online")] ONLINE,
+            [Description("offline")] OFFLINE,
+            [Description("request")] REQUEST,
+            [Description("response")] RESPONSE,
+            [Description("delete")] DELETE,
+            [Description("take")] TAKE,
+            [Description("read")] READ,
+            [Description("wrtie")] WRITE,
+            [Description("purge")] PURGE,
+            [Description("crossed")] CROSSED,
+            [Description("changed")] CHANGED,
+            [Description("reply")] REPLY,
+            [Description("offer")] OFFER,
+            [Description("generic")] GENERIC,
+            [Description("point")] POINT,
+            [Description("look")] LOOK,
+            [Description("update")] UPDATE,
+            [Description("received")] RECEIVED,
+            [Description("joined")] JOINED,
+            [Description("parted")] PARTED
+        }
 
         /// <summary>
         ///     Corrade version sent to the simulator.
@@ -165,12 +169,6 @@ namespace Corrade
             new Dictionary<UUID, HashSet<UUID>>();
 
         public static EventHandler ConsoleEventHandler;
-
-        private volatile bool runGroupMemberSweepThread = true;
-
-        private volatile bool runNotificationThread = true;
-
-        private volatile bool runCallbackThread = true;
 
         private static readonly System.Action ActivateCurrentLandGroup = () => (new Thread(() =>
         {
@@ -269,6 +267,11 @@ namespace Corrade
             }
         };
 
+        private volatile bool runCallbackThread = true;
+        private volatile bool runGroupMemberSweepThread = true;
+
+        private volatile bool runNotificationThread = true;
+
         public Corrade()
         {
             if (!Environment.UserInteractive)
@@ -285,6 +288,33 @@ namespace Corrade
                 }
                 ((ISupportInitialize) (CorradeLog)).EndInit();
             }
+        }
+
+        /// <summary>
+        ///     Gets the first name and last name from an avatar name.
+        /// </summary>
+        /// <param name="name">the avatar full name</param>
+        /// <returns>the firstname and the lastname or resident</returns>
+        private static IEnumerable<string> GetAvatarNames(string name)
+        {
+            return
+                Regex.Matches(name,
+                    @"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$")
+                    .Cast<Match>()
+                    .ToDictionary(o => new[]
+                    {
+                        o.Groups["first"].Value,
+                        o.Groups["last"].Value
+                    })
+                    .SelectMany(
+                        o =>
+                            new[]
+                            {
+                                o.Key[0],
+                                !string.IsNullOrEmpty(o.Key[1])
+                                    ? o.Key[1]
+                                    : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                            });
         }
 
         private static bool ConsoleCtrlCheck(NativeMethods.CtrlType ctrlType)
@@ -843,9 +873,8 @@ namespace Corrade
                 UUID UUIDData;
                 if (!UUID.TryParse(setting, out UUIDData))
                 {
-                    InventoryItem item = FindInventoryBase(Client.Inventory.Store.RootFolder,
-                        setting,
-                        Configuration.SERVICES_TIMEOUT).FirstOrDefault() as InventoryItem;
+                    InventoryItem item = FindInventoryBase(Client.Inventory.Store.RootNode,
+                        setting).FirstOrDefault() as InventoryItem;
                     if (item == null)
                     {
                         throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
@@ -1431,158 +1460,82 @@ namespace Corrade
         ///////////////////////////////////////////////////////////////////////////
         /// ///
         /// <summary>
-        ///     Searches the current inventory for an item by name or UUID and
-        ///     returns all the items that match the item name.
+        ///     Fetches items by searching the inventory starting with an inventory
+        ///     node for the criteria:
+        ///     - name where T : string
+        ///     - name where T : Regex
+        ///     - UUID where T : UUID
         /// </summary>
-        /// <param name="T">the type to search by</param>
-        /// <param name="rootFolder">a folder from which to search</param>
-        /// <param name="itemBase">the name, UUID or Regex of the item to be found</param>
-        /// <param name="millisecondsTimeout">timeout for the search</param>
+        /// <param name="root">the node to start the search from</param>
+        /// <param name="criteria">the name, UUID or Regex of the item to be found</param>
         /// <returns>a list of items matching the item name</returns>
-        private static IEnumerable<InventoryBase> lookupFindInventoryBase<T>(InventoryBase rootFolder, T itemBase,
-            int millisecondsTimeout)
+        private static IEnumerable<InventoryBase> lookupFindInventoryBase<T>(InventoryNode root, T criteria)
         {
-            HashSet<InventoryBase> contents =
-                new HashSet<InventoryBase>(Client.Inventory.FolderContents(rootFolder.UUID, Client.Self.AgentID,
-                    true, true, InventorySortOrder.ByName, millisecondsTimeout));
-            foreach (InventoryBase inventory in contents)
+            if ((criteria is Regex && (criteria as Regex).IsMatch(root.Data.Name)) ||
+                (criteria is string &&
+                 (criteria as string).Equals(root.Data.Name, StringComparison.Ordinal)) ||
+                (criteria is UUID && criteria.Equals(root.Data.UUID)))
             {
-                InventoryFolder inventoryFolder = inventory as InventoryFolder;
-                if (inventoryFolder != null)
-                {
-                    if (itemBase is Regex && (itemBase as Regex).IsMatch(inventoryFolder.Name))
-                    {
-                        yield return inventoryFolder;
-                    }
-                    if (itemBase is string &&
-                        (itemBase as string).Equals(inventoryFolder.Name, StringComparison.Ordinal))
-                    {
-                        yield return inventoryFolder;
-                    }
-                    if (itemBase is UUID && itemBase.Equals(inventoryFolder.UUID))
-                    {
-                        yield return inventoryFolder;
-                    }
-                }
-                InventoryItem inventoryItem = inventory as InventoryItem;
-                if (inventoryItem != null)
-                {
-                    if (itemBase is Regex && (itemBase as Regex).IsMatch(inventoryItem.Name))
-                    {
-                        yield return inventoryItem;
-                    }
-                    if (itemBase is string && (itemBase as string).Equals(inventoryItem.Name, StringComparison.Ordinal))
-                    {
-                        yield return inventoryItem;
-                    }
-                    if (itemBase is UUID && itemBase.Equals(inventoryItem.UUID))
-                    {
-                        yield return inventoryItem;
-                    }
-                }
-                if (contents.Count.Equals(0) || inventoryFolder == null)
-                    continue;
-                foreach (
-                    InventoryBase inventoryBase in FindInventoryBase(inventoryFolder, itemBase, millisecondsTimeout))
-                {
-                    yield return inventoryBase;
-                }
+                yield return Client.Inventory.Store[root.Data.UUID];
+            }
+            foreach (
+                InventoryBase inventoryBase in root.Nodes.Values.SelectMany(o => lookupFindInventoryBase(o, criteria)))
+            {
+                yield return inventoryBase;
             }
         }
 
-        private static IEnumerable<InventoryBase> FindInventoryBase<T>(InventoryBase rootFolder, T itemBase,
-            int millisecondsTimeout)
+        private static IEnumerable<InventoryBase> FindInventoryBase<T>(InventoryNode root, T criteria)
         {
             lock (InventoryLock)
             {
-                return lookupFindInventoryBase(rootFolder, itemBase, millisecondsTimeout);
+                return lookupFindInventoryBase(root, criteria);
             }
         }
-
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// ///
         /// <summary>
-        ///     Finds the full path to an inventory item.
+        ///     Fetches items and their full path from the inventory starting with
+        ///     an inventory node for the criteria:
+        ///     - name where T : string
+        ///     - name where T : Regex
+        ///     - UUID where T : UUID
         /// </summary>
-        /// <param name="T">the type to search by</param>
-        /// <param name="rootFolder">a folder from which to search</param>
-        /// <param name="itemBase">the name, UUID or Regex of the item to be found</param>
-        /// <param name="millisecondsTimeout">timeout for the search</param>
-        /// <param name="path">an optional path prefix</param>
-        /// <returns>a list of inventory items by full path</returns>
+        /// <param name="root">the node to start the search from</param>
+        /// <param name="criteria">the name, UUID or Regex of the item to be found</param>
+        /// <param name="prefix">any prefix to append to the found paths</param>
+        /// <returns>items matching criteria and their full inventoy path</returns>
         private static IEnumerable<KeyValuePair<InventoryBase, LinkedList<string>>> lookupFindInventoryPath<T>(
-            InventoryBase rootFolder, T itemBase,
-            int millisecondsTimeout, LinkedList<string> path)
+            InventoryNode root, T criteria, LinkedList<string> prefix)
         {
-            HashSet<InventoryBase> contents =
-                new HashSet<InventoryBase>(Client.Inventory.FolderContents(rootFolder.UUID, Client.Self.AgentID,
-                    true, true, InventorySortOrder.ByName, millisecondsTimeout));
-
-            foreach (InventoryBase inventory in contents)
+            if ((criteria is Regex && (criteria as Regex).IsMatch(root.Data.Name)) ||
+                (criteria is string &&
+                 (criteria as string).Equals(root.Data.Name, StringComparison.Ordinal)) ||
+                (criteria is UUID && criteria.Equals(root.Data.UUID)))
             {
-                InventoryFolder inventoryFolder = inventory as InventoryFolder;
-                if (inventoryFolder != null)
-                {
-                    if (itemBase is Regex && (itemBase as Regex).IsMatch(inventoryFolder.Name))
-                    {
-                        yield return
-                            new KeyValuePair<InventoryBase, LinkedList<string>>(inventory, new LinkedList<string>(
-                                path.OfType<string>().Concat(new[] {inventoryFolder.Name}).Cast<string>()));
-                    }
-                    if (itemBase is string &&
-                        (itemBase as string).Equals(inventoryFolder.Name, StringComparison.Ordinal))
-                    {
-                        yield return
-                            new KeyValuePair<InventoryBase, LinkedList<string>>(inventory, new LinkedList<string>(
-                                path.OfType<string>().Concat(new[] {inventoryFolder.Name}).Cast<string>()));
-                    }
-                    if (itemBase is UUID && itemBase.Equals(inventoryFolder.UUID))
-                    {
-                        yield return
-                            new KeyValuePair<InventoryBase, LinkedList<string>>(inventory, new LinkedList<string>(
-                                path.OfType<string>().Concat(new[] {inventoryFolder.Name}).Cast<string>()));
-                    }
-                }
-                InventoryItem inventoryItem = inventory as InventoryItem;
-                if (inventoryItem != null)
-                {
-                    if (itemBase is Regex && (itemBase as Regex).IsMatch(inventoryItem.Name))
-                    {
-                        yield return new KeyValuePair<InventoryBase, LinkedList<string>>(inventory, path);
-                    }
-                    if (itemBase is string && (itemBase as string).Equals(inventoryItem.Name, StringComparison.Ordinal))
-                    {
-                        yield return new KeyValuePair<InventoryBase, LinkedList<string>>(inventory, path);
-                    }
-                    if (itemBase is UUID && itemBase.Equals(inventoryItem.UUID))
-                    {
-                        yield return new KeyValuePair<InventoryBase, LinkedList<string>>(inventory, path);
-                    }
-                }
-                if (contents.Count.Equals(0) || inventoryFolder == null)
-                    continue;
-
-                foreach (
-                    KeyValuePair<InventoryBase, LinkedList<string>> o in
-                        FindInventoryPath(inventoryFolder, itemBase, millisecondsTimeout,
-                            new LinkedList<string>(
-                                path.OfType<string>().Concat(new[] {inventoryFolder.Name}).Cast<string>())))
-                {
-                    yield return o;
-                }
+                yield return
+                    new KeyValuePair<InventoryBase, LinkedList<string>>(Client.Inventory.Store[root.Data.UUID],
+                        new LinkedList<string>(
+                            prefix.Concat(new[] {root.Data.Name})));
+            }
+            foreach (
+                KeyValuePair<InventoryBase, LinkedList<string>> o in
+                    root.Nodes.Values.SelectMany(o => lookupFindInventoryPath(o, criteria, new LinkedList<string>(
+                        prefix.Concat(new[] {root.Data.Name})))))
+            {
+                yield return o;
             }
         }
 
         private static IEnumerable<KeyValuePair<InventoryBase, LinkedList<string>>> FindInventoryPath<T>(
-            InventoryBase rootFolder, T itemBase,
-            int millisecondsTimeout, LinkedList<string> path)
+            InventoryNode root, T citeria, LinkedList<string> path)
         {
             lock (InventoryLock)
             {
-                return lookupFindInventoryPath(rootFolder, itemBase, millisecondsTimeout, path);
+                return lookupFindInventoryPath(root, citeria, path);
             }
         }
 
@@ -2984,12 +2937,12 @@ namespace Corrade
 
             // Find the item in the inventory.
             InventoryBase inventoryBaseItem =
-                FindInventoryBase(Client.Inventory.Store.RootFolder, ((Func<string>) (() =>
+                FindInventoryBase(Client.Inventory.Store.RootNode, ((Func<string>) (() =>
                 {
                     GroupCollection groups = Regex.Match(e.Offer.Message, @"'{0,1}(.+)'{0,1}").Groups;
                     return groups.Count >= 1 ? groups[1].Value : string.Empty;
-                }))(),
-                    Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                }))()
+                    ).FirstOrDefault();
 
             if (inventoryBaseItem != null)
             {
@@ -3020,8 +2973,8 @@ namespace Corrade
                 }
                 // Otherwise, locate the folder and move.
                 InventoryBase inventoryBaseFolder =
-                    FindInventoryBase(Client.Inventory.Store.RootFolder, e.FolderID.ToString(),
-                        Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                    FindInventoryBase(Client.Inventory.Store.RootNode, e.FolderID
+                        ).FirstOrDefault();
                 if (inventoryBaseFolder != null)
                 {
                     Client.Inventory.Move(inventoryBaseItem, inventoryBaseFolder as InventoryFolder);
@@ -3658,9 +3611,9 @@ namespace Corrade
                             return;
                         }
                         InventoryBase inventoryBase =
-                            FindInventoryBase(Client.Inventory.Store.RootFolder,
-                                attachment.Key.Properties.ItemID,
-                                Configuration.SERVICES_TIMEOUT)
+                            FindInventoryBase(Client.Inventory.Store.RootNode,
+                                attachment.Key.Properties.ItemID
+                                )
                                 .FirstOrDefault(
                                     p =>
                                         (p is InventoryItem) &&
@@ -3693,9 +3646,9 @@ namespace Corrade
                                         Parallel.ForEach(GetAttachments(Configuration.SERVICES_TIMEOUT), o =>
                                         {
                                             inventoryBase =
-                                                FindInventoryBase(Client.Inventory.Store.RootFolder,
-                                                    o.Key.Properties.Name,
-                                                    Configuration.SERVICES_TIMEOUT)
+                                                FindInventoryBase(Client.Inventory.Store.RootNode,
+                                                    o.Key.Properties.Name
+                                                    )
                                                     .FirstOrDefault(
                                                         p =>
                                                             (p is InventoryItem) &&
@@ -3717,9 +3670,9 @@ namespace Corrade
                                             break;
                                         }
                                         inventoryBase =
-                                            FindInventoryBase(Client.Inventory.Store.RootFolder,
-                                                attachment.Key.Properties.Name,
-                                                Configuration.SERVICES_TIMEOUT)
+                                            FindInventoryBase(Client.Inventory.Store.RootNode,
+                                                attachment.Key.Properties.Name
+                                                )
                                                 .FirstOrDefault(
                                                     p =>
                                                         (p is InventoryItem) &&
@@ -3740,8 +3693,8 @@ namespace Corrade
                                 Parallel.ForEach(attachments, o =>
                                 {
                                     inventoryBase = FindInventoryBase(
-                                        Client.Inventory.Store.RootFolder, option,
-                                        Configuration.SERVICES_TIMEOUT)
+                                        Client.Inventory.Store.RootNode, option
+                                        )
                                         .FirstOrDefault(
                                             p =>
                                                 (p is InventoryItem) &&
@@ -3770,16 +3723,15 @@ namespace Corrade
                         {
                             return;
                         }
-                        InventoryBase RLVFolder = FindInventoryBase(Client.Inventory.Store.RootFolder,
-                            RLV_CONSTANTS.RLV_FOLDER,
-                            Configuration.SERVICES_TIMEOUT).FirstOrDefault(o => (o is InventoryFolder));
+                        InventoryNode RLVFolder = Client.Inventory.Store.RootNode.Nodes.Values.FirstOrDefault(
+                            o => o.Data.Name.Equals(RLV_CONSTANTS.SHARED_FOLDER_NAME) && o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
                             return;
                         }
                         InventoryBase inventoryBase =
-                            FindInventoryBase(RLVFolder, option,
-                                Configuration.SERVICES_TIMEOUT).FirstOrDefault(o => (o is InventoryFolder));
+                            FindInventoryBase(RLVFolder, option
+                                ).FirstOrDefault(o => (o is InventoryFolder));
                         if (inventoryBase == null)
                         {
                             return;
@@ -3825,13 +3777,12 @@ namespace Corrade
                                     break;
                                 }
                                 inventoryBase =
-                                    FindInventoryBase(Client.Inventory.Store.RootFolder,
+                                    FindInventoryBase(Client.Inventory.Store.RootNode,
                                         GetWearables(Client.Inventory.Store.RootFolder,
                                             Configuration.SERVICES_TIMEOUT)
                                             .FirstOrDefault(
                                                 o => o.Key.Equals((WearableType) wearTypeInfo.GetValue(null)))
-                                            .Value,
-                                        Configuration.SERVICES_TIMEOUT)
+                                            .Value)
                                         .FirstOrDefault(o => (o is InventoryWearable));
                                 inventoryItem = inventoryBase as InventoryItem;
                                 if (inventoryItem == null)
@@ -3849,8 +3800,8 @@ namespace Corrade
                                     }).SelectMany(o => o), o =>
                                     {
                                         inventoryBase =
-                                            FindInventoryBase(Client.Inventory.Store.RootFolder, o,
-                                                Configuration.SERVICES_TIMEOUT)
+                                            FindInventoryBase(Client.Inventory.Store.RootNode, o
+                                                )
                                                 .FirstOrDefault(p => (p is InventoryWearable));
                                         inventoryItem = inventoryBase as InventoryItem;
                                         if (inventoryItem == null)
@@ -3873,9 +3824,8 @@ namespace Corrade
                             return;
                         }
                         // Find RLV folder
-                        InventoryBase RLVFolder = FindInventoryBase(Client.Inventory.Store.RootFolder,
-                            RLV_CONSTANTS.RLV_FOLDER,
-                            Configuration.SERVICES_TIMEOUT).FirstOrDefault(o => (o is InventoryFolder));
+                        InventoryNode RLVFolder = Client.Inventory.Store.RootNode.Nodes.Values.FirstOrDefault(
+                            o => o.Data.Name.Equals(RLV_CONSTANTS.SHARED_FOLDER_NAME) && o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
                             return;
@@ -3893,13 +3843,13 @@ namespace Corrade
                                     attachment =
                                         GetAttachments(Configuration.SERVICES_TIMEOUT)
                                             .FirstOrDefault(o => o.Value.Equals(RLVattachment.AttachmentPoint));
-                                    if (attachment.Equals(default(KeyValuePair<AttachmentPoint, Primitive>)))
+                                    if (attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                                     {
                                         return;
                                     }
                                     inventoryBase = FindInventoryBase(
-                                        RLVFolder, option,
-                                        Configuration.SERVICES_TIMEOUT)
+                                        RLVFolder, option
+                                        )
                                         .FirstOrDefault(
                                             p =>
                                                 (p is InventoryItem) &&
@@ -3919,12 +3869,11 @@ namespace Corrade
                                     }
                                     inventoryBase =
                                         FindInventoryBase(RLVFolder,
-                                            GetWearables(RLVFolder,
+                                            GetWearables(Client.Inventory.Store[RLVFolder.Data.UUID],
                                                 Configuration.SERVICES_TIMEOUT)
                                                 .FirstOrDefault(
                                                     o => o.Key.Equals((WearableType) wearTypeInfo.GetValue(null)))
-                                                .Value,
-                                            Configuration.SERVICES_TIMEOUT)
+                                                .Value)
                                             .FirstOrDefault(o => (o is InventoryWearable));
                                 }
                                 break;
@@ -3932,13 +3881,13 @@ namespace Corrade
                                 attachment =
                                     GetAttachments(Configuration.SERVICES_TIMEOUT)
                                         .FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
-                                if (attachment.Equals(default(KeyValuePair<AttachmentPoint, Primitive>)))
+                                if (attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                                 {
                                     return;
                                 }
                                 inventoryBase = FindInventoryBase(
-                                    Client.Inventory.Store.RootFolder, attachment.Key.Properties.ItemID,
-                                    Configuration.SERVICES_TIMEOUT)
+                                    Client.Inventory.Store.RootNode, attachment.Key.Properties.ItemID
+                                    )
                                     .FirstOrDefault(
                                         p =>
                                             (p is InventoryItem) &&
@@ -3950,7 +3899,7 @@ namespace Corrade
                             return;
                         }
                         KeyValuePair<InventoryBase, LinkedList<string>> path =
-                            FindInventoryPath(RLVFolder, inventoryBase.Name, Configuration.SERVICES_TIMEOUT,
+                            FindInventoryPath(RLVFolder, inventoryBase.Name,
                                 new LinkedList<string>()).FirstOrDefault();
                         if (path.Equals(default(KeyValuePair<InventoryBase, LinkedList<string>>)))
                         {
@@ -3972,9 +3921,8 @@ namespace Corrade
                         {
                             return;
                         }
-                        InventoryBase RLVFolder = FindInventoryBase(Client.Inventory.Store.RootFolder,
-                            RLV_CONSTANTS.RLV_FOLDER,
-                            Configuration.SERVICES_TIMEOUT).FirstOrDefault(o => (o is InventoryFolder));
+                        InventoryNode RLVFolder = Client.Inventory.Store.RootNode.Nodes.Values.FirstOrDefault(
+                            o => o.Data.Name.Equals(RLV_CONSTANTS.SHARED_FOLDER_NAME) && o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
                             return;
@@ -3984,7 +3932,7 @@ namespace Corrade
                             new HashSet<string>(option.Split(RLV_CONSTANTS.AND_OPERATOR.ToCharArray()));
                         object LockObject = new object();
                         Parallel.ForEach(FindInventoryPath(RLVFolder,
-                            new Regex(".+?", RegexOptions.Compiled), Configuration.SERVICES_TIMEOUT,
+                            new Regex(".+?", RegexOptions.Compiled),
                             new LinkedList<string>())
                             .Where(
                                 o =>
@@ -3993,16 +3941,13 @@ namespace Corrade
                                     !o.Key.Name.Substring(1).Equals(RLV_CONSTANTS.TILDE_MARKER)), o =>
                                     {
                                         int count = 0;
-                                        Parallel.ForEach(parts, p =>
+                                        Parallel.ForEach(parts, p => Parallel.ForEach(o.Value, q =>
                                         {
-                                            Parallel.ForEach(o.Value, q =>
+                                            if (q.Contains(p))
                                             {
-                                                if (q.Contains(p))
-                                                {
-                                                    Interlocked.Increment(ref count);
-                                                }
-                                            });
-                                        });
+                                                Interlocked.Increment(ref count);
+                                            }
+                                        }));
                                         if (count.Equals(parts.Count))
                                         {
                                             lock (LockObject)
@@ -4031,16 +3976,15 @@ namespace Corrade
                         {
                             return;
                         }
-                        InventoryBase RLVFolder = FindInventoryBase(Client.Inventory.Store.RootFolder,
-                            RLV_CONSTANTS.RLV_FOLDER,
-                            Configuration.SERVICES_TIMEOUT).FirstOrDefault(o => (o is InventoryFolder));
+                        InventoryNode RLVFolder = Client.Inventory.Store.RootNode.Nodes.Values.FirstOrDefault(
+                            o => o.Data.Name.Equals(RLV_CONSTANTS.SHARED_FOLDER_NAME) && o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
                             return;
                         }
                         InventoryBase inventoryBase =
-                            FindInventoryBase(RLVFolder, option,
-                                Configuration.SERVICES_TIMEOUT)
+                            FindInventoryBase(RLVFolder, option
+                                )
                                 .FirstOrDefault(o => (o is InventoryFolder));
                         if (inventoryBase == null)
                         {
@@ -4055,9 +3999,9 @@ namespace Corrade
                         }
                         HashSet<string> csv = new HashSet<string>();
                         Parallel.ForEach(
-                            FindInventoryBase(Client.Inventory.Store.RootFolder,
-                                new HashSet<AssetType> {AssetType.Folder},
-                                Configuration.SERVICES_TIMEOUT), o =>
+                            FindInventoryBase(Client.Inventory.Store.RootNode,
+                                new HashSet<AssetType> {AssetType.Folder}
+                                ), o =>
                                 {
                                     if (o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)) return;
                                     csv.Add(o.Name);
@@ -5534,8 +5478,8 @@ namespace Corrade
                         if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out notice.AttachmentID))
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventoryBase(Client.Inventory.Store.RootFolder, item,
-                                    Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                                FindInventoryBase(Client.Inventory.Store.RootNode, item
+                                    ).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
@@ -6633,10 +6577,10 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         InventoryBase inventoryBaseItem =
-                            FindInventoryBase(Client.Inventory.Store.RootFolder,
+                            FindInventoryBase(Client.Inventory.Store.RootNode,
                                 wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
-                                Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))
+                                ).FirstOrDefault();
                         if (inventoryBaseItem == null)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
@@ -6713,10 +6657,10 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         HashSet<InventoryItem> items =
-                            new HashSet<InventoryItem>(FindInventoryBase(Client.Inventory.Store.RootFolder,
+                            new HashSet<InventoryItem>(FindInventoryBase(Client.Inventory.Store.RootNode,
                                 wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
-                                Configuration.SERVICES_TIMEOUT).Cast<InventoryItem>());
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))
+                                ).Cast<InventoryItem>());
                         if (items.Count.Equals(0))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
@@ -6796,8 +6740,8 @@ namespace Corrade
                         if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out textureUUID))
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventoryBase(Client.Inventory.Store.RootFolder, item,
-                                    Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                                FindInventoryBase(Client.Inventory.Store.RootNode, item
+                                    ).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TEXTURE_NOT_FOUND));
@@ -6898,8 +6842,8 @@ namespace Corrade
                         if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out textureUUID))
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventoryBase(Client.Inventory.Store.RootFolder, item,
-                                    Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                                FindInventoryBase(Client.Inventory.Store.RootNode, item
+                                    ).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TEXTURE_NOT_FOUND));
@@ -7184,8 +7128,8 @@ namespace Corrade
                                 StringSplitOptions.RemoveEmptyEntries), o =>
                                 {
                                     InventoryBase inventoryBaseItem =
-                                        FindInventoryBase(Client.Inventory.Store.RootFolder, o,
-                                            Configuration.SERVICES_TIMEOUT).FirstOrDefault(p => p is InventoryWearable);
+                                        FindInventoryBase(Client.Inventory.Store.RootNode, o
+                                            ).FirstOrDefault(p => p is InventoryWearable);
                                     if (inventoryBaseItem == null)
                                         return;
                                     InventoryItem inventoryItem = inventoryBaseItem as InventoryItem;
@@ -7215,8 +7159,8 @@ namespace Corrade
                                 StringSplitOptions.RemoveEmptyEntries), o =>
                                 {
                                     InventoryBase inventoryBaseItem =
-                                        FindInventoryBase(Client.Inventory.Store.RootFolder, o,
-                                            Configuration.SERVICES_TIMEOUT).FirstOrDefault(p => p is InventoryWearable);
+                                        FindInventoryBase(Client.Inventory.Store.RootNode, o
+                                            ).FirstOrDefault(p => p is InventoryWearable);
                                     if (inventoryBaseItem == null)
                                         return;
                                     InventoryItem inventoryItem = inventoryBaseItem as InventoryWearable;
@@ -7287,8 +7231,8 @@ namespace Corrade
                                     q =>
                                     {
                                         InventoryBase inventoryBaseItem =
-                                            FindInventoryBase(Client.Inventory.Store.RootFolder, o.Value,
-                                                Configuration.SERVICES_TIMEOUT)
+                                            FindInventoryBase(Client.Inventory.Store.RootNode, o.Value
+                                                )
                                                 .FirstOrDefault(
                                                     r =>
                                                         (r is InventoryItem) &&
@@ -7322,8 +7266,8 @@ namespace Corrade
                                 StringSplitOptions.RemoveEmptyEntries), o =>
                                 {
                                     InventoryBase inventoryBaseItem =
-                                        FindInventoryBase(Client.Inventory.Store.RootFolder, o,
-                                            Configuration.SERVICES_TIMEOUT)
+                                        FindInventoryBase(Client.Inventory.Store.RootNode, o
+                                            )
                                             .FirstOrDefault(
                                                 p =>
                                                     (p is InventoryItem) &&
@@ -7844,8 +7788,8 @@ namespace Corrade
                         InventoryItem inventoryItem = null;
                         if (!UUID.TryParse(item, out itemUUID))
                         {
-                            InventoryBase inventoryBase = FindInventoryBase(Client.Inventory.Store.RootFolder, item,
-                                Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                            InventoryBase inventoryBase = FindInventoryBase(Client.Inventory.Store.RootNode, item
+                                ).FirstOrDefault();
                             if (inventoryBase == null)
                             {
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
@@ -8263,10 +8207,10 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         InventoryBase inventoryBaseItem =
-                            FindInventoryBase(Client.Inventory.Store.RootFolder,
+                            FindInventoryBase(Client.Inventory.Store.RootNode,
                                 wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
-                                Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))
+                                ).FirstOrDefault();
                         if (inventoryBaseItem == null)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
@@ -8349,8 +8293,8 @@ namespace Corrade
                         if (folderUUID.Equals(UUID.Zero))
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventoryBase(Client.Inventory.Store.RootFolder, folder,
-                                    Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                                FindInventoryBase(Client.Inventory.Store.RootNode, folder
+                                    ).FirstOrDefault();
                             if (inventoryBaseItem != null)
                             {
                                 InventoryItem item = inventoryBaseItem as InventoryItem;
@@ -8725,9 +8669,9 @@ namespace Corrade
                         {
                             case Action.ADD:
                                 InventoryBase inventoryBaseItem =
-                                    FindInventoryBase(Client.Inventory.Store.RootFolder,
-                                        !entityUUID.Equals(UUID.Zero) ? entityUUID.ToString() : entity,
-                                        Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                                    FindInventoryBase(Client.Inventory.Store.RootNode,
+                                        !entityUUID.Equals(UUID.Zero) ? entityUUID.ToString() : entity
+                                        ).FirstOrDefault();
                                 if (inventoryBaseItem == null)
                                 {
                                     throw new Exception(
@@ -8791,10 +8735,10 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         InventoryBase inventoryBaseItem =
-                            FindInventoryBase(Client.Inventory.Store.RootFolder,
+                            FindInventoryBase(Client.Inventory.Store.RootNode,
                                 wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
-                                Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))
+                                ).FirstOrDefault();
                         if (inventoryBaseItem == null)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
@@ -8846,8 +8790,8 @@ namespace Corrade
                         }
                         List<string> csv = new List<string>();
                         object LockObject = new object();
-                        Parallel.ForEach(FindInventoryBase(Client.Inventory.Store.RootFolder, search,
-                            Configuration.SERVICES_TIMEOUT),
+                        Parallel.ForEach(FindInventoryBase(Client.Inventory.Store.RootNode, search
+                            ),
                             o =>
                             {
                                 InventoryItem inventoryItem = o as InventoryItem;
@@ -8904,9 +8848,9 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION));
                         }
                         List<string> csv = new List<string>();
-                        Parallel.ForEach(FindInventoryPath(Client.Inventory.Store.RootFolder,
-                            search, Configuration.SERVICES_TIMEOUT, new LinkedList<string>()).Select(o => o.Value),
-                            o => { csv.Add(string.Join("/", o.ToArray())); });
+                        Parallel.ForEach(FindInventoryPath(Client.Inventory.Store.RootNode,
+                            search, new LinkedList<string>()).Select(o => o.Value),
+                            o => csv.Add(string.Join("/", o.ToArray())));
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                             string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                 csv.ToArray()));
@@ -10005,8 +9949,8 @@ namespace Corrade
                         if (!UUID.TryParse(item, out itemUUID))
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventoryBase(Client.Inventory.Store.RootFolder, item,
-                                    Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                                FindInventoryBase(Client.Inventory.Store.RootNode, item
+                                    ).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
@@ -10048,8 +9992,8 @@ namespace Corrade
                         if (!UUID.TryParse(item, out itemUUID))
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventoryBase(Client.Inventory.Store.RootFolder, item,
-                                    Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                                FindInventoryBase(Client.Inventory.Store.RootNode, item
+                                    ).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
@@ -10986,8 +10930,8 @@ namespace Corrade
                         if (folderUUID.Equals(UUID.Zero))
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventoryBase(Client.Inventory.Store.RootFolder, folder,
-                                    Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                                FindInventoryBase(Client.Inventory.Store.RootNode, folder
+                                    ).FirstOrDefault();
                             if (inventoryBaseItem != null)
                             {
                                 InventoryItem item = inventoryBaseItem as InventoryItem;
@@ -11785,8 +11729,8 @@ namespace Corrade
                         if (!UUID.TryParse(item, out itemUUID))
                         {
                             InventoryBase inventoryBaseItem =
-                                FindInventoryBase(Client.Inventory.Store.RootFolder, item,
-                                    Configuration.SERVICES_TIMEOUT).FirstOrDefault();
+                                FindInventoryBase(Client.Inventory.Store.RootNode, item
+                                    ).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
@@ -13327,43 +13271,13 @@ namespace Corrade
         #endregion
 
         /// <summary>
-        ///     Possible actions.
+        ///     Agent structure.
         /// </summary>
-        public enum Action : uint
+        private struct Agent
         {
-            [Description("none")] NONE = 0,
-            [Description("get")] GET,
-            [Description("set")] SET,
-            [Description("add")] ADD,
-            [Description("remove")] REMOVE,
-            [Description("start")] START,
-            [Description("stop")] STOP,
-            [Description("mute")] MUTE,
-            [Description("unmute")] UNMUTE,
-            [Description("restart")] RESTART,
-            [Description("cancel")] CANCEL,
-            [Description("accept")] ACCEPT,
-            [Description("decline")] DECLINE,
-            [Description("online")] ONLINE,
-            [Description("offline")] OFFLINE,
-            [Description("request")] REQUEST,
-            [Description("response")] RESPONSE,
-            [Description("delete")] DELETE,
-            [Description("take")] TAKE,
-            [Description("read")] READ,
-            [Description("wrtie")] WRITE,
-            [Description("purge")] PURGE,
-            [Description("crossed")] CROSSED,
-            [Description("changed")] CHANGED,
-            [Description("reply")] REPLY,
-            [Description("offer")] OFFER,
-            [Description("generic")] GENERIC,
-            [Description("point")] POINT,
-            [Description("look")] LOOK,
-            [Description("update")] UPDATE,
-            [Description("received")] RECEIVED,
-            [Description("joined")] JOINED,
-            [Description("parted")] PARTED
+            [Description("firstname")] public string FirstName;
+            [Description("lastname")] public string LastName;
+            [Description("uuid")] public UUID UUID;
         }
 
         /// <summary>
@@ -13405,159 +13319,6 @@ namespace Corrade
             }
         }
 
-        #region RLV STRUCTURES
-
-        /// <summary>
-        ///     Structure for RLV contants.
-        /// </summary>
-        private struct RLV_CONSTANTS
-        {
-            public const string COMMAND_OPERATOR = @"@";
-            public const string VIEWER = @"RestrainedLife viewer";
-            public const string SHORT_VERSION = @"1.23";
-            public const string LONG_VERSION = @"1230100";
-            public const string FORCE = @"force";
-            public const string FALSE_MARKER = @"0";
-            public const string TRUE_MARKER = @"1";
-            public const string CSV_DELIMITER = @",";
-            public const string DOT_MARKER = @".";
-            public const string TILDE_MARKER = @"~";
-            public const string PROPORTION_SEPARATOR = @"|";
-            public const string RLV_FOLDER = @"#RLV";
-            public const string AND_OPERATOR = @"&&";
-        }
-
-        /// <summary>
-        ///     Regex used to match RLV commands.
-        /// </summary>
-        private static readonly Regex RLVRegex = new Regex(@"(?<behaviour>[^:=]+)(:(?<option>[^=]*))?=(?<param>\w+)",
-            RegexOptions.Compiled);
-
-        /// <summary>
-        ///     RLV wearable structure.
-        /// </summary>
-        private struct RLVWearable
-        {
-            public string Name;
-            public WearableType WearableType;
-        }
-
-        /// <summary>
-        ///     RLV Wearables.
-        /// </summary>
-        private static readonly List<RLVWearable> RLVWearables = new List<RLVWearable>
-        {
-            new RLVWearable {Name = @"gloves", WearableType = WearableType.Gloves},
-            new RLVWearable {Name = @"jacket", WearableType = WearableType.Jacket},
-            new RLVWearable {Name = @"pants", WearableType = WearableType.Pants},
-            new RLVWearable {Name = @"shirt", WearableType = WearableType.Shirt},
-            new RLVWearable {Name = @"shoes", WearableType = WearableType.Shoes},
-            new RLVWearable {Name = @"skirt", WearableType = WearableType.Skirt},
-            new RLVWearable {Name = @"socks", WearableType = WearableType.Socks},
-            new RLVWearable {Name = @"underpants", WearableType = WearableType.Underpants},
-            new RLVWearable {Name = @"undershirt", WearableType = WearableType.Undershirt},
-            new RLVWearable {Name = @"skin", WearableType = WearableType.Skin},
-            new RLVWearable {Name = @"eyes", WearableType = WearableType.Eyes},
-            new RLVWearable {Name = @"hair", WearableType = WearableType.Hair},
-            new RLVWearable {Name = @"shape", WearableType = WearableType.Shape},
-            new RLVWearable {Name = @"alpha", WearableType = WearableType.Alpha},
-            new RLVWearable {Name = @"tattoo", WearableType = WearableType.Tattoo},
-            new RLVWearable {Name = @"physics", WearableType = WearableType.Physics}
-        };
-
-        /// <summary>
-        ///     RLV attachment structure.
-        /// </summary>
-        private struct RLVAttachment
-        {
-            public string Name;
-            public AttachmentPoint AttachmentPoint;
-        }
-
-        /// <summary>
-        ///     RLV Attachments.
-        /// </summary>
-        private static readonly List<RLVAttachment> RLVAttachments = new List<RLVAttachment>
-        {
-            new RLVAttachment {Name = @"none", AttachmentPoint = AttachmentPoint.Default},
-            new RLVAttachment {Name = @"chest", AttachmentPoint = AttachmentPoint.Chest},
-            new RLVAttachment {Name = @"skull", AttachmentPoint = AttachmentPoint.Skull},
-            new RLVAttachment {Name = @"left shoulder", AttachmentPoint = AttachmentPoint.LeftShoulder},
-            new RLVAttachment {Name = @"right shoulder", AttachmentPoint = AttachmentPoint.RightShoulder},
-            new RLVAttachment {Name = @"left hand", AttachmentPoint = AttachmentPoint.LeftHand},
-            new RLVAttachment {Name = @"right hand", AttachmentPoint = AttachmentPoint.RightHand},
-            new RLVAttachment {Name = @"left foot", AttachmentPoint = AttachmentPoint.LeftFoot},
-            new RLVAttachment {Name = @"right foot", AttachmentPoint = AttachmentPoint.RightFoot},
-            new RLVAttachment {Name = @"spine", AttachmentPoint = AttachmentPoint.Spine},
-            new RLVAttachment {Name = @"pelvis", AttachmentPoint = AttachmentPoint.Pelvis},
-            new RLVAttachment {Name = @"mouth", AttachmentPoint = AttachmentPoint.Mouth},
-            new RLVAttachment {Name = @"chin", AttachmentPoint = AttachmentPoint.Chin},
-            new RLVAttachment {Name = @"left ear", AttachmentPoint = AttachmentPoint.LeftEar},
-            new RLVAttachment {Name = @"right ear", AttachmentPoint = AttachmentPoint.RightEar},
-            new RLVAttachment {Name = @"left eyeball", AttachmentPoint = AttachmentPoint.LeftEyeball},
-            new RLVAttachment {Name = @"right eyeball", AttachmentPoint = AttachmentPoint.RightEyeball},
-            new RLVAttachment {Name = @"nose", AttachmentPoint = AttachmentPoint.Nose},
-            new RLVAttachment {Name = @"r upper arm", AttachmentPoint = AttachmentPoint.RightUpperArm},
-            new RLVAttachment {Name = @"r forearm", AttachmentPoint = AttachmentPoint.RightForearm},
-            new RLVAttachment {Name = @"l upper arm", AttachmentPoint = AttachmentPoint.LeftUpperArm},
-            new RLVAttachment {Name = @"l forearm", AttachmentPoint = AttachmentPoint.LeftForearm},
-            new RLVAttachment {Name = @"right hip", AttachmentPoint = AttachmentPoint.RightHip},
-            new RLVAttachment {Name = @"r upper leg", AttachmentPoint = AttachmentPoint.RightUpperLeg},
-            new RLVAttachment {Name = @"r lower leg", AttachmentPoint = AttachmentPoint.RightLowerLeg},
-            new RLVAttachment {Name = @"left hip", AttachmentPoint = AttachmentPoint.LeftHip},
-            new RLVAttachment {Name = @"l upper leg", AttachmentPoint = AttachmentPoint.LeftUpperLeg},
-            new RLVAttachment {Name = @"l lower leg", AttachmentPoint = AttachmentPoint.LeftLowerLeg},
-            new RLVAttachment {Name = @"stomach", AttachmentPoint = AttachmentPoint.Stomach},
-            new RLVAttachment {Name = @"left pec", AttachmentPoint = AttachmentPoint.LeftPec},
-            new RLVAttachment {Name = @"right pec", AttachmentPoint = AttachmentPoint.RightPec},
-            new RLVAttachment {Name = @"center 2", AttachmentPoint = AttachmentPoint.HUDCenter2},
-            new RLVAttachment {Name = @"top right", AttachmentPoint = AttachmentPoint.HUDTopRight},
-            new RLVAttachment {Name = @"top", AttachmentPoint = AttachmentPoint.HUDTop},
-            new RLVAttachment {Name = @"top left", AttachmentPoint = AttachmentPoint.HUDTopLeft},
-            new RLVAttachment {Name = @"center", AttachmentPoint = AttachmentPoint.HUDCenter},
-            new RLVAttachment {Name = @"bottom left", AttachmentPoint = AttachmentPoint.HUDBottomLeft},
-            new RLVAttachment {Name = @"bottom", AttachmentPoint = AttachmentPoint.HUDBottom},
-            new RLVAttachment {Name = @"bottom right", AttachmentPoint = AttachmentPoint.HUDBottomRight},
-            new RLVAttachment {Name = @"neck", AttachmentPoint = AttachmentPoint.Neck},
-            new RLVAttachment {Name = @"root", AttachmentPoint = AttachmentPoint.Root}
-        };
-
-        /// <summary>
-        ///     Enumeration for supported RLV commands.
-        /// </summary>
-        private enum RLVCommands : uint
-        {
-            [Description("none")] NONE = 0,
-            [Description("version")] VERSION,
-            [Description("versionnew")] VERSIONNEW,
-            [Description("versionnum")] VERSIONNUM,
-            [Description("getgroup")] GETGROUP,
-            [Description("setgroup")] SETGROUP,
-            [Description("getsitid")] GETSITID,
-            [Description("getstatusall")] GETSTATUSALL,
-            [Description("getstatus")] GETSTATUS,
-            [Description("sit")] SIT,
-            [Description("unsit")] UNSIT,
-            [Description("setrot")] SETROT,
-            [Description("tpto")] TPTO,
-            [Description("getoutfit")] GETOUTFIT,
-            [Description("getattach")] GETATTACH,
-            [Description("remattach")] REMATTACH,
-            [Description("detach")] DETACH,
-            [Description("detachme")] DETACHME,
-            [Description("remoutfit")] REMOUTFIT,
-            [Description("attach")] ATTACH,
-            [Description("attachoverreplace")] ATTACHOVERORREPLACE,
-            [Description("attachover")] ATTACHOVER,
-            [Description("getinv")] GETINV,
-            [Description("getinvworn")] GETINVWORN,
-            [Description("getpath")] GETPATH,
-            [Description("getpathnew")] GETPATHNEW,
-            [Description("findfolder")] FINDFOLDER
-        }
-
-        #endregion
-
         /// <summary>
         ///     Corrade's caches.
         /// </summary>
@@ -13576,25 +13337,6 @@ namespace Corrade
                 {
                     GroupCache.Clear();
                 }
-            }
-
-            public struct Agents
-            {
-                public string FirstName;
-                public string LastName;
-                public UUID UUID;
-            }
-
-            public struct Groups
-            {
-                public string Name;
-                public UUID UUID;
-            }
-
-            public struct Locks
-            {
-                public static readonly object AgentCacheLock = new object();
-                public static readonly object GroupCacheLock = new object();
             }
 
             /// <summary>
@@ -13641,6 +13383,25 @@ namespace Corrade
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CACHE), e.Message);
                 }
                 return o;
+            }
+
+            public struct Agents
+            {
+                public string FirstName;
+                public string LastName;
+                public UUID UUID;
+            }
+
+            public struct Groups
+            {
+                public string Name;
+                public UUID UUID;
+            }
+
+            public struct Locks
+            {
+                public static readonly object AgentCacheLock = new object();
+                public static readonly object GroupCacheLock = new object();
             }
         }
 
@@ -14286,7 +14047,7 @@ namespace Corrade
             [Description("none")] NONE = 0,
             [Description("access denied")] ACCESS_DENIED = 1,
             [Description("invalid configuration file")] INVALID_CONFIGURATION_FILE,
-            [Description("the Terms of Service (TOS) have not been accepted, please check your configuration file")] TOS_NOT_ACCEPTED,
+            [Description("the Terms of Service (TOS) for the grid you are connecting to have not been accepted, please check your configuration file")] TOS_NOT_ACCEPTED,
             [Description("teleport failed")] TELEPORT_FAILED,
             [Description("teleport succeeded")] TELEPORT_SUCCEEDED,
             [Description("accepted friendship")] ACCEPTED_FRIENDSHIP,
@@ -14364,24 +14125,24 @@ namespace Corrade
         }
 
         /// <summary>
-        ///     Agent structure.
-        /// </summary>
-        private struct Agent
-        {
-            [Description("firstname")] public string FirstName;
-            [Description("lastname")] public string LastName;
-            [Description("uuid")] public UUID UUID;
-        }
-
-        /// <summary>
         ///     A structure for group invites.
         /// </summary>
         private struct GroupInvite
         {
-            [Description("fee")] public int Fee;
             public Agent Agent;
+            [Description("fee")] public int Fee;
             [Description("group")] public string Group;
             [Description("session")] public UUID Session;
+        }
+
+        /// <summary>
+        ///     An event for the group membership notification.
+        /// </summary>
+        public class GroupMembershipEventArgs : EventArgs
+        {
+            public Action Action;
+            public string AgentName;
+            public UUID AgentUUID;
         }
 
         /// <summary>
@@ -14558,9 +14319,9 @@ namespace Corrade
         /// </summary>
         private struct ScriptDialog
         {
+            public Agent Agent;
             [Description("button")] public List<string> Button;
             [Description("channel")] public int Channel;
-            public Agent Agent;
             [Description("item")] public UUID Item;
             [Description("message")] public string Message;
             [Description("name")] public string Name;
@@ -14720,8 +14481,7 @@ namespace Corrade
             [Description("no executable file provided")] NO_EXECUTABLE_FILE_PROVIDED,
             [Description("timeout waiting for execution")] TIMEOUT_WAITING_FOR_EXECUTION,
             [Description("unknown group invite session")] UNKNOWN_GROUP_INVITE_SESSION,
-            [Description("unable to obtain money balance")] UNABLE_TO_OBTAIN_MONEY_BALANCE,
-            [Description("no item found")] NO_ITEM_FOUND
+            [Description("unable to obtain money balance")] UNABLE_TO_OBTAIN_MONEY_BALANCE
         }
 
         /// <summary>
@@ -14959,9 +14719,9 @@ namespace Corrade
         /// </summary>
         private struct ScriptPermissionRequest
         {
+            public Agent Agent;
             [Description("item")] public UUID Item;
             [Description("name")] public string Name;
-            public Agent Agent;
             [Description("permission")] public ScriptPermission Permission;
             [Description("task")] public UUID Task;
         }
@@ -14995,6 +14755,159 @@ namespace Corrade
             [Description("people")] PEOPLE,
             [Description("place")] PLACE
         }
+
+        #region RLV STRUCTURES
+
+        /// <summary>
+        ///     Regex used to match RLV commands.
+        /// </summary>
+        private static readonly Regex RLVRegex = new Regex(@"(?<behaviour>[^:=]+)(:(?<option>[^=]*))?=(?<param>\w+)",
+            RegexOptions.Compiled);
+
+        /// <summary>
+        ///     RLV Wearables.
+        /// </summary>
+        private static readonly List<RLVWearable> RLVWearables = new List<RLVWearable>
+        {
+            new RLVWearable {Name = @"gloves", WearableType = WearableType.Gloves},
+            new RLVWearable {Name = @"jacket", WearableType = WearableType.Jacket},
+            new RLVWearable {Name = @"pants", WearableType = WearableType.Pants},
+            new RLVWearable {Name = @"shirt", WearableType = WearableType.Shirt},
+            new RLVWearable {Name = @"shoes", WearableType = WearableType.Shoes},
+            new RLVWearable {Name = @"skirt", WearableType = WearableType.Skirt},
+            new RLVWearable {Name = @"socks", WearableType = WearableType.Socks},
+            new RLVWearable {Name = @"underpants", WearableType = WearableType.Underpants},
+            new RLVWearable {Name = @"undershirt", WearableType = WearableType.Undershirt},
+            new RLVWearable {Name = @"skin", WearableType = WearableType.Skin},
+            new RLVWearable {Name = @"eyes", WearableType = WearableType.Eyes},
+            new RLVWearable {Name = @"hair", WearableType = WearableType.Hair},
+            new RLVWearable {Name = @"shape", WearableType = WearableType.Shape},
+            new RLVWearable {Name = @"alpha", WearableType = WearableType.Alpha},
+            new RLVWearable {Name = @"tattoo", WearableType = WearableType.Tattoo},
+            new RLVWearable {Name = @"physics", WearableType = WearableType.Physics}
+        };
+
+        /// <summary>
+        ///     RLV Attachments.
+        /// </summary>
+        private static readonly List<RLVAttachment> RLVAttachments = new List<RLVAttachment>
+        {
+            new RLVAttachment {Name = @"none", AttachmentPoint = AttachmentPoint.Default},
+            new RLVAttachment {Name = @"chest", AttachmentPoint = AttachmentPoint.Chest},
+            new RLVAttachment {Name = @"skull", AttachmentPoint = AttachmentPoint.Skull},
+            new RLVAttachment {Name = @"left shoulder", AttachmentPoint = AttachmentPoint.LeftShoulder},
+            new RLVAttachment {Name = @"right shoulder", AttachmentPoint = AttachmentPoint.RightShoulder},
+            new RLVAttachment {Name = @"left hand", AttachmentPoint = AttachmentPoint.LeftHand},
+            new RLVAttachment {Name = @"right hand", AttachmentPoint = AttachmentPoint.RightHand},
+            new RLVAttachment {Name = @"left foot", AttachmentPoint = AttachmentPoint.LeftFoot},
+            new RLVAttachment {Name = @"right foot", AttachmentPoint = AttachmentPoint.RightFoot},
+            new RLVAttachment {Name = @"spine", AttachmentPoint = AttachmentPoint.Spine},
+            new RLVAttachment {Name = @"pelvis", AttachmentPoint = AttachmentPoint.Pelvis},
+            new RLVAttachment {Name = @"mouth", AttachmentPoint = AttachmentPoint.Mouth},
+            new RLVAttachment {Name = @"chin", AttachmentPoint = AttachmentPoint.Chin},
+            new RLVAttachment {Name = @"left ear", AttachmentPoint = AttachmentPoint.LeftEar},
+            new RLVAttachment {Name = @"right ear", AttachmentPoint = AttachmentPoint.RightEar},
+            new RLVAttachment {Name = @"left eyeball", AttachmentPoint = AttachmentPoint.LeftEyeball},
+            new RLVAttachment {Name = @"right eyeball", AttachmentPoint = AttachmentPoint.RightEyeball},
+            new RLVAttachment {Name = @"nose", AttachmentPoint = AttachmentPoint.Nose},
+            new RLVAttachment {Name = @"r upper arm", AttachmentPoint = AttachmentPoint.RightUpperArm},
+            new RLVAttachment {Name = @"r forearm", AttachmentPoint = AttachmentPoint.RightForearm},
+            new RLVAttachment {Name = @"l upper arm", AttachmentPoint = AttachmentPoint.LeftUpperArm},
+            new RLVAttachment {Name = @"l forearm", AttachmentPoint = AttachmentPoint.LeftForearm},
+            new RLVAttachment {Name = @"right hip", AttachmentPoint = AttachmentPoint.RightHip},
+            new RLVAttachment {Name = @"r upper leg", AttachmentPoint = AttachmentPoint.RightUpperLeg},
+            new RLVAttachment {Name = @"r lower leg", AttachmentPoint = AttachmentPoint.RightLowerLeg},
+            new RLVAttachment {Name = @"left hip", AttachmentPoint = AttachmentPoint.LeftHip},
+            new RLVAttachment {Name = @"l upper leg", AttachmentPoint = AttachmentPoint.LeftUpperLeg},
+            new RLVAttachment {Name = @"l lower leg", AttachmentPoint = AttachmentPoint.LeftLowerLeg},
+            new RLVAttachment {Name = @"stomach", AttachmentPoint = AttachmentPoint.Stomach},
+            new RLVAttachment {Name = @"left pec", AttachmentPoint = AttachmentPoint.LeftPec},
+            new RLVAttachment {Name = @"right pec", AttachmentPoint = AttachmentPoint.RightPec},
+            new RLVAttachment {Name = @"center 2", AttachmentPoint = AttachmentPoint.HUDCenter2},
+            new RLVAttachment {Name = @"top right", AttachmentPoint = AttachmentPoint.HUDTopRight},
+            new RLVAttachment {Name = @"top", AttachmentPoint = AttachmentPoint.HUDTop},
+            new RLVAttachment {Name = @"top left", AttachmentPoint = AttachmentPoint.HUDTopLeft},
+            new RLVAttachment {Name = @"center", AttachmentPoint = AttachmentPoint.HUDCenter},
+            new RLVAttachment {Name = @"bottom left", AttachmentPoint = AttachmentPoint.HUDBottomLeft},
+            new RLVAttachment {Name = @"bottom", AttachmentPoint = AttachmentPoint.HUDBottom},
+            new RLVAttachment {Name = @"bottom right", AttachmentPoint = AttachmentPoint.HUDBottomRight},
+            new RLVAttachment {Name = @"neck", AttachmentPoint = AttachmentPoint.Neck},
+            new RLVAttachment {Name = @"root", AttachmentPoint = AttachmentPoint.Root}
+        };
+
+        /// <summary>
+        ///     RLV attachment structure.
+        /// </summary>
+        private struct RLVAttachment
+        {
+            public AttachmentPoint AttachmentPoint;
+            public string Name;
+        }
+
+        /// <summary>
+        ///     Enumeration for supported RLV commands.
+        /// </summary>
+        private enum RLVCommands : uint
+        {
+            [Description("none")] NONE = 0,
+            [Description("version")] VERSION,
+            [Description("versionnew")] VERSIONNEW,
+            [Description("versionnum")] VERSIONNUM,
+            [Description("getgroup")] GETGROUP,
+            [Description("setgroup")] SETGROUP,
+            [Description("getsitid")] GETSITID,
+            [Description("getstatusall")] GETSTATUSALL,
+            [Description("getstatus")] GETSTATUS,
+            [Description("sit")] SIT,
+            [Description("unsit")] UNSIT,
+            [Description("setrot")] SETROT,
+            [Description("tpto")] TPTO,
+            [Description("getoutfit")] GETOUTFIT,
+            [Description("getattach")] GETATTACH,
+            [Description("remattach")] REMATTACH,
+            [Description("detach")] DETACH,
+            [Description("detachme")] DETACHME,
+            [Description("remoutfit")] REMOUTFIT,
+            [Description("attach")] ATTACH,
+            [Description("attachoverreplace")] ATTACHOVERORREPLACE,
+            [Description("attachover")] ATTACHOVER,
+            [Description("getinv")] GETINV,
+            [Description("getinvworn")] GETINVWORN,
+            [Description("getpath")] GETPATH,
+            [Description("getpathnew")] GETPATHNEW,
+            [Description("findfolder")] FINDFOLDER
+        }
+
+        /// <summary>
+        ///     RLV wearable structure.
+        /// </summary>
+        private struct RLVWearable
+        {
+            public string Name;
+            public WearableType WearableType;
+        }
+
+        /// <summary>
+        ///     Structure for RLV contants.
+        /// </summary>
+        private struct RLV_CONSTANTS
+        {
+            public const string COMMAND_OPERATOR = @"@";
+            public const string VIEWER = @"RestrainedLife viewer";
+            public const string SHORT_VERSION = @"1.23";
+            public const string LONG_VERSION = @"1230100";
+            public const string FORCE = @"force";
+            public const string FALSE_MARKER = @"0";
+            public const string TRUE_MARKER = @"1";
+            public const string CSV_DELIMITER = @",";
+            public const string DOT_MARKER = @".";
+            public const string TILDE_MARKER = @"~";
+            public const string PROPORTION_SEPARATOR = @"|";
+            public const string SHARED_FOLDER_NAME = @"#RLV";
+            public const string AND_OPERATOR = @"&&";
+        }
+
+        #endregion
     }
 
     public class NativeMethods
