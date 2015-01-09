@@ -122,8 +122,6 @@ namespace Corrade
 
         private static readonly object ConfigurationFileLock = new object();
 
-        private static readonly object InventoryCacheLock = new object();
-
         private static readonly object LogFileLock = new object();
 
         private static readonly object DatabaseFileLock = new object();
@@ -195,7 +193,7 @@ namespace Corrade
         private static readonly System.Action LoadInventoryCache = () => (new Thread(() =>
         {
             int itemsLoaded;
-            lock (InventoryCacheLock)
+            lock (InventoryLock)
             {
                 itemsLoaded =
                     Client.Inventory.Store.RestoreFromDisk(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
@@ -205,39 +203,47 @@ namespace Corrade
                 itemsLoaded < 0 ? "0" : itemsLoaded.ToString(CultureInfo.InvariantCulture));
         }) {IsBackground = true}).Start();
 
-        private static readonly System.Action UpdateInventoryCache = () => (new Thread(() =>
+        private static readonly System.Action InventoryUpdate = () => (new Thread(() =>
         {
-            Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
-            inventoryFolders.Enqueue(Client.Inventory.Store.RootFolder);
-            do
+            lock (InventoryLock)
             {
-                InventoryFolder currentFolder = inventoryFolders.Dequeue();
-                if (currentFolder == null) continue;
-                ManualResetEvent FolderUpdatedEvent = new ManualResetEvent(false);
-                EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (sender, args) =>
+                Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
+                inventoryFolders.Enqueue(Client.Inventory.Store.RootFolder);
+                object LockObject = new object();
+                do
                 {
-                    if (!args.FolderID.Equals(currentFolder.UUID)) return;
-                    Parallel.ForEach(Client.Inventory.Store.GetContents(currentFolder.UUID), o =>
+                    InventoryFolder currentFolder = inventoryFolders.Dequeue();
+                    if (currentFolder == null) continue;
+                    ManualResetEvent FolderUpdatedEvent = new ManualResetEvent(false);
+                    EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (sender, args) =>
                     {
-                        InventoryFolder addFolder = o as InventoryFolder;
-                        if (addFolder != null)
+                        if (!args.FolderID.Equals(currentFolder.UUID)) return;
+                        Parallel.ForEach(Client.Inventory.Store.GetContents(currentFolder.UUID), o =>
                         {
-                            inventoryFolders.Enqueue(addFolder);
-                        }
-                    });
-                    FolderUpdatedEvent.Set();
-                };
-                lock (ServicesLock)
-                {
-                    Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                    Client.Inventory.RequestFolderContents(currentFolder.UUID, Client.Self.AgentID, true, true,
-                        InventorySortOrder.ByDate);
-                    FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
-                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                }
-            } while (!inventoryFolders.Count.Equals(0));
+                            InventoryFolder folder = o as InventoryFolder;
+                            if (folder == null) return;
+                            lock (LockObject)
+                            {
+                                inventoryFolders.Enqueue(folder);
+                            }
+                        });
+                        FolderUpdatedEvent.Set();
+                    };
+                    lock (ServicesLock)
+                    {
+                        Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                        Client.Inventory.RequestFolderContents(currentFolder.UUID, Client.Self.AgentID, true, true,
+                            InventorySortOrder.ByDate);
+                        FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                        Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                    }
+                } while (!inventoryFolders.Count.Equals(0));
+            }
+        }) {IsBackground = true}).Start();
 
-            lock (InventoryCacheLock)
+        private static readonly System.Action SaveInventoryCache = () => (new Thread(() =>
+        {
+            lock (InventoryLock)
             {
                 string path = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
                     CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
@@ -3098,8 +3104,10 @@ namespace Corrade
                     {
                         ActivateCurrentLandGroup.Invoke();
                     }
+                    // Load cache.
                     LoadInventoryCache.Invoke();
-                    UpdateInventoryCache.Invoke();
+                    // Update the whole inventory and when the update completes, save the cache.
+                    InventoryUpdate.BeginInvoke((o => SaveInventoryCache.Invoke()), null);
                     break;
                 case LoginStatus.Failed:
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_FAILED), e.FailReason);
@@ -3342,8 +3350,8 @@ namespace Corrade
             Match match = RLVRegex.Match(first);
             if (!match.Success) goto CONTINUE;
             string behaviour = match.Groups["behaviour"].ToString().ToLowerInvariant();
-            string option = match.Groups["option"].ToString();
-            string param = match.Groups["param"].ToString();
+            string option = match.Groups["option"].ToString().ToLowerInvariant();
+            string param = match.Groups["param"].ToString().ToLowerInvariant();
 
             System.Action execute;
 
@@ -3557,7 +3565,9 @@ namespace Corrade
                         {
                             case true:
                                 WearableType wearableType =
-                                    RLVWearables.FirstOrDefault(o => o.Name.Equals(option)).WearableType;
+                                    RLVWearables.FirstOrDefault(
+                                        o => o.Name.Equals(option, StringComparison.InvariantCultureIgnoreCase))
+                                        .WearableType;
                                 if (!wearables.ContainsKey(wearableType))
                                 {
                                     response.Append(RLV_CONSTANTS.FALSE_MARKER);
@@ -3603,7 +3613,9 @@ namespace Corrade
                         {
                             case true:
                                 AttachmentPoint attachmentPoint =
-                                    RLVAttachments.FirstOrDefault(o => o.Name.Equals(option)).AttachmentPoint;
+                                    RLVAttachments.FirstOrDefault(
+                                        o => o.Name.Equals(option, StringComparison.InvariantCultureIgnoreCase))
+                                        .AttachmentPoint;
                                 if (!attachmentPoints.Contains(attachmentPoint))
                                 {
                                     response.Append(RLV_CONSTANTS.FALSE_MARKER);
@@ -3666,19 +3678,27 @@ namespace Corrade
                         {
                             return;
                         }
+                        InventoryNode RLVFolder = Client.Inventory.Store.RootNode.Nodes.Values.FirstOrDefault(
+                            o => o.Data.Name.Equals(RLV_CONSTANTS.SHARED_FOLDER_NAME) && o.Data is InventoryFolder);
+                        if (RLVFolder == null)
+                        {
+                            return;
+                        }
                         InventoryBase inventoryBase;
                         InventoryItem inventoryItem;
                         switch (!string.IsNullOrEmpty(option))
                         {
                             case true:
-                                RLVAttachment RLVattachment = RLVAttachments.FirstOrDefault(o => o.Name.Equals(option));
-                                switch (!RLVattachment.Name.Equals(option))
+                                RLVAttachment RLVattachment =
+                                    RLVAttachments.FirstOrDefault(
+                                        o => o.Name.Equals(option, StringComparison.InvariantCultureIgnoreCase));
+                                switch (!RLVattachment.Equals(default(RLVAttachment)))
                                 {
                                     case true:
                                         Parallel.ForEach(GetAttachments(Configuration.SERVICES_TIMEOUT), o =>
                                         {
                                             inventoryBase =
-                                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
+                                                FindInventory<InventoryBase>(RLVFolder,
                                                     o.Key.Properties.Name
                                                     )
                                                     .FirstOrDefault(
@@ -3694,27 +3714,38 @@ namespace Corrade
                                         });
                                         break;
                                     default:
-                                        KeyValuePair<Primitive, AttachmentPoint> attachment =
-                                            GetAttachments(Configuration.SERVICES_TIMEOUT)
-                                                .FirstOrDefault(o => o.Value.Equals(RLVattachment.AttachmentPoint));
-                                        if (attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
-                                        {
-                                            break;
-                                        }
-                                        inventoryBase =
-                                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                                                attachment.Key.Properties.Name
-                                                )
-                                                .FirstOrDefault(
-                                                    p =>
-                                                        (p is InventoryItem) &&
-                                                        ((InventoryItem) p).AssetType.Equals(AssetType.Object));
-                                        inventoryItem = inventoryBase as InventoryItem;
-                                        if (inventoryItem == null)
-                                        {
-                                            break;
-                                        }
-                                        Detach(inventoryItem, Configuration.SERVICES_TIMEOUT);
+                                        Parallel.ForEach(
+                                            option.Split(RLV_CONSTANTS.PATH_SEPARATOR.ToList().First())
+                                                .Select(
+                                                    folder =>
+                                                        FindInventory<InventoryBase>(RLVFolder,
+                                                            new Regex(folder,
+                                                                RegexOptions.Compiled | RegexOptions.IgnoreCase)
+                                                            ).FirstOrDefault(o => (o is InventoryFolder))), o =>
+                                                            {
+                                                                if (o != null)
+                                                                {
+                                                                    Client.Inventory.Store.GetContents(
+                                                                        o as InventoryFolder)
+                                                                        .FindAll(CanBeWorn)
+                                                                        .ForEach(
+                                                                            p =>
+                                                                            {
+                                                                                if (p is InventoryWearable)
+                                                                                {
+                                                                                    UnWear(p as InventoryItem,
+                                                                                        Configuration.SERVICES_TIMEOUT);
+                                                                                    return;
+                                                                                }
+                                                                                if (p is InventoryObject)
+                                                                                {
+                                                                                    // Multiple attachment points not working in libOpenMetaverse, so just replace.
+                                                                                    Detach(p as InventoryItem,
+                                                                                        Configuration.SERVICES_TIMEOUT);
+                                                                                }
+                                                                            });
+                                                                }
+                                                            });
                                         break;
                                 }
                                 break;
@@ -3761,31 +3792,37 @@ namespace Corrade
                         {
                             return;
                         }
-                        InventoryBase inventoryBase =
-                            FindInventory<InventoryBase>(RLVFolder, option
-                                ).FirstOrDefault(o => (o is InventoryFolder));
-                        if (inventoryBase == null)
-                        {
-                            return;
-                        }
-                        InventoryFolder inventoryFolder = inventoryBase as InventoryFolder;
-                        if (inventoryFolder == null)
-                        {
-                            return;
-                        }
-                        Client.Inventory.Store.GetContents(inventoryFolder)
-                            .FindAll(o => CanBeWorn(o) && ((InventoryItem) o).AssetType.Equals(AssetType.Object))
-                            .ForEach(
-                                o =>
-                                {
-                                    InventoryItem inventoryItem = o as InventoryItem;
-                                    if (inventoryItem == null)
-                                    {
-                                        return;
-                                    }
-                                    // Multiple attachment points not working in libOpenMetaverse, so just replace.
-                                    Attach(inventoryItem, AttachmentPoint.Default, true, Configuration.SERVICES_TIMEOUT);
-                                });
+                        Parallel.ForEach(
+                            option.Split(RLV_CONSTANTS.PATH_SEPARATOR.ToList().First())
+                                .Select(
+                                    folder =>
+                                        FindInventory<InventoryBase>(RLVFolder,
+                                            new Regex(folder, RegexOptions.Compiled | RegexOptions.IgnoreCase)
+                                            ).FirstOrDefault(o => (o is InventoryFolder))), o =>
+                                            {
+                                                if (o != null)
+                                                {
+                                                    Client.Inventory.Store.GetContents(o as InventoryFolder)
+                                                        .FindAll(CanBeWorn)
+                                                        .ForEach(
+                                                            p =>
+                                                            {
+                                                                if (p is InventoryWearable)
+                                                                {
+                                                                    Wear(p as InventoryItem, true,
+                                                                        Configuration.SERVICES_TIMEOUT);
+                                                                    return;
+                                                                }
+                                                                if (o is InventoryObject)
+                                                                {
+                                                                    // Multiple attachment points not working in libOpenMetaverse, so just replace.
+                                                                    Attach(p as InventoryItem, AttachmentPoint.Default,
+                                                                        true,
+                                                                        Configuration.SERVICES_TIMEOUT);
+                                                                }
+                                                            });
+                                                }
+                                            });
                     };
                     break;
                 case RLVCommands.REMOUTFIT:
@@ -3803,7 +3840,7 @@ namespace Corrade
                                 FieldInfo wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
                                                                                          BindingFlags.Static)
                                     .FirstOrDefault(
-                                        p => p.Name.ToLowerInvariant().Equals(option, StringComparison.Ordinal));
+                                        p => p.Name.Equals(option, StringComparison.InvariantCultureIgnoreCase));
                                 if (wearTypeInfo == null)
                                 {
                                     break;
@@ -3870,7 +3907,9 @@ namespace Corrade
                         {
                             case true:
                                 // Try attachments
-                                RLVAttachment RLVattachment = RLVAttachments.FirstOrDefault(o => o.Name.Equals(option));
+                                RLVAttachment RLVattachment =
+                                    RLVAttachments.FirstOrDefault(
+                                        o => o.Name.Equals(option, StringComparison.InvariantCultureIgnoreCase));
                                 if (!RLVattachment.Equals(default(RLVAttachment)))
                                 {
                                     attachment =
@@ -3889,13 +3928,15 @@ namespace Corrade
                                                 ((InventoryItem) p).AssetType.Equals(AssetType.Object));
                                     break;
                                 }
-                                RLVWearable RLVwearable = RLVWearables.FirstOrDefault(o => o.Name.Equals(option));
+                                RLVWearable RLVwearable =
+                                    RLVWearables.FirstOrDefault(
+                                        o => o.Name.Equals(option, StringComparison.InvariantCultureIgnoreCase));
                                 if (!RLVwearable.Equals(default(RLVWearable)))
                                 {
                                     FieldInfo wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
                                                                                              BindingFlags.Static)
                                         .FirstOrDefault(
-                                            p => p.Name.ToLowerInvariant().Equals(option, StringComparison.Ordinal));
+                                            p => p.Name.Equals(option, StringComparison.InvariantCultureIgnoreCase));
                                     if (wearTypeInfo == null)
                                     {
                                         return;
@@ -4063,7 +4104,9 @@ namespace Corrade
                             new LinkedList<string>())
                             .Where(o => o.Key.Data is InventoryFolder)
                             .FirstOrDefault(
-                                o => string.Join(RLV_CONSTANTS.PATH_SEPARATOR, o.Value.Skip(1).ToArray()).Equals(option));
+                                o =>
+                                    string.Join(RLV_CONSTANTS.PATH_SEPARATOR, o.Value.Skip(1).ToArray())
+                                        .Equals(option, StringComparison.InvariantCultureIgnoreCase));
                         if (folderPath.Equals(default(KeyValuePair<InventoryNode, LinkedList<string>>)))
                         {
                             Client.Self.Chat(string.Empty, channel, ChatType.Normal);
@@ -4105,25 +4148,30 @@ namespace Corrade
                             int allItemsCount = 0;
                             int allItemsWornCount = 0;
 
-                            Parallel.ForEach(FindInventory<InventoryBase>(node,
-                                new Regex(".+?", RegexOptions.Compiled))
-                                .Where(o => !o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
-                                .Where(
-                                    o =>
-                                        o is InventoryItem && CanBeWorn(o) &&
-                                        !o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)), n =>
-                                        {
-                                            Interlocked.Increment(ref allItemsCount);
-                                            if (n is InventoryWearable &&
-                                                currentWearables.Values.Any(o => o.ItemID.Equals(n.UUID)) ||
-                                                currentAttachments.Any(
-                                                    o =>
-                                                        GetAttachments(Configuration.SERVICES_TIMEOUT)
-                                                            .Any(p => p.Key.Properties.ItemID.Equals(n.UUID))))
+                            Parallel.ForEach(
+                                node.Nodes.Values.Where(
+                                    n =>
+                                        n.Data is InventoryFolder && !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)),
+                                n => Parallel.ForEach(FindInventory<InventoryBase>(n,
+                                    new Regex(".+?", RegexOptions.Compiled))
+                                    .Where(o => !o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
+                                    .Where(
+                                        o =>
+                                            o is InventoryItem && CanBeWorn(o) &&
+                                            !o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)), p =>
                                             {
-                                                Interlocked.Increment(ref allItemsWornCount);
-                                            }
-                                        });
+                                                Interlocked.Increment(ref allItemsCount);
+                                                if (p is InventoryWearable &&
+                                                    currentWearables.Values.Any(o => o.ItemID.Equals(p.UUID)) ||
+                                                    currentAttachments.Any(
+                                                        o =>
+                                                            GetAttachments(Configuration.SERVICES_TIMEOUT)
+                                                                .Any(q => q.Key.Properties.ItemID.Equals(p.UUID))))
+                                                {
+                                                    Interlocked.Increment(ref allItemsWornCount);
+                                                }
+                                            }));
+
 
                             Func<int, int, string> WornIndicator =
                                 (all, one) => all > 0 ? (all.Equals(one) ? "3" : (one > 0 ? "2" : "1")) : "0";
@@ -4139,8 +4187,8 @@ namespace Corrade
                         foreach (InventoryNode node in folderPath.Key.Nodes.Values)
                         {
                             response.AddRange(
-                                FindInventory<InventoryNode>(node, new Regex(".+?", RegexOptions.Compiled))
-                                    .Where(o => o.Data is InventoryFolder)
+                                FindInventory<InventoryNode>(node,
+                                    new Regex(".+?", RegexOptions.Compiled)).Where(o => o.Data is InventoryFolder)
                                     .Select(
                                         o =>
                                             string.Format("{0}{1}{2}", o.Data.Name,
@@ -8993,9 +9041,12 @@ namespace Corrade
                         Parallel.ForEach(FindInventoryPath<InventoryBase>(Client.Inventory.Store.RootNode,
                             search, new LinkedList<string>()).Select(o => o.Value),
                             o => csv.Add(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR, o.ToArray())));
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                csv.ToArray()));
+                        if (!csv.Count.Equals(0))
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.ToArray()));
+                        }
                     };
                     break;
                 case ScriptKeys.GETPARTICLESYSTEM:
