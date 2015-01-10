@@ -196,7 +196,7 @@ namespace Corrade
             Client.Appearance.RequestSetAppearance(true);
         }) {IsBackground = true}).Start();
 
-        private static readonly System.Action LoadInventoryCache = () => (new Thread(() =>
+        private static readonly System.Action LoadInventoryCache = () =>
         {
             int itemsLoaded;
             lock (InventoryLock)
@@ -207,21 +207,21 @@ namespace Corrade
             }
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_LOADED),
                 itemsLoaded < 0 ? "0" : itemsLoaded.ToString(CultureInfo.InvariantCulture));
-        }) {IsBackground = true}).Start();
+        };
 
-        private static readonly System.Action InventoryUpdate = () => (new Thread(() =>
+        private static readonly System.Action InventoryUpdate = () =>
         {
             lock (InventoryLock)
             {
                 Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
                 inventoryFolders.Enqueue(Client.Inventory.Store.RootFolder);
                 object LockObject = new object();
-                do
+
+                InventoryFolder currentFolder = null;
+                AutoResetEvent FolderUpdatedEvent = new AutoResetEvent(false);
+                EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (sender, args) =>
                 {
-                    InventoryFolder currentFolder = inventoryFolders.Dequeue();
-                    if (currentFolder == null) continue;
-                    ManualResetEvent FolderUpdatedEvent = new ManualResetEvent(false);
-                    EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (sender, args) =>
+                    if (currentFolder != null)
                     {
                         if (!args.FolderID.Equals(currentFolder.UUID)) return;
                         Parallel.ForEach(Client.Inventory.Store.GetContents(currentFolder.UUID), o =>
@@ -233,8 +233,14 @@ namespace Corrade
                                 inventoryFolders.Enqueue(folder);
                             }
                         });
-                        FolderUpdatedEvent.Set();
-                    };
+                    }
+                    FolderUpdatedEvent.Set();
+                };
+
+                do
+                {
+                    currentFolder = inventoryFolders.Dequeue();
+                    if (currentFolder == null) continue;
                     lock (ServicesLock)
                     {
                         Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
@@ -245,9 +251,9 @@ namespace Corrade
                     }
                 } while (!inventoryFolders.Count.Equals(0));
             }
-        }) {IsBackground = true}).Start();
+        };
 
-        private static readonly System.Action SaveInventoryCache = () => (new Thread(() =>
+        private static readonly System.Action SaveInventoryCache = () =>
         {
             lock (InventoryLock)
             {
@@ -262,7 +268,7 @@ namespace Corrade
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_SAVED),
                     itemsSaved.ToString(CultureInfo.InvariantCulture));
             }
-        }) {IsBackground = true}).Start();
+        };
 
         private static readonly System.Action LoadCorradeCache = () =>
         {
@@ -484,13 +490,19 @@ namespace Corrade
         /// <returns>the real inventory item</returns>
         public static InventoryItem ResolveItemLink(InventoryItem item)
         {
-            if (item.IsLink() && Client.Inventory.Store.Contains(item.AssetUUID) &&
-                Client.Inventory.Store[item.AssetUUID] is InventoryItem)
+            if (!item.AssetType.Equals(AssetType.Link)) return item;
+            InventoryBase inventoryBase = FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item.Name)
+                .FirstOrDefault(o => (o is InventoryItem) && !(o as InventoryItem).AssetType.Equals(AssetType.Link));
+            if (inventoryBase == null)
             {
-                return (InventoryItem) Client.Inventory.Store[item.AssetUUID];
+                return null;
             }
-
-            return item;
+            InventoryItem inventoryItem = inventoryBase as InventoryItem;
+            if (inventoryItem == null)
+            {
+                return null;
+            }
+            return inventoryItem;
         }
 
         /// <summary>
@@ -524,71 +536,21 @@ namespace Corrade
 
         private static void Wear(InventoryItem item, bool replace, int millisecondsTimeout)
         {
-            List<InventoryItem> currentOutfit = GetCurrentOutfitFolderLinks(millisecondsTimeout);
-            HashSet<InventoryItem> removeItems = new HashSet<InventoryItem>();
-            object RemoveItemsLock = new object();
-
             InventoryItem realItem = ResolveItemLink(item);
-            InventoryWearable inventoryWearable = realItem as InventoryWearable;
-            if (inventoryWearable != null)
-            {
-                Parallel.ForEach(currentOutfit, link =>
-                {
-                    InventoryItem currentItem = ResolveItemLink(link);
-                    if (link.AssetUUID.Equals(item.UUID))
-                    {
-                        lock (RemoveItemsLock)
-                        {
-                            removeItems.Add(currentItem);
-                        }
-                        return;
-                    }
-                    InventoryWearable wearable = currentItem as InventoryWearable;
-                    if (wearable == null || !wearable.WearableType.Equals(inventoryWearable.WearableType)) return;
-                    lock (RemoveItemsLock)
-                    {
-                        removeItems.Add(currentItem);
-                    }
-                });
-            }
-
-            RemoveLink(removeItems, millisecondsTimeout);
-
-            AddLink(item, millisecondsTimeout);
-            Client.Appearance.AddToOutfit(item, replace);
+            if (item == null) return;
+            Client.Appearance.AddToOutfit(realItem, replace);
+            AddLink(realItem, millisecondsTimeout);
         }
 
         private static void UnWear(InventoryItem item, int millisecondsTimeout)
         {
-            List<InventoryItem> currentOutfit = GetCurrentOutfitFolderLinks(millisecondsTimeout);
-            HashSet<InventoryItem> removeItems = new HashSet<InventoryItem>();
-            object RemoveItemsLock = new object();
-
             InventoryItem realItem = ResolveItemLink(item);
-            InventoryWearable inventoryWearable = realItem as InventoryWearable;
-            if (inventoryWearable != null)
-            {
-                Parallel.ForEach(currentOutfit, link =>
-                {
-                    InventoryItem currentItem = ResolveItemLink(link);
-                    if (link.AssetUUID.Equals(item.UUID))
-                    {
-                        lock (RemoveItemsLock)
-                        {
-                            removeItems.Add(currentItem);
-                        }
-                        return;
-                    }
-                    InventoryWearable wearable = currentItem as InventoryWearable;
-                    if (wearable == null || !wearable.WearableType.Equals(inventoryWearable.WearableType)) return;
-                    lock (RemoveItemsLock)
-                    {
-                        removeItems.Add(currentItem);
-                    }
-                });
-            }
-            Client.Appearance.RemoveFromOutfit(item);
-            RemoveLink(removeItems, millisecondsTimeout);
+            if (realItem == null) return;
+            Client.Appearance.RemoveFromOutfit(realItem);
+            InventoryItem link = GetCurrentOutfitFolderLinks(millisecondsTimeout)
+                .FirstOrDefault(o => o.AssetType.Equals(AssetType.Link) && o.Name.Equals(item.Name));
+            if (link == null) return;
+            RemoveLink(link, millisecondsTimeout);
         }
 
         /// <summary>
@@ -1436,48 +1398,36 @@ namespace Corrade
         /// <summary>
         ///     Gets the inventory wearables that are currently being worn.
         /// </summary>
-        /// <param name="rootFolder">the folder to start the search from</param>
-        /// <param name="millisecondsTimeout">the timeout for searching the wearables</param>
+        /// <param name="root">the folder to start the search from</param>
         /// <returns>key value pairs of wearables by name</returns>
-        private static IEnumerable<KeyValuePair<WearableType, string>> lookupGetWearables(InventoryBase rootFolder,
-            int millisecondsTimeout)
+        private static IEnumerable<KeyValuePair<WearableType, string>> lookupGetWearables(InventoryNode root)
         {
-            HashSet<InventoryBase> contents =
-                new HashSet<InventoryBase>(Client.Inventory.FolderContents(rootFolder.UUID, Client.Self.AgentID,
-                    true, true, InventorySortOrder.ByName, millisecondsTimeout));
-            foreach (InventoryBase inventory in contents)
+            InventoryFolder inventoryFolder = Client.Inventory.Store[root.Data.UUID] as InventoryFolder;
+            if (inventoryFolder == null)
             {
-                InventoryFolder inventoryFolder = inventory as InventoryFolder;
-                if (inventoryFolder == null)
+                InventoryItem inventoryItem = Client.Inventory.Store[root.Data.UUID] as InventoryItem;
+                if (inventoryItem != null)
                 {
-                    InventoryItem i = inventory as InventoryItem;
-                    if (i == null) continue;
-
-                    WearableType wearable = Client.Appearance.IsItemWorn(i);
-                    switch (wearable)
+                    WearableType wearableType = Client.Appearance.IsItemWorn(inventoryItem);
+                    if (!wearableType.Equals(WearableType.Invalid))
                     {
-                        case WearableType.Invalid:
-                            break;
-                        default:
-                            yield return new KeyValuePair<WearableType, string>(wearable, i.Name);
-                            break;
+                        yield return new KeyValuePair<WearableType, string>(wearableType, inventoryItem.Name);
                     }
-                    continue;
                 }
-                foreach (
-                    KeyValuePair<WearableType, string> wearable in GetWearables(inventoryFolder, millisecondsTimeout))
-                {
-                    yield return new KeyValuePair<WearableType, string>(wearable.Key, wearable.Value);
-                }
+            }
+            foreach (
+                KeyValuePair<WearableType, string> item in
+                    root.Nodes.Values.SelectMany(node => lookupGetWearables(node)))
+            {
+                yield return item;
             }
         }
 
-        private static IEnumerable<KeyValuePair<WearableType, string>> GetWearables(InventoryBase rootFolder,
-            int millisecondsTimeout)
+        private static IEnumerable<KeyValuePair<WearableType, string>> GetWearables(InventoryNode root)
         {
             lock (InventoryLock)
             {
-                return lookupGetWearables(rootFolder, millisecondsTimeout);
+                return lookupGetWearables(root);
             }
         }
 
@@ -1851,7 +1801,7 @@ namespace Corrade
                         };
                         UnixSignal.WaitAny(signals, -1);
                         ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
-                    });
+                    }) {IsBackground = true};
                     BindSignalsThread.Start();
                     break;
             }
@@ -1919,7 +1869,8 @@ namespace Corrade
             Client.Network.SimChanged += HandleSimChanged;
             Client.Self.MoneyBalanceReply += HandleMoneyBalance;
             // Each Instant Message is processed in its own thread.
-            Client.Self.IM += (sender, args) => new Thread(o => HandleSelfIM(sender, args)).Start();
+            Client.Self.IM +=
+                (sender, args) => new Thread(o => HandleSelfIM(sender, args)) {IsBackground = true}.Start();
             // Write the logo in interactive mode.
             if (Environment.UserInteractive)
             {
@@ -2166,7 +2117,7 @@ namespace Corrade
                                                             AgentName = agentName,
                                                             AgentUUID = o,
                                                             Action = Action.JOINED
-                                                        }))
+                                                        })) {IsBackground = true}
                                                 .Start();
                                         }
                                     });
@@ -2186,7 +2137,7 @@ namespace Corrade
                                                             AgentName = agentName,
                                                             AgentUUID = o,
                                                             Action = Action.PARTED
-                                                        }))
+                                                        })) {IsBackground = true}
                                                 .Start();
                                         }
                                     });
@@ -2359,17 +2310,17 @@ namespace Corrade
 
         private static void HandleRegionCrossed(object sender, RegionCrossedEventArgs e)
         {
-            new Thread(o => SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e)).Start();
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e)) {IsBackground = true}.Start();
         }
 
         private static void HandleMeanCollision(object sender, MeanCollisionEventArgs e)
         {
-            new Thread(o => SendNotification(Notifications.NOTIFICATION_MEAN_COLLISION, e)).Start();
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_MEAN_COLLISION, e)) {IsBackground = true}.Start();
         }
 
         private static void HandleViewerEffect(object sender, object e)
         {
-            new Thread(o => SendNotification(Notifications.NOTIFICATION_VIEWER_EFFECT, e)).Start();
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_VIEWER_EFFECT, e)) {IsBackground = true}.Start();
         }
 
         private static void ProcesHTTPRequest(IAsyncResult ar)
@@ -2931,7 +2882,7 @@ namespace Corrade
                     Button = e.ButtonLabels
                 });
             }
-            new Thread(o => SendNotification(Notifications.NOTIFICATION_SCRIPT_DIALOG, e)).Start();
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_SCRIPT_DIALOG, e)) {IsBackground = true}.Start();
         }
 
         private static void HandleChatFromSimulator(object sender, ChatEventArgs e)
@@ -2943,36 +2894,38 @@ namespace Corrade
             switch (e.Type)
             {
                 case ChatType.OwnerSay:
-                    if (EnableCorradeRLV)
+                    new Thread(() =>
                     {
-                        if (!e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR))
-                        {
-                            break;
-                        }
+                        if (!EnableCorradeRLV) return;
+                        if (!e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR)) return;
                         HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1), e.SourceID);
-                    }
+                    }) {IsBackground = true}.Start();
                     break;
                 case ChatType.Debug:
                 case ChatType.Normal:
                 case ChatType.Shout:
                 case ChatType.Whisper:
                     // Send chat notifications.
-                    new Thread(o => SendNotification(Notifications.NOTIFICATION_LOCAL_CHAT, e)).Start();
+                    new Thread(() => SendNotification(Notifications.NOTIFICATION_LOCAL_CHAT, e)) {IsBackground = true}
+                        .Start();
                     break;
                 case (ChatType) 9:
-                    HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString());
+                    new Thread(() => HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString()))
+                    {
+                        IsBackground = true
+                    }.Start();
                     break;
             }
         }
 
         private static void HandleMoneyBalance(object sender, BalanceEventArgs e)
         {
-            new Thread(o => SendNotification(Notifications.NOTIFICATION_BALANCE, e)).Start();
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_BALANCE, e)) {IsBackground = true}.Start();
         }
 
         private static void HandleAlertMessage(object sender, AlertMessageEventArgs e)
         {
-            new Thread(o => SendNotification(Notifications.NOTIFICATION_ALERT_MESSAGE, e)).Start();
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_ALERT_MESSAGE, e)) {IsBackground = true}.Start();
         }
 
         private static void HandleInventoryObjectOffered(object sender, InventoryObjectOfferedEventArgs e)
@@ -3014,7 +2967,7 @@ namespace Corrade
             }
 
             // Send notification
-            new Thread(o => SendNotification(Notifications.NOTIFICATION_INVENTORY, e)).Start();
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_INVENTORY, e)) {IsBackground = true}.Start();
             // Wait for a reply.
             wait.WaitOne(Timeout.Infinite);
 
@@ -3057,7 +3010,7 @@ namespace Corrade
                 return;
             }
             // Handle RLV: acceptpermission
-            lock (RLVLock)
+            lock (RLVRuleLock)
             {
                 if (RLVRules.Any(o => o.Behaviour.Equals(wasGetDescriptionFromEnumValue(RLVBehaviour.ACCEPTPERMISSION))))
                 {
@@ -3081,7 +3034,8 @@ namespace Corrade
                     Permission = e.Questions
                 });
             }
-            new Thread(o => SendNotification(Notifications.NOTIFICATION_SCRIPT_PERMISSION, e)).Start();
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_SCRIPT_PERMISSION, e)) {IsBackground = true}
+                .Start();
         }
 
         private static void HandleConfigurationFileChanged(object sender, FileSystemEventArgs e)
@@ -3137,7 +3091,6 @@ namespace Corrade
                     }
                     // Load cache.
                     LoadInventoryCache.Invoke();
-                    // Update the whole inventory and when the update completes, save the cache.
                     InventoryUpdate.BeginInvoke((o => SaveInventoryCache.Invoke()), null);
                     break;
                 case LoginStatus.Failed:
@@ -3149,23 +3102,23 @@ namespace Corrade
 
         private static void HandleFriendOnlineStatus(object sender, FriendInfoEventArgs e)
         {
-            new Thread(o => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e)).Start();
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e)) {IsBackground = true}.Start();
         }
 
         private static void HandleFriendRightsUpdate(object sender, FriendInfoEventArgs e)
         {
-            new Thread(o => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e)).Start();
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e)) {IsBackground = true}.Start();
         }
 
         private static void HandleFriendShipResponse(object sender, FriendshipResponseEventArgs e)
         {
-            new Thread(o => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e)).Start();
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e)) {IsBackground = true}.Start();
         }
 
         private static void HandleFriendshipOffered(object sender, FriendshipOfferedEventArgs e)
         {
             // Send friendship notifications
-            new Thread(o => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e)).Start();
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e)) {IsBackground = true}.Start();
             // Accept friendships only from masters (for the time being)
             if (
                 !Configuration.MASTERS.Select(
@@ -3210,20 +3163,22 @@ namespace Corrade
                     // Send typing notification.
                 case InstantMessageDialog.StartTyping:
                 case InstantMessageDialog.StopTyping:
-                    new Thread(o => SendNotification(Notifications.NOTIFICATION_TYPING, args)).Start();
+                    new Thread(o => SendNotification(Notifications.NOTIFICATION_TYPING, args)) {IsBackground = true}
+                        .Start();
                     return;
                 case InstantMessageDialog.InventoryAccepted:
                 case InstantMessageDialog.InventoryDeclined:
                 case InstantMessageDialog.TaskInventoryOffered:
                 case InstantMessageDialog.InventoryOffered:
-                    new Thread(o => SendNotification(Notifications.NOTIFICATION_INVENTORY, args)).Start();
+                    new Thread(o => SendNotification(Notifications.NOTIFICATION_INVENTORY, args)) {IsBackground = true}
+                        .Start();
                     return;
                 case InstantMessageDialog.MessageBox:
                     // Not used.
                     return;
                 case InstantMessageDialog.RequestTeleport:
                     // Handle RLV: acccepttp
-                    lock (RLVLock)
+                    lock (RLVRuleLock)
                     {
                         if (RLVRules.Any(o => o.Behaviour.Equals(wasGetDescriptionFromEnumValue(RLVBehaviour.ACCEPTTP))))
                         {
@@ -3253,7 +3208,10 @@ namespace Corrade
                         });
                     }
                     // Send teleport lure notification.
-                    new Thread(o => SendNotification(Notifications.NOTIFICATION_TELEPORT_LURE, args)).Start();
+                    new Thread(o => SendNotification(Notifications.NOTIFICATION_TELEPORT_LURE, args))
+                    {
+                        IsBackground = true
+                    }.Start();
                     // If we got a teleport request from a master, then accept it (for the moment).
                     if (Configuration.MASTERS.Select(
                         o =>
@@ -3302,7 +3260,10 @@ namespace Corrade
                         });
                     }
                     // Send group invitation notification.
-                    new Thread(o => SendNotification(Notifications.NOTIFICATION_GROUP_INVITE, args)).Start();
+                    new Thread(o => SendNotification(Notifications.NOTIFICATION_GROUP_INVITE, args))
+                    {
+                        IsBackground = true
+                    }.Start();
                     // If a master sends it, then accept.
                     if (
                         !Configuration.MASTERS.Select(
@@ -3317,7 +3278,10 @@ namespace Corrade
                 case InstantMessageDialog.GroupNoticeInventoryAccepted:
                 case InstantMessageDialog.GroupNoticeInventoryDeclined:
                 case InstantMessageDialog.GroupNotice:
-                    new Thread(o => SendNotification(Notifications.NOTIFICATION_GROUP_NOTICE, args)).Start();
+                    new Thread(o => SendNotification(Notifications.NOTIFICATION_GROUP_NOTICE, args))
+                    {
+                        IsBackground = true
+                    }.Start();
                     return;
                 case InstantMessageDialog.SessionSend:
                 case InstantMessageDialog.MessageFromAgent:
@@ -3333,7 +3297,10 @@ namespace Corrade
                     if (messageFromGroup)
                     {
                         // Send group notice notifications.
-                        new Thread(o => SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, args)).Start();
+                        new Thread(o => SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, args))
+                        {
+                            IsBackground = true
+                        }.Start();
                         // Log group messages
                         Parallel.ForEach(
                             Configuration.GROUPS.Where(o => o.Name.Equals(messageGroup.Name, StringComparison.Ordinal)),
@@ -3368,20 +3335,30 @@ namespace Corrade
                     // Check if this is an instant message.
                     if (args.IM.ToAgentID.Equals(Client.Self.AgentID))
                     {
-                        new Thread(o => SendNotification(Notifications.NOTIFICATION_INSTANT_MESSAGE, args)).Start();
+                        new Thread(o => SendNotification(Notifications.NOTIFICATION_INSTANT_MESSAGE, args))
+                        {
+                            IsBackground = true
+                        }.Start();
                         return;
                     }
                     // Check if this is a region message.
                     if (args.IM.IMSessionID.Equals(UUID.Zero))
                     {
-                        new Thread(o => SendNotification(Notifications.NOTIFICATION_REGION_MESSAGE, args)).Start();
+                        new Thread(o => SendNotification(Notifications.NOTIFICATION_REGION_MESSAGE, args))
+                        {
+                            IsBackground = true
+                        }.Start();
                         return;
                     }
                     break;
             }
 
             // Everything else, must be a command.
-            HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString());
+            new Thread(
+                () => HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString()))
+            {
+                IsBackground = true
+            }.Start();
         }
 
         private static void HandleRLVCommand(string message, UUID senderUUID)
@@ -3412,7 +3389,7 @@ namespace Corrade
             {
                 case RLV_CONSTANTS.Y:
                 case RLV_CONSTANTS.ADD:
-                    lock (RLVLock)
+                    lock (RLVRuleLock)
                     {
                         if (!RLVRules.Contains(RLVrule))
                         {
@@ -3422,7 +3399,7 @@ namespace Corrade
                     goto CONTINUE;
                 case RLV_CONSTANTS.N:
                 case RLV_CONSTANTS.REM:
-                    lock (RLVLock)
+                    lock (RLVRuleLock)
                     {
                         if (RLVRules.Contains(RLVrule))
                         {
@@ -3742,12 +3719,10 @@ namespace Corrade
                                     p =>
                                         (p is InventoryItem) &&
                                         ((InventoryItem) p).AssetType.Equals(AssetType.Object));
-                        InventoryItem inventoryItem = inventoryBase as InventoryItem;
-                        if (inventoryItem == null)
+                        if (inventoryBase is InventoryAttachment || inventoryBase is InventoryObject)
                         {
-                            return;
+                            Detach(inventoryBase as InventoryItem, Configuration.SERVICES_TIMEOUT);
                         }
-                        Detach(inventoryItem, Configuration.SERVICES_TIMEOUT);
                     };
                     break;
                 case RLVBehaviour.REMATTACH:
@@ -3765,7 +3740,6 @@ namespace Corrade
                             return;
                         }
                         InventoryBase inventoryBase;
-                        InventoryItem inventoryItem;
                         switch (!string.IsNullOrEmpty(RLVrule.Option))
                         {
                             case true:
@@ -3774,26 +3748,29 @@ namespace Corrade
                                         o => o.Name.Equals(RLVrule.Option, StringComparison.InvariantCultureIgnoreCase));
                                 switch (!RLVattachment.Equals(default(RLVAttachment)))
                                 {
-                                    case true:
-                                        Parallel.ForEach(GetAttachments(Configuration.SERVICES_TIMEOUT), o =>
-                                        {
-                                            inventoryBase =
-                                                FindInventory<InventoryBase>(RLVFolder,
-                                                    o.Key.Properties.Name
-                                                    )
-                                                    .FirstOrDefault(
-                                                        p =>
-                                                            (p is InventoryItem) &&
-                                                            ((InventoryItem) p).AssetType.Equals(AssetType.Object));
-                                            inventoryItem = inventoryBase as InventoryItem;
-                                            if (inventoryItem == null)
-                                            {
-                                                return;
-                                            }
-                                            Detach(inventoryItem, Configuration.SERVICES_TIMEOUT);
-                                        });
+                                    case true: // detach by attachment point
+                                        Parallel.ForEach(
+                                            GetAttachments(Configuration.SERVICES_TIMEOUT)
+                                                .Where(o => o.Value.Equals(RLVattachment.AttachmentPoint)), o =>
+                                                {
+                                                    inventoryBase =
+                                                        FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
+                                                            o.Key.Properties.Name
+                                                            )
+                                                            .FirstOrDefault(
+                                                                p =>
+                                                                    (p is InventoryItem) &&
+                                                                    ((InventoryItem) p).AssetType.Equals(
+                                                                        AssetType.Object));
+                                                    if (inventoryBase is InventoryAttachment ||
+                                                        inventoryBase is InventoryObject)
+                                                    {
+                                                        Detach(inventoryBase as InventoryItem,
+                                                            Configuration.SERVICES_TIMEOUT);
+                                                    }
+                                                });
                                         break;
-                                    default:
+                                    default: // detach by folder(s) name
                                         Parallel.ForEach(
                                             RLVrule.Option.Split(RLV_CONSTANTS.PATH_SEPARATOR[0])
                                                 .Select(
@@ -3817,7 +3794,8 @@ namespace Corrade
                                                                                         Configuration.SERVICES_TIMEOUT);
                                                                                     return;
                                                                                 }
-                                                                                if (p is InventoryObject)
+                                                                                if (p is InventoryAttachment ||
+                                                                                    p is InventoryObject)
                                                                                 {
                                                                                     // Multiple attachment points not working in libOpenMetaverse, so just replace.
                                                                                     Detach(p as InventoryItem,
@@ -3829,30 +3807,23 @@ namespace Corrade
                                         break;
                                 }
                                 break;
-                            default:
-                                HashSet<Primitive> attachments =
-                                    new HashSet<Primitive>(
-                                        GetAttachments(Configuration.SERVICES_TIMEOUT).Select(o => o.Key));
-                                Parallel.ForEach(attachments, o =>
-                                {
-                                    inventoryBase = FindInventory<InventoryBase>(
-                                        Client.Inventory.Store.RootNode, RLVrule.Option
-                                        )
-                                        .FirstOrDefault(
-                                            p =>
-                                                (p is InventoryItem) &&
-                                                ((InventoryItem) p).AssetType.Equals(AssetType.Object));
-                                    if (inventoryBase == null)
-                                    {
-                                        return;
-                                    }
-                                    inventoryItem = inventoryBase as InventoryItem;
-                                    if (inventoryItem == null)
-                                    {
-                                        return;
-                                    }
-                                    Detach(inventoryItem, Configuration.SERVICES_TIMEOUT);
-                                });
+                            default: //detach everything from RLV attachmentpoints
+                                Parallel.ForEach(
+                                    GetAttachments(Configuration.SERVICES_TIMEOUT)
+                                        .Where(o => RLVAttachments.Any(p => p.AttachmentPoint.Equals(o.Value))), o =>
+                                        {
+                                            inventoryBase = FindInventory<InventoryBase>(
+                                                Client.Inventory.Store.RootNode, o.Key.Properties.Name
+                                                )
+                                                .FirstOrDefault(
+                                                    p =>
+                                                        p is InventoryItem &&
+                                                        ((InventoryItem) p).AssetType.Equals(AssetType.Object));
+                                            if (inventoryBase is InventoryAttachment || inventoryBase is InventoryObject)
+                                            {
+                                                Detach(inventoryBase as InventoryItem, Configuration.SERVICES_TIMEOUT);
+                                            }
+                                        });
                                 break;
                         }
                     };
@@ -3893,7 +3864,7 @@ namespace Corrade
                                                                         Configuration.SERVICES_TIMEOUT);
                                                                     return;
                                                                 }
-                                                                if (o is InventoryObject)
+                                                                if (o is InventoryObject || o is InventoryAttachment)
                                                                 {
                                                                     // Multiple attachment points not working in libOpenMetaverse, so just replace.
                                                                     Attach(p as InventoryItem, AttachmentPoint.Default,
@@ -3913,7 +3884,6 @@ namespace Corrade
                             return;
                         }
                         InventoryBase inventoryBase;
-                        InventoryItem inventoryItem;
                         switch (!string.IsNullOrEmpty(RLVrule.Option))
                         {
                             case true: // A single wearable
@@ -3927,22 +3897,18 @@ namespace Corrade
                                 }
                                 inventoryBase =
                                     FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                                        GetWearables(Client.Inventory.Store.RootFolder,
-                                            Configuration.SERVICES_TIMEOUT)
+                                        GetWearables(Client.Inventory.Store.RootNode)
                                             .FirstOrDefault(
                                                 o => o.Key.Equals((WearableType) wearTypeInfo.GetValue(null)))
-                                            .Value)
-                                        .FirstOrDefault(o => (o is InventoryWearable));
-                                inventoryItem = inventoryBase as InventoryItem;
-                                if (inventoryItem == null)
+                                            .Value).FirstOrDefault();
+                                if (inventoryBase == null)
                                 {
                                     break;
                                 }
-                                UnWear(inventoryItem, Configuration.SERVICES_TIMEOUT);
+                                UnWear(inventoryBase as InventoryItem, Configuration.SERVICES_TIMEOUT);
                                 break;
                             default:
-                                Parallel.ForEach(GetWearables(Client.Inventory.Store.RootFolder,
-                                    Configuration.SERVICES_TIMEOUT)
+                                Parallel.ForEach(GetWearables(Client.Inventory.Store.RootNode)
                                     .Select(o => new[]
                                     {
                                         o.Value
@@ -3952,12 +3918,11 @@ namespace Corrade
                                             FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
                                                 )
                                                 .FirstOrDefault(p => (p is InventoryWearable));
-                                        inventoryItem = inventoryBase as InventoryItem;
-                                        if (inventoryItem == null)
+                                        if (inventoryBase == null)
                                         {
                                             return;
                                         }
-                                        UnWear(inventoryItem, Configuration.SERVICES_TIMEOUT);
+                                        UnWear(inventoryBase as InventoryItem, Configuration.SERVICES_TIMEOUT);
                                     });
                                 break;
                         }
@@ -4025,8 +3990,7 @@ namespace Corrade
                                     }
                                     inventoryBase =
                                         FindInventory<InventoryBase>(RLVFolder,
-                                            GetWearables(Client.Inventory.Store[RLVFolder.Data.UUID],
-                                                Configuration.SERVICES_TIMEOUT)
+                                            GetWearables(RLVFolder)
                                                 .FirstOrDefault(
                                                     o => o.Key.Equals((WearableType) wearTypeInfo.GetValue(null)))
                                                 .Value)
@@ -4305,7 +4269,7 @@ namespace Corrade
                             }
                         }
                         StringBuilder response = new StringBuilder();
-                        lock (RLVLock)
+                        lock (RLVRuleLock)
                         {
                             object LockObject = new object();
                             Parallel.ForEach(RLVRules.Where(o =>
@@ -4336,13 +4300,13 @@ namespace Corrade
                         switch (!string.IsNullOrEmpty(RLVrule.Option))
                         {
                             case true:
-                                lock (RLVLock)
+                                lock (RLVRuleLock)
                                 {
                                     RLVRules.RemoveWhere(o => o.Behaviour.Contains(RLVrule.Behaviour));
                                 }
                                 break;
                             case false:
-                                lock (RLVLock)
+                                lock (RLVRuleLock)
                                 {
                                     RLVRules.RemoveWhere(o => o.ObjectUUID.Equals(senderUUID));
                                 }
@@ -7439,8 +7403,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         List<string> data =
-                            new List<string>(GetWearables(Client.Inventory.Store.RootFolder,
-                                Configuration.SERVICES_TIMEOUT)
+                            new List<string>(GetWearables(Client.Inventory.Store.RootNode)
                                 .Select(o => new[]
                                 {
                                     o.Key.ToString(),
@@ -7486,10 +7449,7 @@ namespace Corrade
                                             ).FirstOrDefault(p => p is InventoryWearable);
                                     if (inventoryBaseItem == null)
                                         return;
-                                    InventoryItem inventoryItem = inventoryBaseItem as InventoryItem;
-                                    if (inventoryItem == null)
-                                        return;
-                                    Wear(inventoryItem, replace, Configuration.SERVICES_TIMEOUT);
+                                    Wear(inventoryBaseItem as InventoryItem, replace, Configuration.SERVICES_TIMEOUT);
                                 });
                         Rebake.Invoke();
                     };
@@ -7517,10 +7477,7 @@ namespace Corrade
                                             ).FirstOrDefault(p => p is InventoryWearable);
                                     if (inventoryBaseItem == null)
                                         return;
-                                    InventoryItem inventoryItem = inventoryBaseItem as InventoryWearable;
-                                    if (inventoryItem == null)
-                                        return;
-                                    UnWear(inventoryItem, Configuration.SERVICES_TIMEOUT);
+                                    UnWear(inventoryBaseItem as InventoryItem, Configuration.SERVICES_TIMEOUT);
                                 });
                         Rebake.Invoke();
                     };
@@ -7626,9 +7583,10 @@ namespace Corrade
                                                 p =>
                                                     (p is InventoryItem) &&
                                                     ((InventoryItem) p).AssetType.Equals(AssetType.Object));
-                                    if (inventoryBaseItem == null)
-                                        return;
-                                    Detach(inventoryBaseItem as InventoryItem, Configuration.SERVICES_TIMEOUT);
+                                    if (inventoryBaseItem is InventoryAttachment || inventoryBaseItem is InventoryObject)
+                                    {
+                                        Detach(inventoryBaseItem as InventoryItem, Configuration.SERVICES_TIMEOUT);
+                                    }
                                 });
                         Rebake.Invoke();
                     };
@@ -12073,12 +12031,12 @@ namespace Corrade
                         Parallel.ForEach(items, o =>
                         {
                             InventoryItem item = o as InventoryItem;
-                            if (item as InventoryWearable != null)
+                            if (item is InventoryWearable)
                             {
                                 Wear(item, false, Configuration.SERVICES_TIMEOUT);
                                 return;
                             }
-                            if (item as InventoryAttachment != null || item as InventoryObject != null)
+                            if (item is InventoryAttachment || item is InventoryObject)
                             {
                                 Attach(item, AttachmentPoint.Default, false, Configuration.SERVICES_TIMEOUT);
                             }
@@ -13064,7 +13022,7 @@ namespace Corrade
             {
                 SetDefaultCamera();
             }
-            new Thread(o => SendNotification(Notifications.NOTIFICATION_TERSE_UPDATES, e)).Start();
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_TERSE_UPDATES, e)) {IsBackground = true}.Start();
         }
 
         private static void HandleAvatarUpdate(object sender, AvatarUpdateEventArgs e)
@@ -13078,12 +13036,12 @@ namespace Corrade
         private static void HandleSimChanged(object sender, SimChangedEventArgs e)
         {
             Client.Self.Movement.SetFOVVerticalAngle(Utils.TWO_PI - 0.05f);
-            new Thread(o => SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e)).Start();
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e)) {IsBackground = true}.Start();
         }
 
         private static void HandleMoneyBalance(object sender, MoneyBalanceReplyEventArgs e)
         {
-            new Thread(o => SendNotification(Notifications.NOTIFICATION_ECONOMY, e)).Start();
+            new Thread(o => SendNotification(Notifications.NOTIFICATION_ECONOMY, e)) {IsBackground = true}.Start();
         }
 
         private static void SetDefaultCamera()
@@ -15213,7 +15171,7 @@ namespace Corrade
         /// <summary>
         ///     Locks down RLV for linear concurrent access.
         /// </summary>
-        private static readonly object RLVLock = new object();
+        private static readonly object RLVRuleLock = new object();
 
         /// <summary>
         ///     RLV Wearables.
