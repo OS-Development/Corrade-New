@@ -211,46 +211,34 @@ namespace Corrade
 
         private static readonly System.Action InventoryUpdate = () =>
         {
-            lock (InventoryLock)
+            Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
+            inventoryFolders.Enqueue(Client.Inventory.Store.RootFolder);
+
+            AutoResetEvent FolderUpdatedEvent = new AutoResetEvent(false);
+            EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (sender, args) =>
             {
-                Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
-                inventoryFolders.Enqueue(Client.Inventory.Store.RootFolder);
-                object LockObject = new object();
-
-                InventoryFolder currentFolder = null;
-                AutoResetEvent FolderUpdatedEvent = new AutoResetEvent(false);
-                EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (sender, args) =>
+                Client.Inventory.Store.GetContents(args.FolderID).ForEach(o =>
                 {
-                    if (currentFolder != null)
-                    {
-                        if (!args.FolderID.Equals(currentFolder.UUID)) return;
-                        Parallel.ForEach(Client.Inventory.Store.GetContents(currentFolder.UUID), o =>
-                        {
-                            InventoryFolder folder = o as InventoryFolder;
-                            if (folder == null) return;
-                            lock (LockObject)
-                            {
-                                inventoryFolders.Enqueue(folder);
-                            }
-                        });
-                    }
-                    FolderUpdatedEvent.Set();
-                };
+                    if (o is InventoryFolder)
+                        inventoryFolders.Enqueue(o as InventoryFolder);
+                });
+                FolderUpdatedEvent.Set();
+            };
 
-                do
+            do
+            {
+                InventoryFolder currentFolder = inventoryFolders.Dequeue();
+                if (currentFolder == null) continue;
+                if (!Client.Inventory.Store.GetNodeFor(currentFolder.UUID).NeedsUpdate) continue;
+                lock (ServicesLock)
                 {
-                    currentFolder = inventoryFolders.Dequeue();
-                    if (currentFolder == null) continue;
-                    lock (ServicesLock)
-                    {
-                        Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                        Client.Inventory.RequestFolderContents(currentFolder.UUID, Client.Self.AgentID, true, true,
-                            InventorySortOrder.ByDate);
-                        FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
-                        Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                    }
-                } while (!inventoryFolders.Count.Equals(0));
-            }
+                    Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                    Client.Inventory.RequestFolderContents(currentFolder.UUID, Client.Self.AgentID, true, true,
+                        InventorySortOrder.ByName);
+                    FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                }
+            } while (!inventoryFolders.Count.Equals(0));
         };
 
         private static readonly System.Action SaveInventoryCache = () =>
@@ -1447,6 +1435,17 @@ namespace Corrade
         /// <returns>a list of items matching the item name</returns>
         private static IEnumerable<T> lookupFindInventory<T>(InventoryNode root, object criteria)
         {
+            if (root.NeedsUpdate)
+            {
+                AutoResetEvent FolderUpdatedEvent = new AutoResetEvent(false);
+                EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler =
+                    (sender, args) => FolderUpdatedEvent.Set();
+                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                Client.Inventory.RequestFolderContents(root.Data.UUID, Client.Self.AgentID, true, true,
+                    InventorySortOrder.ByName);
+                FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+            }
             if ((criteria is Regex && (criteria as Regex).IsMatch(root.Data.Name)) ||
                 (criteria is string &&
                  (criteria as string).Equals(root.Data.Name, StringComparison.Ordinal)) ||
@@ -3085,13 +3084,20 @@ namespace Corrade
             {
                 case LoginStatus.Success:
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_SUCCEEDED));
+                    // Set current group to land group.
                     if (Configuration.AUTO_ACTIVATE_GROUP)
                     {
                         ActivateCurrentLandGroup.Invoke();
                     }
-                    // Load cache.
-                    LoadInventoryCache.Invoke();
-                    InventoryUpdate.BeginInvoke((o => SaveInventoryCache.Invoke()), null);
+                    // Start the inventory update thread.
+                    new Thread(() =>
+                    {
+                        lock (InventoryLock)
+                        {
+                            LoadInventoryCache.BeginInvoke(
+                                (o => InventoryUpdate.BeginInvoke((p => SaveInventoryCache.Invoke()), null)), null);
+                        }
+                    }) {IsBackground = true}.Start();
                     break;
                 case LoginStatus.Failed:
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_FAILED), e.FailReason);
