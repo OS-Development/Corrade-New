@@ -1435,17 +1435,6 @@ namespace Corrade
         /// <returns>a list of items matching the item name</returns>
         private static IEnumerable<T> lookupFindInventory<T>(InventoryNode root, object criteria)
         {
-            if (root.NeedsUpdate)
-            {
-                AutoResetEvent FolderUpdatedEvent = new AutoResetEvent(false);
-                EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler =
-                    (sender, args) => FolderUpdatedEvent.Set();
-                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                Client.Inventory.RequestFolderContents(root.Data.UUID, Client.Self.AgentID, true, true,
-                    InventorySortOrder.ByName);
-                FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
-                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-            }
             if ((criteria is Regex && (criteria as Regex).IsMatch(root.Data.Name)) ||
                 (criteria is string &&
                  (criteria as string).Equals(root.Data.Name, StringComparison.Ordinal)) ||
