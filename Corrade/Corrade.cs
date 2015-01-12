@@ -29,7 +29,6 @@ using Mono.Unix.Native;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using ThreadState = System.Threading.ThreadState;
-using Timer = System.Timers.Timer;
 
 #endregion
 
@@ -1591,12 +1590,11 @@ namespace Corrade
 
         private static bool Rebake(int millisecondsTimeout, int delay)
         {
-            Timer rebakeTimer = new Timer(delay);
-            ManualResetEvent done = new ManualResetEvent(false);
+            ManualResetEvent RebakedEvent = new ManualResetEvent(false);
             bool succeeded = false;
-            rebakeTimer.Elapsed += (sender, args) =>
+            new Thread(() =>
             {
-                rebakeTimer.Stop();
+                Thread.Sleep(delay);
                 lock (InventoryLock)
                 {
                     lock (ServicesLock)
@@ -1604,10 +1602,9 @@ namespace Corrade
                         succeeded = lookupRebake(millisecondsTimeout);
                     }
                 }
-                done.Set();
-            };
-            rebakeTimer.Start();
-            done.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                RebakedEvent.Set();
+            }) {IsBackground = true}.Start();
+            RebakedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
             return succeeded;
         }
 
@@ -3166,21 +3163,18 @@ namespace Corrade
 
         private static void HandleTeleportProgress(object sender, TeleportEventArgs e)
         {
-            lock (TeleportLock)
+            switch (e.Status)
             {
-                switch (e.Status)
-                {
-                    case TeleportStatus.Finished:
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_SUCCEEDED));
-                        if (Configuration.AUTO_ACTIVATE_GROUP)
-                        {
-                            ActivateCurrentLandGroup.Invoke();
-                        }
-                        break;
-                    case TeleportStatus.Failed:
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_FAILED));
-                        break;
-                }
+                case TeleportStatus.Finished:
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_SUCCEEDED));
+                    if (Configuration.AUTO_ACTIVATE_GROUP)
+                    {
+                        ActivateCurrentLandGroup.Invoke();
+                    }
+                    break;
+                case TeleportStatus.Failed:
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_FAILED));
+                    break;
             }
         }
 
