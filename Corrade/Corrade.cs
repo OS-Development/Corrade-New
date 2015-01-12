@@ -29,6 +29,7 @@ using Mono.Unix.Native;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using ThreadState = System.Threading.ThreadState;
+using Timer = System.Timers.Timer;
 
 #endregion
 
@@ -176,10 +177,8 @@ namespace Corrade
 
         private static volatile bool EnableCorradeRLV = true;
 
-        private static readonly System.Action ActivateCurrentLandGroup = () => (new Thread(() =>
+        private static readonly System.Action ActivateCurrentLandGroup = () =>
         {
-            // relax 5 seconds
-            Thread.Sleep(5000 + Client.Network.CurrentSim.Stats.LastLag);
             Parcel parcel = null;
             if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel)) return;
             UUID groupUUID = Configuration.GROUPS.FirstOrDefault(o => o.UUID.Equals(parcel.GroupID)).UUID;
@@ -187,14 +186,7 @@ namespace Corrade
             {
                 Client.Groups.ActivateGroup(groupUUID);
             }
-        }) {IsBackground = true}).Start();
-
-        private static readonly System.Action Rebake = () => (new Thread(() =>
-        {
-            // relax 5 seconds
-            Thread.Sleep(5000 + Client.Network.CurrentSim.Stats.LastLag);
-            Client.Appearance.RequestSetAppearance(true);
-        }) {IsBackground = true}).Start();
+        };
 
         private static readonly System.Action LoadInventoryCache = () =>
         {
@@ -211,33 +203,55 @@ namespace Corrade
 
         private static readonly System.Action InventoryUpdate = () =>
         {
+            // Create the queue of folders.
             Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
+            // Enqueue the first folder (root).
             inventoryFolders.Enqueue(Client.Inventory.Store.RootFolder);
 
-            AutoResetEvent FolderUpdatedEvent = new AutoResetEvent(false);
+            // Create a list of semaphores indexed by the folder UUID.
+            Dictionary<UUID, AutoResetEvent> FolderUpdatedEvents = new Dictionary<UUID, AutoResetEvent>();
+            object FolderUpdatedEventsLock = new object();
             EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (sender, args) =>
             {
+                // Enqueue all the new folders.
                 Client.Inventory.Store.GetContents(args.FolderID).ForEach(o =>
                 {
                     if (o is InventoryFolder)
+                    {
                         inventoryFolders.Enqueue(o as InventoryFolder);
+                    }
                 });
-                FolderUpdatedEvent.Set();
+                FolderUpdatedEvents[args.FolderID].Set();
             };
 
             do
             {
-                InventoryFolder currentFolder = inventoryFolders.Dequeue();
-                if (currentFolder == null) continue;
-                if (!Client.Inventory.Store.GetNodeFor(currentFolder.UUID).NeedsUpdate) continue;
-                lock (ServicesLock)
+                // Dequeue all the folders in the queue (can also limit to a number of folders).
+                HashSet<InventoryFolder> folders = new HashSet<InventoryFolder>();
+                do
                 {
+                    folders.Add(inventoryFolders.Dequeue());
+                } while (!inventoryFolders.Count.Equals(0));
+                // Process all the dequeued elements in parallel.
+                Parallel.ForEach(folders.Where(o => o != null), o =>
+                {
+                    // Add an semaphore to wait for the folder contents.
+                    lock (FolderUpdatedEventsLock)
+                    {
+                        FolderUpdatedEvents.Add(o.UUID, new AutoResetEvent(false));
+                    }
                     Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                    Client.Inventory.RequestFolderContents(currentFolder.UUID, Client.Self.AgentID, true, true,
-                        InventorySortOrder.ByName);
-                    FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                    Client.Inventory.RequestFolderContents(o.UUID, Client.Self.AgentID, true, true,
+                        InventorySortOrder.ByDate);
+                    // Wait on the semaphore.
+                    FolderUpdatedEvents[o.UUID].WaitOne(Configuration.SERVICES_TIMEOUT, false);
                     Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                }
+                    // Remove the semaphore for the folder.
+                    lock (FolderUpdatedEventsLock)
+                    {
+                        FolderUpdatedEvents.Remove(o.UUID);
+                    }
+                });
             } while (!inventoryFolders.Count.Equals(0));
         };
 
@@ -414,8 +428,7 @@ namespace Corrade
             ManualResetEvent FolderUpdatedEvent = new ManualResetEvent(false);
             EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (sender, e) =>
             {
-                if (e.FolderID != Client.Inventory.Store.RootFolder.UUID) return;
-                if (e.Success)
+                if (e.FolderID.Equals(Client.Inventory.Store.RootFolder.UUID) && e.Success)
                 {
                     root =
                         new HashSet<InventoryBase>(
@@ -428,7 +441,7 @@ namespace Corrade
             {
                 Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
                 Client.Inventory.RequestFolderContents(Client.Inventory.Store.RootFolder.UUID, Client.Self.AgentID,
-                    true, true, InventorySortOrder.ByName);
+                    true, true, InventorySortOrder.ByDate);
                 FolderUpdatedEvent.WaitOne(millisecondsTimeout);
                 Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
             }
@@ -503,7 +516,7 @@ namespace Corrade
             InventoryFolder COF = GetOrCreateOutfitFolder(millisecondsTimeout);
             if (COF == null) return ret;
 
-            Client.Inventory.Store.GetContents(GetOrCreateOutfitFolder(millisecondsTimeout))
+            Client.Inventory.Store.GetContents(COF)
                 .FindAll(b => CanBeWorn(b) && ((InventoryItem) b).AssetType.Equals(AssetType.Link))
                 .ForEach(item => ret.Add((InventoryItem) item));
 
@@ -560,26 +573,9 @@ namespace Corrade
         /// <summary>
         ///     Creates a new current outfit folder link.
         /// </summary>
-        /// <param name="item">Original item to be linked from COF</param>
-        /// <param name="millisecondsTimeout">timeout in milliseconds</param>
-        public static void AddLink(InventoryItem item, int millisecondsTimeout)
-        {
-            if (item.InventoryType.Equals(InventoryType.Wearable) && !IsBodyPart(item))
-            {
-                AddLink(item, string.Format("@{0}{1:00}", (int) ((InventoryWearable) item).WearableType, 0),
-                    millisecondsTimeout);
-                return;
-            }
-            AddLink(item, string.Empty, millisecondsTimeout);
-        }
-
-        /// <summary>
-        ///     Creates a new current outfit folder link.
-        /// </summary>
         /// <param name="item">item to be linked</param>
-        /// <param name="description">description for the link</param>
         /// <param name="millisecondsTimeout">timeout in milliseconds</param>
-        public static void lookupAddLink(InventoryItem item, string description, int millisecondsTimeout)
+        public static void lookupAddLink(InventoryItem item, int millisecondsTimeout)
         {
             InventoryFolder COF = GetOrCreateOutfitFolder(millisecondsTimeout);
             if (GetOrCreateOutfitFolder(millisecondsTimeout) == null) return;
@@ -590,6 +586,9 @@ namespace Corrade
 
             if (!linkExists)
             {
+                string description = (item.InventoryType.Equals(InventoryType.Wearable) && !IsBodyPart(item))
+                    ? string.Format("@{0}{1:00}", (int) ((InventoryWearable) item).WearableType, 0)
+                    : string.Empty;
                 Client.Inventory.CreateLink(COF.UUID, item.UUID, item.Name, description, AssetType.Link,
                     item.InventoryType, UUID.Random(), (success, newItem) =>
                     {
@@ -601,11 +600,11 @@ namespace Corrade
             }
         }
 
-        public static void AddLink(InventoryItem item, string description, int millisecondsTimeout)
+        public static void AddLink(InventoryItem item, int millisecondsTimeout)
         {
             lock (InventoryLock)
             {
-                lookupAddLink(item, description, millisecondsTimeout);
+                lookupAddLink(item, millisecondsTimeout);
             }
         }
 
@@ -634,7 +633,9 @@ namespace Corrade
             Parallel.ForEach(items,
                 item =>
                     GetCurrentOutfitFolderLinks(millisecondsTimeout)
-                        .FindAll(itemLink => itemLink.AssetUUID.Equals(item.UUID))
+                        .FindAll(
+                            itemLink =>
+                                itemLink.AssetUUID.Equals(item is InventoryWearable ? item.AssetUUID : item.UUID))
                         .ForEach(link =>
                         {
                             lock (LockObject)
@@ -1528,42 +1529,86 @@ namespace Corrade
         /// </summary>
         /// <param name="rootFolder">a folder from which to search</param>
         /// <param name="folder">the folder to search for</param>
-        /// <param name="millisecondsTimeout">timeout for the search</param>
         /// <returns>a list of items from the folder</returns>
-        private static IEnumerable<InventoryItem> lookupGetInventoryFolderContents(InventoryBase rootFolder,
-            string folder,
-            int millisecondsTimeout)
+        private static IEnumerable<T> lookupGetInventoryFolderContents<T>(InventoryNode rootFolder,
+            string folder)
         {
-            HashSet<InventoryBase> contents =
-                new HashSet<InventoryBase>(Client.Inventory.FolderContents(rootFolder.UUID, Client.Self.AgentID,
-                    true, true, InventorySortOrder.ByName, millisecondsTimeout));
-            foreach (InventoryBase inventory in contents)
+            foreach (InventoryNode node in rootFolder.Nodes.Values)
             {
-                InventoryFolder inventoryFolder = inventory as InventoryFolder;
-                if (inventoryFolder == null)
+                if (node.Data is InventoryFolder && node.Data.Name.Equals(folder))
                 {
-                    if (rootFolder.Name.Equals(folder, StringComparison.Ordinal))
+                    foreach (InventoryNode item in node.Nodes.Values)
                     {
-                        yield return inventory as InventoryItem;
+                        if (typeof (T) == typeof (InventoryNode))
+                        {
+                            yield return (T) (object) item;
+                        }
+                        if (typeof (T) == typeof (InventoryBase))
+                        {
+                            yield return (T) (object) Client.Inventory.Store[item.Data.UUID];
+                        }
                     }
-                    continue;
-                }
-                foreach (
-                    InventoryItem inventoryItem in
-                        GetInventoryFolderContents(inventoryFolder, folder, millisecondsTimeout))
-                {
-                    yield return inventoryItem;
+                    break;
                 }
             }
         }
 
-        private static IEnumerable<InventoryItem> GetInventoryFolderContents(InventoryBase rootFolder, string folder,
-            int millisecondsTimeout)
+        private static IEnumerable<T> GetInventoryFolderContents<T>(InventoryNode rootFolder, string folder)
         {
             lock (InventoryLock)
             {
-                return lookupGetInventoryFolderContents(rootFolder, folder, millisecondsTimeout);
+                return lookupGetInventoryFolderContents<T>(rootFolder, folder);
             }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Rebakes the avatar and returns the success status.
+        /// </summary>
+        /// <param name="millisecondsTimeout">time to wait for the rebake</param>
+        /// <returns>true if the rebake was successful</returns>
+        private static bool lookupRebake(int millisecondsTimeout)
+        {
+            bool succeeded = false;
+            ManualResetEvent AppearanceSetEvent = new ManualResetEvent(false);
+            EventHandler<AppearanceSetEventArgs> HandleAppearanceSet = (sender, args) =>
+            {
+                succeeded = args.Success;
+                AppearanceSetEvent.Set();
+            };
+            Client.Appearance.AppearanceSet += HandleAppearanceSet;
+            Client.Appearance.RequestSetAppearance(true);
+            if (!AppearanceSetEvent.WaitOne(millisecondsTimeout, false))
+            {
+                Client.Appearance.AppearanceSet -= HandleAppearanceSet;
+                return false;
+            }
+            Client.Appearance.AppearanceSet -= HandleAppearanceSet;
+            return succeeded;
+        }
+
+        private static bool Rebake(int millisecondsTimeout, int delay)
+        {
+            Timer rebakeTimer = new Timer(delay);
+            ManualResetEvent done = new ManualResetEvent(false);
+            bool succeeded = false;
+            rebakeTimer.Elapsed += (sender, args) =>
+            {
+                rebakeTimer.Stop();
+                lock (InventoryLock)
+                {
+                    lock (ServicesLock)
+                    {
+                        succeeded = lookupRebake(millisecondsTimeout);
+                    }
+                }
+                done.Set();
+            };
+            rebakeTimer.Start();
+            done.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+            return succeeded;
         }
 
         /// <summary>
@@ -1830,7 +1875,6 @@ namespace Corrade
             Client.Settings.LOGOUT_TIMEOUT = Configuration.SERVICES_TIMEOUT;
             // Install global event handlers.
             Client.Inventory.InventoryObjectOffered += HandleInventoryObjectOffered;
-            Client.Appearance.AppearanceSet += HandleAppearanceSet;
             Client.Network.LoginProgress += HandleLoginProgress;
             Client.Network.SimConnected += HandleSimulatorConnected;
             Client.Network.Disconnected += HandleDisconnected;
@@ -2181,7 +2225,6 @@ namespace Corrade
             Client.Network.Disconnected -= HandleDisconnected;
             Client.Network.SimConnected -= HandleSimulatorConnected;
             Client.Network.LoginProgress -= HandleLoginProgress;
-            Client.Appearance.AppearanceSet -= HandleAppearanceSet;
             Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
             // Stop the group sweep thread.
             runGroupMemberSweepThread = false;
@@ -3057,16 +3100,6 @@ namespace Corrade
             ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('s')).Value.Set();
         }
 
-        private static void HandleAppearanceSet(object sender, AppearanceSetEventArgs e)
-        {
-            if (e.Success)
-            {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.APPEARANCE_SET_SUCCEEDED));
-                return;
-            }
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.APPEARANCE_SET_FAILED));
-        }
-
         private static void HandleLoginProgress(object sender, LoginProgressEventArgs e)
         {
             switch (e.Status)
@@ -3074,17 +3107,24 @@ namespace Corrade
                 case LoginStatus.Success:
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_SUCCEEDED));
                     // Set current group to land group.
-                    if (Configuration.AUTO_ACTIVATE_GROUP)
+                    new Thread(() =>
                     {
-                        ActivateCurrentLandGroup.Invoke();
-                    }
+                        if (Configuration.AUTO_ACTIVATE_GROUP)
+                        {
+                            lock (TeleportLock)
+                            {
+                                ActivateCurrentLandGroup.Invoke();
+                            }
+                        }
+                    }) {IsBackground = true}.Start();
                     // Start the inventory update thread.
                     new Thread(() =>
                     {
                         lock (InventoryLock)
                         {
-                            LoadInventoryCache.BeginInvoke(
-                                (o => InventoryUpdate.BeginInvoke((p => SaveInventoryCache.Invoke()), null)), null);
+                            LoadInventoryCache.Invoke();
+                            InventoryUpdate.Invoke();
+                            SaveInventoryCache.Invoke();
                         }
                     }) {IsBackground = true}.Start();
                     break;
@@ -3718,6 +3758,10 @@ namespace Corrade
                         {
                             Detach(inventoryBase as InventoryItem, Configuration.SERVICES_TIMEOUT);
                         }
+                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
+                        }
                     };
                     break;
                 case RLVBehaviour.REMATTACH:
@@ -3821,6 +3865,10 @@ namespace Corrade
                                         });
                                 break;
                         }
+                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
+                        }
                     };
                     break;
                 case RLVBehaviour.ATTACH:
@@ -3859,7 +3907,7 @@ namespace Corrade
                                                                         Configuration.SERVICES_TIMEOUT);
                                                                     return;
                                                                 }
-                                                                if (o is InventoryObject || o is InventoryAttachment)
+                                                                if (p is InventoryObject || p is InventoryAttachment)
                                                                 {
                                                                     // Multiple attachment points not working in libOpenMetaverse, so just replace.
                                                                     Attach(p as InventoryItem, AttachmentPoint.Default,
@@ -3869,6 +3917,11 @@ namespace Corrade
                                                             });
                                                 }
                                             });
+
+                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
+                        }
                     };
                     break;
                 case RLVBehaviour.REMOUTFIT:
@@ -3920,6 +3973,10 @@ namespace Corrade
                                         UnWear(inventoryBase as InventoryItem, Configuration.SERVICES_TIMEOUT);
                                     });
                                 break;
+                        }
+                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
                         }
                     };
                     break;
@@ -7387,7 +7444,10 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Rebake.Invoke();
+                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
+                        }
                     };
                     break;
                 case ScriptKeys.GETWEARABLES:
@@ -7446,7 +7506,10 @@ namespace Corrade
                                         return;
                                     Wear(inventoryBaseItem as InventoryItem, replace, Configuration.SERVICES_TIMEOUT);
                                 });
-                        Rebake.Invoke();
+                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
+                        }
                     };
                     break;
                 case ScriptKeys.UNWEAR:
@@ -7474,7 +7537,10 @@ namespace Corrade
                                         return;
                                     UnWear(inventoryBaseItem as InventoryItem, Configuration.SERVICES_TIMEOUT);
                                 });
-                        Rebake.Invoke();
+                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
+                        }
                     };
                     break;
                 case ScriptKeys.GETATTACHMENTS:
@@ -7540,15 +7606,16 @@ namespace Corrade
                                             FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o.Value
                                                 )
                                                 .FirstOrDefault(
-                                                    r =>
-                                                        (r is InventoryItem) &&
-                                                        ((InventoryItem) r).AssetType.Equals(AssetType.Object));
+                                                    r => r is InventoryObject || r is InventoryAttachment);
                                         if (inventoryBaseItem == null)
                                             return;
                                         Attach(inventoryBaseItem as InventoryItem, (AttachmentPoint) q.GetValue(null),
                                             replace, Configuration.SERVICES_TIMEOUT);
                                     }));
-                        Rebake.Invoke();
+                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
+                        }
                     };
                     break;
                 case ScriptKeys.DETACH:
@@ -7576,14 +7643,15 @@ namespace Corrade
                                             )
                                             .FirstOrDefault(
                                                 p =>
-                                                    (p is InventoryItem) &&
-                                                    ((InventoryItem) p).AssetType.Equals(AssetType.Object));
-                                    if (inventoryBaseItem is InventoryAttachment || inventoryBaseItem is InventoryObject)
-                                    {
-                                        Detach(inventoryBaseItem as InventoryItem, Configuration.SERVICES_TIMEOUT);
-                                    }
+                                                    p is InventoryObject || p is InventoryAttachment);
+                                    if (inventoryBaseItem == null)
+                                        return;
+                                    Detach(inventoryBaseItem as InventoryItem, Configuration.SERVICES_TIMEOUT);
                                 });
-                        Rebake.Invoke();
+                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
+                        }
                     };
                     break;
                 case ScriptKeys.RETURNPRIMITIVES:
@@ -11990,8 +12058,9 @@ namespace Corrade
                         }
                         // Check for items that can be worn.
                         List<InventoryBase> items =
-                            GetInventoryFolderContents(Client.Inventory.Store.RootFolder, folder,
-                                Configuration.SERVICES_TIMEOUT).Cast<InventoryBase>().Where(CanBeWorn).ToList();
+                            GetInventoryFolderContents<InventoryBase>(Client.Inventory.Store.RootNode, folder)
+                                .Where(CanBeWorn)
+                                .ToList();
                         if (items.Count.Equals(0))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_EQUIPABLE_ITEMS));
@@ -12017,7 +12086,7 @@ namespace Corrade
                                     })) UnWear(item, Configuration.SERVICES_TIMEOUT);
                                     return;
                                 }
-                                if (item as InventoryAttachment != null || item as InventoryObject != null)
+                                if (item is InventoryAttachment || item is InventoryObject)
                                 {
                                     Detach(item, Configuration.SERVICES_TIMEOUT);
                                 }
@@ -12037,7 +12106,10 @@ namespace Corrade
                             }
                         });
                         // And rebake.
-                        Rebake.Invoke();
+                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
+                        }
                     };
                     break;
                 case ScriptKeys.PLAYSOUND:
@@ -13795,6 +13867,7 @@ namespace Corrade
             public static bool USE_NAGGLE;
             public static bool USE_EXPECT100CONTINUE;
             public static int SERVICES_TIMEOUT;
+            public static int REBAKE_DELAY;
             public static int MEMBERSHIP_SWEEP_INTERVAL;
             public static bool TOS_ACCEPTED;
             public static string START_LOCATION;
@@ -13839,6 +13912,7 @@ namespace Corrade
                 CONNECTION_LIMIT = 100;
                 USE_NAGGLE = true;
                 SERVICES_TIMEOUT = 60000;
+                REBAKE_DELAY = 1000;
                 MEMBERSHIP_SWEEP_INTERVAL = 1000;
                 TOS_ACCEPTED = false;
                 START_LOCATION = "last";
@@ -14076,7 +14150,7 @@ namespace Corrade
                                                 case ConfigurationKeys.CONNECTIONS:
                                                     if (
                                                         !int.TryParse(clientLimitNode.InnerText,
-                                                            out SERVICES_TIMEOUT))
+                                                            out CONNECTION_LIMIT))
                                                     {
                                                         throw new Exception("error in client limits section");
                                                     }
@@ -14190,6 +14264,13 @@ namespace Corrade
                                                     if (
                                                         !int.TryParse(servicesLimitNode.InnerText,
                                                             out SERVICES_TIMEOUT))
+                                                    {
+                                                        throw new Exception("error in services limits section");
+                                                    }
+                                                    break;
+
+                                                case ConfigurationKeys.REBAKE:
+                                                    if (!int.TryParse(servicesLimitNode.InnerText, out REBAKE_DELAY))
                                                     {
                                                         throw new Exception("error in services limits section");
                                                     }
@@ -14427,6 +14508,7 @@ namespace Corrade
             public const string MEMBERSHIP = @"membership";
             public const string SWEEP = @"sweep";
             public const string ENABLE = @"enable";
+            public const string REBAKE = @"rebake";
         }
 
         /// <summary>
@@ -14874,7 +14956,8 @@ namespace Corrade
             [Description("no executable file provided")] NO_EXECUTABLE_FILE_PROVIDED,
             [Description("timeout waiting for execution")] TIMEOUT_WAITING_FOR_EXECUTION,
             [Description("unknown group invite session")] UNKNOWN_GROUP_INVITE_SESSION,
-            [Description("unable to obtain money balance")] UNABLE_TO_OBTAIN_MONEY_BALANCE
+            [Description("unable to obtain money balance")] UNABLE_TO_OBTAIN_MONEY_BALANCE,
+            [Description("rebake failed")] REBAKE_FAILED
         }
 
         /// <summary>
