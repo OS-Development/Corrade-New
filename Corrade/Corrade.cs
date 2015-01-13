@@ -172,20 +172,9 @@ namespace Corrade
 
         private static readonly object GroupMembersLock = new object();
 
-        public static EventHandler ConsoleEventHandler;
-
         private static volatile bool EnableCorradeRLV = true;
 
-        private static readonly System.Action ActivateCurrentLandGroup = () =>
-        {
-            Parcel parcel = null;
-            if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel)) return;
-            UUID groupUUID = Configuration.GROUPS.FirstOrDefault(o => o.UUID.Equals(parcel.GroupID)).UUID;
-            if (!groupUUID.Equals(UUID.Zero))
-            {
-                Client.Groups.ActivateGroup(groupUUID);
-            }
-        };
+        public static EventHandler ConsoleEventHandler;
 
         private static readonly System.Action LoadInventoryCache = () =>
         {
@@ -307,20 +296,18 @@ namespace Corrade
 
         public Corrade()
         {
-            if (!Environment.UserInteractive)
+            if (Environment.UserInteractive) return;
+            CorradeServiceName = !string.IsNullOrEmpty(ServiceName)
+                ? ServiceName
+                : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME;
+            CorradeLog.Source = CorradeServiceName;
+            CorradeLog.Log = CORRADE_CONSTANTS.LOG_FACILITY;
+            ((ISupportInitialize) (CorradeLog)).BeginInit();
+            if (!EventLog.SourceExists(CorradeLog.Source))
             {
-                CorradeServiceName = !string.IsNullOrEmpty(ServiceName)
-                    ? ServiceName
-                    : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME;
-                CorradeLog.Source = CorradeServiceName;
-                CorradeLog.Log = CORRADE_CONSTANTS.LOG_FACILITY;
-                ((ISupportInitialize) (CorradeLog)).BeginInit();
-                if (!EventLog.SourceExists(CorradeLog.Source))
-                {
-                    EventLog.CreateEventSource(CorradeLog.Source, CorradeLog.Log);
-                }
-                ((ISupportInitialize) (CorradeLog)).EndInit();
+                EventLog.CreateEventSource(CorradeLog.Source, CorradeLog.Log);
             }
+            ((ISupportInitialize) (CorradeLog)).EndInit();
         }
 
         /// <summary>
@@ -583,20 +570,19 @@ namespace Corrade
                               GetCurrentOutfitFolderLinks(millisecondsTimeout)
                                   .Find(itemLink => itemLink.AssetUUID.Equals(item.UUID));
 
-            if (!linkExists)
-            {
-                string description = (item.InventoryType.Equals(InventoryType.Wearable) && !IsBodyPart(item))
-                    ? string.Format("@{0}{1:00}", (int) ((InventoryWearable) item).WearableType, 0)
-                    : string.Empty;
-                Client.Inventory.CreateLink(COF.UUID, item.UUID, item.Name, description, AssetType.Link,
-                    item.InventoryType, UUID.Random(), (success, newItem) =>
+            if (linkExists) return;
+
+            string description = (item.InventoryType.Equals(InventoryType.Wearable) && !IsBodyPart(item))
+                ? string.Format("@{0}{1:00}", (int) ((InventoryWearable) item).WearableType, 0)
+                : string.Empty;
+            Client.Inventory.CreateLink(COF.UUID, item.UUID, item.Name, description, AssetType.Link,
+                item.InventoryType, UUID.Random(), (success, newItem) =>
+                {
+                    if (success)
                     {
-                        if (success)
-                        {
-                            Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
-                        }
-                    });
-            }
+                        Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
+                    }
+                });
         }
 
         public static void AddLink(InventoryItem item, int millisecondsTimeout)
@@ -1113,10 +1099,12 @@ namespace Corrade
             EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedDelegate =
                 (sender, args) => RequestAllSimParcelsEvent.Set();
             Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedDelegate;
-            int delay = !simulator.Stats.LastLag.Equals(0) ? simulator.Stats.LastLag : 100;
-            Client.Parcels.RequestAllSimParcels(simulator, true, delay);
-            // 65536 1x1 parcels in 256x256 region times the last lag 
-            if (!RequestAllSimParcelsEvent.WaitOne(65536*delay, false))
+            Client.Parcels.RequestAllSimParcels(simulator);
+            if (Client.Network.CurrentSim.IsParcelMapFull())
+            {
+                RequestAllSimParcelsEvent.Set();
+            }
+            if (!RequestAllSimParcelsEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
             {
                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;
                 return false;
@@ -1532,23 +1520,23 @@ namespace Corrade
         private static IEnumerable<T> lookupGetInventoryFolderContents<T>(InventoryNode rootFolder,
             string folder)
         {
-            foreach (InventoryNode node in rootFolder.Nodes.Values)
+            foreach (
+                InventoryNode node in
+                    rootFolder.Nodes.Values.Where(node => node.Data is InventoryFolder && node.Data.Name.Equals(folder))
+                )
             {
-                if (node.Data is InventoryFolder && node.Data.Name.Equals(folder))
+                foreach (InventoryNode item in node.Nodes.Values)
                 {
-                    foreach (InventoryNode item in node.Nodes.Values)
+                    if (typeof (T) == typeof (InventoryNode))
                     {
-                        if (typeof (T) == typeof (InventoryNode))
-                        {
-                            yield return (T) (object) item;
-                        }
-                        if (typeof (T) == typeof (InventoryBase))
-                        {
-                            yield return (T) (object) Client.Inventory.Store[item.Data.UUID];
-                        }
+                        yield return (T) (object) item;
                     }
-                    break;
+                    if (typeof (T) == typeof (InventoryBase))
+                    {
+                        yield return (T) (object) Client.Inventory.Store[item.Data.UUID];
+                    }
                 }
+                break;
             }
         }
 
@@ -1604,7 +1592,43 @@ namespace Corrade
                 }
                 RebakedEvent.Set();
             }) {IsBackground = true}.Start();
-            RebakedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+            RebakedEvent.WaitOne(millisecondsTimeout, false);
+            return succeeded;
+        }
+
+        private static bool lookupActivateCurrentLandGroup()
+        {
+            Parcel parcel = null;
+            if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel))
+            {
+                return false;
+            }
+            UUID groupUUID = Configuration.GROUPS.FirstOrDefault(o => o.UUID.Equals(parcel.GroupID)).UUID;
+            if (groupUUID.Equals(UUID.Zero))
+            {
+                return false;
+            }
+            Client.Groups.ActivateGroup(groupUUID);
+            return true;
+        }
+
+        private static bool ActivateCurrentLandGroup(int millisecondsTimeout, int delay)
+        {
+            ManualResetEvent ActivateCurrentLandGroupEvent = new ManualResetEvent(false);
+            bool succeeded = false;
+            new Thread(() =>
+            {
+                Thread.Sleep(delay);
+                lock (TeleportLock)
+                {
+                    lock (ServicesLock)
+                    {
+                        succeeded = lookupActivateCurrentLandGroup();
+                    }
+                }
+                ActivateCurrentLandGroupEvent.Set();
+            }) {IsBackground = true}.Start();
+            ActivateCurrentLandGroupEvent.WaitOne(millisecondsTimeout, false);
             return succeeded;
         }
 
@@ -1854,7 +1878,6 @@ namespace Corrade
             ServicePointManager.Expect100Continue = Configuration.USE_EXPECT100CONTINUE;
             // Suppress standard OpenMetaverse logs, we have better ones.
             Settings.LOG_LEVEL = Helpers.LogLevel.None;
-            Client.Settings.STORE_LAND_PATCHES = true;
             Client.Settings.ALWAYS_REQUEST_PARCEL_ACL = true;
             Client.Settings.ALWAYS_DECODE_OBJECTS = true;
             Client.Settings.ALWAYS_REQUEST_OBJECTS = true;
@@ -1862,7 +1885,6 @@ namespace Corrade
             Client.Settings.AVATAR_TRACKING = true;
             Client.Settings.OBJECT_TRACKING = true;
             Client.Settings.PARCEL_TRACKING = true;
-            Client.Settings.POOL_PARCEL_DATA = true;
             Client.Settings.SEND_AGENT_UPDATES = true;
             Client.Settings.ENABLE_CAPS = true;
             Client.Settings.USE_ASSET_CACHE = true;
@@ -3108,9 +3130,9 @@ namespace Corrade
                     {
                         if (Configuration.AUTO_ACTIVATE_GROUP)
                         {
-                            lock (TeleportLock)
+                            if (!ActivateCurrentLandGroup(Configuration.SERVICES_TIMEOUT, Configuration.ACTIVATE_DELAY))
                             {
-                                ActivateCurrentLandGroup.Invoke();
+                                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.FAILED_TO_ACTIVATE_LAND_GROUP));
                             }
                         }
                     }) {IsBackground = true}.Start();
@@ -3167,10 +3189,17 @@ namespace Corrade
             {
                 case TeleportStatus.Finished:
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_SUCCEEDED));
-                    if (Configuration.AUTO_ACTIVATE_GROUP)
+                    // Set current group to land group.
+                    new Thread(() =>
                     {
-                        ActivateCurrentLandGroup.Invoke();
-                    }
+                        if (Configuration.AUTO_ACTIVATE_GROUP)
+                        {
+                            if (!ActivateCurrentLandGroup(Configuration.SERVICES_TIMEOUT, Configuration.ACTIVATE_DELAY))
+                            {
+                                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.FAILED_TO_ACTIVATE_LAND_GROUP));
+                            }
+                        }
+                    }) {IsBackground = true}.Start();
                     break;
                 case TeleportStatus.Failed:
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_FAILED));
@@ -13868,6 +13897,7 @@ namespace Corrade
             public static string NETWORK_CARD_MAC;
             public static string LOG_FILE;
             public static bool AUTO_ACTIVATE_GROUP;
+            public static int ACTIVATE_DELAY;
             public static int GROUP_CREATE_FEE;
             public static HashSet<Group> GROUPS;
             public static HashSet<Master> MASTERS;
@@ -13907,6 +13937,7 @@ namespace Corrade
                 USE_NAGGLE = true;
                 SERVICES_TIMEOUT = 60000;
                 REBAKE_DELAY = 1000;
+                ACTIVATE_DELAY = 5000;
                 MEMBERSHIP_SWEEP_INTERVAL = 1000;
                 TOS_ACCEPTED = false;
                 START_LOCATION = "last";
@@ -14269,6 +14300,14 @@ namespace Corrade
                                                         throw new Exception("error in services limits section");
                                                     }
                                                     break;
+                                                case ConfigurationKeys.ACTIVATE:
+                                                    if (
+                                                        !int.TryParse(servicesLimitNode.InnerText,
+                                                            out ACTIVATE_DELAY))
+                                                    {
+                                                        throw new Exception("error in services limits section");
+                                                    }
+                                                    break;
                                             }
                                         }
                                         break;
@@ -14503,6 +14542,7 @@ namespace Corrade
             public const string SWEEP = @"sweep";
             public const string ENABLE = @"enable";
             public const string REBAKE = @"rebake";
+            public const string ACTIVATE = @"activate";
         }
 
         /// <summary>
@@ -14547,7 +14587,8 @@ namespace Corrade
             [Description("unable to load Corrade cache")] UNABLE_TO_LOAD_CORRADE_CACHE,
             [Description("unable to save Corrade cache")] UNABLE_TO_SAVE_CORRADE_CACHE,
             [Description("failed to manifest RLV behaviour")] FAILED_TO_MANIFEST_RLV_BEHAVIOUR,
-            [Description("behaviour not implemented")] BEHAVIOUR_NOT_IMPLEMENTED
+            [Description("behaviour not implemented")] BEHAVIOUR_NOT_IMPLEMENTED,
+            [Description("failed to activate land group")] FAILED_TO_ACTIVATE_LAND_GROUP
         }
 
         /// <summary>
