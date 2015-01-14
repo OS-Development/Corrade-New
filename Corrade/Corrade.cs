@@ -1895,6 +1895,7 @@ namespace Corrade
             // Install global event handlers.
             Client.Inventory.InventoryObjectOffered += HandleInventoryObjectOffered;
             Client.Network.LoginProgress += HandleLoginProgress;
+            Client.Appearance.AppearanceSet += HandleAppearanceSet;
             Client.Network.SimConnected += HandleSimulatorConnected;
             Client.Network.Disconnected += HandleDisconnected;
             Client.Network.SimDisconnected += HandleSimulatorDisconnected;
@@ -2243,6 +2244,7 @@ namespace Corrade
             Client.Network.SimDisconnected -= HandleSimulatorDisconnected;
             Client.Network.Disconnected -= HandleDisconnected;
             Client.Network.SimConnected -= HandleSimulatorConnected;
+            Client.Appearance.AppearanceSet -= HandleAppearanceSet;
             Client.Network.LoginProgress -= HandleLoginProgress;
             Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
             // Stop the group sweep thread.
@@ -2356,6 +2358,16 @@ namespace Corrade
                 BindSignalsThread.Abort();
             }
             Environment.Exit(0);
+        }
+
+        private static void HandleAppearanceSet(object sender, AppearanceSetEventArgs e)
+        {
+            if (e.Success)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.APPEARANCE_SET_SUCCEEDED));
+                return;
+            }
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.APPEARANCE_SET_FAILED));
         }
 
         private static void HandleRegionCrossed(object sender, RegionCrossedEventArgs e)
