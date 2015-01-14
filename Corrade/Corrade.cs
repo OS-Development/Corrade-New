@@ -3673,8 +3673,8 @@ namespace Corrade
                         {
                             return;
                         }
-                        Dictionary<WearableType, AppearanceManager.WearableData> wearables =
-                            Client.Appearance.GetWearables();
+                        HashSet<KeyValuePair<WearableType, string>> wearables =
+                            new HashSet<KeyValuePair<WearableType, string>>(GetWearables(Client.Inventory.Store.RootNode));
                         StringBuilder response = new StringBuilder();
                         switch (!string.IsNullOrEmpty(RLVrule.Option))
                         {
@@ -3683,7 +3683,7 @@ namespace Corrade
                                     RLVWearables.FirstOrDefault(
                                         o => o.Name.Equals(RLVrule.Option, StringComparison.InvariantCultureIgnoreCase))
                                         .WearableType;
-                                if (!wearables.ContainsKey(wearableType))
+                                if (!wearables.Any(o => o.Key.Equals(wearableType)))
                                 {
                                     response.Append(RLV_CONSTANTS.FALSE_MARKER);
                                     break;
@@ -3694,7 +3694,7 @@ namespace Corrade
                                 string[] data = new string[RLVWearables.Count];
                                 Parallel.ForEach(Enumerable.Range(0, RLVWearables.Count), o =>
                                 {
-                                    if (!wearables.ContainsKey(RLVWearables[o].WearableType))
+                                    if (!wearables.Any(p => p.Key.Equals(RLVWearables[o].WearableType)))
                                     {
                                         data[o] = RLV_CONSTANTS.FALSE_MARKER;
                                         return;
@@ -3795,8 +3795,9 @@ namespace Corrade
                         {
                             return;
                         }
-                        InventoryNode RLVFolder = Client.Inventory.Store.RootNode.Nodes.Values.FirstOrDefault(
-                            o => o.Data.Name.Equals(RLV_CONSTANTS.SHARED_FOLDER_NAME) && o.Data is InventoryFolder);
+                        InventoryNode RLVFolder =
+                            FindInventory<InventoryNode>(Client.Inventory.Store.RootNode,
+                                RLV_CONSTANTS.SHARED_FOLDER_NAME).FirstOrDefault(o => o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
                             return;
@@ -3838,22 +3839,27 @@ namespace Corrade
                                                 .Select(
                                                     folder =>
                                                         FindInventory<InventoryBase>(RLVFolder,
-                                                            new Regex(folder,
-                                                                RegexOptions.Compiled | RegexOptions.IgnoreCase)
+                                                            folder
                                                             ).FirstOrDefault(o => (o is InventoryFolder))), o =>
                                                             {
                                                                 if (o != null)
                                                                 {
-                                                                    Client.Inventory.Store.GetContents(
-                                                                        o as InventoryFolder)
-                                                                        .FindAll(CanBeWorn)
+                                                                    List<InventoryBase> folderContents;
+                                                                    lock (InventoryLock)
+                                                                    {
+                                                                        folderContents =
+                                                                            Client.Inventory.Store.GetContents(
+                                                                                o as InventoryFolder);
+                                                                    }
+                                                                    folderContents.FindAll(CanBeWorn)
                                                                         .ForEach(
                                                                             p =>
                                                                             {
                                                                                 if (p is InventoryWearable)
                                                                                 {
                                                                                     UnWear(p as InventoryItem,
-                                                                                        Configuration.SERVICES_TIMEOUT);
+                                                                                        Configuration
+                                                                                            .SERVICES_TIMEOUT);
                                                                                     return;
                                                                                 }
                                                                                 if (p is InventoryAttachment ||
@@ -3861,7 +3867,8 @@ namespace Corrade
                                                                                 {
                                                                                     // Multiple attachment points not working in libOpenMetaverse, so just replace.
                                                                                     Detach(p as InventoryItem,
-                                                                                        Configuration.SERVICES_TIMEOUT);
+                                                                                        Configuration
+                                                                                            .SERVICES_TIMEOUT);
                                                                                 }
                                                                             });
                                                                 }
@@ -3903,8 +3910,9 @@ namespace Corrade
                         {
                             return;
                         }
-                        InventoryNode RLVFolder = Client.Inventory.Store.RootNode.Nodes.Values.FirstOrDefault(
-                            o => o.Data.Name.Equals(RLV_CONSTANTS.SHARED_FOLDER_NAME) && o.Data is InventoryFolder);
+                        InventoryNode RLVFolder =
+                            FindInventory<InventoryNode>(Client.Inventory.Store.RootNode,
+                                RLV_CONSTANTS.SHARED_FOLDER_NAME).FirstOrDefault(o => o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
                             return;
@@ -3914,13 +3922,19 @@ namespace Corrade
                                 .Select(
                                     folder =>
                                         FindInventory<InventoryBase>(RLVFolder,
-                                            new Regex(folder, RegexOptions.Compiled | RegexOptions.IgnoreCase)
+                                            folder
                                             ).FirstOrDefault(o => (o is InventoryFolder))), o =>
                                             {
                                                 if (o != null)
                                                 {
-                                                    Client.Inventory.Store.GetContents(o as InventoryFolder)
-                                                        .FindAll(CanBeWorn)
+                                                    List<InventoryBase> folderContents;
+                                                    lock (InventoryLock)
+                                                    {
+                                                        folderContents =
+                                                            Client.Inventory.Store.GetContents(o as InventoryFolder);
+                                                    }
+                                                    folderContents.
+                                                        FindAll(CanBeWorn)
                                                         .ForEach(
                                                             p =>
                                                             {
@@ -3933,7 +3947,8 @@ namespace Corrade
                                                                 if (p is InventoryObject || p is InventoryAttachment)
                                                                 {
                                                                     // Multiple attachment points not working in libOpenMetaverse, so just replace.
-                                                                    Attach(p as InventoryItem, AttachmentPoint.Default,
+                                                                    Attach(p as InventoryItem,
+                                                                        AttachmentPoint.Default,
                                                                         true,
                                                                         Configuration.SERVICES_TIMEOUT);
                                                                 }
@@ -4012,9 +4027,9 @@ namespace Corrade
                         {
                             return;
                         }
-                        // Find RLV folder
-                        InventoryNode RLVFolder = Client.Inventory.Store.RootNode.Nodes.Values.FirstOrDefault(
-                            o => o.Data.Name.Equals(RLV_CONSTANTS.SHARED_FOLDER_NAME) && o.Data is InventoryFolder);
+                        InventoryNode RLVFolder =
+                            FindInventory<InventoryNode>(Client.Inventory.Store.RootNode,
+                                RLV_CONSTANTS.SHARED_FOLDER_NAME).FirstOrDefault(o => o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
                             Client.Self.Chat(string.Empty, channel, ChatType.Normal);
@@ -4119,8 +4134,9 @@ namespace Corrade
                             Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                             return;
                         }
-                        InventoryNode RLVFolder = Client.Inventory.Store.RootNode.Nodes.Values.FirstOrDefault(
-                            o => o.Data.Name.Equals(RLV_CONSTANTS.SHARED_FOLDER_NAME) && o.Data is InventoryFolder);
+                        InventoryNode RLVFolder =
+                            FindInventory<InventoryNode>(Client.Inventory.Store.RootNode,
+                                RLV_CONSTANTS.SHARED_FOLDER_NAME).FirstOrDefault(o => o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
                             Client.Self.Chat(string.Empty, channel, ChatType.Normal);
@@ -4174,8 +4190,9 @@ namespace Corrade
                             Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                             return;
                         }
-                        InventoryNode RLVFolder = Client.Inventory.Store.RootNode.Nodes.Values.FirstOrDefault(
-                            o => o.Data.Name.Equals(RLV_CONSTANTS.SHARED_FOLDER_NAME) && o.Data is InventoryFolder);
+                        InventoryNode RLVFolder =
+                            FindInventory<InventoryNode>(Client.Inventory.Store.RootNode,
+                                RLV_CONSTANTS.SHARED_FOLDER_NAME).FirstOrDefault(o => o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
                             Client.Self.Chat(string.Empty, channel, ChatType.Normal);
@@ -4212,8 +4229,9 @@ namespace Corrade
                         {
                             return;
                         }
-                        InventoryNode RLVFolder = Client.Inventory.Store.RootNode.Nodes.Values.FirstOrDefault(
-                            o => o.Data.Name.Equals(RLV_CONSTANTS.SHARED_FOLDER_NAME) && o.Data is InventoryFolder);
+                        InventoryNode RLVFolder =
+                            FindInventory<InventoryNode>(Client.Inventory.Store.RootNode,
+                                RLV_CONSTANTS.SHARED_FOLDER_NAME).FirstOrDefault(o => o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
                             Client.Self.Chat(string.Empty, channel, ChatType.Normal);
@@ -4235,63 +4253,78 @@ namespace Corrade
                         }
                         Func<InventoryNode, string> GetWornIndicator = node =>
                         {
-                            Dictionary<WearableType, AppearanceManager.WearableData> currentWearables =
-                                Client.Appearance.GetWearables();
-                            List<Primitive> currentAttachments =
-                                Client.Network.CurrentSim.ObjectsPrimitives.FindAll(
-                                    o => o.ParentID.Equals(Client.Self.LocalID));
+                            Dictionary<WearableType, AppearanceManager.WearableData> currentWearables;
+                            lock (InventoryLock)
+                            {
+                                currentWearables =
+                                    Client.Appearance.GetWearables();
+                            }
+                            List<Primitive> currentAttachments;
+                            lock (ServicesLock)
+                            {
+                                currentAttachments =
+                                    Client.Network.CurrentSim.ObjectsPrimitives.FindAll(
+                                        o => o.ParentID.Equals(Client.Self.LocalID));
+                            }
 
                             int myItemsCount = 0;
                             int myItemsWornCount = 0;
 
-                            Parallel.ForEach(
-                                node.Nodes.Values.Where(
-                                    n =>
-                                        n.Data is InventoryItem && CanBeWorn(n.Data) &&
-                                        !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)), n =>
-                                        {
-                                            Interlocked.Increment(ref myItemsCount);
-                                            if (n.Data is InventoryWearable &&
-                                                currentWearables.Values.Any(
-                                                    o => o.ItemID.Equals(n.Data.UUID)) ||
-                                                currentAttachments.Any(
-                                                    o =>
-                                                        GetAttachments(Configuration.SERVICES_TIMEOUT)
-                                                            .Any(
-                                                                p =>
-                                                                    p.Key.Properties.ItemID.Equals(
-                                                                        n.Data.UUID))))
+                            lock (InventoryLock)
+                            {
+                                Parallel.ForEach(
+                                    node.Nodes.Values.Where(
+                                        n =>
+                                            n.Data is InventoryItem && CanBeWorn(n.Data) &&
+                                            !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)), n =>
                                             {
-                                                Interlocked.Increment(ref myItemsWornCount);
-                                            }
-                                        });
+                                                Interlocked.Increment(ref myItemsCount);
+                                                if (n.Data is InventoryWearable &&
+                                                    currentWearables.Values.Any(
+                                                        o => o.ItemID.Equals(n.Data.UUID)) ||
+                                                    currentAttachments.Any(
+                                                        o =>
+                                                            GetAttachments(Configuration.SERVICES_TIMEOUT)
+                                                                .Any(
+                                                                    p =>
+                                                                        p.Key.Properties.ItemID.Equals(
+                                                                            n.Data.UUID))))
+                                                {
+                                                    Interlocked.Increment(ref myItemsWornCount);
+                                                }
+                                            });
+                            }
 
                             int allItemsCount = 0;
                             int allItemsWornCount = 0;
 
-                            Parallel.ForEach(
-                                node.Nodes.Values.Where(
-                                    n =>
-                                        n.Data is InventoryFolder && !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)),
-                                n => Parallel.ForEach(FindInventory<InventoryBase>(n,
-                                    new Regex(".+?", RegexOptions.Compiled))
-                                    .Where(o => !o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
-                                    .Where(
-                                        o =>
-                                            o is InventoryItem && CanBeWorn(o) &&
-                                            !o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)), p =>
-                                            {
-                                                Interlocked.Increment(ref allItemsCount);
-                                                if (p is InventoryWearable &&
-                                                    currentWearables.Values.Any(o => o.ItemID.Equals(p.UUID)) ||
-                                                    currentAttachments.Any(
-                                                        o =>
-                                                            GetAttachments(Configuration.SERVICES_TIMEOUT)
-                                                                .Any(q => q.Key.Properties.ItemID.Equals(p.UUID))))
+                            lock (InventoryLock)
+                            {
+                                Parallel.ForEach(
+                                    node.Nodes.Values.Where(
+                                        n =>
+                                            n.Data is InventoryFolder &&
+                                            !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)),
+                                    n => Parallel.ForEach(FindInventory<InventoryBase>(n,
+                                        new Regex(".+?", RegexOptions.Compiled))
+                                        .Where(o => !o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
+                                        .Where(
+                                            o =>
+                                                o is InventoryItem && CanBeWorn(o) &&
+                                                !o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)), p =>
                                                 {
-                                                    Interlocked.Increment(ref allItemsWornCount);
-                                                }
-                                            }));
+                                                    Interlocked.Increment(ref allItemsCount);
+                                                    if (p is InventoryWearable &&
+                                                        currentWearables.Values.Any(o => o.ItemID.Equals(p.UUID)) ||
+                                                        currentAttachments.Any(
+                                                            o =>
+                                                                GetAttachments(Configuration.SERVICES_TIMEOUT)
+                                                                    .Any(q => q.Key.Properties.ItemID.Equals(p.UUID))))
+                                                    {
+                                                        Interlocked.Increment(ref allItemsWornCount);
+                                                    }
+                                                }));
+                            }
 
 
                             Func<int, int, string> WornIndicator =
@@ -12089,8 +12122,15 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_EQUIPABLE_ITEMS));
                         }
                         // Now remove the current outfit items.
-                        Client.Inventory.Store.GetContents(GetOrCreateOutfitFolder(Configuration.SERVICES_TIMEOUT))
-                            .FindAll(o => CanBeWorn(o) && ((InventoryItem) o).AssetType.Equals(AssetType.Link))
+                        List<InventoryBase> outfitFolderContents;
+                        lock (InventoryLock)
+                        {
+                            outfitFolderContents =
+                                Client.Inventory.Store.GetContents(
+                                    GetOrCreateOutfitFolder(Configuration.SERVICES_TIMEOUT));
+                        }
+                        outfitFolderContents.FindAll(
+                            o => CanBeWorn(o) && ((InventoryItem) o).AssetType.Equals(AssetType.Link))
                             .ForEach(p =>
                             {
                                 InventoryItem item = ResolveItemLink(p as InventoryItem);
