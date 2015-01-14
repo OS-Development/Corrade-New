@@ -172,7 +172,7 @@ namespace Corrade
 
         private static readonly object GroupMembersLock = new object();
 
-        private static volatile bool EnableCorradeRLV = true;
+        private static volatile bool EnableCorradeRLV;
 
         public static EventHandler ConsoleEventHandler;
 
@@ -3839,7 +3839,8 @@ namespace Corrade
                                                 .Select(
                                                     folder =>
                                                         FindInventory<InventoryBase>(RLVFolder,
-                                                            folder
+                                                            new Regex(Regex.Escape(folder),
+                                                                RegexOptions.Compiled | RegexOptions.IgnoreCase)
                                                             ).FirstOrDefault(o => (o is InventoryFolder))), o =>
                                                             {
                                                                 if (o != null)
@@ -3922,7 +3923,8 @@ namespace Corrade
                                 .Select(
                                     folder =>
                                         FindInventory<InventoryBase>(RLVFolder,
-                                            folder
+                                            new Regex(Regex.Escape(folder),
+                                                RegexOptions.Compiled | RegexOptions.IgnoreCase)
                                             ).FirstOrDefault(o => (o is InventoryFolder))), o =>
                                             {
                                                 if (o != null)
@@ -4055,7 +4057,7 @@ namespace Corrade
                                         return;
                                     }
                                     inventoryBase = FindInventory<InventoryBase>(
-                                        RLVFolder, RLVrule.Option
+                                        RLVFolder, attachment.Key.Properties.ItemID
                                         )
                                         .FirstOrDefault(
                                             p =>
@@ -4078,11 +4080,16 @@ namespace Corrade
                                     {
                                         return;
                                     }
+                                    KeyValuePair<WearableType, string> wearable = GetWearables(RLVFolder)
+                                        .FirstOrDefault(
+                                            o => o.Key.Equals((WearableType) wearTypeInfo.GetValue(null)));
+                                    if (wearable.Equals(default(KeyValuePair<WearableType, string>)))
+                                    {
+                                        return;
+                                    }
                                     inventoryBase =
                                         FindInventory<InventoryBase>(RLVFolder,
-                                            GetWearables(RLVFolder)
-                                                .FirstOrDefault(
-                                                    o => o.Key.Equals((WearableType) wearTypeInfo.GetValue(null)))
+                                            wearable
                                                 .Value)
                                             .FirstOrDefault(o => (o is InventoryWearable));
                                 }
@@ -4117,7 +4124,7 @@ namespace Corrade
                             Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                             return;
                         }
-                        Client.Self.Chat(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR, path.Value.ToArray()), channel,
+                        Client.Self.Chat(string.Join(RLV_CONSTANTS.PATH_SEPARATOR, path.Value.ToArray()), channel,
                             ChatType.Normal);
                     };
                     break;
@@ -4171,7 +4178,7 @@ namespace Corrade
                                     });
                         if (!folders.Count.Equals(0))
                         {
-                            Client.Self.Chat(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR, folders.ToArray()),
+                            Client.Self.Chat(string.Join(RLV_CONSTANTS.PATH_SEPARATOR, folders.ToArray()),
                                 channel,
                                 ChatType.Normal);
                         }
@@ -4198,12 +4205,30 @@ namespace Corrade
                             Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                             return;
                         }
-                        InventoryNode optionFolderNode =
-                            FindInventory<InventoryNode>(RLVFolder, RLVrule.Option).FirstOrDefault();
-                        if (optionFolderNode == null)
+                        InventoryNode optionFolderNode;
+                        switch (!string.IsNullOrEmpty(RLVrule.Option))
                         {
-                            Client.Self.Chat(string.Empty, channel, ChatType.Normal);
-                            return;
+                            case true:
+                                KeyValuePair<InventoryNode, LinkedList<string>> folderPath = FindInventoryPath
+                                    <InventoryNode>(
+                                        RLVFolder,
+                                        new Regex(".+?", RegexOptions.Compiled),
+                                        new LinkedList<string>())
+                                    .Where(o => o.Key.Data is InventoryFolder)
+                                    .FirstOrDefault(
+                                        o =>
+                                            string.Join(RLV_CONSTANTS.PATH_SEPARATOR, o.Value.Skip(1).ToArray())
+                                                .Equals(RLVrule.Option, StringComparison.InvariantCultureIgnoreCase));
+                                if (folderPath.Equals(default(KeyValuePair<InventoryNode, LinkedList<string>>)))
+                                {
+                                    Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                                    return;
+                                }
+                                optionFolderNode = folderPath.Key;
+                                break;
+                            default:
+                                optionFolderNode = RLVFolder;
+                                break;
                         }
                         HashSet<string> csv = new HashSet<string>();
                         object LockObject = new object();
@@ -4260,7 +4285,7 @@ namespace Corrade
                                     Client.Appearance.GetWearables();
                             }
                             List<Primitive> currentAttachments;
-                            lock (ServicesLock)
+                            lock (InventoryLock)
                             {
                                 currentAttachments =
                                     Client.Network.CurrentSim.ObjectsPrimitives.FindAll(
@@ -4305,21 +4330,21 @@ namespace Corrade
                                         n =>
                                             n.Data is InventoryFolder &&
                                             !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)),
-                                    n => Parallel.ForEach(FindInventory<InventoryBase>(n,
-                                        new Regex(".+?", RegexOptions.Compiled))
-                                        .Where(o => !o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
+                                    n => Parallel.ForEach(n.Nodes.Values
+                                        .Where(o => !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
                                         .Where(
                                             o =>
-                                                o is InventoryItem && CanBeWorn(o) &&
-                                                !o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)), p =>
+                                                o.Data is InventoryItem && CanBeWorn(o.Data) &&
+                                                !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)), p =>
                                                 {
                                                     Interlocked.Increment(ref allItemsCount);
-                                                    if (p is InventoryWearable &&
-                                                        currentWearables.Values.Any(o => o.ItemID.Equals(p.UUID)) ||
+                                                    if (p.Data is InventoryWearable &&
+                                                        currentWearables.Values.Any(o => o.ItemID.Equals(p.Data.UUID)) ||
                                                         currentAttachments.Any(
                                                             o =>
                                                                 GetAttachments(Configuration.SERVICES_TIMEOUT)
-                                                                    .Any(q => q.Key.Properties.ItemID.Equals(p.UUID))))
+                                                                    .Any(
+                                                                        q => q.Key.Properties.ItemID.Equals(p.Data.UUID))))
                                                     {
                                                         Interlocked.Increment(ref allItemsWornCount);
                                                     }
@@ -4338,15 +4363,14 @@ namespace Corrade
                             string.Format("{0}{1}", RLV_CONSTANTS.PROPORTION_SEPARATOR,
                                 GetWornIndicator(folderPath.Key))
                         };
-                        foreach (InventoryNode node in folderPath.Key.Nodes.Values)
+                        lock (InventoryLock)
                         {
                             response.AddRange(
-                                FindInventory<InventoryNode>(node,
-                                    new Regex(".+?", RegexOptions.Compiled)).Where(o => o.Data is InventoryFolder)
+                                folderPath.Key.Nodes.Values.Where(node => node.Data is InventoryFolder)
                                     .Select(
-                                        o =>
-                                            string.Format("{0}{1}{2}", o.Data.Name,
-                                                RLV_CONSTANTS.PROPORTION_SEPARATOR, GetWornIndicator(o))));
+                                        node =>
+                                            string.Format("{0}{1}{2}", node.Data.Name,
+                                                RLV_CONSTANTS.PROPORTION_SEPARATOR, GetWornIndicator(node))));
                         }
                         Client.Self.Chat(string.Join(RLV_CONSTANTS.CSV_DELIMITER, response.ToArray()),
                             channel,
@@ -14097,7 +14121,7 @@ namespace Corrade
                     }
 
                     // Process RLV.
-                    nodeList = root.SelectNodes("/rlv/*");
+                    nodeList = root.SelectNodes("/config/rlv/*");
                     if (nodeList != null)
                     {
                         try
