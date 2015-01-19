@@ -196,9 +196,7 @@ namespace Corrade
             // Enqueue the first folder (root).
             inventoryFolders.Enqueue(Client.Inventory.Store.RootFolder);
 
-            // Create a list of semaphores indexed by the folder UUID.
-            Dictionary<UUID, AutoResetEvent> FolderUpdatedEvents = new Dictionary<UUID, AutoResetEvent>();
-            object FolderUpdatedEventsLock = new object();
+            AutoResetEvent FolderUpdatedEvent = new AutoResetEvent(false);
             EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (sender, args) =>
             {
                 // Enqueue all the new folders.
@@ -209,47 +207,29 @@ namespace Corrade
                         inventoryFolders.Enqueue(o as InventoryFolder);
                     }
                 });
-                FolderUpdatedEvents[args.FolderID].Set();
+                FolderUpdatedEvent.Set();
             };
 
             do
             {
-                // Dequeue all the folders in the queue (can also limit to a number of folders).
-                HashSet<InventoryFolder> folders = new HashSet<InventoryFolder>();
-                do
-                {
-                    folders.Add(inventoryFolders.Dequeue());
-                } while (!inventoryFolders.Count.Equals(0));
-                // Process all the dequeued elements in parallel.
-                Parallel.ForEach(folders.Where(o => o != null), o =>
-                {
-                    // Add an semaphore to wait for the folder contents.
-                    lock (FolderUpdatedEventsLock)
-                    {
-                        FolderUpdatedEvents.Add(o.UUID, new AutoResetEvent(false));
-                    }
-                    Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                    Client.Inventory.RequestFolderContents(o.UUID, Client.Self.AgentID, true, true,
-                        InventorySortOrder.ByDate);
-                    // Wait on the semaphore.
-                    FolderUpdatedEvents[o.UUID].WaitOne(Configuration.SERVICES_TIMEOUT, false);
-                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                    // Remove the semaphore for the folder.
-                    lock (FolderUpdatedEventsLock)
-                    {
-                        FolderUpdatedEvents.Remove(o.UUID);
-                    }
-                });
+                InventoryFolder folder = inventoryFolders.Dequeue();
+                if (folder == null) continue;
+                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
+                    InventorySortOrder.ByDate);
+                // Wait on the semaphore.
+                FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
             } while (!inventoryFolders.Count.Equals(0));
         };
 
         private static readonly System.Action SaveInventoryCache = () =>
         {
+            string path = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
+            int itemsSaved = 0;
             lock (InventoryLock)
             {
-                string path = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
-                    CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
-                int itemsSaved = 0;
                 if (!string.IsNullOrEmpty(path))
                 {
                     itemsSaved = Client.Inventory.Store.Items.Count;
@@ -791,19 +771,98 @@ namespace Corrade
         {
             if (info == null) yield break;
             object data = wasGetInfoValue(info, value);
-            // Handle arrays
-            Array list = data as Array;
-            if (list != null)
+            // Handle arrays and lists
+            if (data is Array || data is IList)
             {
-                IList array = (IList) data;
-                if (array.Count.Equals(0)) yield break;
-                foreach (
-                    string itemValue in
-                        array.Cast<object>()
-                            .Select(item => item.ToString())
-                            .Where(itemValue => !string.IsNullOrEmpty(itemValue)))
+                IList iList = (IList) data;
+                if (iList.Count.Equals(0)) yield break;
+                foreach (object item in iList.Cast<object>())
                 {
-                    yield return itemValue;
+                    foreach (KeyValuePair<FieldInfo, object> fi in wasGetFields(item, item.GetType().Name))
+                    {
+                        if (fi.Key != null)
+                        {
+                            foreach (string fieldString in wasGetInfo(fi.Key, fi.Value))
+                            {
+                                yield return fi.Key.Name;
+                                yield return fieldString;
+                            }
+                        }
+                    }
+                    foreach (KeyValuePair<PropertyInfo, object> pi in wasGetProperties(item, item.GetType().Name))
+                    {
+                        if (pi.Key != null)
+                        {
+                            foreach (string propertyString in wasGetInfo(pi.Key, pi.Value))
+                            {
+                                yield return pi.Key.Name;
+                                yield return propertyString;
+                            }
+                        }
+                    }
+                }
+                yield break;
+            }
+            // Handle InternalDictionary
+            FieldInfo internalDictionaryInfo = data.GetType()
+                .GetField("Dictionary",
+                    BindingFlags.Default | BindingFlags.CreateInstance | BindingFlags.Instance | BindingFlags.NonPublic);
+            if (internalDictionaryInfo != null)
+            {
+                Hashtable internalDictionary = new Hashtable(internalDictionaryInfo.GetValue(data) as IDictionary);
+                if (internalDictionary.Count.Equals(0)) yield break;
+                foreach (DictionaryEntry entry in internalDictionary)
+                {
+                    // First the keys.
+                    foreach (KeyValuePair<FieldInfo, object> fi in wasGetFields(entry.Key, entry.Key.GetType().Name))
+                    {
+                        if (fi.Key != null)
+                        {
+                            foreach (string fieldString in wasGetInfo(fi.Key, fi.Value))
+                            {
+                                yield return fi.Key.Name;
+                                yield return fieldString;
+                            }
+                        }
+                    }
+                    foreach (
+                        KeyValuePair<PropertyInfo, object> pi in wasGetProperties(entry.Key, entry.Key.GetType().Name))
+                    {
+                        if (pi.Key != null)
+                        {
+                            foreach (string propertyString in wasGetInfo(pi.Key, pi.Value))
+                            {
+                                yield return pi.Key.Name;
+                                yield return propertyString;
+                            }
+                        }
+                    }
+                    // Then the values.
+                    foreach (KeyValuePair<FieldInfo, object> fi in wasGetFields(entry.Value, entry.Value.GetType().Name)
+                        )
+                    {
+                        if (fi.Key != null)
+                        {
+                            foreach (string fieldString in wasGetInfo(fi.Key, fi.Value))
+                            {
+                                yield return fi.Key.Name;
+                                yield return fieldString;
+                            }
+                        }
+                    }
+                    foreach (
+                        KeyValuePair<PropertyInfo, object> pi in
+                            wasGetProperties(entry.Value, entry.Value.GetType().Name))
+                    {
+                        if (pi.Key != null)
+                        {
+                            foreach (string propertyString in wasGetInfo(pi.Key, pi.Value))
+                            {
+                                yield return pi.Key.Name;
+                                yield return propertyString;
+                            }
+                        }
+                    }
                 }
                 yield break;
             }
@@ -3151,12 +3210,12 @@ namespace Corrade
                     // Start the inventory update thread.
                     new Thread(() =>
                     {
+                        LoadInventoryCache.Invoke();
                         lock (InventoryLock)
                         {
-                            LoadInventoryCache.Invoke();
                             InventoryUpdate.Invoke();
-                            SaveInventoryCache.Invoke();
                         }
+                        SaveInventoryCache.Invoke();
                     }) {IsBackground = true}.Start();
                     break;
                 case LoginStatus.Failed:
@@ -4726,7 +4785,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
                         }
                         // If the role is not everybody, then check for powers to assign to the specified role.
-                        if (roleUUID.Equals(UUID.Zero))
+                        if (!roleUUID.Equals(UUID.Zero))
                         {
                             if (
                                 !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
@@ -11006,7 +11065,62 @@ namespace Corrade
                         Avatar avatar = Client.Network.CurrentSim.ObjectsAvatars.Find(o => o.ID.Equals(agentUUID));
                         if (avatar == null)
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AVATAR_NOT_IN_RANGE));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AVATAR_NOT_ON_CURRENT_REGION));
+                        }
+                        ManualResetEvent[] AvatarDataReceivedEvent =
+                        {
+                            new ManualResetEvent(false),
+                            new ManualResetEvent(false),
+                            new ManualResetEvent(false),
+                            new ManualResetEvent(false),
+                            new ManualResetEvent(false)
+                        };
+                        EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
+                        {
+                            avatar.ProfileInterests = args.Interests;
+                            AvatarDataReceivedEvent[0].Set();
+                        };
+                        EventHandler<AvatarPropertiesReplyEventArgs> AvatarPropertiesReplyEventHandler =
+                            (sender, args) =>
+                            {
+                                avatar.ProfileProperties = args.Properties;
+                                AvatarDataReceivedEvent[1].Set();
+                            };
+                        EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
+                        {
+                            avatar.Groups = args.Groups.Select(o => o.GroupID).ToList();
+                            AvatarDataReceivedEvent[2].Set();
+                        };
+                        EventHandler<AvatarPicksReplyEventArgs> AvatarPicksReplyEventHandler =
+                            (sender, args) => AvatarDataReceivedEvent[3].Set();
+                        EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedReplyEventHandler =
+                            (sender, args) => AvatarDataReceivedEvent[4].Set();
+                        lock (ServicesLock)
+                        {
+                            Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
+                            Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;
+                            Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
+                            Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
+                            Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
+                            Client.Avatars.RequestAvatarProperties(agentUUID);
+                            Client.Avatars.RequestAvatarPicks(agentUUID);
+                            Client.Avatars.RequestAvatarClassified(agentUUID);
+                            if (!WaitHandle.WaitAll(AvatarDataReceivedEvent.Select(o => (WaitHandle) o).ToArray(),
+                                Configuration.SERVICES_TIMEOUT, false))
+                            {
+                                Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
+                                Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
+                                Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+                                Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
+                                Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_AVATAR_DATA));
+                            }
+                            Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
+                            Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
+                            Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+                            Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
+                            Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
                         }
                         List<string> data = new List<string>(GetStructuredData(avatar,
                             wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
@@ -15000,7 +15114,6 @@ namespace Corrade
             [Description("invalid rotation")] INVALID_ROTATION,
             [Description("could not set script state")] COULD_NOT_SET_SCRIPT_STATE,
             [Description("item is not a script")] ITEM_IS_NOT_A_SCRIPT,
-            [Description("avatar not in range")] AVATAR_NOT_IN_RANGE,
             [Description("failed to get display name")] FAILED_TO_GET_DISPLAY_NAME,
             [Description("no name provided")] NO_NAME_PROVIDED,
             [Description("could not set display name")] COULD_NOT_SET_DISPLAY_NAME,
@@ -15068,7 +15181,9 @@ namespace Corrade
             [Description("timeout waiting for execution")] TIMEOUT_WAITING_FOR_EXECUTION,
             [Description("unknown group invite session")] UNKNOWN_GROUP_INVITE_SESSION,
             [Description("unable to obtain money balance")] UNABLE_TO_OBTAIN_MONEY_BALANCE,
-            [Description("rebake failed")] REBAKE_FAILED
+            [Description("rebake failed")] REBAKE_FAILED,
+            [Description("timeout getting avatar data")] TIMEOUT_GETTING_AVATAR_DATA,
+            [Description("avatar is not on the current region")] AVATAR_NOT_ON_CURRENT_REGION
         }
 
         /// <summary>
