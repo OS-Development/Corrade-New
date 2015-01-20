@@ -40,50 +40,6 @@ namespace Corrade
         public delegate bool EventHandler(NativeMethods.CtrlType ctrlType);
 
         /// <summary>
-        ///     Possible actions.
-        /// </summary>
-        public enum Action : uint
-        {
-            [Description("none")] NONE = 0,
-            [Description("get")] GET,
-            [Description("set")] SET,
-            [Description("add")] ADD,
-            [Description("remove")] REMOVE,
-            [Description("start")] START,
-            [Description("stop")] STOP,
-            [Description("mute")] MUTE,
-            [Description("unmute")] UNMUTE,
-            [Description("restart")] RESTART,
-            [Description("cancel")] CANCEL,
-            [Description("accept")] ACCEPT,
-            [Description("decline")] DECLINE,
-            [Description("online")] ONLINE,
-            [Description("offline")] OFFLINE,
-            [Description("request")] REQUEST,
-            [Description("response")] RESPONSE,
-            [Description("delete")] DELETE,
-            [Description("take")] TAKE,
-            [Description("read")] READ,
-            [Description("wrtie")] WRITE,
-            [Description("purge")] PURGE,
-            [Description("crossed")] CROSSED,
-            [Description("changed")] CHANGED,
-            [Description("reply")] REPLY,
-            [Description("offer")] OFFER,
-            [Description("generic")] GENERIC,
-            [Description("point")] POINT,
-            [Description("look")] LOOK,
-            [Description("update")] UPDATE,
-            [Description("received")] RECEIVED,
-            [Description("joined")] JOINED,
-            [Description("parted")] PARTED,
-            [Description("save")] SAVE,
-            [Description("load")] LOAD,
-            [Description("enable")] ENABLE,
-            [Description("disable")] DISABLE
-        }
-
-        /// <summary>
         ///     Corrade version sent to the simulator.
         /// </summary>
         private static readonly string CORRADE_VERSION = Assembly.GetEntryAssembly().GetName().Version.ToString();
@@ -13591,7 +13547,7 @@ namespace Corrade
             wasAlarm DirPeopleReceivedAlarm = new wasAlarm();
             EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyDelegate = (sender, args) =>
             {
-                DirPeopleReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                DirPeopleReceivedAlarm.Alarm(dataTimeout);
                 localAgentUUID =
                     args.MatchedPeople.FirstOrDefault(
                         o =>
@@ -13814,7 +13770,7 @@ namespace Corrade
             wasAlarm GroupRoleDataReceivedAlarm = new wasAlarm();
             EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
             {
-                GroupRoleDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                GroupRoleDataReceivedAlarm.Alarm(dataTimeout);
                 localRoleName = args.Roles.FirstOrDefault(o => o.Key.Equals(RoleUUID)).Value.Name;
             };
 
@@ -14048,6 +14004,50 @@ namespace Corrade
         }
 
         #endregion
+
+        /// <summary>
+        ///     Possible actions.
+        /// </summary>
+        private enum Action : uint
+        {
+            [Description("none")] NONE = 0,
+            [Description("get")] GET,
+            [Description("set")] SET,
+            [Description("add")] ADD,
+            [Description("remove")] REMOVE,
+            [Description("start")] START,
+            [Description("stop")] STOP,
+            [Description("mute")] MUTE,
+            [Description("unmute")] UNMUTE,
+            [Description("restart")] RESTART,
+            [Description("cancel")] CANCEL,
+            [Description("accept")] ACCEPT,
+            [Description("decline")] DECLINE,
+            [Description("online")] ONLINE,
+            [Description("offline")] OFFLINE,
+            [Description("request")] REQUEST,
+            [Description("response")] RESPONSE,
+            [Description("delete")] DELETE,
+            [Description("take")] TAKE,
+            [Description("read")] READ,
+            [Description("wrtie")] WRITE,
+            [Description("purge")] PURGE,
+            [Description("crossed")] CROSSED,
+            [Description("changed")] CHANGED,
+            [Description("reply")] REPLY,
+            [Description("offer")] OFFER,
+            [Description("generic")] GENERIC,
+            [Description("point")] POINT,
+            [Description("look")] LOOK,
+            [Description("update")] UPDATE,
+            [Description("received")] RECEIVED,
+            [Description("joined")] JOINED,
+            [Description("parted")] PARTED,
+            [Description("save")] SAVE,
+            [Description("load")] LOAD,
+            [Description("enable")] ENABLE,
+            [Description("disable")] DISABLE
+        }
 
         /// <summary>
         ///     Agent structure.
@@ -14900,6 +14900,7 @@ namespace Corrade
             [Description("none")] NONE = 0,
             [Description("access denied")] ACCESS_DENIED = 1,
             [Description("invalid configuration file")] INVALID_CONFIGURATION_FILE,
+
             [Description(
                 "the Terms of Service (TOS) for the grid you are connecting to have not been accepted, please check your configuration file"
                 )] TOS_NOT_ACCEPTED,
