@@ -29,6 +29,7 @@ using Mono.Unix.Native;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using ThreadState = System.Threading.ThreadState;
+using Timer = System.Timers.Timer;
 
 #endregion
 
@@ -36,10 +37,6 @@ namespace Corrade
 {
     public partial class Corrade : ServiceBase
     {
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-
         public delegate bool EventHandler(NativeMethods.CtrlType ctrlType);
 
         /// <summary>
@@ -117,6 +114,8 @@ namespace Corrade
         private static readonly EventLog CorradeLog = new EventLog();
 
         private static readonly GridClient Client = new GridClient();
+
+        private static readonly object CommandLock = new object();
 
         private static readonly object ServicesLock = new object();
 
@@ -376,7 +375,7 @@ namespace Corrade
         /// <param name="structure">the structure to search</param>
         /// <param name="item">the value of the item to search</param>
         /// <returns>the description or the empty string</returns>
-        public static string wasGetStructureMemberDescription<T>(T structure, object item) where T : struct
+        private static string wasGetStructureMemberDescription<T>(T structure, object item) where T : struct
         {
             var field = typeof (T).GetFields()
                 .SelectMany(f => f.GetCustomAttributes(typeof (DescriptionAttribute), false),
@@ -444,7 +443,7 @@ namespace Corrade
         /// </summary>
         /// <param name="item">item to check</param>
         /// <returns>true if the inventory item can be worn</returns>
-        public static bool CanBeWorn(InventoryBase item)
+        private static bool CanBeWorn(InventoryBase item)
         {
             return item is InventoryWearable || item is InventoryAttachment || item is InventoryObject;
         }
@@ -455,28 +454,22 @@ namespace Corrade
         /// </summary>
         /// <param name="item">a link or inventory item</param>
         /// <returns>the real inventory item</returns>
-        public static InventoryItem ResolveItemLink(InventoryItem item)
+        private static InventoryItem ResolveItemLink(InventoryItem item)
         {
-            if (!item.AssetType.Equals(AssetType.Link)) return item;
-            InventoryBase inventoryBase = FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item.Name)
-                .FirstOrDefault(o => (o is InventoryItem) && !(o as InventoryItem).AssetType.Equals(AssetType.Link));
-            if (inventoryBase == null)
+            if (item.IsLink() && Client.Inventory.Store.Contains(item.AssetUUID) &&
+                Client.Inventory.Store[item.AssetUUID] is InventoryItem)
             {
-                return null;
+                return Client.Inventory.Store[item.AssetUUID] as InventoryItem;
             }
-            InventoryItem inventoryItem = inventoryBase as InventoryItem;
-            if (inventoryItem == null)
-            {
-                return null;
-            }
-            return inventoryItem;
+
+            return item;
         }
 
         /// <summary>
         ///     Get current outfit folder links.
         /// </summary>
         /// <returns>a list of inventory items that can be part of appearance (attachments, wearables)</returns>
-        public static List<InventoryItem> GetCurrentOutfitFolderLinks(int millisecondsTimeout)
+        private static List<InventoryItem> GetCurrentOutfitFolderLinks(int millisecondsTimeout)
         {
             List<InventoryItem> ret = new List<InventoryItem>();
             InventoryFolder COF = GetOrCreateOutfitFolder(millisecondsTimeout);
@@ -541,7 +534,7 @@ namespace Corrade
         /// </summary>
         /// <param name="item">item to be linked</param>
         /// <param name="millisecondsTimeout">timeout in milliseconds</param>
-        public static void lookupAddLink(InventoryItem item, int millisecondsTimeout)
+        private static void lookupAddLink(InventoryItem item, int millisecondsTimeout)
         {
             InventoryFolder COF = GetOrCreateOutfitFolder(millisecondsTimeout);
             if (GetOrCreateOutfitFolder(millisecondsTimeout) == null) return;
@@ -565,7 +558,7 @@ namespace Corrade
                 });
         }
 
-        public static void AddLink(InventoryItem item, int millisecondsTimeout)
+        private static void AddLink(InventoryItem item, int millisecondsTimeout)
         {
             lock (InventoryLock)
             {
@@ -578,7 +571,7 @@ namespace Corrade
         /// </summary>
         /// <param name="item">the inventory item for which to remove the link</param>
         /// <param name="millisecondsTimeout">timeout in milliseconds</param>
-        public static void RemoveLink(InventoryItem item, int millisecondsTimeout)
+        private static void RemoveLink(InventoryItem item, int millisecondsTimeout)
         {
             RemoveLink(new HashSet<InventoryItem> {item}, millisecondsTimeout);
         }
@@ -588,7 +581,7 @@ namespace Corrade
         /// </summary>
         /// <param name="items">list of items whose links should be removed</param>
         /// <param name="millisecondsTimeout">timeout in milliseconds</param>
-        public static void lookupRemoveLink(IEnumerable<InventoryItem> items, int millisecondsTimeout)
+        private static void lookupRemoveLink(IEnumerable<InventoryItem> items, int millisecondsTimeout)
         {
             InventoryFolder COF = GetOrCreateOutfitFolder(millisecondsTimeout);
             if (COF == null) return;
@@ -612,7 +605,7 @@ namespace Corrade
             Client.Inventory.Remove(removeItems, null);
         }
 
-        public static void RemoveLink(IEnumerable<InventoryItem> items, int millisecondsTimeout)
+        private static void RemoveLink(IEnumerable<InventoryItem> items, int millisecondsTimeout)
         {
             lock (InventoryLock)
             {
@@ -753,6 +746,10 @@ namespace Corrade
             PropertyInfo pi = (object) info as PropertyInfo;
             if (pi != null)
             {
+                if (!pi.GetIndexParameters().Length.Equals(0))
+                {
+                    return value;
+                }
                 return pi.GetValue(value, null);
             }
             return null;
@@ -790,6 +787,66 @@ namespace Corrade
                         }
                     }
                     foreach (KeyValuePair<PropertyInfo, object> pi in wasGetProperties(item, item.GetType().Name))
+                    {
+                        if (pi.Key != null)
+                        {
+                            foreach (string propertyString in wasGetInfo(pi.Key, pi.Value))
+                            {
+                                yield return pi.Key.Name;
+                                yield return propertyString;
+                            }
+                        }
+                    }
+                }
+                yield break;
+            }
+            // Handle Dictionary
+            if (data is IDictionary)
+            {
+                Hashtable dictionary = new Hashtable(data as IDictionary);
+                if (dictionary.Count.Equals(0)) yield break;
+                foreach (DictionaryEntry entry in dictionary)
+                {
+                    // First the keys.
+                    foreach (KeyValuePair<FieldInfo, object> fi in wasGetFields(entry.Key, entry.Key.GetType().Name))
+                    {
+                        if (fi.Key != null)
+                        {
+                            foreach (string fieldString in wasGetInfo(fi.Key, fi.Value))
+                            {
+                                yield return fi.Key.Name;
+                                yield return fieldString;
+                            }
+                        }
+                    }
+                    foreach (
+                        KeyValuePair<PropertyInfo, object> pi in wasGetProperties(entry.Key, entry.Key.GetType().Name))
+                    {
+                        if (pi.Key != null)
+                        {
+                            foreach (string propertyString in wasGetInfo(pi.Key, pi.Value))
+                            {
+                                yield return pi.Key.Name;
+                                yield return propertyString;
+                            }
+                        }
+                    }
+                    // Then the values.
+                    foreach (KeyValuePair<FieldInfo, object> fi in wasGetFields(entry.Value, entry.Value.GetType().Name)
+                        )
+                    {
+                        if (fi.Key != null)
+                        {
+                            foreach (string fieldString in wasGetInfo(fi.Key, fi.Value))
+                            {
+                                yield return fi.Key.Name;
+                                yield return fieldString;
+                            }
+                        }
+                    }
+                    foreach (
+                        KeyValuePair<PropertyInfo, object> pi in
+                            wasGetProperties(entry.Value, entry.Value.GetType().Name))
                     {
                         if (pi.Key != null)
                         {
@@ -953,22 +1010,23 @@ namespace Corrade
         /// <param name="groupUUID">the UUID of the group</param>
         /// <param name="powers">a GroupPowers structure</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <returns>true if the agent has the powers</returns>
         private static bool lookupHasGroupPowers(UUID agentUUID, UUID groupUUID, GroupPowers powers,
-            int millisecondsTimeout)
+            int millisecondsTimeout, int dataTimeout)
         {
             bool hasPowers = false;
-            ManualResetEvent avatarGroupsEvent = new ManualResetEvent(false);
+            wasAlarm AvatarGroupsReceivedAlarm = new wasAlarm();
             EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
             {
+                AvatarGroupsReceivedAlarm.Alarm(dataTimeout);
                 hasPowers =
                     args.Groups.Any(
                         o => o.GroupID.Equals(groupUUID) && !(o.GroupPowers & powers).Equals(GroupPowers.None));
-                avatarGroupsEvent.Set();
             };
             Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
             Client.Avatars.RequestAvatarProperties(agentUUID);
-            if (!avatarGroupsEvent.WaitOne(millisecondsTimeout, false))
+            if (!AvatarGroupsReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
             {
                 Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
                 return false;
@@ -984,12 +1042,14 @@ namespace Corrade
         /// <param name="groupUUID">the UUID of the group</param>
         /// <param name="powers">a GroupPowers structure</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <returns>true if the agent has the powers</returns>
-        private static bool HasGroupPowers(UUID agentUUID, UUID groupUUID, GroupPowers powers, int millisecondsTimeout)
+        private static bool HasGroupPowers(UUID agentUUID, UUID groupUUID, GroupPowers powers, int millisecondsTimeout,
+            int dataTimeout)
         {
             lock (ServicesLock)
             {
-                return lookupHasGroupPowers(agentUUID, groupUUID, powers, millisecondsTimeout);
+                return lookupHasGroupPowers(agentUUID, groupUUID, powers, millisecondsTimeout, dataTimeout);
             }
         }
 
@@ -1003,19 +1063,20 @@ namespace Corrade
         /// <param name="agentUUID">the UUID of the agent</param>
         /// <param name="groupUUID">the UUID of the groupt</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <returns>true if the agent is in the group</returns>
-        private static bool lookupAgentInGroup(UUID agentUUID, UUID groupUUID, int millisecondsTimeout)
+        private static bool lookupAgentInGroup(UUID agentUUID, UUID groupUUID, int millisecondsTimeout, int dataTimeout)
         {
             bool agentInGroup = false;
-            ManualResetEvent agentInGroupEvent = new ManualResetEvent(false);
+            wasAlarm GroupMembersReceivedAlarm = new wasAlarm();
             EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
             {
+                GroupMembersReceivedAlarm.Alarm(dataTimeout);
                 agentInGroup = args.Members.Any(o => o.Value.ID.Equals(agentUUID));
-                agentInGroupEvent.Set();
             };
             Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
             Client.Groups.RequestGroupMembers(groupUUID);
-            if (!agentInGroupEvent.WaitOne(millisecondsTimeout, false))
+            if (!GroupMembersReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
             {
                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                 return false;
@@ -1030,12 +1091,13 @@ namespace Corrade
         /// <param name="agentUUID">the UUID of the agent</param>
         /// <param name="groupUUID">the UUID of the groupt</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <returns>true if the agent is in the group</returns>
-        private static bool AgentInGroup(UUID agentUUID, UUID groupUUID, int millisecondsTimeout)
+        private static bool AgentInGroup(UUID agentUUID, UUID groupUUID, int millisecondsTimeout, int dataTimeout)
         {
             lock (ServicesLock)
             {
-                return lookupAgentInGroup(agentUUID, groupUUID, millisecondsTimeout);
+                return lookupAgentInGroup(agentUUID, groupUUID, millisecondsTimeout, dataTimeout);
             }
         }
 
@@ -1339,25 +1401,31 @@ namespace Corrade
         ///     Requests the groups that Corrade is a member of.
         /// </summary>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="groups">a hash set to hold the current groups</param>
         /// <returns>true if the current groups could have been successfully retrieved</returns>
-        private static bool lookupRequestCurrentGroups(int millisecondsTimeout, ref HashSet<OpenMetaverse.Group> groups)
+        private static bool lookupRequestCurrentGroups(int millisecondsTimeout, int dataTimeout,
+            ref HashSet<OpenMetaverse.Group> groups)
         {
-            ManualResetEvent CurrentGroupsEvent = new ManualResetEvent(false);
+            wasAlarm CurrentGroupsReceivedAlarm = new wasAlarm();
             HashSet<OpenMetaverse.Group> localGroups = new HashSet<OpenMetaverse.Group>();
             EventHandler<CurrentGroupsEventArgs> CurrentGroupsEventHandler = (s, a) =>
             {
-                localGroups = new HashSet<OpenMetaverse.Group>(a.Groups.Select(o => o.Value));
-                CurrentGroupsEvent.Set();
+                CurrentGroupsReceivedAlarm.Alarm(dataTimeout);
+                foreach (OpenMetaverse.Group group in a.Groups.Select(o => o.Value))
+                {
+                    localGroups.Add(group);
+                }
             };
             Client.Groups.CurrentGroups += CurrentGroupsEventHandler;
             Client.Groups.RequestCurrentGroups();
-            if (!CurrentGroupsEvent.WaitOne(millisecondsTimeout, false))
+            if (!CurrentGroupsReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
             {
                 Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
                 return false;
             }
             Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
+            if (localGroups.Count.Equals(0)) return false;
             groups = localGroups;
             return true;
         }
@@ -1366,13 +1434,15 @@ namespace Corrade
         ///     Wrapper for requesting current groups - used for locking down services.
         /// </summary>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="groups">a hash set to hold the current groups</param>
         /// <returns>true if the current groups could have been successfully retrieved</returns>
-        private static bool RequestCurrentGroups(int millisecondsTimeout, ref HashSet<OpenMetaverse.Group> groups)
+        private static bool RequestCurrentGroups(int millisecondsTimeout, int dataTimeout,
+            ref HashSet<OpenMetaverse.Group> groups)
         {
             lock (ServicesLock)
             {
-                return lookupRequestCurrentGroups(millisecondsTimeout, ref groups);
+                return lookupRequestCurrentGroups(millisecondsTimeout, dataTimeout, ref groups);
             }
         }
 
@@ -1435,7 +1505,8 @@ namespace Corrade
         /// </summary>
         /// <param name="root">the folder to start the search from</param>
         /// <returns>key value pairs of wearables by name</returns>
-        private static IEnumerable<KeyValuePair<WearableType, string>> lookupGetWearables(InventoryNode root)
+        private static IEnumerable<KeyValuePair<AppearanceManager.WearableData, WearableType>> lookupGetWearables(
+            InventoryNode root)
         {
             InventoryFolder inventoryFolder = Client.Inventory.Store[root.Data.UUID] as InventoryFolder;
             if (inventoryFolder == null)
@@ -1443,22 +1514,27 @@ namespace Corrade
                 InventoryItem inventoryItem = Client.Inventory.Store[root.Data.UUID] as InventoryItem;
                 if (inventoryItem != null)
                 {
-                    WearableType wearableType = Client.Appearance.IsItemWorn(inventoryItem);
-                    if (!wearableType.Equals(WearableType.Invalid))
+                    foreach (
+                        KeyValuePair<WearableType, AppearanceManager.WearableData> wearable in
+                            Client.Appearance.GetWearables()
+                                .Where(wearable => inventoryItem.UUID.Equals(wearable.Value.ItemID)))
                     {
-                        yield return new KeyValuePair<WearableType, string>(wearableType, inventoryItem.Name);
+                        yield return
+                            new KeyValuePair<AppearanceManager.WearableData, WearableType>(wearable.Value,
+                                wearable.Key);
                     }
                 }
             }
             foreach (
-                KeyValuePair<WearableType, string> item in
+                KeyValuePair<AppearanceManager.WearableData, WearableType> item in
                     root.Nodes.Values.SelectMany(node => lookupGetWearables(node)))
             {
                 yield return item;
             }
         }
 
-        private static IEnumerable<KeyValuePair<WearableType, string>> GetWearables(InventoryNode root)
+        private static IEnumerable<KeyValuePair<AppearanceManager.WearableData, WearableType>> GetWearables(
+            InventoryNode root)
         {
             lock (InventoryLock)
             {
@@ -2119,7 +2195,8 @@ namespace Corrade
 
                     // Request all the current groups.
                     HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>();
-                    if (!RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, ref groups)) continue;
+                    if (!RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref groups))
+                        continue;
 
                     // Enqueue configured groups that are currently joined groups.
                     Queue<UUID> groupUUIDs = new Queue<UUID>();
@@ -2218,7 +2295,8 @@ namespace Corrade
                                     Parallel.ForEach(joinedMembers, o =>
                                     {
                                         string agentName = string.Empty;
-                                        if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT, ref agentName))
+                                        if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT,
+                                            Configuration.DATA_TIMEOUT, ref agentName))
                                         {
                                             new Thread(
                                                 p =>
@@ -2238,7 +2316,8 @@ namespace Corrade
                                     Parallel.ForEach(partedMembers, o =>
                                     {
                                         string agentName = string.Empty;
-                                        if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT, ref agentName))
+                                        if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT,
+                                            Configuration.DATA_TIMEOUT, ref agentName))
                                         {
                                             new Thread(
                                                 p =>
@@ -2459,10 +2538,14 @@ namespace Corrade
                 Stream body = httpRequest.InputStream;
                 Encoding encoding = httpRequest.ContentEncoding;
                 StreamReader reader = new StreamReader(body, encoding);
-                Dictionary<string, string> result = HandleCorradeCommand(reader.ReadToEnd(),
-                    CORRADE_CONSTANTS.WEB_REQUEST,
-                    httpRequest.RemoteEndPoint.ToString());
-                if (result == null) return;
+                Dictionary<string, string> result;
+                lock (CommandLock)
+                {
+                    result = HandleCorradeCommand(reader.ReadToEnd(),
+                        CORRADE_CONSTANTS.WEB_REQUEST,
+                        httpRequest.RemoteEndPoint.ToString());
+                }
+                if (result == null || result.Count.Equals(0)) return;
                 HttpListenerResponse response = httpContext.Response;
                 response.ContentType = CORRADE_CONSTANTS.TEXT_HTML;
                 byte[] data = Encoding.UTF8.GetBytes(wasKeyValueEncode(wasKeyValueEscape(result)));
@@ -3015,12 +3098,12 @@ namespace Corrade
             switch (e.Type)
             {
                 case ChatType.OwnerSay:
-                    new Thread(() =>
+                    if (!EnableCorradeRLV) return;
+                    if (!e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR)) return;
+                    lock (CommandLock)
                     {
-                        if (!EnableCorradeRLV) return;
-                        if (!e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR)) return;
                         HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1), e.SourceID);
-                    }) {IsBackground = true}.Start();
+                    }
                     break;
                 case ChatType.Debug:
                 case ChatType.Normal:
@@ -3031,10 +3114,10 @@ namespace Corrade
                         .Start();
                     break;
                 case (ChatType) 9:
-                    new Thread(() => HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString()))
+                    lock (CommandLock)
                     {
-                        IsBackground = true
-                    }.Start();
+                        HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString());
+                    }
                     break;
             }
         }
@@ -3126,7 +3209,9 @@ namespace Corrade
             List<string> owner = new List<string>(GetAvatarNames(e.ObjectOwnerName));
             UUID ownerUUID = UUID.Zero;
             // Don't add permission requests from unknown agents.
-            if (!AgentNameToUUID(owner.First(), owner.Last(), Configuration.SERVICES_TIMEOUT, ref ownerUUID))
+            if (
+                !AgentNameToUUID(owner.First(), owner.Last(), Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                    ref ownerUUID))
             {
                 return;
             }
@@ -3371,6 +3456,7 @@ namespace Corrade
                     UUID inviteGroupAgent = UUID.Zero;
                     if (
                         !AgentNameToUUID(groupInviteName.First(), groupInviteName.Last(), Configuration.SERVICES_TIMEOUT,
+                            Configuration.DATA_TIMEOUT,
                             ref inviteGroupAgent)) return;
                     // Add the group invite - have to track them manually.
                     lock (GroupInviteLock)
@@ -3420,7 +3506,8 @@ namespace Corrade
                     // of the session is actually the UUID of a current group. Furthermore, what's worse is that 
                     // group mesages can appear both through SessionSend and from MessageFromAgent. Hence the problem.
                     HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>();
-                    if (!RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, ref groups)) return;
+                    if (!RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref groups))
+                        return;
                     bool messageFromGroup = groups.Any(o => o.ID.Equals(args.IM.IMSessionID));
                     OpenMetaverse.Group messageGroup = groups.FirstOrDefault(o => o.ID.Equals(args.IM.IMSessionID));
                     if (messageFromGroup)
@@ -3483,11 +3570,10 @@ namespace Corrade
             }
 
             // Everything else, must be a command.
-            new Thread(
-                () => HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString()))
+            lock (CommandLock)
             {
-                IsBackground = true
-            }.Start();
+                HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString());
+            }
         }
 
         private static void HandleRLVCommand(string message, UUID senderUUID)
@@ -3578,7 +3664,8 @@ namespace Corrade
                         }
                         UUID groupUUID = Client.Self.ActiveGroup;
                         HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>();
-                        if (!RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, ref groups))
+                        if (
+                            !RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref groups))
                         {
                             return;
                         }
@@ -3598,7 +3685,8 @@ namespace Corrade
                             return;
                         }
                         HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>();
-                        if (!RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, ref groups))
+                        if (
+                            !RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref groups))
                         {
                             return;
                         }
@@ -3667,15 +3755,12 @@ namespace Corrade
                         }
                         Client.Self.SignaledAnimations.ForEach(
                             animation => Client.Self.AnimationStop(animation.Key, true));
-                        lock (ServicesLock)
-                        {
-                            Client.Self.AvatarSitResponse += AvatarSitEventHandler;
-                            Client.Self.AlertMessage += AlertMessageEventHandler;
-                            Client.Self.RequestSit(primitive.ID, Vector3.Zero);
-                            SitEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
-                            Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
-                            Client.Self.AlertMessage -= AlertMessageEventHandler;
-                        }
+                        Client.Self.AvatarSitResponse += AvatarSitEventHandler;
+                        Client.Self.AlertMessage += AlertMessageEventHandler;
+                        Client.Self.RequestSit(primitive.ID, Vector3.Zero);
+                        SitEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                        Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
+                        Client.Self.AlertMessage -= AlertMessageEventHandler;
                     };
                     break;
                 case RLVBehaviour.UNSIT:
@@ -3744,8 +3829,9 @@ namespace Corrade
                         {
                             return;
                         }
-                        HashSet<KeyValuePair<WearableType, string>> wearables =
-                            new HashSet<KeyValuePair<WearableType, string>>(GetWearables(Client.Inventory.Store.RootNode));
+                        HashSet<KeyValuePair<AppearanceManager.WearableData, WearableType>> wearables =
+                            new HashSet<KeyValuePair<AppearanceManager.WearableData, WearableType>>(
+                                GetWearables(Client.Inventory.Store.RootNode));
                         StringBuilder response = new StringBuilder();
                         switch (!string.IsNullOrEmpty(RLVrule.Option))
                         {
@@ -3754,7 +3840,7 @@ namespace Corrade
                                     RLVWearables.FirstOrDefault(
                                         o => o.Name.Equals(RLVrule.Option, StringComparison.InvariantCultureIgnoreCase))
                                         .WearableType;
-                                if (!wearables.Any(o => o.Key.Equals(wearableType)))
+                                if (!wearables.Any(o => o.Value.Equals(wearableType)))
                                 {
                                     response.Append(RLV_CONSTANTS.FALSE_MARKER);
                                     break;
@@ -3765,7 +3851,7 @@ namespace Corrade
                                 string[] data = new string[RLVWearables.Count];
                                 Parallel.ForEach(Enumerable.Range(0, RLVWearables.Count), o =>
                                 {
-                                    if (!wearables.Any(p => p.Key.Equals(RLVWearables[o].WearableType)))
+                                    if (!wearables.Any(p => p.Value.Equals(RLVWearables[o].WearableType)))
                                     {
                                         data[o] = RLV_CONSTANTS.FALSE_MARKER;
                                         return;
@@ -4058,7 +4144,7 @@ namespace Corrade
                                     FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                         GetWearables(Client.Inventory.Store.RootNode)
                                             .FirstOrDefault(
-                                                o => o.Key.Equals((WearableType) wearTypeInfo.GetValue(null)))
+                                                o => o.Value.Equals((WearableType) wearTypeInfo.GetValue(null)))
                                             .Value).FirstOrDefault();
                                 if (inventoryBase == null)
                                 {
@@ -4070,11 +4156,11 @@ namespace Corrade
                                 Parallel.ForEach(GetWearables(Client.Inventory.Store.RootNode)
                                     .Select(o => new[]
                                     {
-                                        o.Value
+                                        o.Key
                                     }).SelectMany(o => o), o =>
                                     {
                                         inventoryBase =
-                                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
+                                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o.ItemID
                                                 )
                                                 .FirstOrDefault(p => (p is InventoryWearable));
                                         if (inventoryBase == null)
@@ -4151,17 +4237,20 @@ namespace Corrade
                                     {
                                         return;
                                     }
-                                    KeyValuePair<WearableType, string> wearable = GetWearables(RLVFolder)
+                                    KeyValuePair<AppearanceManager.WearableData, WearableType> wearable = GetWearables(
+                                        RLVFolder)
                                         .FirstOrDefault(
-                                            o => o.Key.Equals((WearableType) wearTypeInfo.GetValue(null)));
-                                    if (wearable.Equals(default(KeyValuePair<WearableType, string>)))
+                                            o => o.Value.Equals((WearableType) wearTypeInfo.GetValue(null)));
+                                    if (
+                                        wearable.Equals(
+                                            default(KeyValuePair<AppearanceManager.WearableData, WearableType>)))
                                     {
                                         return;
                                     }
                                     inventoryBase =
                                         FindInventory<InventoryBase>(RLVFolder,
                                             wearable
-                                                .Value)
+                                                .Key.ItemID)
                                             .FirstOrDefault(o => (o is InventoryWearable));
                                 }
                                 break;
@@ -4349,19 +4438,10 @@ namespace Corrade
                         }
                         Func<InventoryNode, string> GetWornIndicator = node =>
                         {
-                            Dictionary<WearableType, AppearanceManager.WearableData> currentWearables;
-                            lock (InventoryLock)
-                            {
-                                currentWearables =
-                                    Client.Appearance.GetWearables();
-                            }
-                            List<Primitive> currentAttachments;
-                            lock (InventoryLock)
-                            {
-                                currentAttachments =
-                                    Client.Network.CurrentSim.ObjectsPrimitives.FindAll(
-                                        o => o.ParentID.Equals(Client.Self.LocalID));
-                            }
+                            Dictionary<AppearanceManager.WearableData, WearableType> currentWearables =
+                                GetWearables(Client.Inventory.Store.RootNode).ToDictionary(o => o.Key, o => o.Value);
+                            Dictionary<Primitive, AttachmentPoint> currentAttachments =
+                                GetAttachments(Configuration.SERVICES_TIMEOUT).ToDictionary(o => o.Key, p => p.Value);
 
                             int myItemsCount = 0;
                             int myItemsWornCount = 0;
@@ -4371,24 +4451,22 @@ namespace Corrade
                                 Parallel.ForEach(
                                     node.Nodes.Values.Where(
                                         n =>
-                                            n.Data is InventoryItem && CanBeWorn(n.Data) &&
-                                            !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)), n =>
+                                            !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
+                                            n.Data is InventoryItem && CanBeWorn(n.Data)
+                                        ), n =>
+                                        {
+                                            Interlocked.Increment(ref myItemsCount);
+                                            if ((n.Data is InventoryWearable &&
+                                                 currentWearables.Keys.Any(
+                                                     o => o.ItemID.Equals(ResolveItemLink(n.Data as InventoryItem).UUID))) ||
+                                                currentAttachments.Any(
+                                                    o =>
+                                                        o.Key.Properties.ItemID.Equals(
+                                                            ResolveItemLink(n.Data as InventoryItem).UUID)))
                                             {
-                                                Interlocked.Increment(ref myItemsCount);
-                                                if (n.Data is InventoryWearable &&
-                                                    currentWearables.Values.Any(
-                                                        o => o.ItemID.Equals(n.Data.UUID)) ||
-                                                    currentAttachments.Any(
-                                                        o =>
-                                                            GetAttachments(Configuration.SERVICES_TIMEOUT)
-                                                                .Any(
-                                                                    p =>
-                                                                        p.Key.Properties.ItemID.Equals(
-                                                                            n.Data.UUID))))
-                                                {
-                                                    Interlocked.Increment(ref myItemsWornCount);
-                                                }
-                                            });
+                                                Interlocked.Increment(ref myItemsWornCount);
+                                            }
+                                        });
                             }
 
                             int allItemsCount = 0;
@@ -4399,8 +4477,9 @@ namespace Corrade
                                 Parallel.ForEach(
                                     node.Nodes.Values.Where(
                                         n =>
-                                            n.Data is InventoryFolder &&
-                                            !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)),
+                                            !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
+                                            n.Data is InventoryFolder
+                                        ),
                                     n => Parallel.ForEach(n.Nodes.Values
                                         .Where(o => !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
                                         .Where(
@@ -4409,13 +4488,15 @@ namespace Corrade
                                                 !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)), p =>
                                                 {
                                                     Interlocked.Increment(ref allItemsCount);
-                                                    if (p.Data is InventoryWearable &&
-                                                        currentWearables.Values.Any(o => o.ItemID.Equals(p.Data.UUID)) ||
+                                                    if ((p.Data is InventoryWearable &&
+                                                         currentWearables.Keys.Any(
+                                                             o =>
+                                                                 o.ItemID.Equals(
+                                                                     ResolveItemLink(p.Data as InventoryItem).UUID))) ||
                                                         currentAttachments.Any(
                                                             o =>
-                                                                GetAttachments(Configuration.SERVICES_TIMEOUT)
-                                                                    .Any(
-                                                                        q => q.Key.Properties.ItemID.Equals(p.Data.UUID))))
+                                                                o.Key.Properties.ItemID.Equals(
+                                                                    ResolveItemLink(p.Data as InventoryItem).UUID)))
                                                     {
                                                         Interlocked.Increment(ref allItemsWornCount);
                                                     }
@@ -4576,7 +4657,7 @@ namespace Corrade
             {
                 UUID fromAgentID;
                 if (UUID.TryParse(identifier, out fromAgentID) &&
-                    !AgentUUIDToName(fromAgentID, Configuration.SERVICES_TIMEOUT, ref sender))
+                    !AgentUUIDToName(fromAgentID, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref sender))
                 {
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AGENT_NOT_FOUND), fromAgentID.ToString());
                     return null;
@@ -4642,11 +4723,13 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
-                        if (AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ALREADY_IN_GROUP));
                         }
@@ -4662,18 +4745,17 @@ namespace Corrade
                         ManualResetEvent GroupJoinedReplyEvent = new ManualResetEvent(false);
                         EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
                             (sender, args) => GroupJoinedReplyEvent.Set();
-                        lock (ServicesLock)
+                        Client.Groups.GroupJoinedReply += GroupOperationEventHandler;
+                        Client.Groups.RequestJoinGroup(groupUUID);
+                        if (!GroupJoinedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Groups.GroupJoinedReply += GroupOperationEventHandler;
-                            Client.Groups.RequestJoinGroup(groupUUID);
-                            if (!GroupJoinedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_JOINING_GROUP));
-                            }
                             Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_JOINING_GROUP));
                         }
-                        if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
+                        if (
+                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_JOIN_GROUP));
                         }
@@ -4715,17 +4797,14 @@ namespace Corrade
                             succeeded = args.Success;
                             GroupCreatedReplyEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Groups.GroupCreatedReply += GroupCreatedEventHandler;
+                        Client.Groups.RequestCreateGroup(commandGroup);
+                        if (!GroupCreatedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Groups.GroupCreatedReply += GroupCreatedEventHandler;
-                            Client.Groups.RequestCreateGroup(commandGroup);
-                            if (!GroupCreatedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_CREATING_GROUP));
-                            }
                             Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_CREATING_GROUP));
                         }
+                        Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
                         if (!succeeded)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_CREATE_GROUP));
@@ -4743,13 +4822,14 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.Invite,
-                                Configuration.SERVICES_TIMEOUT))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -4765,11 +4845,12 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
-                        if (AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ALREADY_IN_GROUP));
                         }
@@ -4780,7 +4861,7 @@ namespace Corrade
                         UUID roleUUID = UUID.Zero;
                         if (!string.IsNullOrEmpty(role) && !UUID.TryParse(role, out roleUUID) &&
                             !RoleNameToRoleUUID(role, groupUUID,
-                                Configuration.SERVICES_TIMEOUT, ref roleUUID))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref roleUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
                         }
@@ -4789,7 +4870,7 @@ namespace Corrade
                         {
                             if (
                                 !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
-                                    Configuration.SERVICES_TIMEOUT))
+                                    Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT))
                             {
                                 throw new Exception(
                                     wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -4814,11 +4895,13 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
-                        if (AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ALREADY_IN_GROUP));
                         }
@@ -4915,15 +4998,16 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.Eject,
-                                Configuration.SERVICES_TIMEOUT) ||
+                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT) ||
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RemoveMember,
-                                Configuration.SERVICES_TIMEOUT))
+                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -4939,11 +5023,13 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
-                        if (!AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (
+                            !AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -4966,18 +5052,16 @@ namespace Corrade
                                 o => Client.Groups.RemoveFromRole(groupUUID, o.Key, agentUUID));
                             GroupRoleMembersReplyEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
+                        Client.Groups.RequestGroupRolesMembers(groupUUID);
+                        if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
-                            Client.Groups.RequestGroupRolesMembers(groupUUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS));
-                            }
                             Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS));
                         }
+                        Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
+
                         ManualResetEvent GroupEjectEvent = new ManualResetEvent(false);
                         bool succeeded = false;
                         EventHandler<GroupOperationEventArgs> GroupOperationEventHandler = (sender, args) =>
@@ -4985,17 +5069,15 @@ namespace Corrade
                             succeeded = args.Success;
                             GroupEjectEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
+                        Client.Groups.EjectUser(groupUUID, agentUUID);
+                        if (!GroupEjectEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
-                            Client.Groups.EjectUser(groupUUID, agentUUID);
-                            if (!GroupEjectEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_EJECTING_AGENT));
-                            }
                             Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_EJECTING_AGENT));
                         }
+                        Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
+
                         if (!succeeded)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_EJECT_AGENT));
@@ -5013,7 +5095,8 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -5043,18 +5126,17 @@ namespace Corrade
                                 summary = args.Summary;
                                 RequestGroupAccountSummaryEvent.Set();
                             };
-                        lock (ServicesLock)
+
+                        Client.Groups.GroupAccountSummaryReply += RequestGroupAccountSummaryEventHandler;
+                        Client.Groups.RequestGroupAccountSummary(groupUUID, days, interval);
+                        if (!RequestGroupAccountSummaryEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Groups.GroupAccountSummaryReply += RequestGroupAccountSummaryEventHandler;
-                            Client.Groups.RequestGroupAccountSummary(groupUUID, days, interval);
-                            if (!RequestGroupAccountSummaryEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_ACCOUNT_SUMMARY));
-                            }
                             Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_ACCOUNT_SUMMARY));
                         }
+                        Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
+
                         List<string> data = new List<string>(GetStructuredData(summary,
                             wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                 message)))
@@ -5078,17 +5160,20 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
-                        if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (
+                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ChangeIdentity,
-                                Configuration.SERVICES_TIMEOUT))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -5115,11 +5200,14 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
-                        if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (
+                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -5130,17 +5218,15 @@ namespace Corrade
                             succeeded = args.Success;
                             GroupLeaveReplyEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Groups.GroupLeaveReply += GroupOperationEventHandler;
+                        Client.Groups.LeaveGroup(groupUUID);
+                        if (!GroupLeaveReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Groups.GroupLeaveReply += GroupOperationEventHandler;
-                            Client.Groups.LeaveGroup(groupUUID);
-                            if (!GroupLeaveReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Groups.GroupLeaveReply -= GroupOperationEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_LEAVING_GROUP));
-                            }
                             Client.Groups.GroupLeaveReply -= GroupOperationEventHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_LEAVING_GROUP));
                         }
+                        Client.Groups.GroupLeaveReply -= GroupOperationEventHandler;
+
                         if (!succeeded)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_LEAVE_GROUP));
@@ -5158,17 +5244,20 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
-                        if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (
+                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.CreateRole,
-                                Configuration.SERVICES_TIMEOUT))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -5179,18 +5268,16 @@ namespace Corrade
                             roleCount = args.Roles.Count;
                             GroupRoleDataReplyEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
+                        Client.Groups.RequestGroupRoles(groupUUID);
+                        if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
-                            Client.Groups.RequestGroupRoles(groupUUID);
-                            if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_ROLES));
-                            }
                             Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_ROLES));
                         }
+                        Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
+
                         if (roleCount >= LINDEN_CONSTANTS.GROUPS.MAXIMUM_NUMBER_OF_ROLES)
                         {
                             throw new Exception(
@@ -5214,7 +5301,7 @@ namespace Corrade
                                         .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                     q => { powers |= ((ulong) q.GetValue(null)); }));
                         if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ChangeActions,
-                            Configuration.SERVICES_TIMEOUT))
+                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -5235,7 +5322,7 @@ namespace Corrade
                         UUID roleUUID = UUID.Zero;
                         if (
                             !RoleNameToRoleUUID(role, groupUUID,
-                                Configuration.SERVICES_TIMEOUT, ref roleUUID))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref roleUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_CREATE_ROLE));
                         }
@@ -5252,11 +5339,14 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
-                        if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (
+                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -5273,18 +5363,16 @@ namespace Corrade
                             }).SelectMany(o => o));
                             GroupRoleDataReplyEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
+                        Client.Groups.RequestGroupRoles(groupUUID);
+                        if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
-                            Client.Groups.RequestGroupRoles(groupUUID);
-                            if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_ROLES));
-                            }
                             Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_ROLES));
                         }
+                        Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
+
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -5303,13 +5391,14 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
                                 .UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID,
-                                Configuration.SERVICES_TIMEOUT))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -5320,25 +5409,26 @@ namespace Corrade
                             foreach (KeyValuePair<UUID, GroupMember> pair in args.Members)
                             {
                                 string agentName = string.Empty;
-                                if (!AgentUUIDToName(pair.Value.ID, Configuration.SERVICES_TIMEOUT, ref agentName))
+                                if (
+                                    !AgentUUIDToName(pair.Value.ID, Configuration.SERVICES_TIMEOUT,
+                                        Configuration.DATA_TIMEOUT, ref agentName))
                                     continue;
                                 csv.Add(agentName);
                                 csv.Add(pair.Key.ToString());
                             }
                             agentInGroupEvent.Set();
                         };
-                        lock (ServicesLock)
+
+                        Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+                        Client.Groups.RequestGroupMembers(groupUUID);
+                        if (!agentInGroupEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
-                            Client.Groups.RequestGroupMembers(groupUUID);
-                            if (!agentInGroupEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS));
-                            }
                             Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS));
                         }
+                        Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -5357,11 +5447,14 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
-                        if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (
+                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -5377,11 +5470,13 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
-                        if (!AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (
+                            !AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
                         }
@@ -5397,24 +5492,23 @@ namespace Corrade
                                 string roleName = string.Empty;
                                 if (
                                     !RoleUUIDToName(pair.Key, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                        Configuration.DATA_TIMEOUT,
                                         ref roleName))
                                     continue;
                                 csv.Add(roleName);
                             }
                             GroupRoleMembersReplyEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
+                        Client.Groups.RequestGroupRolesMembers(groupUUID);
+                        if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
-                            Client.Groups.RequestGroupRolesMembers(groupUUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS));
-                            }
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS));
                         }
+                        Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
+
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -5433,13 +5527,14 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
                                 .UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID,
-                                Configuration.SERVICES_TIMEOUT))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -5460,30 +5555,31 @@ namespace Corrade
                                     string roleName = string.Empty;
                                     if (
                                         !RoleUUIDToName(pair.Key, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                            Configuration.DATA_TIMEOUT,
                                             ref roleName))
                                         continue;
                                     if (!roleName.Equals(role))
                                         continue;
                                     string agentName = string.Empty;
-                                    if (!AgentUUIDToName(pair.Value, Configuration.SERVICES_TIMEOUT, ref agentName))
+                                    if (
+                                        !AgentUUIDToName(pair.Value, Configuration.SERVICES_TIMEOUT,
+                                            Configuration.DATA_TIMEOUT, ref agentName))
                                         continue;
                                     csv.Add(agentName);
                                     csv.Add(pair.Value.ToString());
                                 }
                                 GroupRoleMembersReplyEvent.Set();
                             };
-                        lock (ServicesLock)
+                        Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
+                        Client.Groups.RequestGroupRolesMembers(groupUUID);
+                        if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
-                            Client.Groups.RequestGroupRolesMembers(groupUUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS));
-                            }
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS));
                         }
+                        Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
+
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -5502,13 +5598,14 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID,
-                                Configuration.SERVICES_TIMEOUT))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -5522,10 +5619,13 @@ namespace Corrade
                                     string roleName = string.Empty;
                                     if (
                                         !RoleUUIDToName(pair.Key, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                            Configuration.DATA_TIMEOUT,
                                             ref roleName))
                                         continue;
                                     string agentName = string.Empty;
-                                    if (!AgentUUIDToName(pair.Value, Configuration.SERVICES_TIMEOUT, ref agentName))
+                                    if (
+                                        !AgentUUIDToName(pair.Value, Configuration.SERVICES_TIMEOUT,
+                                            Configuration.DATA_TIMEOUT, ref agentName))
                                         continue;
                                     csv.Add(roleName);
                                     csv.Add(agentName);
@@ -5533,18 +5633,16 @@ namespace Corrade
                                 }
                                 GroupRoleMembersReplyEvent.Set();
                             };
-                        lock (ServicesLock)
+                        Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
+                        Client.Groups.RequestGroupRolesMembers(groupUUID);
+                        if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
-                            Client.Groups.RequestGroupRolesMembers(groupUUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS));
-                            }
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS));
                         }
+                        Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
+
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -5563,19 +5661,20 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RoleProperties,
-                                Configuration.SERVICES_TIMEOUT))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID,
-                                Configuration.SERVICES_TIMEOUT))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -5584,7 +5683,7 @@ namespace Corrade
                                 message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
-                            Configuration.SERVICES_TIMEOUT, ref roleUUID))
+                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref roleUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
                         }
@@ -5601,18 +5700,16 @@ namespace Corrade
                                 .Select(o => o.Name));
                             GroupRoleDataReplyEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Groups.GroupRoleDataReply += GroupRoleDataEventHandler;
+                        Client.Groups.RequestGroupRoles(groupUUID);
+                        if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Groups.GroupRoleDataReply += GroupRoleDataEventHandler;
-                            Client.Groups.RequestGroupRoles(groupUUID);
-                            if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_ROLE_POWERS));
-                            }
                             Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_ROLE_POWERS));
                         }
+                        Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
+
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -5631,19 +5728,22 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
-                        if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (
+                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.DeleteRole,
-                                Configuration.SERVICES_TIMEOUT) ||
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT) ||
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RemoveMember,
-                                Configuration.SERVICES_TIMEOUT))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -5652,7 +5752,7 @@ namespace Corrade
                                 message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
-                            Configuration.SERVICES_TIMEOUT, ref roleUUID))
+                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref roleUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
                         }
@@ -5678,17 +5778,15 @@ namespace Corrade
                                 o => Client.Groups.RemoveFromRole(groupUUID, roleUUID, o.Value));
                             GroupRoleMembersReplyEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
+                        Client.Groups.RequestGroupRolesMembers(groupUUID);
+                        if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
-                            Client.Groups.RequestGroupRolesMembers(groupUUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_EJECTING_AGENT));
-                            }
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_EJECTING_AGENT));
                         }
+                        Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
+
                         Client.Groups.DeleteRole(groupUUID, roleUUID);
                     };
                     break;
@@ -5703,17 +5801,20 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
-                        if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (
+                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
-                                Configuration.SERVICES_TIMEOUT))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -5729,7 +5830,7 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -5738,7 +5839,7 @@ namespace Corrade
                                 message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
-                            Configuration.SERVICES_TIMEOUT, ref roleUUID))
+                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref roleUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
                         }
@@ -5762,17 +5863,20 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
-                        if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (
+                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RemoveMember,
-                                Configuration.SERVICES_TIMEOUT))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -5788,7 +5892,7 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -5797,7 +5901,7 @@ namespace Corrade
                                 message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
-                            Configuration.SERVICES_TIMEOUT, ref roleUUID))
+                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref roleUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
                         }
@@ -5848,7 +5952,8 @@ namespace Corrade
                                                     wasUriUnescapeDataString(
                                                         wasKeyValueGet(
                                                             wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
-                                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    ref agentUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
@@ -5862,11 +5967,14 @@ namespace Corrade
                                     Configuration.GROUPS.FirstOrDefault(
                                         o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                                 if (groupUUID.Equals(UUID.Zero) &&
-                                    !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                                    !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                        ref groupUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                                 }
-                                if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                                if (
+                                    !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                        Configuration.DATA_TIMEOUT))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                                 }
@@ -5874,7 +5982,7 @@ namespace Corrade
                                 {
                                     if (
                                         !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.JoinChat,
-                                            Configuration.SERVICES_TIMEOUT))
+                                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                     {
                                         throw new Exception(
                                             wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -5887,18 +5995,16 @@ namespace Corrade
                                             succeeded = args.Success;
                                             GroupChatJoinedEvent.Set();
                                         };
-                                    lock (ServicesLock)
+                                    Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
+                                    Client.Self.RequestJoinGroupChat(groupUUID);
+                                    if (!GroupChatJoinedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                     {
-                                        Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
-                                        Client.Self.RequestJoinGroupChat(groupUUID);
-                                        if (!GroupChatJoinedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                                        {
-                                            Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
-                                            throw new Exception(
-                                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_JOINING_GROUP_CHAT));
-                                        }
                                         Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_JOINING_GROUP_CHAT));
                                     }
+                                    Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
+
                                     if (!succeeded)
                                     {
                                         throw new Exception(
@@ -5969,17 +6075,20 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
-                        if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (
+                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.SendNotices,
-                                Configuration.SERVICES_TIMEOUT))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -6052,7 +6161,8 @@ namespace Corrade
                                     Configuration.GROUPS.FirstOrDefault(
                                         o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                                 if (targetUUID.Equals(UUID.Zero) &&
-                                    !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref targetUUID))
+                                    !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                        ref targetUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                                 }
@@ -6074,7 +6184,8 @@ namespace Corrade
                                                     wasUriUnescapeDataString(
                                                         wasKeyValueGet(
                                                             wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
-                                                    Configuration.SERVICES_TIMEOUT, ref targetUUID))
+                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    ref targetUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
@@ -6202,7 +6313,7 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -6236,18 +6347,16 @@ namespace Corrade
                                     break;
                             }
                         };
-                        lock (ServicesLock)
+                        Client.Self.AlertMessage += AlertMessageEventHandler;
+                        Client.Self.SetHome();
+                        if (!AlertMessageEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Self.AlertMessage += AlertMessageEventHandler;
-                            Client.Self.SetHome();
-                            if (!AlertMessageEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Self.AlertMessage -= AlertMessageEventHandler;
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_REQUESTING_TO_SET_HOME));
-                            }
                             Client.Self.AlertMessage -= AlertMessageEventHandler;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_REQUESTING_TO_SET_HOME));
                         }
+                        Client.Self.AlertMessage -= AlertMessageEventHandler;
+
                         if (!succeeded)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_SET_HOME));
@@ -6320,17 +6429,15 @@ namespace Corrade
                             gridRegion = args.Region;
                             GridRegionEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Grid.GridRegion += GridRegionEventHandler;
+                        Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
+                        if (!GridRegionEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Grid.GridRegion += GridRegionEventHandler;
-                            Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
-                            if (!GridRegionEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Grid.GridRegion -= GridRegionEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_REGION));
-                            }
                             Client.Grid.GridRegion -= GridRegionEventHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_REGION));
                         }
+                        Client.Grid.GridRegion -= GridRegionEventHandler;
+
                         List<string> data = new List<string>(GetStructuredData(gridRegion,
                             wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                 message))));
@@ -6392,20 +6499,18 @@ namespace Corrade
                         }
                         Client.Self.SignaledAnimations.ForEach(
                             animation => Client.Self.AnimationStop(animation.Key, true));
-                        lock (ServicesLock)
+                        Client.Self.AvatarSitResponse += AvatarSitEventHandler;
+                        Client.Self.AlertMessage += AlertMessageEventHandler;
+                        Client.Self.RequestSit(primitive.ID, Vector3.Zero);
+                        if (!SitEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Self.AvatarSitResponse += AvatarSitEventHandler;
-                            Client.Self.AlertMessage += AlertMessageEventHandler;
-                            Client.Self.RequestSit(primitive.ID, Vector3.Zero);
-                            if (!SitEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
-                                Client.Self.AlertMessage -= AlertMessageEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_REQUESTING_SIT));
-                            }
                             Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                             Client.Self.AlertMessage -= AlertMessageEventHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_REQUESTING_SIT));
                         }
+                        Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
+                        Client.Self.AlertMessage -= AlertMessageEventHandler;
+
                         if (!succeeded)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_SIT));
@@ -6441,7 +6546,8 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
                                 .UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -6488,7 +6594,8 @@ namespace Corrade
                                     case AccessList.Access:
                                         if (
                                             !HasGroupPowers(Client.Self.AgentID, groupUUID,
-                                                GroupPowers.LandManageAllowed, Configuration.SERVICES_TIMEOUT))
+                                                GroupPowers.LandManageAllowed, Configuration.SERVICES_TIMEOUT,
+                                                Configuration.DATA_TIMEOUT))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -6497,7 +6604,7 @@ namespace Corrade
                                     case AccessList.Ban:
                                         if (
                                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandManageBanned,
-                                                Configuration.SERVICES_TIMEOUT))
+                                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -6506,14 +6613,15 @@ namespace Corrade
                                     case AccessList.Both:
                                         if (
                                             !HasGroupPowers(Client.Self.AgentID, groupUUID,
-                                                GroupPowers.LandManageAllowed, Configuration.SERVICES_TIMEOUT))
+                                                GroupPowers.LandManageAllowed, Configuration.SERVICES_TIMEOUT,
+                                                Configuration.DATA_TIMEOUT))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                         }
                                         if (
                                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandManageBanned,
-                                                Configuration.SERVICES_TIMEOUT))
+                                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -6529,7 +6637,9 @@ namespace Corrade
                             foreach (ParcelManager.ParcelAccessEntry parcelAccess in args.AccessList)
                             {
                                 string agent = string.Empty;
-                                if (!AgentUUIDToName(parcelAccess.AgentID, Configuration.SERVICES_TIMEOUT, ref agent))
+                                if (
+                                    !AgentUUIDToName(parcelAccess.AgentID, Configuration.SERVICES_TIMEOUT,
+                                        Configuration.DATA_TIMEOUT, ref agent))
                                     continue;
                                 csv.Add(agent);
                                 csv.Add(parcelAccess.AgentID.ToString());
@@ -6538,18 +6648,16 @@ namespace Corrade
                             }
                             ParcelAccessListEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
+                        Client.Parcels.RequestParcelAccessList(Client.Network.CurrentSim, parcel.LocalID, accessType,
+                            0);
+                        if (!ParcelAccessListEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
-                            Client.Parcels.RequestParcelAccessList(Client.Network.CurrentSim, parcel.LocalID, accessType,
-                                0);
-                            if (!ParcelAccessListEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
-                            }
                             Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
                         }
+                        Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
+
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -6598,7 +6706,8 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
                                 .UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -6628,7 +6737,7 @@ namespace Corrade
                                 }
                                 if (
                                     !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandRelease,
-                                        Configuration.SERVICES_TIMEOUT))
+                                        Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -6649,7 +6758,8 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
                                 .UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -6681,7 +6791,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandDeed,
-                                Configuration.SERVICES_TIMEOUT))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -6699,7 +6809,8 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -6727,7 +6838,7 @@ namespace Corrade
                         {
                             if (
                                 !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandDeed,
-                                    Configuration.SERVICES_TIMEOUT))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                             {
                                 throw new Exception(
                                     wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -6750,17 +6861,15 @@ namespace Corrade
                             parcelUUID = args.Parcel.ID;
                             ParcelInfoEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
+                        Client.Parcels.RequestParcelInfo(parcelUUID);
+                        if (!ParcelInfoEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
-                            Client.Parcels.RequestParcelInfo(parcelUUID);
-                            if (!ParcelInfoEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
-                            }
                             Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
                         }
+                        Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
+
                         bool forSale = false;
                         int handledEvents = 0;
                         int counter = 1;
@@ -6787,18 +6896,16 @@ namespace Corrade
                                 }
                                 DirLandReplyEvent.Set();
                             };
-                        lock (ServicesLock)
+                        Client.Directory.DirLandReply += DirLandReplyEventArgs;
+                        Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
+                            DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue, handledEvents);
+                        if (!DirLandReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Directory.DirLandReply += DirLandReplyEventArgs;
-                            Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
-                                DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue, handledEvents);
-                            if (!DirLandReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Directory.DirLandReply -= DirLandReplyEventArgs;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
-                            }
                             Client.Directory.DirLandReply -= DirLandReplyEventArgs;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
                         }
+                        Client.Directory.DirLandReply -= DirLandReplyEventArgs;
+
                         if (!forSale)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PARCEL_NOT_FOR_SALE));
@@ -6827,7 +6934,8 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -6856,7 +6964,7 @@ namespace Corrade
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                                 if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandEjectAndFreeze,
-                                    Configuration.SERVICES_TIMEOUT))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -6875,7 +6983,7 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -6902,7 +7010,8 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -6931,7 +7040,7 @@ namespace Corrade
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                                 if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandEjectAndFreeze,
-                                    Configuration.SERVICES_TIMEOUT))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -6950,7 +7059,7 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -6992,22 +7101,20 @@ namespace Corrade
                             interests = args.Interests;
                             AvatarProfileDataEvent[1].Set();
                         };
-                        lock (ServicesLock)
+                        Client.Avatars.AvatarPropertiesReply += AvatarPropertiesEventHandler;
+                        Client.Avatars.AvatarInterestsReply += AvatarInterestsEventHandler;
+                        Client.Avatars.RequestAvatarProperties(Client.Self.AgentID);
+                        if (
+                            !WaitHandle.WaitAll(AvatarProfileDataEvent.Select(o => (WaitHandle) o).ToArray(),
+                                Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Avatars.AvatarPropertiesReply += AvatarPropertiesEventHandler;
-                            Client.Avatars.AvatarInterestsReply += AvatarInterestsEventHandler;
-                            Client.Avatars.RequestAvatarProperties(Client.Self.AgentID);
-                            if (
-                                !WaitHandle.WaitAll(AvatarProfileDataEvent.Select(o => (WaitHandle) o).ToArray(),
-                                    Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
-                                Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PROFILE));
-                            }
                             Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
                             Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PROFILE));
                         }
+                        Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
+                        Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
+
                         string fields =
                             wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                 message));
@@ -7038,49 +7145,99 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
-                        ManualResetEvent[] AvatarProfileDataEvent =
-                        {
-                            new ManualResetEvent(false),
-                            new ManualResetEvent(false)
-                        };
+                        wasAlarm ProfileDataReceivedAlarm = new wasAlarm();
+                        object LockObject = new object();
                         Avatar.AvatarProperties properties = new Avatar.AvatarProperties();
                         Avatar.Interests interests = new Avatar.Interests();
-                        EventHandler<AvatarPropertiesReplyEventArgs> AvatarPropertiesEventHandler = (sender, args) =>
+                        List<AvatarGroup> groups = new List<AvatarGroup>();
+                        AvatarPicksReplyEventArgs picks = null;
+                        AvatarClassifiedReplyEventArgs classifieds = null;
+                        EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
                         {
-                            properties = args.Properties;
-                            AvatarProfileDataEvent[0].Set();
-                        };
-                        EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsEventHandler = (sender, args) =>
-                        {
-                            interests = args.Interests;
-                            AvatarProfileDataEvent[1].Set();
-                        };
-                        lock (ServicesLock)
-                        {
-                            Client.Avatars.AvatarPropertiesReply += AvatarPropertiesEventHandler;
-                            Client.Avatars.AvatarInterestsReply += AvatarInterestsEventHandler;
-                            Client.Avatars.RequestAvatarProperties(agentUUID);
-                            if (
-                                !WaitHandle.WaitAll(AvatarProfileDataEvent.Select(o => (WaitHandle) o).ToArray(),
-                                    Configuration.SERVICES_TIMEOUT, false))
+                            ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                            lock (LockObject)
                             {
-                                Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
-                                Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PROFILE));
+                                interests = args.Interests;
                             }
-                            Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
-                            Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
+                        };
+                        EventHandler<AvatarPropertiesReplyEventArgs> AvatarPropertiesReplyEventHandler =
+                            (sender, args) =>
+                            {
+                                ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                lock (LockObject)
+                                {
+                                    properties = args.Properties;
+                                }
+                            };
+                        EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
+                        {
+                            ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                            lock (LockObject)
+                            {
+                                groups.AddRange(args.Groups);
+                            }
+                        };
+                        EventHandler<AvatarPicksReplyEventArgs> AvatarPicksReplyEventHandler =
+                            (sender, args) =>
+                            {
+                                ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                lock (LockObject)
+                                {
+                                    picks = args;
+                                }
+                            };
+                        EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedReplyEventHandler =
+                            (sender, args) =>
+                            {
+                                ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                lock (LockObject)
+                                {
+                                    classifieds = args;
+                                }
+                            };
+                        Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
+                        Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;
+                        Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
+                        Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
+                        Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
+                        Client.Avatars.RequestAvatarProperties(agentUUID);
+                        Client.Avatars.RequestAvatarPicks(agentUUID);
+                        Client.Avatars.RequestAvatarClassified(agentUUID);
+                        if (!ProfileDataReceivedAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                        {
+                            Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
+                            Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
+                            Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+                            Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
+                            Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_AVATAR_DATA));
                         }
+                        Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
+                        Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
+                        Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+                        Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
+                        Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+
                         string fields =
                             wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                 message));
                         List<string> csv = new List<string>();
                         csv.AddRange(GetStructuredData(properties, fields));
                         csv.AddRange(GetStructuredData(interests, fields));
+                        csv.AddRange(GetStructuredData(groups, fields));
+                        if (picks != null)
+                        {
+                            csv.AddRange(GetStructuredData(picks, fields));
+                        }
+                        if (classifieds != null)
+                        {
+                            csv.AddRange(GetStructuredData(classifieds, fields));
+                        }
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -7126,7 +7283,8 @@ namespace Corrade
                                                     wasUriUnescapeDataString(
                                                         wasKeyValueGet(
                                                             wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
-                                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    ref agentUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
@@ -7285,17 +7443,15 @@ namespace Corrade
                                     o => o.Value.Equals(pickName, StringComparison.Ordinal)).Key;
                             AvatarPicksReplyEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
+                        Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);
+                        if (!AvatarPicksReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
-                            Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);
-                            if (!AvatarPicksReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PICKS));
-                            }
                             Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PICKS));
                         }
+                        Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
+
                         if (pickUUID.Equals(UUID.Zero))
                         {
                             pickUUID = UUID.Random();
@@ -7331,17 +7487,15 @@ namespace Corrade
                                     o => o.Value.Equals(pickName, StringComparison.Ordinal)).Key;
                             AvatarPicksReplyEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
+                        Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);
+                        if (!AvatarPicksReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
-                            Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);
-                            if (!AvatarPicksReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PICKS));
-                            }
                             Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PICKS));
                         }
+                        Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
+
                         if (pickUUID.Equals(UUID.Zero))
                         {
                             pickUUID = UUID.Random();
@@ -7391,18 +7545,16 @@ namespace Corrade
                                         o.Value.Equals(classifiedName, StringComparison.Ordinal)).Key;
                             AvatarClassifiedReplyEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
+                        Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);
+                        if (!AvatarClassifiedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
-                            Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);
-                            if (!AvatarClassifiedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_CLASSIFIEDS));
-                            }
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_CLASSIFIEDS));
                         }
+                        Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
+
                         if (classifiedUUID.Equals(UUID.Zero))
                         {
                             classifiedUUID = UUID.Random();
@@ -7468,18 +7620,16 @@ namespace Corrade
                                         o.Value.Equals(classifiedName, StringComparison.Ordinal)).Key;
                             AvatarClassifiedReplyEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
+                        Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);
+                        if (!AvatarClassifiedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
-                            Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);
-                            if (!AvatarClassifiedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_CLASSIFIEDS));
-                            }
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_CLASSIFIEDS));
                         }
+                        Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
+
                         if (classifiedUUID.Equals(UUID.Zero))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_CLASSIFIED));
@@ -7529,13 +7679,14 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ModerateChat,
-                                Configuration.SERVICES_TIMEOUT))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -7551,11 +7702,13 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
-                        if (!AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (
+                            !AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
                         }
@@ -7608,13 +7761,12 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        List<string> data =
-                            new List<string>(GetWearables(Client.Inventory.Store.RootNode)
-                                .Select(o => new[]
-                                {
-                                    o.Key.ToString(),
-                                    o.Value
-                                }).SelectMany(o => o));
+                        HashSet<string> data =
+                            new HashSet<string>(GetWearables(Client.Inventory.Store.RootNode).Select(o => new[]
+                            {
+                                o.Value.ToString(),
+                                Client.Inventory.Store[o.Key.ItemID].Name
+                            }).SelectMany(o => o));
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -7816,7 +7968,8 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -7832,7 +7985,7 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -7859,23 +8012,21 @@ namespace Corrade
                                         ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
                                         EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                                             (sender, args) => SimParcelsDownloadedEvent.Set();
-                                        lock (ServicesLock)
+                                        Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
+                                        Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim);
+                                        if (Client.Network.CurrentSim.IsParcelMapFull())
                                         {
-                                            Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
-                                            Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim);
-                                            if (Client.Network.CurrentSim.IsParcelMapFull())
-                                            {
-                                                SimParcelsDownloadedEvent.Set();
-                                            }
-                                            if (
-                                                !SimParcelsDownloadedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                                            {
-                                                Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
-                                                throw new Exception(
-                                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
-                                            }
-                                            Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                            SimParcelsDownloadedEvent.Set();
                                         }
+                                        if (
+                                            !SimParcelsDownloadedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                        {
+                                            Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
+                                        }
+                                        Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+
                                         Client.Network.CurrentSim.Parcels.ForEach(o => parcels.Add(o));
                                         break;
                                     case true:
@@ -7924,7 +8075,7 @@ namespace Corrade
                                                 break;
                                         }
                                         if (!HasGroupPowers(Client.Self.AgentID, groupUUID, power,
-                                            Configuration.SERVICES_TIMEOUT))
+                                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -7981,7 +8132,8 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -7997,22 +8149,20 @@ namespace Corrade
                                 ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
                                 EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                                     (sender, args) => SimParcelsDownloadedEvent.Set();
-                                lock (ServicesLock)
+                                Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
+                                Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim);
+                                if (Client.Network.CurrentSim.IsParcelMapFull())
                                 {
-                                    Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
-                                    Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim);
-                                    if (Client.Network.CurrentSim.IsParcelMapFull())
-                                    {
-                                        SimParcelsDownloadedEvent.Set();
-                                    }
-                                    if (!SimParcelsDownloadedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                                    {
-                                        Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
-                                        throw new Exception(
-                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
-                                    }
-                                    Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                    SimParcelsDownloadedEvent.Set();
                                 }
+                                if (!SimParcelsDownloadedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
+                                }
+                                Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+
                                 Client.Network.CurrentSim.Parcels.ForEach(o => parcels.Add(o));
                                 break;
                             case true:
@@ -8043,7 +8193,7 @@ namespace Corrade
                                     }, p =>
                                     {
                                         if (HasGroupPowers(Client.Self.AgentID, groupUUID, p,
-                                            Configuration.SERVICES_TIMEOUT))
+                                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                         {
                                             permissions = true;
                                         }
@@ -8064,7 +8214,9 @@ namespace Corrade
                                 foreach (ParcelManager.ParcelPrimOwners primowner in args.PrimOwners)
                                 {
                                     string owner = string.Empty;
-                                    if (!AgentUUIDToName(primowner.OwnerID, Configuration.SERVICES_TIMEOUT, ref owner))
+                                    if (
+                                        !AgentUUIDToName(primowner.OwnerID, Configuration.SERVICES_TIMEOUT,
+                                            Configuration.DATA_TIMEOUT, ref owner))
                                         continue;
                                     if (!primitives.ContainsKey(owner))
                                     {
@@ -8077,18 +8229,15 @@ namespace Corrade
                             };
                         foreach (Parcel parcel in parcels)
                         {
-                            lock (ServicesLock)
+                            Client.Parcels.ParcelObjectOwnersReply += ParcelObjectOwnersEventHandler;
+                            Client.Parcels.RequestObjectOwners(Client.Network.CurrentSim, parcel.LocalID);
+                            if (!ParcelObjectOwnersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
-                                Client.Parcels.ParcelObjectOwnersReply += ParcelObjectOwnersEventHandler;
-                                Client.Parcels.RequestObjectOwners(Client.Network.CurrentSim, parcel.LocalID);
-                                if (!ParcelObjectOwnersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                                {
-                                    Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
-                                    throw new Exception(
-                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_LAND_USERS));
-                                }
                                 Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_LAND_USERS));
                             }
+                            Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
                         }
                         if (primitives.Count.Equals(0))
                         {
@@ -8118,7 +8267,8 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -8222,7 +8372,8 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -8270,21 +8421,19 @@ namespace Corrade
                         ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
                         EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                             (sender, args) => SimParcelsDownloadedEvent.Set();
-                        lock (ServicesLock)
+                        Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
+                        Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim);
+                        if (Client.Network.CurrentSim.IsParcelMapFull())
                         {
-                            Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
-                            Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim);
-                            if (Client.Network.CurrentSim.IsParcelMapFull())
-                            {
-                                SimParcelsDownloadedEvent.Set();
-                            }
-                            if (!SimParcelsDownloadedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
-                            }
-                            Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                            SimParcelsDownloadedEvent.Set();
                         }
+                        if (!SimParcelsDownloadedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                        {
+                            Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
+                        }
+                        Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+
                         List<Vector3> csv = new List<Vector3>();
                         Client.Network.CurrentSim.Parcels.ForEach(o => csv.AddRange(new[] {o.AABBMin, o.AABBMax}));
                         if (!csv.Count.Equals(0))
@@ -8729,7 +8878,8 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -8777,7 +8927,7 @@ namespace Corrade
                                             wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                     }
                                     if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AllowRez,
-                                        Configuration.SERVICES_TIMEOUT))
+                                        Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                     {
                                         throw new Exception(
                                             wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -8946,18 +9096,16 @@ namespace Corrade
                             }
                             ScriptRunningReplyEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Inventory.ScriptRunningReply += ScriptRunningEventHandler;
+                        Client.Inventory.RequestGetScriptRunning(primitive.ID, item.UUID);
+                        if (!ScriptRunningReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Inventory.ScriptRunningReply += ScriptRunningEventHandler;
-                            Client.Inventory.RequestGetScriptRunning(primitive.ID, item.UUID);
-                            if (!ScriptRunningReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_SCRIPT_STATE));
-                            }
                             Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_SCRIPT_STATE));
                         }
+                        Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
+
                         if (!succeeded)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_SET_SCRIPT_STATE));
@@ -9029,18 +9177,16 @@ namespace Corrade
                             running = args.IsRunning;
                             ScriptRunningReplyEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Inventory.ScriptRunningReply += ScriptRunningEventHandler;
+                        Client.Inventory.RequestGetScriptRunning(primitive.ID, item.UUID);
+                        if (!ScriptRunningReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Inventory.ScriptRunningReply += ScriptRunningEventHandler;
-                            Client.Inventory.RequestGetScriptRunning(primitive.ID, item.UUID);
-                            if (!ScriptRunningReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_SCRIPT_STATE));
-                            }
                             Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_SCRIPT_STATE));
                         }
+                        Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
+
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), running.ToString());
                     };
                     break;
@@ -9641,11 +9787,14 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
-                        if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (
+                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
                         }
@@ -9665,11 +9814,14 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
-                        if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (
+                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
                         }
@@ -9680,18 +9832,16 @@ namespace Corrade
                             roleData = args.Roles.ToDictionary(o => o.Value.Title, o => o.Value.ID);
                             GroupRoleDataReplyEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Groups.GroupRoleDataReply += Groups_GroupRoleDataReply;
+                        Client.Groups.RequestGroupRoles(groupUUID);
+                        if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Groups.GroupRoleDataReply += Groups_GroupRoleDataReply;
-                            Client.Groups.RequestGroupRoles(groupUUID);
-                            if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Groups.GroupRoleDataReply -= Groups_GroupRoleDataReply;
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_ROLES));
-                            }
                             Client.Groups.GroupRoleDataReply -= Groups_GroupRoleDataReply;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_GROUP_ROLES));
                         }
+                        Client.Groups.GroupRoleDataReply -= Groups_GroupRoleDataReply;
+
                         UUID roleUUID =
                             roleData.FirstOrDefault(
                                 o =>
@@ -9858,17 +10008,20 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
-                        if (!AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT))
+                        if (
+                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.StartProposal,
-                                Configuration.SERVICES_TIMEOUT))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -9951,25 +10104,23 @@ namespace Corrade
                                 ManualResetEvent MuteListUpdatedEvent = new ManualResetEvent(false);
                                 EventHandler<EventArgs> MuteListUpdatedEventHandler =
                                     (sender, args) => MuteListUpdatedEvent.Set();
-                                lock (ServicesLock)
+                                Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
+                                Client.Self.UpdateMuteListEntry(muteTypeInfo != null
+                                    ? (MuteType)
+                                        muteTypeInfo
+                                            .GetValue(null)
+                                    : MuteType.ByName, targetUUID,
+                                    wasUriUnescapeDataString(
+                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                            message)));
+                                if (!MuteListUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
-                                    Client.Self.UpdateMuteListEntry(muteTypeInfo != null
-                                        ? (MuteType)
-                                            muteTypeInfo
-                                                .GetValue(null)
-                                        : MuteType.ByName, targetUUID,
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                                message)));
-                                    if (!MuteListUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                                    {
-                                        Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
-                                        throw new Exception(
-                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPDATING_MUTE_LIST));
-                                    }
                                     Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPDATING_MUTE_LIST));
                                 }
+                                Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+
                                 break;
                             case Action.UNMUTE:
                                 Client.Self.RemoveMuteListEntry(targetUUID,
@@ -10259,7 +10410,7 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -10689,18 +10840,16 @@ namespace Corrade
                                             .ToDictionary(o => o.Key, o => o.Value);
                                     TopScriptsReplyEvent.Set();
                                 };
-                                lock (ServicesLock)
+                                Client.Estate.TopScriptsReply += TopScriptsReplyEventHandler;
+                                Client.Estate.RequestTopScripts();
+                                if (!TopScriptsReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    Client.Estate.TopScriptsReply += TopScriptsReplyEventHandler;
-                                    Client.Estate.RequestTopScripts();
-                                    if (!TopScriptsReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                                    {
-                                        Client.Estate.TopScriptsReply -= TopScriptsReplyEventHandler;
-                                        throw new Exception(
-                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_TOP_SCRIPTS));
-                                    }
                                     Client.Estate.TopScriptsReply -= TopScriptsReplyEventHandler;
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_TOP_SCRIPTS));
                                 }
+                                Client.Estate.TopScriptsReply -= TopScriptsReplyEventHandler;
+
                                 break;
                             case Type.COLLIDERS:
                                 ManualResetEvent TopCollidersReplyEvent = new ManualResetEvent(false);
@@ -10712,18 +10861,16 @@ namespace Corrade
                                                 .ToDictionary(o => o.Key, o => o.Value);
                                         TopCollidersReplyEvent.Set();
                                     };
-                                lock (ServicesLock)
+                                Client.Estate.TopCollidersReply += TopCollidersReplyEventHandler;
+                                Client.Estate.RequestTopScripts();
+                                if (!TopCollidersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    Client.Estate.TopCollidersReply += TopCollidersReplyEventHandler;
-                                    Client.Estate.RequestTopScripts();
-                                    if (!TopCollidersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                                    {
-                                        Client.Estate.TopCollidersReply -= TopCollidersReplyEventHandler;
-                                        throw new Exception(
-                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_TOP_SCRIPTS));
-                                    }
                                     Client.Estate.TopCollidersReply -= TopCollidersReplyEventHandler;
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_TOP_SCRIPTS));
                                 }
+                                Client.Estate.TopCollidersReply -= TopCollidersReplyEventHandler;
+
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_TOP_TYPE));
@@ -10783,7 +10930,8 @@ namespace Corrade
                                                     wasUriUnescapeDataString(
                                                         wasKeyValueGet(
                                                             wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
-                                                    Configuration.SERVICES_TIMEOUT, ref targetUUID))
+                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    ref targetUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
@@ -10814,7 +10962,7 @@ namespace Corrade
                                             wasUriUnescapeDataString(
                                                 wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
                                                     message)),
-                                            Configuration.SERVICES_TIMEOUT, ref targetUUID))
+                                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref targetUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                                 }
@@ -10848,7 +10996,8 @@ namespace Corrade
                                                     wasUriUnescapeDataString(
                                                         wasKeyValueGet(
                                                             wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
-                                                    Configuration.SERVICES_TIMEOUT, ref targetUUID))
+                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    ref targetUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
@@ -10882,7 +11031,8 @@ namespace Corrade
                                                     wasUriUnescapeDataString(
                                                         wasKeyValueGet(
                                                             wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
-                                                    Configuration.SERVICES_TIMEOUT, ref targetUUID))
+                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    ref targetUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
@@ -10950,13 +11100,11 @@ namespace Corrade
                                         estateList.AddRange(args.Banned);
                                     }
                                 };
-                                lock (ServicesLock)
-                                {
-                                    Client.Estate.EstateBansReply += EstateBansReplyEventHandler;
-                                    Client.Estate.RequestInfo();
-                                    EstateListReplyEvent.WaitOne(timeout, false);
-                                    Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
-                                }
+                                Client.Estate.EstateBansReply += EstateBansReplyEventHandler;
+                                Client.Estate.RequestInfo();
+                                EstateListReplyEvent.WaitOne(timeout, false);
+                                Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
+
                                 break;
                             case Type.GROUP:
                                 EventHandler<EstateGroupsReplyEventArgs> EstateGroupsReplyEvenHandler =
@@ -10972,13 +11120,11 @@ namespace Corrade
                                             estateList.AddRange(args.AllowedGroups);
                                         }
                                     };
-                                lock (ServicesLock)
-                                {
-                                    Client.Estate.EstateGroupsReply += EstateGroupsReplyEvenHandler;
-                                    Client.Estate.RequestInfo();
-                                    EstateListReplyEvent.WaitOne(timeout, false);
-                                    Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
-                                }
+                                Client.Estate.EstateGroupsReply += EstateGroupsReplyEvenHandler;
+                                Client.Estate.RequestInfo();
+                                EstateListReplyEvent.WaitOne(timeout, false);
+                                Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
+
                                 break;
                             case Type.MANAGER:
                                 EventHandler<EstateManagersReplyEventArgs> EstateManagersReplyEventHandler =
@@ -10994,13 +11140,11 @@ namespace Corrade
                                             estateList.AddRange(args.Managers);
                                         }
                                     };
-                                lock (ServicesLock)
-                                {
-                                    Client.Estate.EstateManagersReply += EstateManagersReplyEventHandler;
-                                    Client.Estate.RequestInfo();
-                                    EstateListReplyEvent.WaitOne(timeout, false);
-                                    Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
-                                }
+                                Client.Estate.EstateManagersReply += EstateManagersReplyEventHandler;
+                                Client.Estate.RequestInfo();
+                                EstateListReplyEvent.WaitOne(timeout, false);
+                                Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
+
                                 break;
                             case Type.USER:
                                 EventHandler<EstateUsersReplyEventArgs> EstateUsersReplyEventHandler =
@@ -11016,13 +11160,11 @@ namespace Corrade
                                             estateList.AddRange(args.AllowedUsers);
                                         }
                                     };
-                                lock (ServicesLock)
-                                {
-                                    Client.Estate.EstateUsersReply += EstateUsersReplyEventHandler;
-                                    Client.Estate.RequestInfo();
-                                    EstateListReplyEvent.WaitOne(timeout, false);
-                                    Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
-                                }
+                                Client.Estate.EstateUsersReply += EstateUsersReplyEventHandler;
+                                Client.Estate.RequestInfo();
+                                EstateListReplyEvent.WaitOne(timeout, false);
+                                Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
+
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ESTATE_LIST));
@@ -11058,7 +11200,7 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -11067,61 +11209,61 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AVATAR_NOT_ON_CURRENT_REGION));
                         }
-                        ManualResetEvent[] AvatarDataReceivedEvent =
-                        {
-                            new ManualResetEvent(false),
-                            new ManualResetEvent(false),
-                            new ManualResetEvent(false),
-                            new ManualResetEvent(false),
-                            new ManualResetEvent(false)
-                        };
+                        wasAlarm ProfileDataReceivedAlarm = new wasAlarm();
+                        object LockObject = new object();
                         EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
                         {
-                            avatar.ProfileInterests = args.Interests;
-                            AvatarDataReceivedEvent[0].Set();
+                            ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                            lock (LockObject)
+                            {
+                                avatar.ProfileInterests = args.Interests;
+                            }
                         };
                         EventHandler<AvatarPropertiesReplyEventArgs> AvatarPropertiesReplyEventHandler =
                             (sender, args) =>
                             {
-                                avatar.ProfileProperties = args.Properties;
-                                AvatarDataReceivedEvent[1].Set();
+                                ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                lock (LockObject)
+                                {
+                                    avatar.ProfileProperties = args.Properties;
+                                }
                             };
                         EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
                         {
-                            avatar.Groups = args.Groups.Select(o => o.GroupID).ToList();
-                            AvatarDataReceivedEvent[2].Set();
+                            ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                            lock (LockObject)
+                            {
+                                avatar.Groups.AddRange(args.Groups.Select(o => o.GroupID));
+                            }
                         };
                         EventHandler<AvatarPicksReplyEventArgs> AvatarPicksReplyEventHandler =
-                            (sender, args) => AvatarDataReceivedEvent[3].Set();
+                            (sender, args) => ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
                         EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedReplyEventHandler =
-                            (sender, args) => AvatarDataReceivedEvent[4].Set();
-                        lock (ServicesLock)
+                            (sender, args) => ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                        Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
+                        Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;
+                        Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
+                        Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
+                        Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
+                        Client.Avatars.RequestAvatarProperties(agentUUID);
+                        Client.Avatars.RequestAvatarPicks(agentUUID);
+                        Client.Avatars.RequestAvatarClassified(agentUUID);
+                        if (!ProfileDataReceivedAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
-                            Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;
-                            Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
-                            Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
-                            Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
-                            Client.Avatars.RequestAvatarProperties(agentUUID);
-                            Client.Avatars.RequestAvatarPicks(agentUUID);
-                            Client.Avatars.RequestAvatarClassified(agentUUID);
-                            if (!WaitHandle.WaitAll(AvatarDataReceivedEvent.Select(o => (WaitHandle) o).ToArray(),
-                                Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
-                                Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
-                                Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
-                                Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
-                                Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_AVATAR_DATA));
-                            }
                             Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
                             Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
                             Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
                             Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_AVATAR_DATA));
                         }
+                        Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
+                        Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
+                        Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+                        Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
+                        Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+
                         List<string> data = new List<string>(GetStructuredData(avatar,
                             wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                 message))));
@@ -11173,7 +11315,8 @@ namespace Corrade
                                                     wasUriUnescapeDataString(
                                                         wasKeyValueGet(
                                                             wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
-                                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    ref agentUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
@@ -11198,19 +11341,17 @@ namespace Corrade
                             ManualResetEvent ObjectPropertiesEvent = new ManualResetEvent(false);
                             EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler =
                                 (sender, args) => ObjectPropertiesEvent.Set();
-                            lock (ServicesLock)
+                            Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
+                            Client.Objects.SelectObjects(Client.Network.CurrentSim, new[] {p.LocalID}, true);
+                            if (
+                                !ObjectPropertiesEvent.WaitOne(
+                                    Configuration.SERVICES_TIMEOUT, false))
                             {
-                                Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
-                                Client.Objects.SelectObjects(Client.Network.CurrentSim, new[] {p.LocalID}, true);
-                                if (
-                                    !ObjectPropertiesEvent.WaitOne(
-                                        Configuration.SERVICES_TIMEOUT, false))
-                                {
-                                    Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
-                                }
                                 Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                             }
+                            Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
+
                             if (p.Properties == null) continue;
                             switch ((Entity) entity)
                             {
@@ -11297,7 +11438,9 @@ namespace Corrade
                         foreach (KeyValuePair<UUID, Vector3> p in avatarPositions)
                         {
                             string name = string.Empty;
-                            if (!AgentUUIDToName(p.Key, Configuration.SERVICES_TIMEOUT, ref name))
+                            if (
+                                !AgentUUIDToName(p.Key, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref name))
                                 continue;
                             switch ((Entity) entity)
                             {
@@ -11343,17 +11486,15 @@ namespace Corrade
                             regionHandle = args.Region.RegionHandle;
                             GridRegionEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Grid.GridRegion += GridRegionEventHandler;
+                        Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
+                        if (!GridRegionEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Grid.GridRegion += GridRegionEventHandler;
-                            Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
-                            if (!GridRegionEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Grid.GridRegion -= GridRegionEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_REGION));
-                            }
                             Client.Grid.GridRegion -= GridRegionEventHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_REGION));
                         }
+                        Client.Grid.GridRegion -= GridRegionEventHandler;
+
                         if (regionHandle.Equals(0))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
@@ -11440,18 +11581,16 @@ namespace Corrade
                                         succeeded = args.Status.Equals(LINDEN_CONSTANTS.AVATARS.SET_DISPLAY_NAME_SUCCESS);
                                         SetDisplayNameEvent.Set();
                                     };
-                                lock (ServicesLock)
+                                Client.Self.SetDisplayNameReply += SetDisplayNameEventHandler;
+                                Client.Self.SetDisplayName(previous, name);
+                                if (!SetDisplayNameEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    Client.Self.SetDisplayNameReply += SetDisplayNameEventHandler;
-                                    Client.Self.SetDisplayName(previous, name);
-                                    if (!SetDisplayNameEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                                    {
-                                        Client.Self.SetDisplayNameReply -= SetDisplayNameEventHandler;
-                                        throw new Exception(
-                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_WAITING_FOR_ESTATE_LIST));
-                                    }
                                     Client.Self.SetDisplayNameReply -= SetDisplayNameEventHandler;
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_WAITING_FOR_ESTATE_LIST));
                                 }
+                                Client.Self.SetDisplayNameReply -= SetDisplayNameEventHandler;
+
                                 if (!succeeded)
                                 {
                                     throw new Exception(
@@ -11617,7 +11756,9 @@ namespace Corrade
                         Client.Friends.FriendRequests.ForEach(o =>
                         {
                             string name = string.Empty;
-                            if (!AgentUUIDToName(o.Key, Configuration.SERVICES_TIMEOUT, ref name))
+                            if (
+                                !AgentUUIDToName(o.Key, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref name))
                             {
                                 return;
                             }
@@ -11650,7 +11791,7 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -11702,7 +11843,7 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -11741,7 +11882,7 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -11774,7 +11915,7 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -11805,7 +11946,7 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -11846,7 +11987,7 @@ namespace Corrade
                                     wasUriUnescapeDataString(
                                         wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -11875,17 +12016,15 @@ namespace Corrade
                             position = args.Location;
                             FriendFoundEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Friends.FriendFoundReply += FriendFoundEventHandler;
+                        Client.Friends.MapFriend(agentUUID);
+                        if (!FriendFoundEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Friends.FriendFoundReply += FriendFoundEventHandler;
-                            Client.Friends.MapFriend(agentUUID);
-                            if (!FriendFoundEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Friends.FriendFoundReply -= FriendFoundEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_MAPPING_FRIEND));
-                            }
                             Client.Friends.FriendFoundReply -= FriendFoundEventHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_MAPPING_FRIEND));
                         }
+                        Client.Friends.FriendFoundReply -= FriendFoundEventHandler;
+
                         if (offline)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FRIEND_OFFLINE));
@@ -11898,17 +12037,15 @@ namespace Corrade
                             regionName = args.Parcel.SimName;
                             ParcelInfoEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
+                        Client.Parcels.RequestParcelInfo(parcelUUID);
+                        if (!ParcelInfoEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
-                            Client.Parcels.RequestParcelInfo(parcelUUID);
-                            if (!ParcelInfoEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
-                            }
                             Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
                         }
+                        Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
+
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                             string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, new[] {regionName, position.ToString()}));
                     };
@@ -11977,7 +12114,8 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -12015,7 +12153,8 @@ namespace Corrade
                             Configuration.GROUPS.FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, ref groupUUID))
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -12398,26 +12537,24 @@ namespace Corrade
                                     data = args.Xfer.AssetData;
                                     DownloadTerrainEvents[1].Set();
                                 };
-                                lock (ServicesLock)
+                                Client.Assets.InitiateDownload += InitiateDownloadEventHandler;
+                                Client.Assets.XferReceived += XferReceivedEventHandler;
+                                Client.Estate.EstateOwnerMessage("terrain", new List<string>
                                 {
-                                    Client.Assets.InitiateDownload += InitiateDownloadEventHandler;
-                                    Client.Assets.XferReceived += XferReceivedEventHandler;
-                                    Client.Estate.EstateOwnerMessage("terrain", new List<string>
-                                    {
-                                        "download filename",
-                                        Client.Network.CurrentSim.Name
-                                    });
-                                    if (!WaitHandle.WaitAll(DownloadTerrainEvents.Select(o => (WaitHandle) o).ToArray(),
-                                        Configuration.SERVICES_TIMEOUT, false))
-                                    {
-                                        Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
-                                        Client.Assets.XferReceived -= XferReceivedEventHandler;
-                                        throw new Exception(
-                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_DOWNLOADING_ASSET));
-                                    }
+                                    "download filename",
+                                    Client.Network.CurrentSim.Name
+                                });
+                                if (!WaitHandle.WaitAll(DownloadTerrainEvents.Select(o => (WaitHandle) o).ToArray(),
+                                    Configuration.SERVICES_TIMEOUT, false))
+                                {
                                     Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
                                     Client.Assets.XferReceived -= XferReceivedEventHandler;
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_DOWNLOADING_ASSET));
                                 }
+                                Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
+                                Client.Assets.XferReceived -= XferReceivedEventHandler;
+
                                 if (data == null || !data.Length.Equals(0))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_ASSET_DATA));
@@ -12448,18 +12585,16 @@ namespace Corrade
                                         AssetUploadEvent.Set();
                                     }
                                 };
-                                lock (ServicesLock)
+                                Client.Assets.UploadProgress += AssetUploadEventHandler;
+                                Client.Estate.UploadTerrain(data, Client.Network.CurrentSim.Name);
+                                if (!AssetUploadEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
-                                    Client.Assets.UploadProgress += AssetUploadEventHandler;
-                                    Client.Estate.UploadTerrain(data, Client.Network.CurrentSim.Name);
-                                    if (!AssetUploadEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                                    {
-                                        Client.Assets.UploadProgress -= AssetUploadEventHandler;
-                                        throw new Exception(
-                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPLOADING_ASSET));
-                                    }
                                     Client.Assets.UploadProgress -= AssetUploadEventHandler;
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPLOADING_ASSET));
                                 }
+                                Client.Assets.UploadProgress -= AssetUploadEventHandler;
+
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
@@ -12801,14 +12936,12 @@ namespace Corrade
                                             classifieds.Add(o, score);
                                         }
                                     });
-                                lock (ServicesLock)
-                                {
-                                    Client.Directory.DirClassifiedsReply += DirClassifiedsEventHandler;
-                                    Client.Directory.StartClassifiedSearch(name);
-                                    DirClassifiedsEvent.WaitOne(timeout, false);
-                                    DirClassifiedsEvent.Close();
-                                    Client.Directory.DirClassifiedsReply -= DirClassifiedsEventHandler;
-                                }
+                                Client.Directory.DirClassifiedsReply += DirClassifiedsEventHandler;
+                                Client.Directory.StartClassifiedSearch(name);
+                                DirClassifiedsEvent.WaitOne(timeout, false);
+                                DirClassifiedsEvent.Close();
+                                Client.Directory.DirClassifiedsReply -= DirClassifiedsEventHandler;
+
                                 DirectoryManager.Classified topClassified =
                                     classifieds.OrderByDescending(o => o.Value).FirstOrDefault().Key;
                                 Parallel.ForEach(
@@ -12863,14 +12996,12 @@ namespace Corrade
                                         }
                                         DirEventsReplyEvent.Set();
                                     };
-                                lock (ServicesLock)
-                                {
-                                    Client.Directory.DirEventsReply += DirEventsEventHandler;
-                                    Client.Directory.StartEventsSearch(name,
-                                        (uint) handledEvents);
-                                    DirEventsReplyEvent.WaitOne(timeout, false);
-                                    Client.Directory.DirEventsReply -= DirEventsEventHandler;
-                                }
+                                Client.Directory.DirEventsReply += DirEventsEventHandler;
+                                Client.Directory.StartEventsSearch(name,
+                                    (uint) handledEvents);
+                                DirEventsReplyEvent.WaitOne(timeout, false);
+                                Client.Directory.DirEventsReply -= DirEventsEventHandler;
+
                                 DirectoryManager.EventsSearchData topEvent =
                                     events.OrderByDescending(o => o.Value).FirstOrDefault().Key;
                                 Parallel.ForEach(wasGetFields(topEvent, topEvent.GetType().Name),
@@ -12929,13 +13060,11 @@ namespace Corrade
                                         }
                                         DirGroupsReplyEvent.Set();
                                     };
-                                lock (ServicesLock)
-                                {
-                                    Client.Directory.DirGroupsReply += DirGroupsEventHandler;
-                                    Client.Directory.StartGroupSearch(name, handledEvents);
-                                    DirGroupsReplyEvent.WaitOne(timeout, false);
-                                    Client.Directory.DirGroupsReply -= DirGroupsEventHandler;
-                                }
+                                Client.Directory.DirGroupsReply += DirGroupsEventHandler;
+                                Client.Directory.StartGroupSearch(name, handledEvents);
+                                DirGroupsReplyEvent.WaitOne(timeout, false);
+                                Client.Directory.DirGroupsReply -= DirGroupsEventHandler;
+
                                 DirectoryManager.GroupSearchData topGroup =
                                     groups.OrderByDescending(o => o.Value).FirstOrDefault().Key;
                                 Parallel.ForEach(wasGetFields(topGroup, topGroup.GetType().Name),
@@ -12991,14 +13120,12 @@ namespace Corrade
                                         }
                                         DirLandReplyEvent.Set();
                                     };
-                                lock (ServicesLock)
-                                {
-                                    Client.Directory.DirLandReply += DirLandReplyEventArgs;
-                                    Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
-                                        DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue, handledEvents);
-                                    DirLandReplyEvent.WaitOne(timeout, false);
-                                    Client.Directory.DirLandReply -= DirLandReplyEventArgs;
-                                }
+                                Client.Directory.DirLandReply += DirLandReplyEventArgs;
+                                Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
+                                    DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue, handledEvents);
+                                DirLandReplyEvent.WaitOne(timeout, false);
+                                Client.Directory.DirLandReply -= DirLandReplyEventArgs;
+
                                 DirectoryManager.DirectoryParcel topLand =
                                     lands.OrderByDescending(o => o.Value).FirstOrDefault().Key;
                                 Parallel.ForEach(wasGetFields(topLand, topLand.GetType().Name),
@@ -13053,13 +13180,12 @@ namespace Corrade
                                         }
                                         AgentSearchDataEvent.Set();
                                     };
-                                lock (ServicesLock)
-                                {
-                                    Client.Directory.DirPeopleReply += DirPeopleReplyEventHandler;
-                                    Client.Directory.StartPeopleSearch(name, handledEvents);
-                                    AgentSearchDataEvent.WaitOne(timeout, false);
-                                    Client.Directory.DirPeopleReply -= DirPeopleReplyEventHandler;
-                                }
+
+                                Client.Directory.DirPeopleReply += DirPeopleReplyEventHandler;
+                                Client.Directory.StartPeopleSearch(name, handledEvents);
+                                AgentSearchDataEvent.WaitOne(timeout, false);
+                                Client.Directory.DirPeopleReply -= DirPeopleReplyEventHandler;
+
                                 DirectoryManager.AgentSearchData topAgent =
                                     agents.OrderByDescending(o => o.Value).FirstOrDefault().Key;
                                 Parallel.ForEach(wasGetFields(topAgent, topAgent.GetType().Name),
@@ -13107,14 +13233,12 @@ namespace Corrade
                                             places.Add(o, score);
                                         }
                                     });
-                                lock (ServicesLock)
-                                {
-                                    Client.Directory.PlacesReply += DirPlacesReplyEventHandler;
-                                    Client.Directory.StartPlacesSearch(name);
-                                    DirPlacesReplyEvent.WaitOne(timeout, false);
-                                    DirPlacesReplyEvent.Close();
-                                    Client.Directory.PlacesReply -= DirPlacesReplyEventHandler;
-                                }
+                                Client.Directory.PlacesReply += DirPlacesReplyEventHandler;
+                                Client.Directory.StartPlacesSearch(name);
+                                DirPlacesReplyEvent.WaitOne(timeout, false);
+                                DirPlacesReplyEvent.Close();
+                                Client.Directory.PlacesReply -= DirPlacesReplyEventHandler;
+
                                 DirectoryManager.PlacesSearchData topPlace =
                                     places.OrderByDescending(o => o.Value).FirstOrDefault().Key;
                                 Parallel.ForEach(wasGetFields(topPlace, topPlace.GetType().Name),
@@ -13380,28 +13504,28 @@ namespace Corrade
         /// </summary>
         /// <param name="groupName">the name of the group to resolve</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="groupUUID">an object in which to store the UUID of the group</param>
         /// <returns>true if the group name could be resolved to an UUID</returns>
-        private static bool lookupGroupNameToUUID(string groupName, int millisecondsTimeout, ref UUID groupUUID)
+        private static bool lookupGroupNameToUUID(string groupName, int millisecondsTimeout, int dataTimeout,
+            ref UUID groupUUID)
         {
             UUID localGroupUUID = UUID.Zero;
-            ManualResetEvent DirGroupsEvent = new ManualResetEvent(false);
+            wasAlarm DirGroupsReceivedAlarm = new wasAlarm();
             EventHandler<DirGroupsReplyEventArgs> DirGroupsReplyDelegate = (sender, args) =>
             {
+                DirGroupsReceivedAlarm.Alarm(dataTimeout);
                 localGroupUUID = args.MatchedGroups.FirstOrDefault(o => o.GroupName.Equals(groupName)).GroupID;
-                if (!localGroupUUID.Equals(UUID.Zero))
-                {
-                    DirGroupsEvent.Set();
-                }
             };
             Client.Directory.DirGroupsReply += DirGroupsReplyDelegate;
             Client.Directory.StartGroupSearch(groupName, 0);
-            if (!DirGroupsEvent.WaitOne(millisecondsTimeout, false))
+            if (!DirGroupsReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
             {
                 Client.Directory.DirGroupsReply -= DirGroupsReplyDelegate;
                 return false;
             }
             Client.Directory.DirGroupsReply -= DirGroupsReplyDelegate;
+            if (localGroupUUID.Equals(UUID.Zero)) return false;
             groupUUID = localGroupUUID;
             return true;
         }
@@ -13411,9 +13535,11 @@ namespace Corrade
         /// </summary>
         /// <param name="groupName">the name of the group to resolve</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="groupUUID">an object in which to store the UUID of the group</param>
         /// <returns>true if the group name could be resolved to an UUID</returns>
-        private static bool GroupNameToUUID(string groupName, int millisecondsTimeout, ref UUID groupUUID)
+        private static bool GroupNameToUUID(string groupName, int millisecondsTimeout, int dataTimeout,
+            ref UUID groupUUID)
         {
             lock (Cache.Locks.GroupCacheLock)
             {
@@ -13428,7 +13554,7 @@ namespace Corrade
             bool succeeded;
             lock (ServicesLock)
             {
-                succeeded = lookupGroupNameToUUID(groupName, millisecondsTimeout, ref groupUUID);
+                succeeded = lookupGroupNameToUUID(groupName, millisecondsTimeout, dataTimeout, ref groupUUID);
             }
             if (succeeded)
             {
@@ -13454,34 +13580,34 @@ namespace Corrade
         /// <param name="agentFirstName">the first name of the agent</param>
         /// <param name="agentLastName">the last name of the agent</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="agentUUID">an object to store the agent UUID</param>
         /// <returns>true if the agent name could be resolved to an UUID</returns>
         private static bool lookupAgentNameToUUID(string agentFirstName, string agentLastName, int millisecondsTimeout,
+            int dataTimeout,
             ref UUID agentUUID)
         {
             UUID localAgentUUID = UUID.Zero;
-            ManualResetEvent agentUUIDEvent = new ManualResetEvent(false);
+            wasAlarm DirPeopleReceivedAlarm = new wasAlarm();
             EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyDelegate = (sender, args) =>
             {
+                DirPeopleReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
                 localAgentUUID =
                     args.MatchedPeople.FirstOrDefault(
                         o =>
                             o.FirstName.Equals(agentFirstName, StringComparison.OrdinalIgnoreCase) &&
                             o.LastName.Equals(agentLastName, StringComparison.OrdinalIgnoreCase)).AgentID;
-                if (!localAgentUUID.Equals(UUID.Zero))
-                {
-                    agentUUIDEvent.Set();
-                }
             };
             Client.Directory.DirPeopleReply += DirPeopleReplyDelegate;
             Client.Directory.StartPeopleSearch(
                 string.Format(CultureInfo.InvariantCulture, "{0} {1}", agentFirstName, agentLastName), 0);
-            if (!agentUUIDEvent.WaitOne(millisecondsTimeout, false))
+            if (!DirPeopleReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
             {
                 Client.Directory.DirPeopleReply -= DirPeopleReplyDelegate;
                 return false;
             }
             Client.Directory.DirPeopleReply -= DirPeopleReplyDelegate;
+            if (localAgentUUID.Equals(UUID.Zero)) return false;
             agentUUID = localAgentUUID;
             return true;
         }
@@ -13492,9 +13618,11 @@ namespace Corrade
         /// <param name="agentFirstName">the first name of the agent</param>
         /// <param name="agentLastName">the last name of the agent</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="agentUUID">an object to store the agent UUID</param>
         /// <returns>true if the agent name could be resolved to an UUID</returns>
         private static bool AgentNameToUUID(string agentFirstName, string agentLastName, int millisecondsTimeout,
+            int dataTimeout,
             ref UUID agentUUID)
         {
             lock (Cache.Locks.AgentCacheLock)
@@ -13512,7 +13640,8 @@ namespace Corrade
             bool succeeded;
             lock (ServicesLock)
             {
-                succeeded = lookupAgentNameToUUID(agentFirstName, agentLastName, millisecondsTimeout, ref agentUUID);
+                succeeded = lookupAgentNameToUUID(agentFirstName, agentLastName, millisecondsTimeout, dataTimeout,
+                    ref agentUUID);
             }
             if (succeeded)
             {
@@ -13537,30 +13666,30 @@ namespace Corrade
         /// </summary>
         /// <param name="agentUUID">the UUID of the agent</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="agentName">an object to store the name of the agent in</param>
         /// <returns>true if the UUID could be resolved to a name</returns>
-        private static bool lookupAgentUUIDToName(UUID agentUUID, int millisecondsTimeout, ref string agentName)
+        private static bool lookupAgentUUIDToName(UUID agentUUID, int millisecondsTimeout, int dataTimeout,
+            ref string agentName)
         {
             if (agentUUID.Equals(UUID.Zero))
                 return false;
             string localAgentName = string.Empty;
-            ManualResetEvent agentNameEvent = new ManualResetEvent(false);
+            wasAlarm UUIDNameReceivedAlarm = new wasAlarm();
             EventHandler<UUIDNameReplyEventArgs> UUIDNameReplyDelegate = (sender, args) =>
             {
+                UUIDNameReceivedAlarm.Alarm(dataTimeout);
                 localAgentName = args.Names.FirstOrDefault(o => o.Key.Equals(agentUUID)).Value;
-                if (!string.IsNullOrEmpty(localAgentName))
-                {
-                    agentNameEvent.Set();
-                }
             };
             Client.Avatars.UUIDNameReply += UUIDNameReplyDelegate;
             Client.Avatars.RequestAvatarName(agentUUID);
-            if (!agentNameEvent.WaitOne(millisecondsTimeout, false))
+            if (!UUIDNameReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
             {
                 Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
                 return false;
             }
             Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
+            if (string.IsNullOrEmpty(localAgentName)) return false;
             agentName = localAgentName;
             return true;
         }
@@ -13570,9 +13699,11 @@ namespace Corrade
         /// </summary>
         /// <param name="agentUUID">the UUID of the agent</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="agentName">an object to store the name of the agent in</param>
         /// <returns>true if the UUID could be resolved to a name</returns>
-        private static bool AgentUUIDToName(UUID agentUUID, int millisecondsTimeout, ref string agentName)
+        private static bool AgentUUIDToName(UUID agentUUID, int millisecondsTimeout, int dataTimeout,
+            ref string agentName)
         {
             lock (Cache.Locks.AgentCacheLock)
             {
@@ -13587,7 +13718,7 @@ namespace Corrade
             bool succeeded;
             lock (ServicesLock)
             {
-                succeeded = lookupAgentUUIDToName(agentUUID, millisecondsTimeout, ref agentName);
+                succeeded = lookupAgentUUIDToName(agentUUID, millisecondsTimeout, dataTimeout, ref agentName);
             }
             if (succeeded)
             {
@@ -13615,31 +13746,31 @@ namespace Corrade
         /// <param name="roleName">the name of the role to be resolved to an UUID</param>
         /// <param name="groupUUID">the UUID of the group to query for the role UUID</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="roleUUID">an UUID object to store the role UUID in</param>
         /// <returns>true if the role could be found</returns>
         private static bool lookupRoleNameToRoleUUID(string roleName, UUID groupUUID, int millisecondsTimeout,
+            int dataTimeout,
             ref UUID roleUUID)
         {
             UUID localRoleUUID = UUID.Zero;
-            ManualResetEvent GroupRoleDataEvent = new ManualResetEvent(false);
+            wasAlarm GroupRoleDataReceivedAlarm = new wasAlarm();
             EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
             {
+                GroupRoleDataReceivedAlarm.Alarm(dataTimeout);
                 localRoleUUID =
                     args.Roles.FirstOrDefault(o => o.Value.Name.Equals(roleName, StringComparison.Ordinal))
                         .Key;
-                if (!localRoleUUID.Equals(UUID.Zero))
-                {
-                    GroupRoleDataEvent.Set();
-                }
             };
             Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
             Client.Groups.RequestGroupRoles(groupUUID);
-            if (!GroupRoleDataEvent.WaitOne(millisecondsTimeout, false))
+            if (!GroupRoleDataReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
             {
                 Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
                 return false;
             }
             Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
+            if (localRoleUUID.Equals(UUID.Zero)) return false;
             roleUUID = localRoleUUID;
             return true;
         }
@@ -13650,14 +13781,15 @@ namespace Corrade
         /// <param name="roleName">the name of the role to be resolved to an UUID</param>
         /// <param name="groupUUID">the UUID of the group to query for the role UUID</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="roleUUID">an UUID object to store the role UUID in</param>
         /// <returns>true if the role could be found</returns>
-        private static bool RoleNameToRoleUUID(string roleName, UUID groupUUID, int millisecondsTimeout,
+        private static bool RoleNameToRoleUUID(string roleName, UUID groupUUID, int millisecondsTimeout, int dataTimeout,
             ref UUID roleUUID)
         {
             lock (ServicesLock)
             {
-                return lookupRoleNameToRoleUUID(roleName, groupUUID, millisecondsTimeout, ref roleUUID);
+                return lookupRoleNameToRoleUUID(roleName, groupUUID, millisecondsTimeout, dataTimeout, ref roleUUID);
             }
         }
 
@@ -13670,32 +13802,31 @@ namespace Corrade
         /// <param name="RoleUUID">the UUID of the role to be resolved to a name</param>
         /// <param name="GroupUUID">the UUID of the group to query for the role name</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="roleName">a string object to store the role name in</param>
         /// <returns>true if the role could be resolved</returns>
-        private static bool lookupRoleUUIDToName(UUID RoleUUID, UUID GroupUUID, int millisecondsTimeout,
+        private static bool lookupRoleUUIDToName(UUID RoleUUID, UUID GroupUUID, int millisecondsTimeout, int dataTimeout,
             ref string roleName)
         {
             if (RoleUUID.Equals(UUID.Zero) || GroupUUID.Equals(UUID.Zero))
                 return false;
             string localRoleName = string.Empty;
-            ManualResetEvent GroupRoleDataEvent = new ManualResetEvent(false);
+            wasAlarm GroupRoleDataReceivedAlarm = new wasAlarm();
             EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
             {
+                GroupRoleDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
                 localRoleName = args.Roles.FirstOrDefault(o => o.Key.Equals(RoleUUID)).Value.Name;
-                if (!string.IsNullOrEmpty(localRoleName))
-                {
-                    GroupRoleDataEvent.Set();
-                }
             };
 
             Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
             Client.Groups.RequestGroupRoles(GroupUUID);
-            if (!GroupRoleDataEvent.WaitOne(millisecondsTimeout, false))
+            if (!GroupRoleDataReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
             {
                 Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
                 return false;
             }
             Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
+            if (string.IsNullOrEmpty(localRoleName)) return false;
             roleName = localRoleName;
             return true;
         }
@@ -13703,16 +13834,18 @@ namespace Corrade
         /// <summary>
         ///     Wrapper for resolving role UUIDs to names - used for locking service requests.
         /// </summary>
-        /// <param name="RoleUUID"></param>
-        /// <param name="GroupUUID"></param>
-        /// <param name="millisecondsTimeout"></param>
-        /// <param name="roleName"></param>
-        /// <returns></returns>
-        private static bool RoleUUIDToName(UUID RoleUUID, UUID GroupUUID, int millisecondsTimeout, ref string roleName)
+        /// <param name="RoleUUID">the UUID of the role to be resolved to a name</param>
+        /// <param name="GroupUUID">the UUID of the group to query for the role name</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
+        /// <param name="roleName">a string object to store the role name in</param>
+        /// <returns>true if the role could be resolved</returns>
+        private static bool RoleUUIDToName(UUID RoleUUID, UUID GroupUUID, int millisecondsTimeout, int dataTimeout,
+            ref string roleName)
         {
             lock (ServicesLock)
             {
-                return lookupRoleUUIDToName(RoleUUID, GroupUUID, millisecondsTimeout, ref roleName);
+                return lookupRoleUUIDToName(RoleUUID, GroupUUID, millisecondsTimeout, dataTimeout, ref roleName);
             }
         }
 
@@ -13969,7 +14102,7 @@ namespace Corrade
         /// <summary>
         ///     Corrade's caches.
         /// </summary>
-        public struct Cache
+        private struct Cache
         {
             public static HashSet<Agents> AgentCache = new HashSet<Agents>();
             public static HashSet<Groups> GroupCache = new HashSet<Groups>();
@@ -14080,6 +14213,7 @@ namespace Corrade
             public static bool USE_NAGGLE;
             public static bool USE_EXPECT100CONTINUE;
             public static int SERVICES_TIMEOUT;
+            public static int DATA_TIMEOUT;
             public static int REBAKE_DELAY;
             public static int MEMBERSHIP_SWEEP_INTERVAL;
             public static bool TOS_ACCEPTED;
@@ -14126,6 +14260,7 @@ namespace Corrade
                 CONNECTION_LIMIT = 100;
                 USE_NAGGLE = true;
                 SERVICES_TIMEOUT = 60000;
+                DATA_TIMEOUT = 5000;
                 REBAKE_DELAY = 1000;
                 ACTIVATE_DELAY = 5000;
                 MEMBERSHIP_SWEEP_INTERVAL = 1000;
@@ -14501,6 +14636,27 @@ namespace Corrade
                                             }
                                         }
                                         break;
+                                    case ConfigurationKeys.DATA:
+                                        XmlNodeList dataLimitNodeList = limitsNode.SelectNodes("*");
+                                        if (dataLimitNodeList == null)
+                                        {
+                                            throw new Exception("error in data limits section");
+                                        }
+                                        foreach (XmlNode dataLimitNode in dataLimitNodeList)
+                                        {
+                                            switch (dataLimitNode.Name.ToLowerInvariant())
+                                            {
+                                                case ConfigurationKeys.TIMEOUT:
+                                                    if (
+                                                        !int.TryParse(dataLimitNode.InnerText,
+                                                            out DATA_TIMEOUT))
+                                                    {
+                                                        throw new Exception("error in data limits section");
+                                                    }
+                                                    break;
+                                            }
+                                        }
+                                        break;
                                     case ConfigurationKeys.MEMBERSHIP:
                                         XmlNodeList membershipLimitNodeList = limitsNode.SelectNodes("*");
                                         if (membershipLimitNodeList == null)
@@ -14733,6 +14889,7 @@ namespace Corrade
             public const string ENABLE = @"enable";
             public const string REBAKE = @"rebake";
             public const string ACTIVATE = @"activate";
+            public const string DATA = @"data";
         }
 
         /// <summary>
@@ -14743,7 +14900,6 @@ namespace Corrade
             [Description("none")] NONE = 0,
             [Description("access denied")] ACCESS_DENIED = 1,
             [Description("invalid configuration file")] INVALID_CONFIGURATION_FILE,
-
             [Description(
                 "the Terms of Service (TOS) for the grid you are connecting to have not been accepted, please check your configuration file"
                 )] TOS_NOT_ACCEPTED,
@@ -14838,7 +14994,7 @@ namespace Corrade
         /// <summary>
         ///     An event for the group membership notification.
         /// </summary>
-        public class GroupMembershipEventArgs : EventArgs
+        private class GroupMembershipEventArgs : EventArgs
         {
             public Action Action;
             public string AgentName;
@@ -15457,6 +15613,35 @@ namespace Corrade
             [Description("land")] LAND,
             [Description("people")] PEOPLE,
             [Description("place")] PLACE
+        }
+
+        /// <summary>An alarm class similar to the UNIX alarm</summary>
+        internal class wasAlarm
+        {
+            private Timer alarm;
+
+            public wasAlarm()
+            {
+                Signal = new ManualResetEvent(false);
+            }
+
+            public ManualResetEvent Signal { get; set; }
+
+            public void Alarm(int deadline)
+            {
+                if (alarm == null)
+                {
+                    alarm = new Timer(deadline);
+                    alarm.Elapsed += (o, p) =>
+                    {
+                        Signal.Set();
+                        alarm.Dispose();
+                    };
+                    alarm.Start();
+                    return;
+                }
+                alarm.Interval = deadline;
+            }
         }
 
         #region RLV STRUCTURES
