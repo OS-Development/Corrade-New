@@ -3054,12 +3054,14 @@ namespace Corrade
             switch (e.Type)
             {
                 case ChatType.OwnerSay:
-                    if (!EnableCorradeRLV) return;
-                    if (!e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR)) return;
-                    lock (CommandLock)
+                    if (!EnableCorradeRLV || !e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR)) return;
+                    new Thread(() =>
                     {
-                        HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1), e.SourceID);
-                    }
+                        lock (CommandLock)
+                        {
+                            HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1), e.SourceID);
+                        }
+                    }) {IsBackground = true}.Start();
                     break;
                 case ChatType.Debug:
                 case ChatType.Normal:
@@ -3070,10 +3072,13 @@ namespace Corrade
                         .Start();
                     break;
                 case (ChatType) 9:
-                    lock (CommandLock)
+                    new Thread(() =>
                     {
-                        HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString());
-                    }
+                        lock (CommandLock)
+                        {
+                            HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString());
+                        }
+                    }) {IsBackground = true}.Start();
                     break;
             }
         }
@@ -3526,10 +3531,13 @@ namespace Corrade
             }
 
             // Everything else, must be a command.
-            lock (CommandLock)
+            new Thread(() =>
             {
-                HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString());
-            }
+                lock (CommandLock)
+                {
+                    HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString());
+                }
+            }) {IsBackground = true}.Start();
         }
 
         private static void HandleRLVCommand(string message, UUID senderUUID)
@@ -13224,17 +13232,43 @@ namespace Corrade
                     break;
             }
 
-            // execute command and check for errors
+            // sift action
+            System.Action sift = () =>
+            {
+                string pattern =
+                    wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.SIFT), message));
+                if (string.IsNullOrEmpty(pattern)) return;
+                string data;
+                if (!result.TryGetValue(wasGetDescriptionFromEnumValue(ResultKeys.DATA), out data)) return;
+                data = string.Join(
+                    LINDEN_CONSTANTS.LSL.CSV_DELIMITER, (((new Regex(pattern, RegexOptions.Compiled)).Matches(data)
+                        .Cast<Match>()
+                        .Select(m => m.Groups)).SelectMany(
+                            matchGroups => Enumerable.Range(0, matchGroups.Count).Skip(1),
+                            (matchGroups, i) => new {matchGroups, i})
+                        .SelectMany(@t => Enumerable.Range(0, @t.matchGroups[@t.i].Captures.Count),
+                            (@t, j) => @t.matchGroups[@t.i].Captures[j].Value)).ToArray());
+                if (string.IsNullOrEmpty(data))
+                {
+                    result.Remove(wasGetDescriptionFromEnumValue(ResultKeys.DATA));
+                    return;
+                }
+                result[wasGetDescriptionFromEnumValue(ResultKeys.DATA)] = data;
+            };
+
+            // execute command, sift data and check for errors
             bool success = false;
             try
             {
                 execute.Invoke();
+                sift.Invoke();
                 success = true;
             }
             catch (Exception e)
             {
                 result.Add(wasGetDescriptionFromEnumValue(ResultKeys.ERROR), e.Message);
             }
+
             // add the final success status
             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.SUCCESS),
                 success.ToString(CultureInfo.InvariantCulture));
@@ -15349,6 +15383,7 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+            [Description("sift")] SIFT,
             [Description("rlv")] RLV,
             [Description("getinventorypath")] GETINVENTORYPATH,
             [Description("committed")] COMMITTED,
