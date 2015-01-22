@@ -71,11 +71,7 @@ namespace Corrade
 
         private static readonly GridClient Client = new GridClient();
 
-        private static readonly object CommandLock = new object();
-
-        private static readonly object ServicesLock = new object();
-
-        private static readonly object InventoryLock = new object();
+        private static readonly object ClientInstanceLock = new object();
 
         private static readonly object ConfigurationFileLock = new object();
 
@@ -88,8 +84,6 @@ namespace Corrade
         private static readonly object GroupNotificationsLock = new object();
 
         private static readonly HashSet<Notification> GroupNotifications = new HashSet<Notification>();
-
-        private static readonly object TeleportLock = new object();
 
         private static readonly Dictionary<InventoryObjectOfferedEventArgs, ManualResetEvent> InventoryOffers =
             new Dictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>();
@@ -129,17 +123,16 @@ namespace Corrade
 
         private static volatile bool EnableCorradeRLV;
 
+        private static InventoryFolder OutfitFolder;
+
         public static EventHandler ConsoleEventHandler;
 
         private static readonly System.Action LoadInventoryCache = () =>
         {
-            int itemsLoaded;
-            lock (InventoryLock)
-            {
-                itemsLoaded =
-                    Client.Inventory.Store.RestoreFromDisk(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
-                        CORRADE_CONSTANTS.INVENTORY_CACHE_FILE));
-            }
+            int itemsLoaded =
+                Client.Inventory.Store.RestoreFromDisk(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                    CORRADE_CONSTANTS.INVENTORY_CACHE_FILE));
+
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_LOADED),
                 itemsLoaded < 0 ? "0" : itemsLoaded.ToString(CultureInfo.InvariantCulture));
         };
@@ -151,7 +144,9 @@ namespace Corrade
             // Enqueue the first folder (root).
             inventoryFolders.Enqueue(Client.Inventory.Store.RootFolder);
 
-            AutoResetEvent FolderUpdatedEvent = new AutoResetEvent(false);
+            // Create a list of semaphores indexed by the folder UUID.
+            Dictionary<UUID, AutoResetEvent> FolderUpdatedEvents = new Dictionary<UUID, AutoResetEvent>();
+            object FolderUpdatedEventsLock = new object();
             EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (sender, args) =>
             {
                 // Enqueue all the new folders.
@@ -162,19 +157,37 @@ namespace Corrade
                         inventoryFolders.Enqueue(o as InventoryFolder);
                     }
                 });
-                FolderUpdatedEvent.Set();
+                FolderUpdatedEvents[args.FolderID].Set();
             };
 
             do
             {
-                InventoryFolder folder = inventoryFolders.Dequeue();
-                if (folder == null) continue;
-                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
-                    InventorySortOrder.ByDate);
-                // Wait on the semaphore.
-                FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
-                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                // Dequeue all the folders in the queue (can also limit to a number of folders).
+                HashSet<InventoryFolder> folders = new HashSet<InventoryFolder>();
+                do
+                {
+                    folders.Add(inventoryFolders.Dequeue());
+                } while (!inventoryFolders.Count.Equals(0));
+                // Process all the dequeued elements in parallel.
+                Parallel.ForEach(folders.Where(o => o != null), o =>
+                {
+                    // Add an semaphore to wait for the folder contents.
+                    lock (FolderUpdatedEventsLock)
+                    {
+                        FolderUpdatedEvents.Add(o.UUID, new AutoResetEvent(false));
+                    }
+                    Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                    Client.Inventory.RequestFolderContents(o.UUID, Client.Self.AgentID, true, true,
+                        InventorySortOrder.ByDate);
+                    // Wait on the semaphore.
+                    FolderUpdatedEvents[o.UUID].WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                    // Remove the semaphore for the folder.
+                    lock (FolderUpdatedEventsLock)
+                    {
+                        FolderUpdatedEvents.Remove(o.UUID);
+                    }
+                });
             } while (!inventoryFolders.Count.Equals(0));
         };
 
@@ -182,17 +195,11 @@ namespace Corrade
         {
             string path = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
                 CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
-            int itemsSaved = 0;
-            lock (InventoryLock)
-            {
-                if (!string.IsNullOrEmpty(path))
-                {
-                    itemsSaved = Client.Inventory.Store.Items.Count;
-                    Client.Inventory.Store.SaveToDisk(path);
-                }
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_SAVED),
-                    itemsSaved.ToString(CultureInfo.InvariantCulture));
-            }
+            int itemsSaved = Client.Inventory.Store.Items.Count;
+            Client.Inventory.Store.SaveToDisk(path);
+
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_SAVED),
+                itemsSaved.ToString(CultureInfo.InvariantCulture));
         };
 
         private static readonly System.Action LoadCorradeCache = () =>
@@ -340,61 +347,6 @@ namespace Corrade
         }
 
         /// <summary>
-        ///     Gets or creates the outfit folder.
-        /// </summary>
-        /// <returns>the outfit folder or null if the folder did not exist and could not be created</returns>
-        private static InventoryFolder GetOrCreateOutfitFolder(int millisecondsTimeout)
-        {
-            HashSet<InventoryBase> root = new HashSet<InventoryBase>();
-            ManualResetEvent FolderUpdatedEvent = new ManualResetEvent(false);
-            EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (sender, e) =>
-            {
-                if (e.FolderID.Equals(Client.Inventory.Store.RootFolder.UUID) && e.Success)
-                {
-                    root =
-                        new HashSet<InventoryBase>(
-                            Client.Inventory.Store.GetContents(Client.Inventory.Store.RootFolder.UUID));
-                }
-                FolderUpdatedEvent.Set();
-            };
-
-            lock (ServicesLock)
-            {
-                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                Client.Inventory.RequestFolderContents(Client.Inventory.Store.RootFolder.UUID, Client.Self.AgentID,
-                    true, true, InventorySortOrder.ByDate);
-                FolderUpdatedEvent.WaitOne(millisecondsTimeout);
-                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-            }
-
-            if (!root.Count.Equals(0))
-            {
-                InventoryFolder inventoryFolder =
-                    root.FirstOrDefault(
-                        o =>
-                            o is InventoryFolder &&
-                            ((InventoryFolder) o).PreferredType == AssetType.CurrentOutfitFolder) as InventoryFolder;
-                if (inventoryFolder != null)
-                {
-                    return inventoryFolder;
-                }
-            }
-
-            lock (InventoryLock)
-            {
-                UUID currentOutfitFolderUUID = Client.Inventory.CreateFolder(Client.Inventory.Store.RootFolder.UUID,
-                    CORRADE_CONSTANTS.CURRENT_OUTFIT_FOLDER_NAME, AssetType.CurrentOutfitFolder);
-                if (Client.Inventory.Store.Items.ContainsKey(currentOutfitFolderUUID) &&
-                    Client.Inventory.Store.Items[currentOutfitFolderUUID].Data is InventoryFolder)
-                {
-                    return (InventoryFolder) Client.Inventory.Store.Items[currentOutfitFolderUUID].Data;
-                }
-            }
-
-            return null;
-        }
-
-        /// <summary>
         ///     Can an inventory item be worn?
         /// </summary>
         /// <param name="item">item to check</param>
@@ -425,48 +377,47 @@ namespace Corrade
         ///     Get current outfit folder links.
         /// </summary>
         /// <returns>a list of inventory items that can be part of appearance (attachments, wearables)</returns>
-        private static List<InventoryItem> GetCurrentOutfitFolderLinks(int millisecondsTimeout)
+        private static List<InventoryItem> GetCurrentOutfitFolderLinks(InventoryFolder outfitFolder)
         {
             List<InventoryItem> ret = new List<InventoryItem>();
-            InventoryFolder COF = GetOrCreateOutfitFolder(millisecondsTimeout);
-            if (COF == null) return ret;
+            if (outfitFolder == null) return ret;
 
-            Client.Inventory.Store.GetContents(COF)
+            Client.Inventory.Store.GetContents(outfitFolder)
                 .FindAll(b => CanBeWorn(b) && ((InventoryItem) b).AssetType.Equals(AssetType.Link))
                 .ForEach(item => ret.Add((InventoryItem) item));
 
             return ret;
         }
 
-        private static void Attach(InventoryItem item, AttachmentPoint point, bool replace, int millisecondsTimeout)
+        private static void Attach(InventoryItem item, AttachmentPoint point, bool replace, InventoryFolder outfitFolder)
         {
             Client.Appearance.Attach(ResolveItemLink(item), point, replace);
-            AddLink(item, millisecondsTimeout);
+            AddLink(item, outfitFolder);
         }
 
-        private static void Detach(InventoryItem item, int millisecondsTimeout)
+        private static void Detach(InventoryItem item, InventoryFolder outfitFolder)
         {
-            RemoveLink(item, millisecondsTimeout);
+            RemoveLink(item, outfitFolder);
             Client.Appearance.Detach(ResolveItemLink(item));
         }
 
-        private static void Wear(InventoryItem item, bool replace, int millisecondsTimeout)
+        private static void Wear(InventoryItem item, bool replace, InventoryFolder outfitFolder)
         {
             InventoryItem realItem = ResolveItemLink(item);
             if (item == null) return;
             Client.Appearance.AddToOutfit(realItem, replace);
-            AddLink(realItem, millisecondsTimeout);
+            AddLink(realItem, outfitFolder);
         }
 
-        private static void UnWear(InventoryItem item, int millisecondsTimeout)
+        private static void UnWear(InventoryItem item, InventoryFolder outfitFolder)
         {
             InventoryItem realItem = ResolveItemLink(item);
             if (realItem == null) return;
             Client.Appearance.RemoveFromOutfit(realItem);
-            InventoryItem link = GetCurrentOutfitFolderLinks(millisecondsTimeout)
+            InventoryItem link = GetCurrentOutfitFolderLinks(outfitFolder)
                 .FirstOrDefault(o => o.AssetType.Equals(AssetType.Link) && o.Name.Equals(item.Name));
             if (link == null) return;
-            RemoveLink(link, millisecondsTimeout);
+            RemoveLink(link, outfitFolder);
         }
 
         /// <summary>
@@ -489,14 +440,13 @@ namespace Corrade
         ///     Creates a new current outfit folder link.
         /// </summary>
         /// <param name="item">item to be linked</param>
-        /// <param name="millisecondsTimeout">timeout in milliseconds</param>
-        private static void lookupAddLink(InventoryItem item, int millisecondsTimeout)
+        /// <param name="outfitFolder">the outfit folder</param>
+        private static void AddLink(InventoryItem item, InventoryFolder outfitFolder)
         {
-            InventoryFolder COF = GetOrCreateOutfitFolder(millisecondsTimeout);
-            if (GetOrCreateOutfitFolder(millisecondsTimeout) == null) return;
+            if (outfitFolder == null) return;
 
             bool linkExists = null !=
-                              GetCurrentOutfitFolderLinks(millisecondsTimeout)
+                              GetCurrentOutfitFolderLinks(outfitFolder)
                                   .Find(itemLink => itemLink.AssetUUID.Equals(item.UUID));
 
             if (linkExists) return;
@@ -504,7 +454,7 @@ namespace Corrade
             string description = (item.InventoryType.Equals(InventoryType.Wearable) && !IsBodyPart(item))
                 ? string.Format("@{0}{1:00}", (int) ((InventoryWearable) item).WearableType, 0)
                 : string.Empty;
-            Client.Inventory.CreateLink(COF.UUID, item.UUID, item.Name, description, AssetType.Link,
+            Client.Inventory.CreateLink(OutfitFolder.UUID, item.UUID, item.Name, description, AssetType.Link,
                 item.InventoryType, UUID.Random(), (success, newItem) =>
                 {
                     if (success)
@@ -514,39 +464,30 @@ namespace Corrade
                 });
         }
 
-        private static void AddLink(InventoryItem item, int millisecondsTimeout)
-        {
-            lock (InventoryLock)
-            {
-                lookupAddLink(item, millisecondsTimeout);
-            }
-        }
-
         /// <summary>
         ///     Remove a current outfit folder link of the specified inventory item.
         /// </summary>
         /// <param name="item">the inventory item for which to remove the link</param>
-        /// <param name="millisecondsTimeout">timeout in milliseconds</param>
-        private static void RemoveLink(InventoryItem item, int millisecondsTimeout)
+        /// <param name="outfitFolder">the outfit folder</param>
+        private static void RemoveLink(InventoryItem item, InventoryFolder outfitFolder)
         {
-            RemoveLink(new HashSet<InventoryItem> {item}, millisecondsTimeout);
+            RemoveLink(new HashSet<InventoryItem> {item}, outfitFolder);
         }
 
         /// <summary>
         ///     Remove current outfit folder links for multiple specified inventory item.
         /// </summary>
         /// <param name="items">list of items whose links should be removed</param>
-        /// <param name="millisecondsTimeout">timeout in milliseconds</param>
-        private static void lookupRemoveLink(IEnumerable<InventoryItem> items, int millisecondsTimeout)
+        /// <param name="outfitFolder">the outfit folder</param>
+        private static void RemoveLink(IEnumerable<InventoryItem> items, InventoryFolder outfitFolder)
         {
-            InventoryFolder COF = GetOrCreateOutfitFolder(millisecondsTimeout);
-            if (COF == null) return;
+            if (outfitFolder == null) return;
 
             List<UUID> removeItems = new List<UUID>();
             object LockObject = new object();
             Parallel.ForEach(items,
                 item =>
-                    GetCurrentOutfitFolderLinks(millisecondsTimeout)
+                    GetCurrentOutfitFolderLinks(outfitFolder)
                         .FindAll(
                             itemLink =>
                                 itemLink.AssetUUID.Equals(item is InventoryWearable ? item.AssetUUID : item.UUID))
@@ -559,14 +500,6 @@ namespace Corrade
                         }));
 
             Client.Inventory.Remove(removeItems, null);
-        }
-
-        private static void RemoveLink(IEnumerable<InventoryItem> items, int millisecondsTimeout)
-        {
-            lock (InventoryLock)
-            {
-                lookupRemoveLink(items, millisecondsTimeout);
-            }
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -968,7 +901,7 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <returns>true if the agent has the powers</returns>
-        private static bool lookupHasGroupPowers(UUID agentUUID, UUID groupUUID, GroupPowers powers,
+        private static bool HasGroupPowers(UUID agentUUID, UUID groupUUID, GroupPowers powers,
             int millisecondsTimeout, int dataTimeout)
         {
             bool hasPowers = false;
@@ -991,24 +924,6 @@ namespace Corrade
             return hasPowers;
         }
 
-        /// <summary>
-        ///     Determines whether n agent has a set of powers for a group - locks down services.
-        /// </summary>
-        /// <param name="agentUUID">the agent UUID</param>
-        /// <param name="groupUUID">the UUID of the group</param>
-        /// <param name="powers">a GroupPowers structure</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <returns>true if the agent has the powers</returns>
-        private static bool HasGroupPowers(UUID agentUUID, UUID groupUUID, GroupPowers powers, int millisecondsTimeout,
-            int dataTimeout)
-        {
-            lock (ServicesLock)
-            {
-                return lookupHasGroupPowers(agentUUID, groupUUID, powers, millisecondsTimeout, dataTimeout);
-            }
-        }
-
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -1021,7 +936,7 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <returns>true if the agent is in the group</returns>
-        private static bool lookupAgentInGroup(UUID agentUUID, UUID groupUUID, int millisecondsTimeout, int dataTimeout)
+        private static bool AgentInGroup(UUID agentUUID, UUID groupUUID, int millisecondsTimeout, int dataTimeout)
         {
             bool agentInGroup = false;
             wasAlarm GroupMembersReceivedAlarm = new wasAlarm();
@@ -1039,22 +954,6 @@ namespace Corrade
             }
             Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
             return agentInGroup;
-        }
-
-        /// <summary>
-        ///     Determines whether an agent is in a group - locks down services.
-        /// </summary>
-        /// <param name="agentUUID">the UUID of the agent</param>
-        /// <param name="groupUUID">the UUID of the groupt</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <returns>true if the agent is in the group</returns>
-        private static bool AgentInGroup(UUID agentUUID, UUID groupUUID, int millisecondsTimeout, int dataTimeout)
-        {
-            lock (ServicesLock)
-            {
-                return lookupAgentInGroup(agentUUID, groupUUID, millisecondsTimeout, dataTimeout);
-            }
         }
 
         /// <summary>
@@ -1122,7 +1021,7 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="group">a group object to store the group profile</param>
         /// <returns>true if the group was found and false otherwise</returns>
-        private static bool lookupRequestGroup(UUID groupUUID, int millisecondsTimeout, ref OpenMetaverse.Group group)
+        private static bool RequestGroup(UUID groupUUID, int millisecondsTimeout, ref OpenMetaverse.Group group)
         {
             OpenMetaverse.Group localGroup = new OpenMetaverse.Group();
             ManualResetEvent GroupProfileEvent = new ManualResetEvent(false);
@@ -1143,21 +1042,6 @@ namespace Corrade
             return true;
         }
 
-        /// <summary>
-        ///     Wrapper for group profile requests - locks down service usage.
-        /// </summary>
-        /// <param name="groupUUID">the UUID of the group</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="group">a group object to store the group profile</param>
-        /// <returns>true if the group was found and false otherwise</returns>
-        private static bool RequestGroup(UUID groupUUID, int millisecondsTimeout, ref OpenMetaverse.Group group)
-        {
-            lock (ServicesLock)
-            {
-                return lookupRequestGroup(groupUUID, millisecondsTimeout, ref group);
-            }
-        }
-
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -1168,7 +1052,7 @@ namespace Corrade
         /// <param name="position">a position within the parcel</param>
         /// <param name="parcel">a parcel object where to store the found parcel</param>
         /// <returns>true if the parcel could be found</returns>
-        private static bool lookupGetParcelAtPosition(Simulator simulator, Vector3 position,
+        private static bool GetParcelAtPosition(Simulator simulator, Vector3 position,
             ref Parcel parcel)
         {
             Parcel localParcel = null;
@@ -1200,21 +1084,6 @@ namespace Corrade
             return true;
         }
 
-        /// <summary>
-        ///     Wrapper for getting a parcel at a position - locks down services.
-        /// </summary>
-        /// <param name="simulator">the simulator containing the parcel</param>
-        /// <param name="position">a position within the parcel</param>
-        /// <param name="parcel">a parcel object where to store the found parcel</param>
-        /// <returns>true if the parcel could be found</returns>
-        private static bool GetParcelAtPosition(Simulator simulator, Vector3 position, ref Parcel parcel)
-        {
-            lock (ServicesLock)
-            {
-                return lookupGetParcelAtPosition(simulator, position, ref parcel);
-            }
-        }
-
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -1226,7 +1095,7 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="primitive">a primitive object to store the result</param>
         /// <returns>true if the primitive could be found</returns>
-        private static bool lookupFindPrimitive(string item, float range, int millisecondsTimeout,
+        private static bool FindPrimitive(string item, float range, int millisecondsTimeout,
             ref Primitive primitive)
         {
             UUID itemUUID;
@@ -1334,22 +1203,6 @@ namespace Corrade
             return primitive != null;
         }
 
-        /// <summary>
-        ///     Wrapper for finding primitives given an item, range, timeout and primitive to store - locks services down.
-        /// </summary>
-        /// <param name="item">the name or UUID of the primitive</param>
-        /// <param name="range">the range in meters to search for the object</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="primitive">a primitive object to store the result</param>
-        /// <returns>true if the primitive could be found</returns>
-        private static bool FindPrimitive(string item, float range, int millisecondsTimeout, ref Primitive primitive)
-        {
-            lock (ServicesLock)
-            {
-                return lookupFindPrimitive(item, range, millisecondsTimeout, ref primitive);
-            }
-        }
-
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -1360,7 +1213,7 @@ namespace Corrade
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="groups">a hash set to hold the current groups</param>
         /// <returns>true if the current groups could have been successfully retrieved</returns>
-        private static bool lookupRequestCurrentGroups(int millisecondsTimeout, int dataTimeout,
+        private static bool RequestCurrentGroups(int millisecondsTimeout, int dataTimeout,
             ref HashSet<OpenMetaverse.Group> groups)
         {
             wasAlarm CurrentGroupsReceivedAlarm = new wasAlarm();
@@ -1386,22 +1239,6 @@ namespace Corrade
             return true;
         }
 
-        /// <summary>
-        ///     Wrapper for requesting current groups - used for locking down services.
-        /// </summary>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="groups">a hash set to hold the current groups</param>
-        /// <returns>true if the current groups could have been successfully retrieved</returns>
-        private static bool RequestCurrentGroups(int millisecondsTimeout, int dataTimeout,
-            ref HashSet<OpenMetaverse.Group> groups)
-        {
-            lock (ServicesLock)
-            {
-                return lookupRequestCurrentGroups(millisecondsTimeout, dataTimeout, ref groups);
-            }
-        }
-
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -1410,7 +1247,7 @@ namespace Corrade
         /// </summary>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <returns>attachment points by primitives</returns>
-        private static IEnumerable<KeyValuePair<Primitive, AttachmentPoint>> lookupGetAttachments(
+        private static IEnumerable<KeyValuePair<Primitive, AttachmentPoint>> GetAttachments(
             int millisecondsTimeout)
         {
             HashSet<Primitive> primitives = new HashSet<Primitive>(Client.Network.CurrentSim.ObjectsPrimitives.FindAll(
@@ -1440,19 +1277,6 @@ namespace Corrade
             Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
         }
 
-        /// <summary>
-        ///     Get worn attachments - locks down services.
-        /// </summary>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <returns>attachment points by primitives</returns>
-        private static IEnumerable<KeyValuePair<Primitive, AttachmentPoint>> GetAttachments(int millisecondsTimeout)
-        {
-            lock (ServicesLock)
-            {
-                return lookupGetAttachments(millisecondsTimeout);
-            }
-        }
-
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -1461,7 +1285,7 @@ namespace Corrade
         /// </summary>
         /// <param name="root">the folder to start the search from</param>
         /// <returns>key value pairs of wearables by name</returns>
-        private static IEnumerable<KeyValuePair<AppearanceManager.WearableData, WearableType>> lookupGetWearables(
+        private static IEnumerable<KeyValuePair<AppearanceManager.WearableData, WearableType>> GetWearables(
             InventoryNode root)
         {
             InventoryFolder inventoryFolder = Client.Inventory.Store[root.Data.UUID] as InventoryFolder;
@@ -1483,18 +1307,9 @@ namespace Corrade
             }
             foreach (
                 KeyValuePair<AppearanceManager.WearableData, WearableType> item in
-                    root.Nodes.Values.SelectMany(node => lookupGetWearables(node)))
+                    root.Nodes.Values.SelectMany(node => GetWearables(node)))
             {
                 yield return item;
-            }
-        }
-
-        private static IEnumerable<KeyValuePair<AppearanceManager.WearableData, WearableType>> GetWearables(
-            InventoryNode root)
-        {
-            lock (InventoryLock)
-            {
-                return lookupGetWearables(root);
             }
         }
 
@@ -1512,7 +1327,7 @@ namespace Corrade
         /// <param name="root">the node to start the search from</param>
         /// <param name="criteria">the name, UUID or Regex of the item to be found</param>
         /// <returns>a list of items matching the item name</returns>
-        private static IEnumerable<T> lookupFindInventory<T>(InventoryNode root, object criteria)
+        private static IEnumerable<T> FindInventory<T>(InventoryNode root, object criteria)
         {
             if ((criteria is Regex && (criteria as Regex).IsMatch(root.Data.Name)) ||
                 (criteria is string &&
@@ -1528,17 +1343,9 @@ namespace Corrade
                     yield return (T) (object) Client.Inventory.Store[root.Data.UUID];
                 }
             }
-            foreach (T item in root.Nodes.Values.SelectMany(node => lookupFindInventory<T>(node, criteria)))
+            foreach (T item in root.Nodes.Values.SelectMany(node => FindInventory<T>(node, criteria)))
             {
                 yield return item;
-            }
-        }
-
-        private static IEnumerable<T> FindInventory<T>(InventoryNode root, object criteria)
-        {
-            lock (InventoryLock)
-            {
-                return lookupFindInventory<T>(root, criteria);
             }
         }
 
@@ -1557,7 +1364,7 @@ namespace Corrade
         /// <param name="criteria">the name, UUID or Regex of the item to be found</param>
         /// <param name="prefix">any prefix to append to the found paths</param>
         /// <returns>items matching criteria and their full inventoy path</returns>
-        private static IEnumerable<KeyValuePair<T, LinkedList<string>>> lookupFindInventoryPath<T>(
+        private static IEnumerable<KeyValuePair<T, LinkedList<string>>> FindInventoryPath<T>(
             InventoryNode root, object criteria, LinkedList<string> prefix)
         {
             if ((criteria is Regex && (criteria as Regex).IsMatch(root.Data.Name)) ||
@@ -1582,19 +1389,10 @@ namespace Corrade
             }
             foreach (
                 KeyValuePair<T, LinkedList<string>> o in
-                    root.Nodes.Values.SelectMany(o => lookupFindInventoryPath<T>(o, criteria, new LinkedList<string>(
+                    root.Nodes.Values.SelectMany(o => FindInventoryPath<T>(o, criteria, new LinkedList<string>(
                         prefix.Concat(new[] {root.Data.Name})))))
             {
                 yield return o;
-            }
-        }
-
-        private static IEnumerable<KeyValuePair<T, LinkedList<string>>> FindInventoryPath<T>(
-            InventoryNode root, object citeria, LinkedList<string> path)
-        {
-            lock (InventoryLock)
-            {
-                return lookupFindInventoryPath<T>(root, citeria, path);
             }
         }
 
@@ -1608,7 +1406,7 @@ namespace Corrade
         /// <param name="rootFolder">a folder from which to search</param>
         /// <param name="folder">the folder to search for</param>
         /// <returns>a list of items from the folder</returns>
-        private static IEnumerable<T> lookupGetInventoryFolderContents<T>(InventoryNode rootFolder,
+        private static IEnumerable<T> GetInventoryFolderContents<T>(InventoryNode rootFolder,
             string folder)
         {
             foreach (
@@ -1631,14 +1429,6 @@ namespace Corrade
             }
         }
 
-        private static IEnumerable<T> GetInventoryFolderContents<T>(InventoryNode rootFolder, string folder)
-        {
-            lock (InventoryLock)
-            {
-                return lookupGetInventoryFolderContents<T>(rootFolder, folder);
-            }
-        }
-
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -1646,27 +1436,8 @@ namespace Corrade
         ///     Rebakes the avatar and returns the success status.
         /// </summary>
         /// <param name="millisecondsTimeout">time to wait for the rebake</param>
+        /// <param name="delay">the delay before attempting a rebake</param>
         /// <returns>true if the rebake was successful</returns>
-        private static bool lookupRebake(int millisecondsTimeout)
-        {
-            bool succeeded = false;
-            ManualResetEvent AppearanceSetEvent = new ManualResetEvent(false);
-            EventHandler<AppearanceSetEventArgs> HandleAppearanceSet = (sender, args) =>
-            {
-                succeeded = args.Success;
-                AppearanceSetEvent.Set();
-            };
-            Client.Appearance.AppearanceSet += HandleAppearanceSet;
-            Client.Appearance.RequestSetAppearance(true);
-            if (!AppearanceSetEvent.WaitOne(millisecondsTimeout, false))
-            {
-                Client.Appearance.AppearanceSet -= HandleAppearanceSet;
-                return false;
-            }
-            Client.Appearance.AppearanceSet -= HandleAppearanceSet;
-            return succeeded;
-        }
-
         private static bool Rebake(int millisecondsTimeout, int delay)
         {
             ManualResetEvent RebakedEvent = new ManualResetEvent(false);
@@ -1674,35 +1445,31 @@ namespace Corrade
             new Thread(() =>
             {
                 Thread.Sleep(delay);
-                lock (InventoryLock)
+                ManualResetEvent AppearanceSetEvent = new ManualResetEvent(false);
+                EventHandler<AppearanceSetEventArgs> HandleAppearanceSet = (sender, args) =>
                 {
-                    lock (ServicesLock)
-                    {
-                        succeeded = lookupRebake(millisecondsTimeout);
-                    }
-                }
+                    succeeded = args.Success;
+                    AppearanceSetEvent.Set();
+                };
+                Client.Appearance.AppearanceSet += HandleAppearanceSet;
+                Client.Appearance.RequestSetAppearance(true);
+                AppearanceSetEvent.WaitOne(millisecondsTimeout, false);
+                Client.Appearance.AppearanceSet -= HandleAppearanceSet;
                 RebakedEvent.Set();
             }) {IsBackground = true}.Start();
             RebakedEvent.WaitOne(millisecondsTimeout, false);
             return succeeded;
         }
 
-        private static bool lookupActivateCurrentLandGroup()
-        {
-            Parcel parcel = null;
-            if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel))
-            {
-                return false;
-            }
-            UUID groupUUID = Configuration.GROUPS.FirstOrDefault(o => o.UUID.Equals(parcel.GroupID)).UUID;
-            if (groupUUID.Equals(UUID.Zero))
-            {
-                return false;
-            }
-            Client.Groups.ActivateGroup(groupUUID);
-            return true;
-        }
-
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Sets the current group to the land group.
+        /// </summary>
+        /// <param name="millisecondsTimeout">time to wait for the group to be set</param>
+        /// <param name="delay">the delay before attempting to set the group</param>
+        /// <returns>true in case the group has been successfully set</returns>
         private static bool ActivateCurrentLandGroup(int millisecondsTimeout, int delay)
         {
             ManualResetEvent ActivateCurrentLandGroupEvent = new ManualResetEvent(false);
@@ -1710,13 +1477,22 @@ namespace Corrade
             new Thread(() =>
             {
                 Thread.Sleep(delay);
-                lock (TeleportLock)
+                Parcel parcel = null;
+                if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel))
                 {
-                    lock (ServicesLock)
-                    {
-                        succeeded = lookupActivateCurrentLandGroup();
-                    }
+                    succeeded = false;
+                    ActivateCurrentLandGroupEvent.Set();
+                    return;
                 }
+                UUID groupUUID = Configuration.GROUPS.FirstOrDefault(o => o.UUID.Equals(parcel.GroupID)).UUID;
+                if (groupUUID.Equals(UUID.Zero))
+                {
+                    succeeded = false;
+                    ActivateCurrentLandGroupEvent.Set();
+                    return;
+                }
+                Client.Groups.ActivateGroup(groupUUID);
+                succeeded = true;
                 ActivateCurrentLandGroupEvent.Set();
             }) {IsBackground = true}.Start();
             ActivateCurrentLandGroupEvent.WaitOne(millisecondsTimeout, false);
@@ -2151,8 +1927,12 @@ namespace Corrade
 
                     // Request all the current groups.
                     HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>();
-                    if (!RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref groups))
-                        continue;
+                    lock (ClientInstanceLock)
+                    {
+                        if (
+                            !RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref groups))
+                            continue;
+                    }
 
                     // Enqueue configured groups that are currently joined groups.
                     Queue<UUID> groupUUIDs = new Queue<UUID>();
@@ -2227,13 +2007,13 @@ namespace Corrade
                             groupMembers = new HashSet<UUID>(args.Members.Values.Select(o => o.ID));
                             GroupMembersReplyEvent.Set();
                         };
-                        lock (ServicesLock)
+                        Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+                        lock (ClientInstanceLock)
                         {
-                            Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                             Client.Groups.RequestGroupMembers(groupUUID);
-                            GroupMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
-                            Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                         }
+                        GroupMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                        Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                         lock (GroupMembersLock)
                         {
                             if (!GroupMembers.ContainsKey(groupUUID))
@@ -2251,19 +2031,22 @@ namespace Corrade
                                     Parallel.ForEach(joinedMembers, o =>
                                     {
                                         string agentName = string.Empty;
-                                        if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT,
-                                            Configuration.DATA_TIMEOUT, ref agentName))
+                                        lock (ClientInstanceLock)
                                         {
-                                            new Thread(
-                                                p =>
-                                                    SendNotification(Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
-                                                        new GroupMembershipEventArgs
-                                                        {
-                                                            AgentName = agentName,
-                                                            AgentUUID = o,
-                                                            Action = Action.JOINED
-                                                        })) {IsBackground = true}
-                                                .Start();
+                                            if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT,
+                                                Configuration.DATA_TIMEOUT, ref agentName))
+                                            {
+                                                new Thread(
+                                                    p =>
+                                                        SendNotification(Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
+                                                            new GroupMembershipEventArgs
+                                                            {
+                                                                AgentName = agentName,
+                                                                AgentUUID = o,
+                                                                Action = Action.JOINED
+                                                            })) {IsBackground = true}
+                                                    .Start();
+                                            }
                                         }
                                     });
                                 }
@@ -2272,19 +2055,22 @@ namespace Corrade
                                     Parallel.ForEach(partedMembers, o =>
                                     {
                                         string agentName = string.Empty;
-                                        if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT,
-                                            Configuration.DATA_TIMEOUT, ref agentName))
+                                        lock (ClientInstanceLock)
                                         {
-                                            new Thread(
-                                                p =>
-                                                    SendNotification(Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
-                                                        new GroupMembershipEventArgs
-                                                        {
-                                                            AgentName = agentName,
-                                                            AgentUUID = o,
-                                                            Action = Action.PARTED
-                                                        })) {IsBackground = true}
-                                                .Start();
+                                            if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT,
+                                                Configuration.DATA_TIMEOUT, ref agentName))
+                                            {
+                                                new Thread(
+                                                    p =>
+                                                        SendNotification(Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
+                                                            new GroupMembershipEventArgs
+                                                            {
+                                                                AgentName = agentName,
+                                                                AgentUUID = o,
+                                                                Action = Action.PARTED
+                                                            })) {IsBackground = true}
+                                                    .Start();
+                                            }
                                         }
                                     });
                                 }
@@ -2434,7 +2220,10 @@ namespace Corrade
                 ManualResetEvent LoggedOutEvent = new ManualResetEvent(false);
                 EventHandler<LoggedOutEventArgs> LoggedOutEventHandler = (sender, args) => LoggedOutEvent.Set();
                 Client.Network.LoggedOut += LoggedOutEventHandler;
-                Client.Network.RequestLogout();
+                lock (ClientInstanceLock)
+                {
+                    Client.Network.RequestLogout();
+                }
                 if (!LoggedOutEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                 {
                     Client.Network.LoggedOut -= LoggedOutEventHandler;
@@ -2494,13 +2283,9 @@ namespace Corrade
                 Stream body = httpRequest.InputStream;
                 Encoding encoding = httpRequest.ContentEncoding;
                 StreamReader reader = new StreamReader(body, encoding);
-                Dictionary<string, string> result;
-                lock (CommandLock)
-                {
-                    result = HandleCorradeCommand(reader.ReadToEnd(),
-                        CORRADE_CONSTANTS.WEB_REQUEST,
-                        httpRequest.RemoteEndPoint.ToString());
-                }
+                Dictionary<string, string> result = HandleCorradeCommand(reader.ReadToEnd(),
+                    CORRADE_CONSTANTS.WEB_REQUEST,
+                    httpRequest.RemoteEndPoint.ToString());
                 if (result == null || result.Count.Equals(0)) return;
                 HttpListenerResponse response = httpContext.Response;
                 response.ContentType = CORRADE_CONSTANTS.TEXT_HTML;
@@ -3055,13 +2840,8 @@ namespace Corrade
             {
                 case ChatType.OwnerSay:
                     if (!EnableCorradeRLV || !e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR)) return;
-                    new Thread(() =>
-                    {
-                        lock (CommandLock)
-                        {
-                            HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1), e.SourceID);
-                        }
-                    }) {IsBackground = true}.Start();
+                    new Thread(() => HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1), e.SourceID)
+                        ) {IsBackground = true}.Start();
                     break;
                 case ChatType.Debug:
                 case ChatType.Normal:
@@ -3072,13 +2852,8 @@ namespace Corrade
                         .Start();
                     break;
                 case (ChatType) 9:
-                    new Thread(() =>
-                    {
-                        lock (CommandLock)
-                        {
-                            HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString());
-                        }
-                    }) {IsBackground = true}.Start();
+                    new Thread(() => HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString())
+                        ) {IsBackground = true}.Start();
                     break;
             }
         }
@@ -3170,18 +2945,25 @@ namespace Corrade
             List<string> owner = new List<string>(GetAvatarNames(e.ObjectOwnerName));
             UUID ownerUUID = UUID.Zero;
             // Don't add permission requests from unknown agents.
-            if (
-                !AgentNameToUUID(owner.First(), owner.Last(), Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                    ref ownerUUID))
+            lock (ClientInstanceLock)
             {
-                return;
+                if (
+                    !AgentNameToUUID(owner.First(), owner.Last(), Configuration.SERVICES_TIMEOUT,
+                        Configuration.DATA_TIMEOUT,
+                        ref ownerUUID))
+                {
+                    return;
+                }
             }
             // Handle RLV: acceptpermission
             lock (RLVRuleLock)
             {
                 if (RLVRules.Any(o => o.Behaviour.Equals(wasGetDescriptionFromEnumValue(RLVBehaviour.ACCEPTPERMISSION))))
                 {
-                    Client.Self.ScriptQuestionReply(Client.Network.CurrentSim, e.ItemID, e.TaskID, e.Questions);
+                    lock (ClientInstanceLock)
+                    {
+                        Client.Self.ScriptQuestionReply(Client.Network.CurrentSim, e.ItemID, e.TaskID, e.Questions);
+                    }
                     return;
                 }
             }
@@ -3247,21 +3029,75 @@ namespace Corrade
                     {
                         if (Configuration.AUTO_ACTIVATE_GROUP)
                         {
-                            if (!ActivateCurrentLandGroup(Configuration.SERVICES_TIMEOUT, Configuration.ACTIVATE_DELAY))
+                            lock (ClientInstanceLock)
                             {
-                                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.FAILED_TO_ACTIVATE_LAND_GROUP));
+                                if (
+                                    !ActivateCurrentLandGroup(Configuration.SERVICES_TIMEOUT,
+                                        Configuration.ACTIVATE_DELAY))
+                                {
+                                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.FAILED_TO_ACTIVATE_LAND_GROUP));
+                                }
                             }
                         }
                     }) {IsBackground = true}.Start();
                     // Start the inventory update thread.
                     new Thread(() =>
                     {
-                        LoadInventoryCache.Invoke();
-                        lock (InventoryLock)
+                        lock (ClientInstanceLock)
                         {
+                            LoadInventoryCache.Invoke();
                             InventoryUpdate.Invoke();
+                            SaveInventoryCache.Invoke();
                         }
-                        SaveInventoryCache.Invoke();
+                    }) {IsBackground = true}.Start();
+                    // Get or create the outfit folder.
+                    new Thread(() =>
+                    {
+                        lock (ClientInstanceLock)
+                        {
+                            HashSet<InventoryBase> rootFolders = new HashSet<InventoryBase>();
+                            ManualResetEvent FolderUpdatedEvent = new ManualResetEvent(false);
+                            EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
+                            {
+                                if (q.FolderID.Equals(Client.Inventory.Store.RootFolder.UUID) && q.Success)
+                                {
+                                    rootFolders =
+                                        new HashSet<InventoryBase>(
+                                            Client.Inventory.Store.GetContents(Client.Inventory.Store.RootFolder.UUID));
+                                }
+                                FolderUpdatedEvent.Set();
+                            };
+
+                            Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                            Client.Inventory.RequestFolderContents(Client.Inventory.Store.RootFolder.UUID,
+                                Client.Self.AgentID,
+                                true, true, InventorySortOrder.ByDate);
+                            FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT);
+                            Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                            if (!rootFolders.Count.Equals(0))
+                            {
+                                InventoryFolder inventoryFolder =
+                                    rootFolders.FirstOrDefault(
+                                        o =>
+                                            o is InventoryFolder &&
+                                            ((InventoryFolder) o).PreferredType == AssetType.CurrentOutfitFolder) as
+                                        InventoryFolder;
+                                if (inventoryFolder != null)
+                                {
+                                    OutfitFolder = inventoryFolder;
+                                    return;
+                                }
+                            }
+                            UUID currentOutfitFolderUUID =
+                                Client.Inventory.CreateFolder(Client.Inventory.Store.RootFolder.UUID,
+                                    CORRADE_CONSTANTS.CURRENT_OUTFIT_FOLDER_NAME, AssetType.CurrentOutfitFolder);
+                            if (Client.Inventory.Store.Items.ContainsKey(currentOutfitFolderUUID) &&
+                                Client.Inventory.Store.Items[currentOutfitFolderUUID].Data is InventoryFolder)
+                            {
+                                OutfitFolder =
+                                    (InventoryFolder) Client.Inventory.Store.Items[currentOutfitFolderUUID].Data;
+                            }
+                        }
                     }) {IsBackground = true}.Start();
                     break;
                 case LoginStatus.Failed:
@@ -3311,9 +3147,14 @@ namespace Corrade
                     {
                         if (Configuration.AUTO_ACTIVATE_GROUP)
                         {
-                            if (!ActivateCurrentLandGroup(Configuration.SERVICES_TIMEOUT, Configuration.ACTIVATE_DELAY))
+                            lock (ClientInstanceLock)
                             {
-                                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.FAILED_TO_ACTIVATE_LAND_GROUP));
+                                if (
+                                    !ActivateCurrentLandGroup(Configuration.SERVICES_TIMEOUT,
+                                        Configuration.ACTIVATE_DELAY))
+                                {
+                                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.FAILED_TO_ACTIVATE_LAND_GROUP));
+                                }
                             }
                         }
                     }) {IsBackground = true}.Start();
@@ -3357,7 +3198,7 @@ namespace Corrade
                     {
                         if (RLVRules.Any(o => o.Behaviour.Equals(wasGetDescriptionFromEnumValue(RLVBehaviour.ACCEPTTP))))
                         {
-                            lock (TeleportLock)
+                            lock (ClientInstanceLock)
                             {
                                 Client.Self.TeleportLureRespond(args.IM.FromAgentID, args.IM.IMSessionID, true);
                             }
@@ -3400,25 +3241,29 @@ namespace Corrade
                         }
                         Client.Self.SignaledAnimations.ForEach(
                             animation => Client.Self.AnimationStop(animation.Key, true));
-                        lock (TeleportLock)
-                        {
-                            Client.Self.TeleportLureRespond(args.IM.FromAgentID, args.IM.IMSessionID, true);
-                        }
+                        Client.Self.TeleportLureRespond(args.IM.FromAgentID, args.IM.IMSessionID, true);
                         return;
                     }
                     return;
                     // Group invitations received
                 case InstantMessageDialog.GroupInvitation:
                     OpenMetaverse.Group inviteGroup = new OpenMetaverse.Group();
-                    if (!RequestGroup(args.IM.FromAgentID, Configuration.SERVICES_TIMEOUT, ref inviteGroup)) return;
+                    lock (ClientInstanceLock)
+                    {
+                        if (!RequestGroup(args.IM.FromAgentID, Configuration.SERVICES_TIMEOUT, ref inviteGroup)) return;
+                    }
                     List<string> groupInviteName =
                         new List<string>(
                             GetAvatarNames(args.IM.FromAgentName));
                     UUID inviteGroupAgent = UUID.Zero;
-                    if (
-                        !AgentNameToUUID(groupInviteName.First(), groupInviteName.Last(), Configuration.SERVICES_TIMEOUT,
-                            Configuration.DATA_TIMEOUT,
-                            ref inviteGroupAgent)) return;
+                    lock (ClientInstanceLock)
+                    {
+                        if (
+                            !AgentNameToUUID(groupInviteName.First(), groupInviteName.Last(),
+                                Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT,
+                                ref inviteGroupAgent)) return;
+                    }
                     // Add the group invite - have to track them manually.
                     lock (GroupInviteLock)
                     {
@@ -3467,8 +3312,12 @@ namespace Corrade
                     // of the session is actually the UUID of a current group. Furthermore, what's worse is that 
                     // group mesages can appear both through SessionSend and from MessageFromAgent. Hence the problem.
                     HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>();
-                    if (!RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref groups))
-                        return;
+                    lock (ClientInstanceLock)
+                    {
+                        if (
+                            !RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref groups))
+                            return;
+                    }
                     bool messageFromGroup = groups.Any(o => o.ID.Equals(args.IM.IMSessionID));
                     OpenMetaverse.Group messageGroup = groups.FirstOrDefault(o => o.ID.Equals(args.IM.IMSessionID));
                     if (messageFromGroup)
@@ -3531,13 +3380,9 @@ namespace Corrade
             }
 
             // Everything else, must be a command.
-            new Thread(() =>
-            {
-                lock (CommandLock)
-                {
-                    HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString());
-                }
-            }) {IsBackground = true}.Start();
+            new Thread(
+                () => HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString())
+                ) {IsBackground = true}.Start();
         }
 
         private static void HandleRLVCommand(string message, UUID senderUUID)
@@ -3779,10 +3624,7 @@ namespace Corrade
                         }
                         float localX, localY;
                         ulong handle = Helpers.GlobalPosToRegionHandle(globalX, globalY, out localX, out localY);
-                        lock (TeleportLock)
-                        {
-                            Client.Self.RequestTeleport(handle, new Vector3(localX, localY, altitude));
-                        }
+                        Client.Self.RequestTeleport(handle, new Vector3(localX, localY, altitude));
                     };
                     break;
                 case RLVBehaviour.GETOUTFIT:
@@ -3900,7 +3742,7 @@ namespace Corrade
                                         ((InventoryItem) p).AssetType.Equals(AssetType.Object));
                         if (inventoryBase is InventoryAttachment || inventoryBase is InventoryObject)
                         {
-                            Detach(inventoryBase as InventoryItem, Configuration.SERVICES_TIMEOUT);
+                            Detach(inventoryBase as InventoryItem, OutfitFolder);
                         }
                         if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
                         {
@@ -3950,7 +3792,7 @@ namespace Corrade
                                                         inventoryBase is InventoryObject)
                                                     {
                                                         Detach(inventoryBase as InventoryItem,
-                                                            Configuration.SERVICES_TIMEOUT);
+                                                            OutfitFolder);
                                                     }
                                                 });
                                         break;
@@ -3966,22 +3808,15 @@ namespace Corrade
                                                             {
                                                                 if (o != null)
                                                                 {
-                                                                    List<InventoryBase> folderContents;
-                                                                    lock (InventoryLock)
-                                                                    {
-                                                                        folderContents =
-                                                                            Client.Inventory.Store.GetContents(
-                                                                                o as InventoryFolder);
-                                                                    }
-                                                                    folderContents.FindAll(CanBeWorn)
+                                                                    Client.Inventory.Store.GetContents(
+                                                                        o as InventoryFolder).FindAll(CanBeWorn)
                                                                         .ForEach(
                                                                             p =>
                                                                             {
                                                                                 if (p is InventoryWearable)
                                                                                 {
                                                                                     UnWear(p as InventoryItem,
-                                                                                        Configuration
-                                                                                            .SERVICES_TIMEOUT);
+                                                                                        OutfitFolder);
                                                                                     return;
                                                                                 }
                                                                                 if (p is InventoryAttachment ||
@@ -3989,8 +3824,7 @@ namespace Corrade
                                                                                 {
                                                                                     // Multiple attachment points not working in libOpenMetaverse, so just replace.
                                                                                     Detach(p as InventoryItem,
-                                                                                        Configuration
-                                                                                            .SERVICES_TIMEOUT);
+                                                                                        OutfitFolder);
                                                                                 }
                                                                             });
                                                                 }
@@ -4012,7 +3846,7 @@ namespace Corrade
                                                         ((InventoryItem) p).AssetType.Equals(AssetType.Object));
                                             if (inventoryBase is InventoryAttachment || inventoryBase is InventoryObject)
                                             {
-                                                Detach(inventoryBase as InventoryItem, Configuration.SERVICES_TIMEOUT);
+                                                Detach(inventoryBase as InventoryItem, OutfitFolder);
                                             }
                                         });
                                 break;
@@ -4050,21 +3884,14 @@ namespace Corrade
                                             {
                                                 if (o != null)
                                                 {
-                                                    List<InventoryBase> folderContents;
-                                                    lock (InventoryLock)
-                                                    {
-                                                        folderContents =
-                                                            Client.Inventory.Store.GetContents(o as InventoryFolder);
-                                                    }
-                                                    folderContents.
+                                                    Client.Inventory.Store.GetContents(o as InventoryFolder).
                                                         FindAll(CanBeWorn)
                                                         .ForEach(
                                                             p =>
                                                             {
                                                                 if (p is InventoryWearable)
                                                                 {
-                                                                    Wear(p as InventoryItem, true,
-                                                                        Configuration.SERVICES_TIMEOUT);
+                                                                    Wear(p as InventoryItem, true, OutfitFolder);
                                                                     return;
                                                                 }
                                                                 if (p is InventoryObject || p is InventoryAttachment)
@@ -4073,7 +3900,7 @@ namespace Corrade
                                                                     Attach(p as InventoryItem,
                                                                         AttachmentPoint.Default,
                                                                         true,
-                                                                        Configuration.SERVICES_TIMEOUT);
+                                                                        OutfitFolder);
                                                                 }
                                                             });
                                                 }
@@ -4114,7 +3941,7 @@ namespace Corrade
                                 {
                                     break;
                                 }
-                                UnWear(inventoryBase as InventoryItem, Configuration.SERVICES_TIMEOUT);
+                                UnWear(inventoryBase as InventoryItem, OutfitFolder);
                                 break;
                             default:
                                 Parallel.ForEach(GetWearables(Client.Inventory.Store.RootNode)
@@ -4131,7 +3958,7 @@ namespace Corrade
                                         {
                                             return;
                                         }
-                                        UnWear(inventoryBase as InventoryItem, Configuration.SERVICES_TIMEOUT);
+                                        UnWear(inventoryBase as InventoryItem, OutfitFolder);
                                     });
                                 break;
                         }
@@ -4410,62 +4237,57 @@ namespace Corrade
                             int myItemsCount = 0;
                             int myItemsWornCount = 0;
 
-                            lock (InventoryLock)
-                            {
-                                Parallel.ForEach(
-                                    node.Nodes.Values.Where(
-                                        n =>
-                                            !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
-                                            n.Data is InventoryItem && CanBeWorn(n.Data)
-                                        ), n =>
+                            Parallel.ForEach(
+                                node.Nodes.Values.Where(
+                                    n =>
+                                        !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
+                                        n.Data is InventoryItem && CanBeWorn(n.Data)
+                                    ), n =>
+                                    {
+                                        Interlocked.Increment(ref myItemsCount);
+                                        if ((n.Data is InventoryWearable &&
+                                             currentWearables.Keys.Any(
+                                                 o => o.ItemID.Equals(ResolveItemLink(n.Data as InventoryItem).UUID))) ||
+                                            currentAttachments.Any(
+                                                o =>
+                                                    o.Key.Properties.ItemID.Equals(
+                                                        ResolveItemLink(n.Data as InventoryItem).UUID)))
                                         {
-                                            Interlocked.Increment(ref myItemsCount);
-                                            if ((n.Data is InventoryWearable &&
-                                                 currentWearables.Keys.Any(
-                                                     o => o.ItemID.Equals(ResolveItemLink(n.Data as InventoryItem).UUID))) ||
-                                                currentAttachments.Any(
-                                                    o =>
-                                                        o.Key.Properties.ItemID.Equals(
-                                                            ResolveItemLink(n.Data as InventoryItem).UUID)))
-                                            {
-                                                Interlocked.Increment(ref myItemsWornCount);
-                                            }
-                                        });
-                            }
+                                            Interlocked.Increment(ref myItemsWornCount);
+                                        }
+                                    });
+
 
                             int allItemsCount = 0;
                             int allItemsWornCount = 0;
 
-                            lock (InventoryLock)
-                            {
-                                Parallel.ForEach(
-                                    node.Nodes.Values.Where(
-                                        n =>
-                                            !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
-                                            n.Data is InventoryFolder
-                                        ),
-                                    n => Parallel.ForEach(n.Nodes.Values
-                                        .Where(o => !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
-                                        .Where(
-                                            o =>
-                                                o.Data is InventoryItem && CanBeWorn(o.Data) &&
-                                                !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)), p =>
+                            Parallel.ForEach(
+                                node.Nodes.Values.Where(
+                                    n =>
+                                        !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
+                                        n.Data is InventoryFolder
+                                    ),
+                                n => Parallel.ForEach(n.Nodes.Values
+                                    .Where(o => !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
+                                    .Where(
+                                        o =>
+                                            o.Data is InventoryItem && CanBeWorn(o.Data) &&
+                                            !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)), p =>
+                                            {
+                                                Interlocked.Increment(ref allItemsCount);
+                                                if ((p.Data is InventoryWearable &&
+                                                     currentWearables.Keys.Any(
+                                                         o =>
+                                                             o.ItemID.Equals(
+                                                                 ResolveItemLink(p.Data as InventoryItem).UUID))) ||
+                                                    currentAttachments.Any(
+                                                        o =>
+                                                            o.Key.Properties.ItemID.Equals(
+                                                                ResolveItemLink(p.Data as InventoryItem).UUID)))
                                                 {
-                                                    Interlocked.Increment(ref allItemsCount);
-                                                    if ((p.Data is InventoryWearable &&
-                                                         currentWearables.Keys.Any(
-                                                             o =>
-                                                                 o.ItemID.Equals(
-                                                                     ResolveItemLink(p.Data as InventoryItem).UUID))) ||
-                                                        currentAttachments.Any(
-                                                            o =>
-                                                                o.Key.Properties.ItemID.Equals(
-                                                                    ResolveItemLink(p.Data as InventoryItem).UUID)))
-                                                    {
-                                                        Interlocked.Increment(ref allItemsWornCount);
-                                                    }
-                                                }));
-                            }
+                                                    Interlocked.Increment(ref allItemsWornCount);
+                                                }
+                                            }));
 
 
                             Func<int, int, string> WornIndicator =
@@ -4479,15 +4301,13 @@ namespace Corrade
                             string.Format("{0}{1}", RLV_CONSTANTS.PROPORTION_SEPARATOR,
                                 GetWornIndicator(folderPath.Key))
                         };
-                        lock (InventoryLock)
-                        {
-                            response.AddRange(
-                                folderPath.Key.Nodes.Values.Where(node => node.Data is InventoryFolder)
-                                    .Select(
-                                        node =>
-                                            string.Format("{0}{1}{2}", node.Data.Name,
-                                                RLV_CONSTANTS.PROPORTION_SEPARATOR, GetWornIndicator(node))));
-                        }
+                        response.AddRange(
+                            folderPath.Key.Nodes.Values.Where(node => node.Data is InventoryFolder)
+                                .Select(
+                                    node =>
+                                        string.Format("{0}{1}{2}", node.Data.Name,
+                                            RLV_CONSTANTS.PROPORTION_SEPARATOR, GetWornIndicator(node))));
+
                         Client.Self.Chat(string.Join(RLV_CONSTANTS.CSV_DELIMITER, response.ToArray()),
                             channel,
                             ChatType.Normal);
@@ -4578,7 +4398,11 @@ namespace Corrade
 
             try
             {
-                execute.Invoke();
+                // lock down the client during execution.
+                lock (ClientInstanceLock)
+                {
+                    execute.Invoke();
+                }
             }
             catch (Exception e)
             {
@@ -4620,11 +4444,19 @@ namespace Corrade
             if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE))
             {
                 UUID fromAgentID;
-                if (UUID.TryParse(identifier, out fromAgentID) &&
-                    !AgentUUIDToName(fromAgentID, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref sender))
+                if (UUID.TryParse(identifier, out fromAgentID))
                 {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AGENT_NOT_FOUND), fromAgentID.ToString());
-                    return null;
+                    lock (ClientInstanceLock)
+                    {
+                        if (
+                            !AgentUUIDToName(fromAgentID, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref sender))
+                        {
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AGENT_NOT_FOUND),
+                                fromAgentID.ToString());
+                            return null;
+                        }
+                    }
                 }
             }
             // Log the command.
@@ -6204,13 +6036,32 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
+                        // We override the default teleport since region names are unique and case insensitive.
+                        ulong regionHandle = 0;
                         string region =
                             wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REGION),
                                 message));
                         if (string.IsNullOrEmpty(region))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_REGION_SPECIFIED));
+                            region = Client.Network.CurrentSim.Name;
                         }
+                        ManualResetEvent GridRegionEvent = new ManualResetEvent(false);
+                        EventHandler<GridRegionEventArgs> GridRegionEventHandler =
+                            (sender, args) =>
+                            {
+                                if (!args.Region.Name.Equals(region, StringComparison.InvariantCultureIgnoreCase))
+                                    return;
+                                regionHandle = args.Region.RegionHandle;
+                                GridRegionEvent.Set();
+                            };
+                        Client.Grid.GridRegion += GridRegionEventHandler;
+                        Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
+                        if (!GridRegionEvent.WaitOne(Client.Settings.MAP_REQUEST_TIMEOUT, false))
+                        {
+                            Client.Grid.GridRegion -= GridRegionEventHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
+                        Client.Grid.GridRegion -= GridRegionEventHandler;
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -6227,7 +6078,8 @@ namespace Corrade
                             switch (args.Status)
                             {
                                 case TeleportStatus.Finished:
-                                    succeeded = Client.Network.CurrentSim.Name.Equals(region, StringComparison.Ordinal);
+                                    succeeded = Client.Network.CurrentSim.Name.Equals(region,
+                                        StringComparison.InvariantCultureIgnoreCase);
                                     TeleportEvent.Set();
                                     break;
                             }
@@ -6238,18 +6090,15 @@ namespace Corrade
                         }
                         Client.Self.SignaledAnimations.ForEach(
                             animation => Client.Self.AnimationStop(animation.Key, true));
-                        lock (TeleportLock)
+                        Client.Self.TeleportProgress += TeleportEventHandler;
+                        Client.Self.Teleport(regionHandle, position);
+                        if (!TeleportEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                         {
-                            Client.Self.TeleportProgress += TeleportEventHandler;
-                            Client.Self.Teleport(region, position);
-
-                            if (!TeleportEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Self.TeleportProgress -= TeleportEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_DURING_TELEPORT));
-                            }
                             Client.Self.TeleportProgress -= TeleportEventHandler;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_DURING_TELEPORT));
                         }
+
+                        Client.Self.TeleportProgress -= TeleportEventHandler;
                         if (!succeeded)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TELEPORT_FAILED));
@@ -6342,11 +6191,7 @@ namespace Corrade
                         }
                         Client.Self.SignaledAnimations.ForEach(
                             animation => Client.Self.AnimationStop(animation.Key, true));
-                        bool succeeded;
-                        lock (TeleportLock)
-                        {
-                            succeeded = Client.Self.GoHome();
-                        }
+                        bool succeeded = Client.Self.GoHome();
                         if (!succeeded)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_GO_HOME));
@@ -7771,7 +7616,7 @@ namespace Corrade
                                             ).FirstOrDefault(p => p is InventoryWearable);
                                     if (inventoryBaseItem == null)
                                         return;
-                                    Wear(inventoryBaseItem as InventoryItem, replace, Configuration.SERVICES_TIMEOUT);
+                                    Wear(inventoryBaseItem as InventoryItem, replace, OutfitFolder);
                                 });
                         if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
                         {
@@ -7802,7 +7647,7 @@ namespace Corrade
                                             ).FirstOrDefault(p => p is InventoryWearable);
                                     if (inventoryBaseItem == null)
                                         return;
-                                    UnWear(inventoryBaseItem as InventoryItem, Configuration.SERVICES_TIMEOUT);
+                                    UnWear(inventoryBaseItem as InventoryItem, OutfitFolder);
                                 });
                         if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
                         {
@@ -7877,7 +7722,7 @@ namespace Corrade
                                         if (inventoryBaseItem == null)
                                             return;
                                         Attach(inventoryBaseItem as InventoryItem, (AttachmentPoint) q.GetValue(null),
-                                            replace, Configuration.SERVICES_TIMEOUT);
+                                            replace, OutfitFolder);
                                     }));
                         if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
                         {
@@ -7913,7 +7758,7 @@ namespace Corrade
                                                     p is InventoryObject || p is InventoryAttachment);
                                     if (inventoryBaseItem == null)
                                         return;
-                                    Detach(inventoryBaseItem as InventoryItem, Configuration.SERVICES_TIMEOUT);
+                                    Detach(inventoryBaseItem as InventoryItem, OutfitFolder);
                                 });
                         if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
                         {
@@ -12375,15 +12220,9 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_EQUIPABLE_ITEMS));
                         }
                         // Now remove the current outfit items.
-                        List<InventoryBase> outfitFolderContents;
-                        lock (InventoryLock)
-                        {
-                            outfitFolderContents =
-                                Client.Inventory.Store.GetContents(
-                                    GetOrCreateOutfitFolder(Configuration.SERVICES_TIMEOUT));
-                        }
-                        outfitFolderContents.FindAll(
-                            o => CanBeWorn(o) && ((InventoryItem) o).AssetType.Equals(AssetType.Link))
+                        Client.Inventory.Store.GetContents(
+                            OutfitFolder).FindAll(
+                                o => CanBeWorn(o) && ((InventoryItem) o).AssetType.Equals(AssetType.Link))
                             .ForEach(p =>
                             {
                                 InventoryItem item = ResolveItemLink(p as InventoryItem);
@@ -12391,7 +12230,7 @@ namespace Corrade
                                 {
                                     if (!IsBodyPart(item))
                                     {
-                                        UnWear(item, Configuration.SERVICES_TIMEOUT);
+                                        UnWear(item, OutfitFolder);
                                         return;
                                     }
                                     if (items.Any(q =>
@@ -12399,12 +12238,12 @@ namespace Corrade
                                         InventoryWearable i = q as InventoryWearable;
                                         return i != null &&
                                                ((InventoryWearable) item).WearableType.Equals(i.WearableType);
-                                    })) UnWear(item, Configuration.SERVICES_TIMEOUT);
+                                    })) UnWear(item, OutfitFolder);
                                     return;
                                 }
                                 if (item is InventoryAttachment || item is InventoryObject)
                                 {
-                                    Detach(item, Configuration.SERVICES_TIMEOUT);
+                                    Detach(item, OutfitFolder);
                                 }
                             });
                         // And equip the specified folder.
@@ -12413,12 +12252,12 @@ namespace Corrade
                             InventoryItem item = o as InventoryItem;
                             if (item is InventoryWearable)
                             {
-                                Wear(item, false, Configuration.SERVICES_TIMEOUT);
+                                Wear(item, false, OutfitFolder);
                                 return;
                             }
                             if (item is InventoryAttachment || item is InventoryObject)
                             {
-                                Attach(item, AttachmentPoint.Default, false, Configuration.SERVICES_TIMEOUT);
+                                Attach(item, AttachmentPoint.Default, false, OutfitFolder);
                             }
                         });
                         // And rebake.
@@ -13260,7 +13099,11 @@ namespace Corrade
             bool success = false;
             try
             {
-                execute.Invoke();
+                // lock down the client during execution
+                lock (ClientInstanceLock)
+                {
+                    execute.Invoke();
+                }
                 sift.Invoke();
                 success = true;
             }
@@ -13457,7 +13300,7 @@ namespace Corrade
         /// </summary>
         /// <param name="millisecondsTimeout">timeout for the request in milliseconds</param>
         /// <returns>true if the balance could be retrieved</returns>
-        private static bool lookupUpdateBalance(int millisecondsTimeout)
+        private static bool UpdateBalance(int millisecondsTimeout)
         {
             ManualResetEvent MoneyBalanceEvent = new ManualResetEvent(false);
             EventHandler<MoneyBalanceReplyEventArgs> MoneyBalanceEventHandler =
@@ -13473,19 +13316,6 @@ namespace Corrade
             return true;
         }
 
-        /// <summary>
-        ///     A wrapper for updating the money balance including locking.
-        /// </summary>
-        /// <param name="millisecondsTimeout">timeout for the request in milliseconds</param>
-        /// <returns>true if the balance could be retrieved</returns>
-        private static bool UpdateBalance(int millisecondsTimeout)
-        {
-            lock (ServicesLock)
-            {
-                return lookupUpdateBalance(millisecondsTimeout);
-            }
-        }
-
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -13497,7 +13327,7 @@ namespace Corrade
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="groupUUID">an object in which to store the UUID of the group</param>
         /// <returns>true if the group name could be resolved to an UUID</returns>
-        private static bool lookupGroupNameToUUID(string groupName, int millisecondsTimeout, int dataTimeout,
+        private static bool directGroupNameToUUID(string groupName, int millisecondsTimeout, int dataTimeout,
             ref UUID groupUUID)
         {
             UUID localGroupUUID = UUID.Zero;
@@ -13541,11 +13371,7 @@ namespace Corrade
                     return true;
                 }
             }
-            bool succeeded;
-            lock (ServicesLock)
-            {
-                succeeded = lookupGroupNameToUUID(groupName, millisecondsTimeout, dataTimeout, ref groupUUID);
-            }
+            bool succeeded = directGroupNameToUUID(groupName, millisecondsTimeout, dataTimeout, ref groupUUID);
             if (succeeded)
             {
                 lock (Cache.Locks.GroupCacheLock)
@@ -13573,7 +13399,7 @@ namespace Corrade
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="agentUUID">an object to store the agent UUID</param>
         /// <returns>true if the agent name could be resolved to an UUID</returns>
-        private static bool lookupAgentNameToUUID(string agentFirstName, string agentLastName, int millisecondsTimeout,
+        private static bool directAgentNameToUUID(string agentFirstName, string agentLastName, int millisecondsTimeout,
             int dataTimeout,
             ref UUID agentUUID)
         {
@@ -13627,12 +13453,8 @@ namespace Corrade
                     return true;
                 }
             }
-            bool succeeded;
-            lock (ServicesLock)
-            {
-                succeeded = lookupAgentNameToUUID(agentFirstName, agentLastName, millisecondsTimeout, dataTimeout,
-                    ref agentUUID);
-            }
+            bool succeeded = directAgentNameToUUID(agentFirstName, agentLastName, millisecondsTimeout, dataTimeout,
+                ref agentUUID);
             if (succeeded)
             {
                 lock (Cache.Locks.AgentCacheLock)
@@ -13659,7 +13481,7 @@ namespace Corrade
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="agentName">an object to store the name of the agent in</param>
         /// <returns>true if the UUID could be resolved to a name</returns>
-        private static bool lookupAgentUUIDToName(UUID agentUUID, int millisecondsTimeout, int dataTimeout,
+        private static bool directAgentUUIDToName(UUID agentUUID, int millisecondsTimeout, int dataTimeout,
             ref string agentName)
         {
             if (agentUUID.Equals(UUID.Zero))
@@ -13705,11 +13527,7 @@ namespace Corrade
                     return true;
                 }
             }
-            bool succeeded;
-            lock (ServicesLock)
-            {
-                succeeded = lookupAgentUUIDToName(agentUUID, millisecondsTimeout, dataTimeout, ref agentName);
-            }
+            bool succeeded = directAgentUUIDToName(agentUUID, millisecondsTimeout, dataTimeout, ref agentName);
             if (succeeded)
             {
                 List<string> name = new List<string>(GetAvatarNames(agentName));
@@ -13739,7 +13557,7 @@ namespace Corrade
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="roleUUID">an UUID object to store the role UUID in</param>
         /// <returns>true if the role could be found</returns>
-        private static bool lookupRoleNameToRoleUUID(string roleName, UUID groupUUID, int millisecondsTimeout,
+        private static bool RoleNameToRoleUUID(string roleName, UUID groupUUID, int millisecondsTimeout,
             int dataTimeout,
             ref UUID roleUUID)
         {
@@ -13765,24 +13583,6 @@ namespace Corrade
             return true;
         }
 
-        /// <summary>
-        ///     A wrapper to resolve role names to role UUIDs - used for locking service requests.
-        /// </summary>
-        /// <param name="roleName">the name of the role to be resolved to an UUID</param>
-        /// <param name="groupUUID">the UUID of the group to query for the role UUID</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="roleUUID">an UUID object to store the role UUID in</param>
-        /// <returns>true if the role could be found</returns>
-        private static bool RoleNameToRoleUUID(string roleName, UUID groupUUID, int millisecondsTimeout, int dataTimeout,
-            ref UUID roleUUID)
-        {
-            lock (ServicesLock)
-            {
-                return lookupRoleNameToRoleUUID(roleName, groupUUID, millisecondsTimeout, dataTimeout, ref roleUUID);
-            }
-        }
-
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -13795,7 +13595,7 @@ namespace Corrade
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="roleName">a string object to store the role name in</param>
         /// <returns>true if the role could be resolved</returns>
-        private static bool lookupRoleUUIDToName(UUID RoleUUID, UUID GroupUUID, int millisecondsTimeout, int dataTimeout,
+        private static bool RoleUUIDToName(UUID RoleUUID, UUID GroupUUID, int millisecondsTimeout, int dataTimeout,
             ref string roleName)
         {
             if (RoleUUID.Equals(UUID.Zero) || GroupUUID.Equals(UUID.Zero))
@@ -13819,24 +13619,6 @@ namespace Corrade
             if (string.IsNullOrEmpty(localRoleName)) return false;
             roleName = localRoleName;
             return true;
-        }
-
-        /// <summary>
-        ///     Wrapper for resolving role UUIDs to names - used for locking service requests.
-        /// </summary>
-        /// <param name="RoleUUID">the UUID of the role to be resolved to a name</param>
-        /// <param name="GroupUUID">the UUID of the group to query for the role name</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="roleName">a string object to store the role name in</param>
-        /// <returns>true if the role could be resolved</returns>
-        private static bool RoleUUIDToName(UUID RoleUUID, UUID GroupUUID, int millisecondsTimeout, int dataTimeout,
-            ref string roleName)
-        {
-            lock (ServicesLock)
-            {
-                return lookupRoleUUIDToName(RoleUUID, GroupUUID, millisecondsTimeout, dataTimeout, ref roleName);
-            }
         }
 
         #endregion
@@ -14136,7 +13918,7 @@ namespace Corrade
         /// <summary>
         ///     Corrade's caches.
         /// </summary>
-        private struct Cache
+        public struct Cache
         {
             public static HashSet<Agents> AgentCache = new HashSet<Agents>();
             public static HashSet<Groups> GroupCache = new HashSet<Groups>();
@@ -15258,7 +15040,6 @@ namespace Corrade
             [Description("agent not in group")] AGENT_NOT_IN_GROUP,
             [Description("empty attachments")] EMPTY_ATTACHMENTS,
             [Description("could not get land users")] COULD_NOT_GET_LAND_USERS,
-            [Description("no region specified")] NO_REGION_SPECIFIED,
             [Description("empty pick name")] EMPTY_PICK_NAME,
             [Description("unable to join group chat")] UNABLE_TO_JOIN_GROUP_CHAT,
             [Description("invalid position")] INVALID_POSITION,
