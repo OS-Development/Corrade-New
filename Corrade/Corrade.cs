@@ -29,7 +29,6 @@ using Mono.Unix.Native;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using ThreadState = System.Threading.ThreadState;
-using Timer = System.Timers.Timer;
 
 #endregion
 
@@ -124,6 +123,25 @@ namespace Corrade
         private static volatile bool EnableCorradeRLV;
 
         private static InventoryFolder OutfitFolder;
+
+        private static readonly Timer RebakeTimer = new Timer(Rebake =>
+        {
+            ManualResetEvent AppearanceSetEvent = new ManualResetEvent(false);
+            EventHandler<AppearanceSetEventArgs> HandleAppearanceSet = (sender, args) => AppearanceSetEvent.Set();
+            Client.Appearance.AppearanceSet += HandleAppearanceSet;
+            Client.Appearance.RequestSetAppearance(true);
+            AppearanceSetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+            Client.Appearance.AppearanceSet -= HandleAppearanceSet;
+        });
+
+        private static readonly Timer ActivateCurrentLandGroupTimer = new Timer(ActivateCurrentLandGroup =>
+        {
+            Parcel parcel = null;
+            if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel)) return;
+            UUID groupUUID = Configuration.GROUPS.FirstOrDefault(o => o.UUID.Equals(parcel.GroupID)).UUID;
+            if (groupUUID.Equals(UUID.Zero)) return;
+            Client.Groups.ActivateGroup(groupUUID);
+        });
 
         public static EventHandler ConsoleEventHandler;
 
@@ -483,7 +501,7 @@ namespace Corrade
         {
             if (outfitFolder == null) return;
 
-            List<UUID> removeItems = new List<UUID>();
+            HashSet<UUID> removeItems = new HashSet<UUID>();
             object LockObject = new object();
             Parallel.ForEach(items,
                 item =>
@@ -499,7 +517,7 @@ namespace Corrade
                             }
                         }));
 
-            Client.Inventory.Remove(removeItems, null);
+            Client.Inventory.Remove(removeItems.ToList(), null);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -686,6 +704,11 @@ namespace Corrade
                             }
                         }
                     }
+                    // Don't bother with primitive types.
+                    if (item.GetType().IsPrimitive)
+                    {
+                        yield return item.ToString();
+                    }
                 }
                 yield break;
             }
@@ -812,6 +835,7 @@ namespace Corrade
                 }
                 yield break;
             }
+
             string @string = data.ToString();
             if (string.IsNullOrEmpty(@string)) yield break;
             yield return @string;
@@ -1429,76 +1453,6 @@ namespace Corrade
             }
         }
 
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Rebakes the avatar and returns the success status.
-        /// </summary>
-        /// <param name="millisecondsTimeout">time to wait for the rebake</param>
-        /// <param name="delay">the delay before attempting a rebake</param>
-        /// <returns>true if the rebake was successful</returns>
-        private static bool Rebake(int millisecondsTimeout, int delay)
-        {
-            ManualResetEvent RebakedEvent = new ManualResetEvent(false);
-            bool succeeded = false;
-            new Thread(() =>
-            {
-                Thread.Sleep(delay);
-                ManualResetEvent AppearanceSetEvent = new ManualResetEvent(false);
-                EventHandler<AppearanceSetEventArgs> HandleAppearanceSet = (sender, args) =>
-                {
-                    succeeded = args.Success;
-                    AppearanceSetEvent.Set();
-                };
-                Client.Appearance.AppearanceSet += HandleAppearanceSet;
-                Client.Appearance.RequestSetAppearance(true);
-                AppearanceSetEvent.WaitOne(millisecondsTimeout, false);
-                Client.Appearance.AppearanceSet -= HandleAppearanceSet;
-                RebakedEvent.Set();
-            }) {IsBackground = true}.Start();
-            RebakedEvent.WaitOne(millisecondsTimeout, false);
-            return succeeded;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Sets the current group to the land group.
-        /// </summary>
-        /// <param name="millisecondsTimeout">time to wait for the group to be set</param>
-        /// <param name="delay">the delay before attempting to set the group</param>
-        /// <returns>true in case the group has been successfully set</returns>
-        private static bool ActivateCurrentLandGroup(int millisecondsTimeout, int delay)
-        {
-            ManualResetEvent ActivateCurrentLandGroupEvent = new ManualResetEvent(false);
-            bool succeeded = false;
-            new Thread(() =>
-            {
-                Thread.Sleep(delay);
-                Parcel parcel = null;
-                if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel))
-                {
-                    succeeded = false;
-                    ActivateCurrentLandGroupEvent.Set();
-                    return;
-                }
-                UUID groupUUID = Configuration.GROUPS.FirstOrDefault(o => o.UUID.Equals(parcel.GroupID)).UUID;
-                if (groupUUID.Equals(UUID.Zero))
-                {
-                    succeeded = false;
-                    ActivateCurrentLandGroupEvent.Set();
-                    return;
-                }
-                Client.Groups.ActivateGroup(groupUUID);
-                succeeded = true;
-                ActivateCurrentLandGroupEvent.Set();
-            }) {IsBackground = true}.Start();
-            ActivateCurrentLandGroupEvent.WaitOne(millisecondsTimeout, false);
-            return succeeded;
-        }
-
         /// <summary>
         ///     Posts messages to console or log-files.
         /// </summary>
@@ -2033,8 +1987,7 @@ namespace Corrade
                                         string agentName = string.Empty;
                                         lock (ClientInstanceLock)
                                         {
-                                            if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT,
-                                                Configuration.DATA_TIMEOUT, ref agentName))
+                                            if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT, ref agentName))
                                             {
                                                 new Thread(
                                                     p =>
@@ -2057,8 +2010,7 @@ namespace Corrade
                                         string agentName = string.Empty;
                                         lock (ClientInstanceLock)
                                         {
-                                            if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT,
-                                                Configuration.DATA_TIMEOUT, ref agentName))
+                                            if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT, ref agentName))
                                             {
                                                 new Thread(
                                                     p =>
@@ -3031,12 +2983,7 @@ namespace Corrade
                         {
                             lock (ClientInstanceLock)
                             {
-                                if (
-                                    !ActivateCurrentLandGroup(Configuration.SERVICES_TIMEOUT,
-                                        Configuration.ACTIVATE_DELAY))
-                                {
-                                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.FAILED_TO_ACTIVATE_LAND_GROUP));
-                                }
+                                ActivateCurrentLandGroupTimer.Change(Configuration.ACTIVATE_DELAY, 0);
                             }
                         }
                     }) {IsBackground = true}.Start();
@@ -3149,12 +3096,7 @@ namespace Corrade
                         {
                             lock (ClientInstanceLock)
                             {
-                                if (
-                                    !ActivateCurrentLandGroup(Configuration.SERVICES_TIMEOUT,
-                                        Configuration.ACTIVATE_DELAY))
-                                {
-                                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.FAILED_TO_ACTIVATE_LAND_GROUP));
-                                }
+                                ActivateCurrentLandGroupTimer.Change(Configuration.ACTIVATE_DELAY, 0);
                             }
                         }
                     }) {IsBackground = true}.Start();
@@ -3744,10 +3686,7 @@ namespace Corrade
                         {
                             Detach(inventoryBase as InventoryItem, OutfitFolder);
                         }
-                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
-                        }
+                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
                     break;
                 case RLVBehaviour.REMATTACH:
@@ -3851,10 +3790,7 @@ namespace Corrade
                                         });
                                 break;
                         }
-                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
-                        }
+                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
                     break;
                 case RLVBehaviour.ATTACH:
@@ -3905,11 +3841,7 @@ namespace Corrade
                                                             });
                                                 }
                                             });
-
-                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
-                        }
+                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
                     break;
                 case RLVBehaviour.REMOUTFIT:
@@ -3962,10 +3894,7 @@ namespace Corrade
                                     });
                                 break;
                         }
-                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
-                        }
+                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
                     break;
                 case RLVBehaviour.GETPATHNEW:
@@ -4449,7 +4378,7 @@ namespace Corrade
                     lock (ClientInstanceLock)
                     {
                         if (
-                            !AgentUUIDToName(fromAgentID, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                            !AgentUUIDToName(fromAgentID, Configuration.SERVICES_TIMEOUT,
                                 ref sender))
                         {
                             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AGENT_NOT_FOUND),
@@ -5206,8 +5135,7 @@ namespace Corrade
                             {
                                 string agentName = string.Empty;
                                 if (
-                                    !AgentUUIDToName(pair.Value.ID, Configuration.SERVICES_TIMEOUT,
-                                        Configuration.DATA_TIMEOUT, ref agentName))
+                                    !AgentUUIDToName(pair.Value.ID, Configuration.SERVICES_TIMEOUT, ref agentName))
                                     continue;
                                 csv.Add(agentName);
                                 csv.Add(pair.Key.ToString());
@@ -5358,8 +5286,7 @@ namespace Corrade
                                         continue;
                                     string agentName = string.Empty;
                                     if (
-                                        !AgentUUIDToName(pair.Value, Configuration.SERVICES_TIMEOUT,
-                                            Configuration.DATA_TIMEOUT, ref agentName))
+                                        !AgentUUIDToName(pair.Value, Configuration.SERVICES_TIMEOUT, ref agentName))
                                         continue;
                                     csv.Add(agentName);
                                     csv.Add(pair.Value.ToString());
@@ -5420,8 +5347,7 @@ namespace Corrade
                                         continue;
                                     string agentName = string.Empty;
                                     if (
-                                        !AgentUUIDToName(pair.Value, Configuration.SERVICES_TIMEOUT,
-                                            Configuration.DATA_TIMEOUT, ref agentName))
+                                        !AgentUUIDToName(pair.Value, Configuration.SERVICES_TIMEOUT, ref agentName))
                                         continue;
                                     csv.Add(roleName);
                                     csv.Add(agentName);
@@ -6327,6 +6253,44 @@ namespace Corrade
                         Client.Self.Sit();
                     };
                     break;
+                case ScriptKeys.RELAX:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MOVEMENT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
+                        {
+                            Client.Self.Stand();
+                        }
+                        Client.Self.SignaledAnimations.ForEach(
+                            animation => Client.Self.AnimationStop(animation.Key, true));
+                        Client.Self.SitOnGround();
+                    };
+                    break;
+                case ScriptKeys.RUN:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MOVEMENT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        Action action = wasGetEnumValueFromDescription<Action>(
+                            wasUriUnescapeDataString(
+                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
+                                .ToLowerInvariant());
+                        switch (action)
+                        {
+                            case Action.ENABLE:
+                            case Action.DISABLE:
+                                Client.Self.Fly(action.Equals(Action.ENABLE));
+                                break;
+                            default:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
+                        }
+                    };
+                    break;
                 case ScriptKeys.STAND:
                     execute = () =>
                     {
@@ -6447,8 +6411,7 @@ namespace Corrade
                             {
                                 string agent = string.Empty;
                                 if (
-                                    !AgentUUIDToName(parcelAccess.AgentID, Configuration.SERVICES_TIMEOUT,
-                                        Configuration.DATA_TIMEOUT, ref agent))
+                                    !AgentUUIDToName(parcelAccess.AgentID, Configuration.SERVICES_TIMEOUT, ref agent))
                                     continue;
                                 csv.Add(agent);
                                 csv.Add(parcelAccess.AgentID.ToString());
@@ -7190,12 +7153,12 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        uint action =
-                            (uint) wasGetEnumValueFromDescription<Action>(
+                        Action action =
+                            wasGetEnumValueFromDescription<Action>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
                                     .ToLowerInvariant());
-                        switch ((Action) action)
+                        switch (action)
                         {
                             case Action.START:
                             case Action.STOP:
@@ -7205,7 +7168,7 @@ namespace Corrade
                                 }
                                 Client.Self.SignaledAnimations.ForEach(
                                     o => Client.Self.AnimationStop(o.Key, true));
-                                Client.Self.Fly(action.Equals((uint) Action.START));
+                                Client.Self.Fly(action.Equals(Action.START));
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FLY_ACTION_START_OR_STOP));
@@ -7530,17 +7493,17 @@ namespace Corrade
                         {
                             silence = false;
                         }
-                        uint type =
-                            (uint) wasGetEnumValueFromDescription<Type>(
+                        Type type =
+                            wasGetEnumValueFromDescription<Type>(
                                 wasUriUnescapeDataString(wasKeyValueGet(
                                     wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
                                     .ToLowerInvariant());
-                        switch ((Type) type)
+                        switch (type)
                         {
                             case Type.TEXT:
                             case Type.VOICE:
                                 Client.Self.ModerateChatSessions(groupUUID, agentUUID,
-                                    wasGetDescriptionFromEnumValue((Type) type),
+                                    wasGetDescriptionFromEnumValue(type),
                                     silence);
                                 break;
                             default:
@@ -7557,10 +7520,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
-                        }
+                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
                     break;
                 case ScriptKeys.GETWEARABLES:
@@ -7618,10 +7578,7 @@ namespace Corrade
                                         return;
                                     Wear(inventoryBaseItem as InventoryItem, replace, OutfitFolder);
                                 });
-                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
-                        }
+                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
                     break;
                 case ScriptKeys.UNWEAR:
@@ -7649,10 +7606,7 @@ namespace Corrade
                                         return;
                                     UnWear(inventoryBaseItem as InventoryItem, OutfitFolder);
                                 });
-                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
-                        }
+                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
                     break;
                 case ScriptKeys.GETATTACHMENTS:
@@ -7724,10 +7678,7 @@ namespace Corrade
                                         Attach(inventoryBaseItem as InventoryItem, (AttachmentPoint) q.GetValue(null),
                                             replace, OutfitFolder);
                                     }));
-                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
-                        }
+                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
                     break;
                 case ScriptKeys.DETACH:
@@ -7760,10 +7711,7 @@ namespace Corrade
                                         return;
                                     Detach(inventoryBaseItem as InventoryItem, OutfitFolder);
                                 });
-                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
-                        }
+                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
                     break;
                 case ScriptKeys.RETURNPRIMITIVES:
@@ -8024,8 +7972,7 @@ namespace Corrade
                                 {
                                     string owner = string.Empty;
                                     if (
-                                        !AgentUUIDToName(primowner.OwnerID, Configuration.SERVICES_TIMEOUT,
-                                            Configuration.DATA_TIMEOUT, ref owner))
+                                        !AgentUUIDToName(primowner.OwnerID, Configuration.SERVICES_TIMEOUT, ref owner))
                                         continue;
                                     if (!primitives.ContainsKey(owner))
                                     {
@@ -8875,17 +8822,17 @@ namespace Corrade
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ITEM_IS_NOT_A_SCRIPT));
                         }
-                        uint action =
-                            (uint) wasGetEnumValueFromDescription<Action>(
+                        Action action =
+                            wasGetEnumValueFromDescription<Action>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
                                     .ToLowerInvariant());
-                        switch ((Action) action)
+                        switch (action)
                         {
                             case Action.START:
                             case Action.STOP:
                                 Client.Inventory.RequestSetScriptRunning(primitive.ID, item.UUID,
-                                    action.Equals((uint) Action.START));
+                                    action.Equals(Action.START));
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
@@ -8894,7 +8841,7 @@ namespace Corrade
                         bool succeeded = false;
                         EventHandler<ScriptRunningReplyEventArgs> ScriptRunningEventHandler = (sender, args) =>
                         {
-                            switch ((Action) action)
+                            switch (action)
                             {
                                 case Action.START:
                                     succeeded = args.IsRunning;
@@ -11100,14 +11047,14 @@ namespace Corrade
                         {
                             position = Client.Self.SimPosition;
                         }
-                        uint entity =
-                            (uint) wasGetEnumValueFromDescription<Entity>(
+                        Entity entity =
+                            wasGetEnumValueFromDescription<Entity>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY), message))
                                     .ToLowerInvariant());
                         Parcel parcel = null;
                         UUID agentUUID = UUID.Zero;
-                        switch ((Entity) entity)
+                        switch (entity)
                         {
                             case Entity.REGION:
                                 break;
@@ -11162,7 +11109,7 @@ namespace Corrade
                             Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
 
                             if (p.Properties == null) continue;
-                            switch ((Entity) entity)
+                            switch (entity)
                             {
                                 case Entity.REGION:
                                     break;
@@ -11221,13 +11168,12 @@ namespace Corrade
                         {
                             position = Client.Self.SimPosition;
                         }
-                        uint entity =
-                            (uint) wasGetEnumValueFromDescription<Entity>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY), message))
-                                    .ToLowerInvariant());
+                        Entity entity = wasGetEnumValueFromDescription<Entity>(
+                            wasUriUnescapeDataString(
+                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY), message))
+                                .ToLowerInvariant());
                         Parcel parcel = null;
-                        switch ((Entity) entity)
+                        switch (entity)
                         {
                             case Entity.REGION:
                                 break;
@@ -11248,10 +11194,9 @@ namespace Corrade
                         {
                             string name = string.Empty;
                             if (
-                                !AgentUUIDToName(p.Key, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref name))
-                                continue;
-                            switch ((Entity) entity)
+                                !AgentUUIDToName(p.Key, Configuration.SERVICES_TIMEOUT,
+                                    ref name)) continue;
+                            switch (entity)
                             {
                                 case Entity.REGION:
                                     break;
@@ -11566,7 +11511,7 @@ namespace Corrade
                         {
                             string name = string.Empty;
                             if (
-                                !AgentUUIDToName(o.Key, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                !AgentUUIDToName(o.Key, Configuration.SERVICES_TIMEOUT,
                                     ref name))
                             {
                                 return;
@@ -12261,10 +12206,7 @@ namespace Corrade
                             }
                         });
                         // And rebake.
-                        if (!Rebake(Configuration.SERVICES_TIMEOUT, Configuration.REBAKE_DELAY))
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REBAKE_FAILED));
-                        }
+                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
                     break;
                 case ScriptKeys.PLAYSOUND:
@@ -12473,12 +12415,12 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        uint action =
-                            (uint) wasGetEnumValueFromDescription<Action>(
+                        Action action =
+                            wasGetEnumValueFromDescription<Action>(
                                 wasUriUnescapeDataString(
                                     wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
                                     .ToLowerInvariant());
-                        switch ((Action) action)
+                        switch (action)
                         {
                             case Action.START:
                             case Action.STOP:
@@ -12488,7 +12430,7 @@ namespace Corrade
                                 }
                                 Client.Self.SignaledAnimations.ForEach(
                                     o => Client.Self.AnimationStop(o.Key, true));
-                                Client.Self.Crouch(action.Equals((uint) Action.START));
+                                Client.Self.Crouch(action.Equals(Action.START));
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FLY_ACTION_START_OR_STOP));
@@ -12502,11 +12444,11 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        uint action =
-                            (uint) wasGetEnumValueFromDescription<Action>(wasUriUnescapeDataString(
+                        Action action =
+                            wasGetEnumValueFromDescription<Action>(wasUriUnescapeDataString(
                                 wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
                                 .ToLowerInvariant());
-                        switch ((Action) action)
+                        switch (action)
                         {
                             case Action.START:
                             case Action.STOP:
@@ -12516,7 +12458,7 @@ namespace Corrade
                                 }
                                 Client.Self.SignaledAnimations.ForEach(
                                     o => Client.Self.AnimationStop(o.Key, true));
-                                Client.Self.Jump(action.Equals((uint) Action.START));
+                                Client.Self.Jump(action.Equals(Action.START));
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FLY_ACTION_START_OR_STOP));
@@ -13478,24 +13420,23 @@ namespace Corrade
         /// </summary>
         /// <param name="agentUUID">the UUID of the agent</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="agentName">an object to store the name of the agent in</param>
         /// <returns>true if the UUID could be resolved to a name</returns>
-        private static bool directAgentUUIDToName(UUID agentUUID, int millisecondsTimeout, int dataTimeout,
+        private static bool directAgentUUIDToName(UUID agentUUID, int millisecondsTimeout,
             ref string agentName)
         {
             if (agentUUID.Equals(UUID.Zero))
                 return false;
             string localAgentName = string.Empty;
-            wasAlarm UUIDNameReceivedAlarm = new wasAlarm();
+            ManualResetEvent UUIDNameReplyEvent = new ManualResetEvent(false);
             EventHandler<UUIDNameReplyEventArgs> UUIDNameReplyDelegate = (sender, args) =>
             {
-                UUIDNameReceivedAlarm.Alarm(dataTimeout);
                 localAgentName = args.Names.FirstOrDefault(o => o.Key.Equals(agentUUID)).Value;
+                UUIDNameReplyEvent.Set();
             };
             Client.Avatars.UUIDNameReply += UUIDNameReplyDelegate;
             Client.Avatars.RequestAvatarName(agentUUID);
-            if (!UUIDNameReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
+            if (!UUIDNameReplyEvent.WaitOne(millisecondsTimeout, false))
             {
                 Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
                 return false;
@@ -13511,10 +13452,9 @@ namespace Corrade
         /// </summary>
         /// <param name="agentUUID">the UUID of the agent</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="agentName">an object to store the name of the agent in</param>
         /// <returns>true if the UUID could be resolved to a name</returns>
-        private static bool AgentUUIDToName(UUID agentUUID, int millisecondsTimeout, int dataTimeout,
+        private static bool AgentUUIDToName(UUID agentUUID, int millisecondsTimeout,
             ref string agentName)
         {
             lock (Cache.Locks.AgentCacheLock)
@@ -13527,7 +13467,7 @@ namespace Corrade
                     return true;
                 }
             }
-            bool succeeded = directAgentUUIDToName(agentUUID, millisecondsTimeout, dataTimeout, ref agentName);
+            bool succeeded = directAgentUUIDToName(agentUUID, millisecondsTimeout, ref agentName);
             if (succeeded)
             {
                 List<string> name = new List<string>(GetAvatarNames(agentName));
@@ -15164,6 +15104,8 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+            [Description("run")] RUN,
+            [Description("relax")] RELAX,
             [Description("sift")] SIFT,
             [Description("rlv")] RLV,
             [Description("getinventorypath")] GETINVENTORYPATH,
@@ -15435,7 +15377,7 @@ namespace Corrade
         /// <summary>An alarm class similar to the UNIX alarm</summary>
         internal class wasAlarm
         {
-            private Timer alarm;
+            private System.Timers.Timer alarm;
 
             public wasAlarm()
             {
@@ -15448,7 +15390,7 @@ namespace Corrade
             {
                 if (alarm == null)
                 {
-                    alarm = new Timer(deadline);
+                    alarm = new System.Timers.Timer(deadline);
                     alarm.Elapsed += (o, p) =>
                     {
                         Signal.Set();
