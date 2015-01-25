@@ -2830,7 +2830,7 @@ namespace Corrade
                     break;
                 case (ChatType) 9:
                     CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
-                        () => HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1), e.SourceID),
+                        () => HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString()),
                         Configuration.MAXIMUM_COMMAND_THREADS);
                     break;
             }
