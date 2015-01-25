@@ -124,9 +124,13 @@ namespace Corrade
 
         private static InventoryFolder OutfitFolder;
 
-        private static int CorradeCommandThreadCount;
-        private static int CorradeRLVThreadCount;
-        private static int CorradeNotificationThreadCount;
+        private static readonly Dictionary<CorradeThreadType, CorradeThread> CorradeThreadPool =
+            new Dictionary<CorradeThreadType, CorradeThread>
+            {
+                {CorradeThreadType.COMMAND, new CorradeThread()},
+                {CorradeThreadType.RLV, new CorradeThread()},
+                {CorradeThreadType.NOTIFICATION, new CorradeThread()}
+            };
 
         private static readonly Timer RebakeTimer = new Timer(Rebake =>
         {
@@ -146,34 +150,6 @@ namespace Corrade
             if (groupUUID.Equals(UUID.Zero)) return;
             Client.Groups.ActivateGroup(groupUUID);
         });
-
-        private static readonly Action<ThreadStart, Type> SpawnThread = (o, p) =>
-        {
-            switch (p)
-            {
-                case Type.COMMAND:
-                    if (Thread.VolatileRead(ref CorradeCommandThreadCount) >
-                        Thread.VolatileRead(ref Configuration.MAXIMUM_COMMAND_THREADS))
-                        return;
-                    Interlocked.Increment(ref CorradeCommandThreadCount);
-                    o.BeginInvoke(q => Interlocked.Decrement(ref CorradeCommandThreadCount), null);
-                    break;
-                case Type.RLV:
-                    if (Thread.VolatileRead(ref CorradeRLVThreadCount) >
-                        Thread.VolatileRead(ref Configuration.MAXIMUM_RLV_THREADS))
-                        return;
-                    Interlocked.Increment(ref CorradeRLVThreadCount);
-                    o.BeginInvoke(q => Interlocked.Decrement(ref CorradeRLVThreadCount), null);
-                    break;
-                case Type.NOTIFICATION:
-                    if (Thread.VolatileRead(ref CorradeNotificationThreadCount) >
-                        Thread.VolatileRead(ref Configuration.MAXIMUM_NOTIFICATION_THREADS))
-                        return;
-                    Interlocked.Increment(ref CorradeNotificationThreadCount);
-                    o.BeginInvoke(q => Interlocked.Decrement(ref CorradeNotificationThreadCount), null);
-                    break;
-            }
-        };
 
         public static EventHandler ConsoleEventHandler;
 
@@ -1160,14 +1136,9 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="primitive">a primitive object to store the result</param>
         /// <returns>true if the primitive could be found</returns>
-        private static bool FindPrimitive(string item, float range, int millisecondsTimeout,
+        private static bool FindPrimitive<T>(T item, float range, int millisecondsTimeout,
             ref Primitive primitive)
         {
-            UUID itemUUID;
-            if (!UUID.TryParse(item, out itemUUID))
-            {
-                itemUUID = UUID.Zero;
-            }
             Hashtable queue = new Hashtable();
             Client.Network.CurrentSim.ObjectsPrimitives.ForEach(o =>
             {
@@ -1177,12 +1148,12 @@ namespace Corrade
                     case 0:
                         if (Vector3.Distance(o.Position, Client.Self.SimPosition) < range)
                         {
-                            if (itemUUID.Equals(UUID.Zero))
+                            if (item is UUID && o.ID.Equals(item))
                             {
                                 queue.Add(o.ID, o.LocalID);
                                 break;
                             }
-                            if (!itemUUID.Equals(UUID.Zero) && o.ID.Equals(itemUUID))
+                            if (item is string)
                             {
                                 queue.Add(o.ID, o.LocalID);
                             }
@@ -1206,12 +1177,12 @@ namespace Corrade
                             // if the parent is in range, add the child
                             if (Vector3.Distance(parent.Position, Client.Self.SimPosition) < range)
                             {
-                                if (itemUUID.Equals(UUID.Zero))
+                                if (item is UUID && o.ID.Equals(item))
                                 {
                                     queue.Add(o.ID, o.LocalID);
                                     break;
                                 }
-                                if (!itemUUID.Equals(UUID.Zero) && o.ID.Equals(itemUUID))
+                                if (item is string)
                                 {
                                     queue.Add(o.ID, o.LocalID);
                                 }
@@ -1226,12 +1197,12 @@ namespace Corrade
                         // check if the avatar is in range
                         if (Vector3.Distance(parentAvatar.Position, Client.Self.SimPosition) < range)
                         {
-                            if (itemUUID.Equals(UUID.Zero))
+                            if (item is UUID && o.ID.Equals(item))
                             {
                                 queue.Add(o.ID, o.LocalID);
                                 break;
                             }
-                            if (!itemUUID.Equals(UUID.Zero) && o.ID.Equals(itemUUID))
+                            if (item is string)
                             {
                                 queue.Add(o.ID, o.LocalID);
                             }
@@ -1245,9 +1216,8 @@ namespace Corrade
             EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler = (sender, args) =>
             {
                 queue.Remove(args.Properties.ObjectID);
-                if (!args.Properties.Name.Equals(item, StringComparison.Ordinal) &&
-                    (itemUUID.Equals(UUID.Zero) || !args.Properties.ItemID.Equals(itemUUID)) && !queue.Count.Equals(0))
-                    return;
+                if ((((item is string && !(item as string).Equals(args.Properties.Name)) ||
+                      (item is UUID && !item.Equals(args.Properties.ItemID)))) && !queue.Count.Equals(0)) return;
                 ObjectPropertiesEvent.Set();
             };
             Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
@@ -1263,8 +1233,9 @@ namespace Corrade
             primitive =
                 Client.Network.CurrentSim.ObjectsPrimitives.Find(
                     o =>
-                        o.ID.Equals(itemUUID) ||
-                        (o.Properties != null && o.Properties.Name.Equals(item, StringComparison.Ordinal)));
+                        (item is UUID && o.ID.Equals(item)) ||
+                        (item is string && o.Properties != null &&
+                         (item as string).Equals(o.Properties.Name, StringComparison.Ordinal)));
             return primitive != null;
         }
 
@@ -2035,15 +2006,15 @@ namespace Corrade
                                         {
                                             if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT, ref agentName))
                                             {
-                                                SpawnThread(
-                                                    () =>
-                                                        SendNotification(Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
-                                                            new GroupMembershipEventArgs
-                                                            {
-                                                                AgentName = agentName,
-                                                                AgentUUID = o,
-                                                                Action = Action.JOINED
-                                                            }), Type.NOTIFICATION);
+                                                CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                                    () => SendNotification(Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
+                                                        new GroupMembershipEventArgs
+                                                        {
+                                                            AgentName = agentName,
+                                                            AgentUUID = o,
+                                                            Action = Action.JOINED
+                                                        }),
+                                                    Configuration.MAXIMUM_NOTIFICATION_THREADS);
                                             }
                                         }
                                     });
@@ -2057,15 +2028,15 @@ namespace Corrade
                                         {
                                             if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT, ref agentName))
                                             {
-                                                SpawnThread(
-                                                    () =>
-                                                        SendNotification(Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
-                                                            new GroupMembershipEventArgs
-                                                            {
-                                                                AgentName = agentName,
-                                                                AgentUUID = o,
-                                                                Action = Action.PARTED
-                                                            }), Type.NOTIFICATION);
+                                                CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                                    () => SendNotification(Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
+                                                        new GroupMembershipEventArgs
+                                                        {
+                                                            AgentName = agentName,
+                                                            AgentUUID = o,
+                                                            Action = Action.PARTED
+                                                        }),
+                                                    Configuration.MAXIMUM_NOTIFICATION_THREADS);
                                             }
                                         }
                                     });
@@ -2251,17 +2222,23 @@ namespace Corrade
 
         private static void HandleRegionCrossed(object sender, RegionCrossedEventArgs e)
         {
-            SpawnThread(() => SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e), Type.NOTIFICATION);
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleMeanCollision(object sender, MeanCollisionEventArgs e)
         {
-            SpawnThread(() => SendNotification(Notifications.NOTIFICATION_MEAN_COLLISION, e), Type.NOTIFICATION);
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_MEAN_COLLISION, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleViewerEffect(object sender, object e)
         {
-            SpawnThread(() => SendNotification(Notifications.NOTIFICATION_VIEWER_EFFECT, e), Type.NOTIFICATION);
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_VIEWER_EFFECT, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void ProcesHTTPRequest(IAsyncResult ar)
@@ -2823,7 +2800,9 @@ namespace Corrade
                     Button = e.ButtonLabels
                 });
             }
-            SpawnThread(() => SendNotification(Notifications.NOTIFICATION_SCRIPT_DIALOG, e), Type.NOTIFICATION);
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_SCRIPT_DIALOG, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleChatFromSimulator(object sender, ChatEventArgs e)
@@ -2836,30 +2815,39 @@ namespace Corrade
             {
                 case ChatType.OwnerSay:
                     if (!EnableCorradeRLV || !e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR)) return;
-                    SpawnThread(() => HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1), e.SourceID),
-                        Type.RLV);
+                    CorradeThreadPool[CorradeThreadType.RLV].Spawn(
+                        () => HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1), e.SourceID),
+                        Configuration.MAXIMUM_RLV_THREADS);
                     break;
                 case ChatType.Debug:
                 case ChatType.Normal:
                 case ChatType.Shout:
                 case ChatType.Whisper:
                     // Send chat notifications.
-                    SpawnThread(() => SendNotification(Notifications.NOTIFICATION_LOCAL_CHAT, e), Type.NOTIFICATION);
+                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                        () => SendNotification(Notifications.NOTIFICATION_LOCAL_CHAT, e),
+                        Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     break;
                 case (ChatType) 9:
-                    SpawnThread(() => HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString()), Type.COMMAND);
+                    CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
+                        () => HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1), e.SourceID),
+                        Configuration.MAXIMUM_COMMAND_THREADS);
                     break;
             }
         }
 
         private static void HandleMoneyBalance(object sender, BalanceEventArgs e)
         {
-            SpawnThread(() => SendNotification(Notifications.NOTIFICATION_BALANCE, e), Type.NOTIFICATION);
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_BALANCE, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleAlertMessage(object sender, AlertMessageEventArgs e)
         {
-            SpawnThread(() => SendNotification(Notifications.NOTIFICATION_ALERT_MESSAGE, e), Type.NOTIFICATION);
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_ALERT_MESSAGE, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleInventoryObjectOffered(object sender, InventoryObjectOfferedEventArgs e)
@@ -2901,7 +2889,9 @@ namespace Corrade
             }
 
             // Send notification
-            SpawnThread(() => SendNotification(Notifications.NOTIFICATION_INVENTORY, e), Type.NOTIFICATION);
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_INVENTORY, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
             // Wait for a reply.
             wait.WaitOne(Timeout.Infinite);
 
@@ -2949,18 +2939,7 @@ namespace Corrade
                     return;
                 }
             }
-            // Handle RLV: acceptpermission
-            lock (RLVRuleLock)
-            {
-                if (RLVRules.Any(o => o.Behaviour.Equals(wasGetDescriptionFromEnumValue(RLVBehaviour.ACCEPTPERMISSION))))
-                {
-                    lock (ClientInstanceLock)
-                    {
-                        Client.Self.ScriptQuestionReply(Client.Network.CurrentSim, e.ItemID, e.TaskID, e.Questions);
-                    }
-                    return;
-                }
-            }
+
             lock (ScriptPermissionRequestLock)
             {
                 ScriptPermissionRequests.Add(new ScriptPermissionRequest
@@ -2977,7 +2956,21 @@ namespace Corrade
                     Permission = e.Questions
                 });
             }
-            SpawnThread(() => SendNotification(Notifications.NOTIFICATION_SCRIPT_PERMISSION, e), Type.NOTIFICATION);
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_SCRIPT_PERMISSION, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+
+            // Handle RLV: acceptpermission
+            lock (RLVRuleLock)
+            {
+                if (RLVRules.Any(o => o.Behaviour.Equals(wasGetDescriptionFromEnumValue(RLVBehaviour.ACCEPTPERMISSION))))
+                {
+                    lock (ClientInstanceLock)
+                    {
+                        Client.Self.ScriptQuestionReply(Client.Network.CurrentSim, e.ItemID, e.TaskID, e.Questions);
+                    }
+                }
+            }
         }
 
         private static void HandleConfigurationFileChanged(object sender, FileSystemEventArgs e)
@@ -3097,23 +3090,31 @@ namespace Corrade
 
         private static void HandleFriendOnlineStatus(object sender, FriendInfoEventArgs e)
         {
-            SpawnThread(() => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e), Type.NOTIFICATION);
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleFriendRightsUpdate(object sender, FriendInfoEventArgs e)
         {
-            SpawnThread(() => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e), Type.NOTIFICATION);
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleFriendShipResponse(object sender, FriendshipResponseEventArgs e)
         {
-            SpawnThread(() => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e), Type.NOTIFICATION);
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleFriendshipOffered(object sender, FriendshipOfferedEventArgs e)
         {
             // Send friendship notifications
-            SpawnThread(() => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e), Type.NOTIFICATION);
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
             // Accept friendships only from masters (for the time being)
             if (
                 !Configuration.MASTERS.Select(
@@ -3162,13 +3163,17 @@ namespace Corrade
                     // Send typing notification.
                 case InstantMessageDialog.StartTyping:
                 case InstantMessageDialog.StopTyping:
-                    SpawnThread(() => SendNotification(Notifications.NOTIFICATION_TYPING, args), Type.NOTIFICATION);
+                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                        () => SendNotification(Notifications.NOTIFICATION_TYPING, args),
+                        Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     return;
                 case InstantMessageDialog.InventoryAccepted:
                 case InstantMessageDialog.InventoryDeclined:
                 case InstantMessageDialog.TaskInventoryOffered:
                 case InstantMessageDialog.InventoryOffered:
-                    SpawnThread(() => SendNotification(Notifications.NOTIFICATION_INVENTORY, args), Type.NOTIFICATION);
+                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                        () => SendNotification(Notifications.NOTIFICATION_INVENTORY, args),
+                        Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     return;
                 case InstantMessageDialog.MessageBox:
                     // Not used.
@@ -3205,8 +3210,9 @@ namespace Corrade
                         });
                     }
                     // Send teleport lure notification.
-                    SpawnThread(() => SendNotification(Notifications.NOTIFICATION_TELEPORT_LURE, args),
-                        Type.NOTIFICATION);
+                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                        () => SendNotification(Notifications.NOTIFICATION_TELEPORT_LURE, args),
+                        Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     // If we got a teleport request from a master, then accept it (for the moment).
                     if (Configuration.MASTERS.Select(
                         o =>
@@ -3260,7 +3266,9 @@ namespace Corrade
                         });
                     }
                     // Send group invitation notification.
-                    SpawnThread(() => SendNotification(Notifications.NOTIFICATION_GROUP_INVITE, args), Type.NOTIFICATION);
+                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                        () => SendNotification(Notifications.NOTIFICATION_GROUP_INVITE, args),
+                        Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     // If a master sends it, then accept.
                     if (
                         !Configuration.MASTERS.Select(
@@ -3275,7 +3283,9 @@ namespace Corrade
                 case InstantMessageDialog.GroupNoticeInventoryAccepted:
                 case InstantMessageDialog.GroupNoticeInventoryDeclined:
                 case InstantMessageDialog.GroupNotice:
-                    SpawnThread(() => SendNotification(Notifications.NOTIFICATION_GROUP_NOTICE, args), Type.NOTIFICATION);
+                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                        () => SendNotification(Notifications.NOTIFICATION_GROUP_NOTICE, args),
+                        Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     return;
                 case InstantMessageDialog.SessionSend:
                 case InstantMessageDialog.MessageFromAgent:
@@ -3297,8 +3307,9 @@ namespace Corrade
                     if (messageFromGroup)
                     {
                         // Send group notice notifications.
-                        SpawnThread(() => SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, args),
-                            Type.NOTIFICATION);
+                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                            () => SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, args),
+                            Configuration.MAXIMUM_NOTIFICATION_THREADS);
                         // Log group messages
                         Parallel.ForEach(
                             Configuration.GROUPS.Where(o => o.Name.Equals(messageGroup.Name, StringComparison.Ordinal)),
@@ -3333,24 +3344,26 @@ namespace Corrade
                     // Check if this is an instant message.
                     if (args.IM.ToAgentID.Equals(Client.Self.AgentID))
                     {
-                        SpawnThread(() => SendNotification(Notifications.NOTIFICATION_INSTANT_MESSAGE, args),
-                            Type.NOTIFICATION);
+                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                            () => SendNotification(Notifications.NOTIFICATION_INSTANT_MESSAGE, args),
+                            Configuration.MAXIMUM_NOTIFICATION_THREADS);
                         return;
                     }
                     // Check if this is a region message.
                     if (args.IM.IMSessionID.Equals(UUID.Zero))
                     {
-                        SpawnThread(() => SendNotification(Notifications.NOTIFICATION_REGION_MESSAGE, args),
-                            Type.NOTIFICATION);
+                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                            () => SendNotification(Notifications.NOTIFICATION_REGION_MESSAGE, args),
+                            Configuration.MAXIMUM_NOTIFICATION_THREADS);
                         return;
                     }
                     break;
             }
 
             // Everything else, must be a command.
-            SpawnThread(
+            CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
                 () => HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString()),
-                Type.COMMAND);
+                Configuration.MAXIMUM_COMMAND_THREADS);
         }
 
         private static void HandleRLVCommand(string message, UUID senderUUID)
@@ -3366,7 +3379,7 @@ namespace Corrade
             // Keep rest of message.
             message = string.Join(RLV_CONSTANTS.CSV_DELIMITER, unpack);
 
-            Match match = RLVRegex.Match(first);
+            Match match = RLV_CONSTANTS.RLVRegex.Match(first);
             if (!match.Success) goto CONTINUE;
 
             RLVRule RLVrule = new RLVRule
@@ -3517,7 +3530,7 @@ namespace Corrade
                         }
                         Primitive primitive = null;
                         if (
-                            !FindPrimitive(sitTarget.ToString(),
+                            !FindPrimitive(sitTarget,
                                 LINDEN_CONSTANTS.LSL.SENSOR_RANGE,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -4062,7 +4075,7 @@ namespace Corrade
                             new HashSet<string>(RLVrule.Option.Split(RLV_CONSTANTS.AND_OPERATOR.ToCharArray()));
                         object LockObject = new object();
                         Parallel.ForEach(FindInventoryPath<InventoryBase>(RLVFolder,
-                            new Regex(".+?", RegexOptions.Compiled),
+                            CORRADE_CONSTANTS.OneOrMoRegex,
                             new LinkedList<string>())
                             .Where(
                                 o =>
@@ -4120,7 +4133,7 @@ namespace Corrade
                                 KeyValuePair<InventoryNode, LinkedList<string>> folderPath = FindInventoryPath
                                     <InventoryNode>(
                                         RLVFolder,
-                                        new Regex(".+?", RegexOptions.Compiled),
+                                        CORRADE_CONSTANTS.OneOrMoRegex,
                                         new LinkedList<string>())
                                     .Where(o => o.Key.Data is InventoryFolder)
                                     .FirstOrDefault(
@@ -4141,7 +4154,7 @@ namespace Corrade
                         HashSet<string> csv = new HashSet<string>();
                         object LockObject = new object();
                         Parallel.ForEach(
-                            FindInventory<InventoryBase>(optionFolderNode, new Regex(".+?", RegexOptions.Compiled)),
+                            FindInventory<InventoryBase>(optionFolderNode, CORRADE_CONSTANTS.OneOrMoRegex),
                             o =>
                             {
                                 if (o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)) return;
@@ -4172,7 +4185,7 @@ namespace Corrade
                         }
                         KeyValuePair<InventoryNode, LinkedList<string>> folderPath = FindInventoryPath<InventoryNode>(
                             RLVFolder,
-                            new Regex(".+?", RegexOptions.Compiled),
+                            CORRADE_CONSTANTS.OneOrMoRegex,
                             new LinkedList<string>())
                             .Where(o => o.Key.Data is InventoryFolder)
                             .FirstOrDefault(
@@ -6282,8 +6295,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -7178,9 +7191,9 @@ namespace Corrade
                                 Primitive primitive = null;
                                 if (
                                     !FindPrimitive(
-                                        wasUriUnescapeDataString(
+                                        StringOrUUID(wasUriUnescapeDataString(
                                             wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
-                                                message)),
+                                                message))),
                                         range,
                                         Configuration.SERVICES_TIMEOUT,
                                         ref primitive))
@@ -7526,8 +7539,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -7756,8 +7769,7 @@ namespace Corrade
                         {
                             replace = true;
                         }
-                        Parallel.ForEach(Regex.Matches(attachments, @"\s*(?<key>.+?)\s*,\s*(?<value>.+?)\s*(,|$)",
-                            RegexOptions.Compiled)
+                        Parallel.ForEach(CORRADE_CONSTANTS.CSVRegex.Matches(attachments)
                             .Cast<Match>()
                             .ToDictionary(o => o.Groups["key"].Value, o => o.Groups["value"].Value),
                             o =>
@@ -8171,8 +8183,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -8858,8 +8870,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -8905,8 +8917,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -9009,8 +9021,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -9075,8 +9087,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -9118,8 +9130,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -9179,8 +9191,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -9416,8 +9428,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -11943,8 +11955,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -12004,8 +12016,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -12044,8 +12056,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -12088,8 +12100,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -12128,8 +12140,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -12167,8 +12179,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -12206,8 +12218,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -12243,8 +12255,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
+                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -13259,7 +13271,7 @@ namespace Corrade
         {
             foreach (
                 KeyValuePair<string, string> match in
-                    Regex.Matches(data, @"\s*(?<key>.+?)\s*,\s*(?<value>.+?)\s*(,|$)").
+                    CORRADE_CONSTANTS.CSVRegex.Matches(data).
                         Cast<Match>().
                         ToDictionary(m => m.Groups["key"].Value, m => m.Groups["value"].Value))
             {
@@ -13321,7 +13333,9 @@ namespace Corrade
             {
                 SetDefaultCamera();
             }
-            SpawnThread(() => SendNotification(Notifications.NOTIFICATION_TERSE_UPDATES, e), Type.NOTIFICATION);
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_TERSE_UPDATES, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleAvatarUpdate(object sender, AvatarUpdateEventArgs e)
@@ -13335,12 +13349,16 @@ namespace Corrade
         private static void HandleSimChanged(object sender, SimChangedEventArgs e)
         {
             Client.Self.Movement.SetFOVVerticalAngle(Utils.TWO_PI - 0.05f);
-            SpawnThread(() => SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e), Type.NOTIFICATION);
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleMoneyBalance(object sender, MoneyBalanceReplyEventArgs e)
         {
-            SpawnThread(() => SendNotification(Notifications.NOTIFICATION_ECONOMY, e), Type.NOTIFICATION);
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_ECONOMY, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void SetDefaultCamera()
@@ -13353,6 +13371,24 @@ namespace Corrade
         }
 
         #region NAME AND UUID RESOLVERS
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Tries to build an UUID out of the data string.
+        /// </summary>
+        /// <param name="data">a string</param>
+        /// <returns>an UUID or the supplied string in case data could not be resolved</returns>
+        private static object StringOrUUID(string data)
+        {
+            UUID @UUID;
+            if (!UUID.TryParse(data, out @UUID))
+            {
+                return data;
+            }
+            return @UUID;
+        }
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
@@ -13988,6 +14024,11 @@ namespace Corrade
             public const string ERROR_SEPARATOR = @" : ";
             public const string CACHE_DIRECTORY = @"cache";
 
+            public static readonly Regex CSVRegex = new Regex(@"\s*(?<key>.+?)\s*,\s*(?<value>.+?)\s*(,|$)",
+                RegexOptions.Compiled);
+
+            public static readonly Regex OneOrMoRegex = new Regex(@".+?", RegexOptions.Compiled);
+
             public struct HTTP_CODES
             {
                 public const int OK = 200;
@@ -14160,7 +14201,7 @@ namespace Corrade
                 MAXIMUM_NOTIFICATION_THREADS = 10;
                 MAXIMUM_COMMAND_THREADS = 10;
                 MAXIMUM_RLV_THREADS = 10;
-                USE_NAGGLE = true;
+                USE_NAGGLE = false;
                 SERVICES_TIMEOUT = 60000;
                 DATA_TIMEOUT = 5000;
                 DATA_TIMEOUT_DECAY = 3;
@@ -14926,6 +14967,44 @@ namespace Corrade
         }
 
         /// <summary>
+        ///     Corrade's internal thread structure.
+        /// </summary>
+        public struct CorradeThread
+        {
+            private static int Alive;
+            private static readonly object Lock = new object();
+
+            public void Spawn(ThreadStart t, int m)
+            {
+                lock (Lock)
+                {
+                    if (Alive > m)
+                    {
+                        return;
+                    }
+                    ++Alive;
+                }
+                t.BeginInvoke(p =>
+                {
+                    lock (Lock)
+                    {
+                        --Alive;
+                    }
+                }, null);
+            }
+        }
+
+        /// <summary>
+        ///     The type of threads managed by Corrade.
+        /// </summary>
+        private enum CorradeThreadType
+        {
+            COMMAND = 1,
+            RLV = 2,
+            NOTIFICATION = 3
+        };
+
+        /// <summary>
         ///     Directions in 3D cartesian.
         /// </summary>
         private enum Direction : uint
@@ -15324,7 +15403,6 @@ namespace Corrade
             [Description("timeout waiting for execution")] TIMEOUT_WAITING_FOR_EXECUTION,
             [Description("unknown group invite session")] UNKNOWN_GROUP_INVITE_SESSION,
             [Description("unable to obtain money balance")] UNABLE_TO_OBTAIN_MONEY_BALANCE,
-            [Description("rebake failed")] REBAKE_FAILED,
             [Description("timeout getting avatar data")] TIMEOUT_GETTING_AVATAR_DATA,
             [Description("avatar is not on the current region")] AVATAR_NOT_ON_CURRENT_REGION
         }
@@ -15681,12 +15759,6 @@ namespace Corrade
         #region RLV STRUCTURES
 
         /// <summary>
-        ///     Regex used to match RLV commands.
-        /// </summary>
-        private static readonly Regex RLVRegex = new Regex(@"(?<behaviour>[^:=]+)(:(?<option>[^=]*))?=(?<param>\w+)",
-            RegexOptions.Compiled);
-
-        /// <summary>
         ///     Holds all the active RLV rules.
         /// </summary>
         private static readonly HashSet<RLVRule> RLVRules = new HashSet<RLVRule>();
@@ -15854,6 +15926,12 @@ namespace Corrade
             public const string N = @"n";
             public const string REM = @"rem";
             public const string STATUS_SEPARATOR = @";";
+
+            /// <summary>
+            ///     Regex used to match RLV commands.
+            /// </summary>
+            public static readonly Regex RLVRegex = new Regex(@"(?<behaviour>[^:=]+)(:(?<option>[^=]*))?=(?<param>\w+)",
+                RegexOptions.Compiled);
         }
 
         #endregion
