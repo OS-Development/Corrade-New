@@ -29,5 +29,5 @@ using System.Resources;
 //      Build Number
 //      Revision
 //
-[assembly: AssemblyVersion("7.59.*")]
+[assembly: AssemblyVersion("7.61.*")]
 [assembly: NeutralResourcesLanguageAttribute("en")]

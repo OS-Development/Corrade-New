@@ -417,20 +417,24 @@ namespace Corrade
 
         private static void Attach(InventoryItem item, AttachmentPoint point, bool replace, InventoryFolder outfitFolder)
         {
-            Client.Appearance.Attach(ResolveItemLink(item), point, replace);
-            AddLink(item, outfitFolder);
+            InventoryItem realItem = ResolveItemLink(item);
+            if (realItem == null) return;
+            Client.Appearance.Attach(realItem, point, replace);
+            AddLink(realItem, outfitFolder);
         }
 
         private static void Detach(InventoryItem item, InventoryFolder outfitFolder)
         {
-            RemoveLink(item, outfitFolder);
-            Client.Appearance.Detach(ResolveItemLink(item));
+            InventoryItem realItem = ResolveItemLink(item);
+            if (realItem == null) return;
+            RemoveLink(realItem, outfitFolder);
+            Client.Appearance.Detach(realItem);
         }
 
         private static void Wear(InventoryItem item, bool replace, InventoryFolder outfitFolder)
         {
             InventoryItem realItem = ResolveItemLink(item);
-            if (item == null) return;
+            if (realItem == null) return;
             Client.Appearance.AddToOutfit(realItem, replace);
             AddLink(realItem, outfitFolder);
         }
@@ -491,39 +495,20 @@ namespace Corrade
         }
 
         /// <summary>
-        ///     Remove a current outfit folder link of the specified inventory item.
-        /// </summary>
-        /// <param name="item">the inventory item for which to remove the link</param>
-        /// <param name="outfitFolder">the outfit folder</param>
-        private static void RemoveLink(InventoryItem item, InventoryFolder outfitFolder)
-        {
-            RemoveLink(new HashSet<InventoryItem> {item}, outfitFolder);
-        }
-
-        /// <summary>
         ///     Remove current outfit folder links for multiple specified inventory item.
         /// </summary>
-        /// <param name="items">list of items whose links should be removed</param>
+        /// <param name="item">the item whose link should be removed</param>
         /// <param name="outfitFolder">the outfit folder</param>
-        private static void RemoveLink(IEnumerable<InventoryItem> items, InventoryFolder outfitFolder)
+        private static void RemoveLink(InventoryItem item, InventoryFolder outfitFolder)
         {
             if (outfitFolder == null) return;
 
             HashSet<UUID> removeItems = new HashSet<UUID>();
-            object LockObject = new object();
-            Parallel.ForEach(items,
-                item =>
-                    GetCurrentOutfitFolderLinks(outfitFolder)
-                        .FindAll(
-                            itemLink =>
-                                itemLink.AssetUUID.Equals(item is InventoryWearable ? item.AssetUUID : item.UUID))
-                        .ForEach(link =>
-                        {
-                            lock (LockObject)
-                            {
-                                removeItems.Add(link.UUID);
-                            }
-                        }));
+            GetCurrentOutfitFolderLinks(outfitFolder)
+                .FindAll(
+                    itemLink =>
+                        itemLink.AssetUUID.Equals(item is InventoryWearable ? item.AssetUUID : item.UUID))
+                .ForEach(link => removeItems.Add(link.UUID));
 
             Client.Inventory.Remove(removeItems.ToList(), null);
         }
