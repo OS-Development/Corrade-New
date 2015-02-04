@@ -120,6 +120,10 @@ namespace Corrade
 
         private static readonly object GroupMembersLock = new object();
 
+        private static readonly Hashtable GroupWorkers = new Hashtable();
+
+        private static readonly object GroupWorkersLock = new object();
+
         private static volatile bool EnableCorradeRLV;
 
         private static InventoryFolder OutfitFolder;
@@ -4419,8 +4423,32 @@ namespace Corrade
                 identifier,
                 message));
 
+            // Initialize workers for the group if they are not set.
+            if (!GroupWorkers.Contains(group))
+            {
+                lock (GroupWorkersLock)
+                {
+                    GroupWorkers.Add(group, 0u);
+                }
+            }
+
+            // Check if the workers have not been exceeded.
+            if ((uint) GroupWorkers[group] >
+                Configuration.GROUPS.FirstOrDefault(
+                    o => o.Name.Equals(group, StringComparison.InvariantCultureIgnoreCase)).Workers)
+            {
+                // And refuse to proceed if they have.
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WORKERS_EXCEEDED),
+                    group);
+                return null;
+            }
+
+            // Increment the group workers.
+            GroupWorkers[group] = ((uint) GroupWorkers[group]) + 1;
             // Perform the command.
             Dictionary<string, string> result = ProcessCommand(message);
+            // Decrement the group workers.
+            GroupWorkers[group] = ((uint) GroupWorkers[group]) - 1;
             // send callback if registered
             string url =
                 wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.CALLBACK), message));
@@ -7016,7 +7044,6 @@ namespace Corrade
                         {
                             Heuristics = (wasAlarm.Mean) Configuration.DATA_TIMEOUT_DECAY
                         };
-                        object LockObject = new object();
                         Avatar.AvatarProperties properties = new Avatar.AvatarProperties();
                         Avatar.Interests interests = new Avatar.Interests();
                         List<AvatarGroup> groups = new List<AvatarGroup>();
@@ -7025,45 +7052,30 @@ namespace Corrade
                         EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
                         {
                             ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
-                            lock (LockObject)
-                            {
-                                interests = args.Interests;
-                            }
+                            interests = args.Interests;
                         };
                         EventHandler<AvatarPropertiesReplyEventArgs> AvatarPropertiesReplyEventHandler =
                             (sender, args) =>
                             {
                                 ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
-                                lock (LockObject)
-                                {
-                                    properties = args.Properties;
-                                }
+                                properties = args.Properties;
                             };
                         EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
                         {
                             ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
-                            lock (LockObject)
-                            {
-                                groups.AddRange(args.Groups);
-                            }
+                            groups.AddRange(args.Groups);
                         };
                         EventHandler<AvatarPicksReplyEventArgs> AvatarPicksReplyEventHandler =
                             (sender, args) =>
                             {
                                 ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
-                                lock (LockObject)
-                                {
-                                    picks = args;
-                                }
+                                picks = args;
                             };
                         EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedReplyEventHandler =
                             (sender, args) =>
                             {
                                 ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
-                                lock (LockObject)
-                                {
-                                    classifieds = args;
-                                }
+                                classifieds = args;
                             };
                         Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
                         Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;
@@ -10940,18 +10952,11 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_LAND_RIGHTS));
                         }
-                        int timeout;
-                        if (
-                            !int.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TIMEOUT), message)),
-                                out timeout))
-                        {
-                            timeout = Configuration.SERVICES_TIMEOUT;
-                        }
                         List<UUID> estateList = new List<UUID>();
-                        ManualResetEvent EstateListReplyEvent = new ManualResetEvent(false);
-                        object LockObject = new object();
+                        wasAlarm EstateListReceivedAlarm = new wasAlarm
+                        {
+                            Heuristics = (wasAlarm.Mean) Configuration.DATA_TIMEOUT_DECAY
+                        };
                         switch (
                             wasGetEnumValueFromDescription<Type>(
                                 wasUriUnescapeDataString(wasKeyValueGet(
@@ -10961,39 +10966,44 @@ namespace Corrade
                             case Type.BAN:
                                 EventHandler<EstateBansReplyEventArgs> EstateBansReplyEventHandler = (sender, args) =>
                                 {
+                                    EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
                                     if (args.Count.Equals(0))
                                     {
-                                        EstateListReplyEvent.Set();
+                                        EstateListReceivedAlarm.Signal.Set();
                                         return;
                                     }
-                                    lock (LockObject)
-                                    {
-                                        estateList.AddRange(args.Banned);
-                                    }
+                                    estateList.AddRange(args.Banned);
                                 };
                                 Client.Estate.EstateBansReply += EstateBansReplyEventHandler;
                                 Client.Estate.RequestInfo();
-                                EstateListReplyEvent.WaitOne(timeout, false);
+                                if (!EstateListReceivedAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST));
+                                }
                                 Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
-
                                 break;
                             case Type.GROUP:
                                 EventHandler<EstateGroupsReplyEventArgs> EstateGroupsReplyEvenHandler =
                                     (sender, args) =>
                                     {
+                                        EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
                                         if (args.Count.Equals(0))
                                         {
-                                            EstateListReplyEvent.Set();
+                                            EstateListReceivedAlarm.Signal.Set();
                                             return;
                                         }
-                                        lock (LockObject)
-                                        {
-                                            estateList.AddRange(args.AllowedGroups);
-                                        }
+                                        estateList.AddRange(args.AllowedGroups);
                                     };
                                 Client.Estate.EstateGroupsReply += EstateGroupsReplyEvenHandler;
                                 Client.Estate.RequestInfo();
-                                EstateListReplyEvent.WaitOne(timeout, false);
+                                if (!EstateListReceivedAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST));
+                                }
                                 Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
 
                                 break;
@@ -11001,19 +11011,22 @@ namespace Corrade
                                 EventHandler<EstateManagersReplyEventArgs> EstateManagersReplyEventHandler =
                                     (sender, args) =>
                                     {
+                                        EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
                                         if (args.Count.Equals(0))
                                         {
-                                            EstateListReplyEvent.Set();
+                                            EstateListReceivedAlarm.Signal.Set();
                                             return;
                                         }
-                                        lock (LockObject)
-                                        {
-                                            estateList.AddRange(args.Managers);
-                                        }
+                                        estateList.AddRange(args.Managers);
                                     };
                                 Client.Estate.EstateManagersReply += EstateManagersReplyEventHandler;
                                 Client.Estate.RequestInfo();
-                                EstateListReplyEvent.WaitOne(timeout, false);
+                                if (!EstateListReceivedAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST));
+                                }
                                 Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
 
                                 break;
@@ -11021,34 +11034,34 @@ namespace Corrade
                                 EventHandler<EstateUsersReplyEventArgs> EstateUsersReplyEventHandler =
                                     (sender, args) =>
                                     {
+                                        EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
                                         if (args.Count.Equals(0))
                                         {
-                                            EstateListReplyEvent.Set();
+                                            EstateListReceivedAlarm.Signal.Set();
                                             return;
                                         }
-                                        lock (LockObject)
-                                        {
-                                            estateList.AddRange(args.AllowedUsers);
-                                        }
+                                        estateList.AddRange(args.AllowedUsers);
                                     };
                                 Client.Estate.EstateUsersReply += EstateUsersReplyEventHandler;
                                 Client.Estate.RequestInfo();
-                                EstateListReplyEvent.WaitOne(timeout, false);
+                                if (!EstateListReceivedAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST));
+                                }
                                 Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
 
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ESTATE_LIST));
                         }
-                        lock (LockObject)
+                        List<string> data = new List<string>(estateList.ConvertAll(o => o.ToString()));
+                        if (!data.Count.Equals(0))
                         {
-                            List<string> data = new List<string>(estateList.ConvertAll(o => o.ToString()));
-                            if (!data.Count.Equals(0))
-                            {
-                                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                    string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                        data.ToArray()));
-                            }
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.ToArray()));
                         }
                     };
                     break;
@@ -12742,15 +12755,10 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        int timeout;
-                        if (
-                            !int.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TIMEOUT), message)),
-                                out timeout))
+                        wasAlarm DirectorySearchResultsAlarm = new wasAlarm
                         {
-                            timeout = Configuration.SERVICES_TIMEOUT;
-                        }
+                            Heuristics = (wasAlarm.Mean) Configuration.DATA_TIMEOUT_DECAY
+                        };
                         object LockObject = new object();
                         List<string> csv = new List<string>();
                         int handledEvents = 0;
@@ -12775,10 +12783,10 @@ namespace Corrade
                                     ref searchClassified);
                                 Dictionary<DirectoryManager.Classified, int> classifieds =
                                     new Dictionary<DirectoryManager.Classified, int>();
-                                ManualResetEvent DirClassifiedsEvent = new ManualResetEvent(false);
                                 EventHandler<DirClassifiedsReplyEventArgs> DirClassifiedsEventHandler =
                                     (sender, args) => Parallel.ForEach(args.Classifieds, o =>
                                     {
+                                        DirectorySearchResultsAlarm.Alarm(Configuration.DATA_TIMEOUT);
                                         int score = !string.IsNullOrEmpty(fields)
                                             ? wasGetFields(searchClassified, searchClassified.GetType().Name)
                                                 .Sum(
@@ -12793,29 +12801,21 @@ namespace Corrade
                                                             where r.Equals(s)
                                                             select r).Count())
                                             : 0;
-                                        lock (LockObject)
-                                        {
-                                            classifieds.Add(o, score);
-                                        }
+                                        classifieds.Add(o, score);
                                     });
                                 Client.Directory.DirClassifiedsReply += DirClassifiedsEventHandler;
                                 Client.Directory.StartClassifiedSearch(name);
-                                DirClassifiedsEvent.WaitOne(timeout, false);
-                                DirClassifiedsEvent.Close();
+                                DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
                                 Client.Directory.DirClassifiedsReply -= DirClassifiedsEventHandler;
-
-                                DirectoryManager.Classified topClassified =
-                                    classifieds.OrderByDescending(o => o.Value).FirstOrDefault().Key;
-                                Parallel.ForEach(
-                                    wasGetFields(topClassified, topClassified.GetType().Name),
-                                    o =>
+                                Parallel.ForEach(classifieds.OrderByDescending(o => o.Value),
+                                    o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
                                     {
                                         lock (LockObject)
                                         {
-                                            csv.Add(o.Key.Name);
-                                            csv.AddRange(wasGetInfo(o.Key, o.Value));
+                                            csv.Add(p.Key.Name);
+                                            csv.AddRange(wasGetInfo(p.Key, p.Value));
                                         }
-                                    });
+                                    }));
                                 break;
                             case Type.EVENT:
                                 DirectoryManager.EventsSearchData searchEvent = new DirectoryManager.EventsSearchData();
@@ -12825,10 +12825,10 @@ namespace Corrade
                                     ref searchEvent);
                                 Dictionary<DirectoryManager.EventsSearchData, int> events =
                                     new Dictionary<DirectoryManager.EventsSearchData, int>();
-                                ManualResetEvent DirEventsReplyEvent = new ManualResetEvent(false);
                                 EventHandler<DirEventsReplyEventArgs> DirEventsEventHandler =
                                     (sender, args) =>
                                     {
+                                        DirectorySearchResultsAlarm.Alarm(Configuration.DATA_TIMEOUT);
                                         handledEvents += args.MatchedEvents.Count;
                                         Parallel.ForEach(args.MatchedEvents, o =>
                                         {
@@ -12856,25 +12856,22 @@ namespace Corrade
                                             ++counter;
                                             Client.Directory.StartEventsSearch(name, (uint) handledEvents);
                                         }
-                                        DirEventsReplyEvent.Set();
+                                        DirectorySearchResultsAlarm.Signal.Set();
                                     };
                                 Client.Directory.DirEventsReply += DirEventsEventHandler;
                                 Client.Directory.StartEventsSearch(name,
                                     (uint) handledEvents);
-                                DirEventsReplyEvent.WaitOne(timeout, false);
+                                DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
                                 Client.Directory.DirEventsReply -= DirEventsEventHandler;
-
-                                DirectoryManager.EventsSearchData topEvent =
-                                    events.OrderByDescending(o => o.Value).FirstOrDefault().Key;
-                                Parallel.ForEach(wasGetFields(topEvent, topEvent.GetType().Name),
-                                    o =>
+                                Parallel.ForEach(events.OrderByDescending(o => o.Value),
+                                    o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
                                     {
                                         lock (LockObject)
                                         {
-                                            csv.Add(o.Key.Name);
-                                            csv.AddRange(wasGetInfo(o.Key, o.Value));
+                                            csv.Add(p.Key.Name);
+                                            csv.AddRange(wasGetInfo(p.Key, p.Value));
                                         }
-                                    });
+                                    }));
                                 break;
                             case Type.GROUP:
                                 if (string.IsNullOrEmpty(name))
@@ -12889,10 +12886,10 @@ namespace Corrade
                                     ref searchGroup);
                                 Dictionary<DirectoryManager.GroupSearchData, int> groups =
                                     new Dictionary<DirectoryManager.GroupSearchData, int>();
-                                ManualResetEvent DirGroupsReplyEvent = new ManualResetEvent(false);
                                 EventHandler<DirGroupsReplyEventArgs> DirGroupsEventHandler =
                                     (sender, args) =>
                                     {
+                                        DirectorySearchResultsAlarm.Alarm(Configuration.DATA_TIMEOUT);
                                         handledEvents += args.MatchedGroups.Count;
                                         Parallel.ForEach(args.MatchedGroups, o =>
                                         {
@@ -12920,24 +12917,21 @@ namespace Corrade
                                             ++counter;
                                             Client.Directory.StartGroupSearch(name, handledEvents);
                                         }
-                                        DirGroupsReplyEvent.Set();
+                                        DirectorySearchResultsAlarm.Signal.Set();
                                     };
                                 Client.Directory.DirGroupsReply += DirGroupsEventHandler;
                                 Client.Directory.StartGroupSearch(name, handledEvents);
-                                DirGroupsReplyEvent.WaitOne(timeout, false);
+                                DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
                                 Client.Directory.DirGroupsReply -= DirGroupsEventHandler;
-
-                                DirectoryManager.GroupSearchData topGroup =
-                                    groups.OrderByDescending(o => o.Value).FirstOrDefault().Key;
-                                Parallel.ForEach(wasGetFields(topGroup, topGroup.GetType().Name),
-                                    o =>
+                                Parallel.ForEach(groups.OrderByDescending(o => o.Value),
+                                    o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
                                     {
                                         lock (LockObject)
                                         {
-                                            csv.Add(o.Key.Name);
-                                            csv.AddRange(wasGetInfo(o.Key, o.Value));
+                                            csv.Add(p.Key.Name);
+                                            csv.AddRange(wasGetInfo(p.Key, p.Value));
                                         }
-                                    });
+                                    }));
                                 break;
                             case Type.LAND:
                                 DirectoryManager.DirectoryParcel searchLand = new DirectoryManager.DirectoryParcel();
@@ -12947,10 +12941,10 @@ namespace Corrade
                                     ref searchLand);
                                 Dictionary<DirectoryManager.DirectoryParcel, int> lands =
                                     new Dictionary<DirectoryManager.DirectoryParcel, int>();
-                                ManualResetEvent DirLandReplyEvent = new ManualResetEvent(false);
                                 EventHandler<DirLandReplyEventArgs> DirLandReplyEventArgs =
                                     (sender, args) =>
                                     {
+                                        DirectorySearchResultsAlarm.Alarm(Configuration.DATA_TIMEOUT);
                                         handledEvents += args.DirParcels.Count;
                                         Parallel.ForEach(args.DirParcels, o =>
                                         {
@@ -12980,25 +12974,22 @@ namespace Corrade
                                                 DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue,
                                                 handledEvents);
                                         }
-                                        DirLandReplyEvent.Set();
+                                        DirectorySearchResultsAlarm.Signal.Set();
                                     };
                                 Client.Directory.DirLandReply += DirLandReplyEventArgs;
                                 Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
                                     DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue, handledEvents);
-                                DirLandReplyEvent.WaitOne(timeout, false);
+                                DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
                                 Client.Directory.DirLandReply -= DirLandReplyEventArgs;
-
-                                DirectoryManager.DirectoryParcel topLand =
-                                    lands.OrderByDescending(o => o.Value).FirstOrDefault().Key;
-                                Parallel.ForEach(wasGetFields(topLand, topLand.GetType().Name),
-                                    o =>
+                                Parallel.ForEach(lands.OrderByDescending(o => o.Value),
+                                    o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
                                     {
                                         lock (LockObject)
                                         {
-                                            csv.Add(o.Key.Name);
-                                            csv.AddRange(wasGetInfo(o.Key, o.Value));
+                                            csv.Add(p.Key.Name);
+                                            csv.AddRange(wasGetInfo(p.Key, p.Value));
                                         }
-                                    });
+                                    }));
                                 break;
                             case Type.PEOPLE:
                                 if (string.IsNullOrEmpty(name))
@@ -13009,10 +13000,10 @@ namespace Corrade
                                 DirectoryManager.AgentSearchData searchAgent = new DirectoryManager.AgentSearchData();
                                 Dictionary<DirectoryManager.AgentSearchData, int> agents =
                                     new Dictionary<DirectoryManager.AgentSearchData, int>();
-                                ManualResetEvent AgentSearchDataEvent = new ManualResetEvent(false);
                                 EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyEventHandler =
                                     (sender, args) =>
                                     {
+                                        DirectorySearchResultsAlarm.Alarm(Configuration.DATA_TIMEOUT);
                                         handledEvents += args.MatchedPeople.Count;
                                         Parallel.ForEach(args.MatchedPeople, o =>
                                         {
@@ -13040,25 +13031,22 @@ namespace Corrade
                                             ++counter;
                                             Client.Directory.StartPeopleSearch(name, handledEvents);
                                         }
-                                        AgentSearchDataEvent.Set();
+                                        DirectorySearchResultsAlarm.Signal.Set();
                                     };
 
                                 Client.Directory.DirPeopleReply += DirPeopleReplyEventHandler;
                                 Client.Directory.StartPeopleSearch(name, handledEvents);
-                                AgentSearchDataEvent.WaitOne(timeout, false);
+                                DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
                                 Client.Directory.DirPeopleReply -= DirPeopleReplyEventHandler;
-
-                                DirectoryManager.AgentSearchData topAgent =
-                                    agents.OrderByDescending(o => o.Value).FirstOrDefault().Key;
-                                Parallel.ForEach(wasGetFields(topAgent, topAgent.GetType().Name),
-                                    o =>
+                                Parallel.ForEach(agents.OrderByDescending(o => o.Value),
+                                    o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
                                     {
                                         lock (LockObject)
                                         {
-                                            csv.Add(o.Key.Name);
-                                            csv.AddRange(wasGetInfo(o.Key, o.Value));
+                                            csv.Add(p.Key.Name);
+                                            csv.AddRange(wasGetInfo(p.Key, p.Value));
                                         }
-                                    });
+                                    }));
                                 break;
                             case Type.PLACE:
                                 if (string.IsNullOrEmpty(name))
@@ -13073,10 +13061,10 @@ namespace Corrade
                                     ref searchPlaces);
                                 Dictionary<DirectoryManager.PlacesSearchData, int> places =
                                     new Dictionary<DirectoryManager.PlacesSearchData, int>();
-                                ManualResetEvent DirPlacesReplyEvent = new ManualResetEvent(false);
                                 EventHandler<PlacesReplyEventArgs> DirPlacesReplyEventHandler =
                                     (sender, args) => Parallel.ForEach(args.MatchedPlaces, o =>
                                     {
+                                        DirectorySearchResultsAlarm.Alarm(Configuration.DATA_TIMEOUT);
                                         int score = !string.IsNullOrEmpty(fields)
                                             ? wasGetFields(searchPlaces, searchPlaces.GetType().Name)
                                                 .Sum(
@@ -13090,28 +13078,21 @@ namespace Corrade
                                                             where r.Equals(s)
                                                             select r).Count())
                                             : 0;
-                                        lock (LockObject)
-                                        {
-                                            places.Add(o, score);
-                                        }
+                                        places.Add(o, score);
                                     });
                                 Client.Directory.PlacesReply += DirPlacesReplyEventHandler;
                                 Client.Directory.StartPlacesSearch(name);
-                                DirPlacesReplyEvent.WaitOne(timeout, false);
-                                DirPlacesReplyEvent.Close();
+                                DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
                                 Client.Directory.PlacesReply -= DirPlacesReplyEventHandler;
-
-                                DirectoryManager.PlacesSearchData topPlace =
-                                    places.OrderByDescending(o => o.Value).FirstOrDefault().Key;
-                                Parallel.ForEach(wasGetFields(topPlace, topPlace.GetType().Name),
-                                    o =>
+                                Parallel.ForEach(places.OrderByDescending(o => o.Value),
+                                    o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
                                     {
                                         lock (LockObject)
                                         {
-                                            csv.Add(o.Key.Name);
-                                            csv.AddRange(wasGetInfo(o.Key, o.Value));
+                                            csv.Add(p.Key.Name);
+                                            csv.AddRange(wasGetInfo(p.Key, p.Value));
                                         }
-                                    });
+                                    }));
                                 break;
                             default:
                                 throw new Exception(
@@ -13158,7 +13139,7 @@ namespace Corrade
             bool success = false;
             try
             {
-                // lock down the client during execution
+                // lock down the client for execution
                 lock (ClientInstanceLock)
                 {
                     execute.Invoke();
@@ -14737,7 +14718,17 @@ namespace Corrade
                         {
                             foreach (XmlNode groupsNode in nodeList)
                             {
-                                Group configGroup = new Group();
+                                Group configGroup = new Group
+                                {
+                                    ChatLog = string.Empty,
+                                    DatabaseFile = string.Empty,
+                                    Name = string.Empty,
+                                    NotificationMask = 0,
+                                    Password = string.Empty,
+                                    PermissionMask = 0,
+                                    UUID = UUID.Zero,
+                                    Workers = 5
+                                };
                                 foreach (XmlNode groupNode in groupsNode.ChildNodes)
                                 {
                                     switch (groupNode.Name.ToLowerInvariant())
@@ -14761,6 +14752,12 @@ namespace Corrade
                                                 throw new Exception("error in group section");
                                             }
                                             configGroup.Password = groupNode.InnerText;
+                                            break;
+                                        case ConfigurationKeys.WORKERS:
+                                            if (!uint.TryParse(groupNode.InnerText, out configGroup.Workers))
+                                            {
+                                                throw new Exception("error in group section");
+                                            }
                                             break;
                                         case ConfigurationKeys.CHATLOG:
                                             if (string.IsNullOrEmpty(groupNode.InnerText))
@@ -14903,6 +14900,7 @@ namespace Corrade
             public const string THREADS = @"threads";
             public const string COMMANDS = @"commands";
             public const string RLV = @"rlv";
+            public const string WORKERS = @"workers";
         }
 
         /// <summary>
@@ -14948,7 +14946,7 @@ namespace Corrade
             [Description("unable to save Corrade cache")] UNABLE_TO_SAVE_CORRADE_CACHE,
             [Description("failed to manifest RLV behaviour")] FAILED_TO_MANIFEST_RLV_BEHAVIOUR,
             [Description("behaviour not implemented")] BEHAVIOUR_NOT_IMPLEMENTED,
-            [Description("failed to activate land group")] FAILED_TO_ACTIVATE_LAND_GROUP
+            [Description("workers exceeded")] WORKERS_EXCEEDED
         }
 
         /// <summary>
@@ -15030,6 +15028,7 @@ namespace Corrade
             public string Password;
             public uint PermissionMask;
             public UUID UUID;
+            public uint Workers;
         }
 
         /// <summary>
@@ -15389,7 +15388,8 @@ namespace Corrade
             [Description("unknown group invite session")] UNKNOWN_GROUP_INVITE_SESSION,
             [Description("unable to obtain money balance")] UNABLE_TO_OBTAIN_MONEY_BALANCE,
             [Description("timeout getting avatar data")] TIMEOUT_GETTING_AVATAR_DATA,
-            [Description("avatar is not on the current region")] AVATAR_NOT_ON_CURRENT_REGION
+            [Description("avatar is not on the current region")] AVATAR_NOT_ON_CURRENT_REGION,
+            [Description("timeout retrieving estate list")] TIMEOUT_RETRIEVING_ESTATE_LIST
         }
 
         /// <summary>
