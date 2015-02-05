@@ -124,6 +124,10 @@ namespace Corrade
 
         private static readonly object GroupWorkersLock = new object();
 
+        private static readonly object InputFiltersLock = new object();
+
+        private static readonly object OutputFiltersLock = new object();
+
         private static volatile bool EnableCorradeRLV;
 
         private static InventoryFolder OutfitFolder;
@@ -156,6 +160,74 @@ namespace Corrade
         });
 
         public static EventHandler ConsoleEventHandler;
+
+        private static readonly Func<string, string> wasInput = o =>
+        {
+            if (string.IsNullOrEmpty(o)) return string.Empty;
+
+            List<Filter> safeFilters;
+            lock (InputFiltersLock)
+            {
+                safeFilters = Configuration.INPUT_FILTERS;
+            }
+            foreach (Filter filter in safeFilters)
+            {
+                switch (filter)
+                {
+                    case Filter.RFC3986:
+                        o = wasUriUnescapeDataString(o);
+                        break;
+                    case Filter.ENIGMA:
+                        o = wasEnigma(o, Configuration.ENIGMA.rotors.ToArray(), Configuration.ENIGMA.plugs.ToArray(),
+                            Configuration.ENIGMA.reflector);
+                        break;
+                    case Filter.VIGENERE:
+                        o = wasDecryptVIGENERE(o, Configuration.VIGENERE_SECRET);
+                        break;
+                    case Filter.ATBASH:
+                        o = wasATBASH(o);
+                        break;
+                    case Filter.BASE64:
+                        o = Encoding.UTF8.GetString(Convert.FromBase64String(o));
+                        break;
+                }
+            }
+            return o;
+        };
+
+        private static readonly Func<string, string> wasOutput = o =>
+        {
+            if (string.IsNullOrEmpty(o)) return string.Empty;
+
+            List<Filter> safeFilters;
+            lock (OutputFiltersLock)
+            {
+                safeFilters = Configuration.OUTPUT_FILTERS;
+            }
+            foreach (Filter filter in safeFilters)
+            {
+                switch (filter)
+                {
+                    case Filter.RFC3986:
+                        o = wasUriEscapeDataString(o);
+                        break;
+                    case Filter.ENIGMA:
+                        o = wasEnigma(o, Configuration.ENIGMA.rotors.ToArray(), Configuration.ENIGMA.plugs.ToArray(),
+                            Configuration.ENIGMA.reflector);
+                        break;
+                    case Filter.VIGENERE:
+                        o = wasEncryptVIGENERE(o, Configuration.VIGENERE_SECRET);
+                        break;
+                    case Filter.ATBASH:
+                        o = wasATBASH(o);
+                        break;
+                    case Filter.BASE64:
+                        o = Convert.ToBase64String(Encoding.UTF8.GetBytes(o));
+                        break;
+                }
+            }
+            return o;
+        };
 
         private static readonly System.Action LoadInventoryCache = () =>
         {
@@ -1747,8 +1819,7 @@ namespace Corrade
             Client.Network.SimChanged += HandleSimChanged;
             Client.Self.MoneyBalanceReply += HandleMoneyBalance;
             // Each Instant Message is processed in its own thread.
-            Client.Self.IM +=
-                (sender, args) => new Thread(o => HandleSelfIM(sender, args)) {IsBackground = true}.Start();
+            Client.Self.IM += HandleSelfIM;
             // Write the logo in interactive mode.
             if (Environment.UserInteractive)
             {
@@ -4377,12 +4448,12 @@ namespace Corrade
             // Now we can start processing commands.
             // Get group and password.
             string group =
-                wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP), message));
+                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)), message));
             // Bail if no group set.
             if (string.IsNullOrEmpty(group)) return null;
             // Get password.
             string password =
-                wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD), message));
+                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD)), message));
             // Bail if no password set.
             if (string.IsNullOrEmpty(password)) return null;
             // Authenticate the request against the group password.
@@ -4392,7 +4463,7 @@ namespace Corrade
                 return null;
             }
             // Censor password.
-            message = wasKeyValueSet(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD),
+            message = wasKeyValueSet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD)),
                 CORRADE_CONSTANTS.PASSWORD_CENSOR, message);
             /*
              * OpenSim sends the primitive UUID through args.IM.FromAgentID while Second Life properly sends 
@@ -4451,7 +4522,7 @@ namespace Corrade
             GroupWorkers[group] = ((uint) GroupWorkers[group]) - 1;
             // send callback if registered
             string url =
-                wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.CALLBACK), message));
+                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.CALLBACK)), message));
             if (!string.IsNullOrEmpty(url) && CallbackQueue.Count < Configuration.CALLBACK_QUEUE_LENGTH)
             {
                 lock (CallbackQueueLock)
@@ -4475,13 +4546,13 @@ namespace Corrade
         {
             Dictionary<string, string> result = new Dictionary<string, string>();
             string command =
-                wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND), message));
+                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND)), message));
             if (!string.IsNullOrEmpty(command))
             {
                 result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND), command);
             }
             string group =
-                wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP), message));
+                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)), message));
             if (!string.IsNullOrEmpty(group))
             {
                 result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP), group);
@@ -4567,7 +4638,7 @@ namespace Corrade
                             Name = group
                         };
                         wasCSVToStructure(
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message)),
                             ref commandGroup);
                         bool succeeded = false;
@@ -4618,14 +4689,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -4639,7 +4710,7 @@ namespace Corrade
                         }
                         // role is optional
                         string role =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
                                 message));
                         UUID roleUUID = UUID.Zero;
                         if (!string.IsNullOrEmpty(role) && !UUID.TryParse(role, out roleUUID) &&
@@ -4673,8 +4744,8 @@ namespace Corrade
                         }
                         uint action =
                             (uint) wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                                     .ToLowerInvariant());
                         UUID groupUUID =
                             Configuration.GROUPS.FirstOrDefault(
@@ -4694,8 +4765,8 @@ namespace Corrade
                         UUID sessionUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION)),
                                         message)),
                                 out sessionUUID))
                         {
@@ -4801,14 +4872,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -4892,8 +4963,8 @@ namespace Corrade
                         int days;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.DAYS), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DAYS)), message)),
                                 out days))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_DAYS));
@@ -4901,8 +4972,9 @@ namespace Corrade
                         int interval;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.INTERVAL), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.INTERVAL)),
+                                        message)),
                                 out interval))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_INTERVAL));
@@ -4927,7 +4999,7 @@ namespace Corrade
                         Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
 
                         List<string> data = new List<string>(GetStructuredData(summary,
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message)))
                             );
                         if (!data.Count.Equals(0))
@@ -4974,7 +5046,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         wasCSVToStructure(
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message)),
                             ref commandGroup);
                         Client.Groups.UpdateGroup(groupUUID, commandGroup);
@@ -5078,7 +5150,7 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(ScriptError.MAXIMUM_NUMBER_OF_ROLES_EXCEEDED));
                         }
                         string role =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
                                 message));
                         if (string.IsNullOrEmpty(role))
                         {
@@ -5086,7 +5158,7 @@ namespace Corrade
                         }
                         ulong powers = 0;
                         Parallel.ForEach(
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POWERS),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POWERS)),
                                 message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
                             o =>
@@ -5103,15 +5175,15 @@ namespace Corrade
                         {
                             Name = role,
                             Description =
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
                                         message)),
                             GroupID = groupUUID,
                             ID = UUID.Random(),
                             Powers = (GroupPowers) powers,
                             Title =
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.TITLE), message))
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TITLE)), message))
                         });
                         UUID roleUUID = UUID.Zero;
                         if (
@@ -5259,14 +5331,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -5340,7 +5412,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         string role =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
                                 message));
                         if (string.IsNullOrEmpty(role))
                         {
@@ -5483,7 +5555,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         string role =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
                                 message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
@@ -5556,7 +5628,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         string role =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
                                 message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
@@ -5632,14 +5704,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -5647,7 +5719,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         string role =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
                                 message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
@@ -5698,14 +5770,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -5713,7 +5785,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         string role =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
                                 message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
@@ -5751,24 +5823,26 @@ namespace Corrade
                         }
                         switch (
                             wasGetEnumValueFromDescription<Entity>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
                                         message)).ToLowerInvariant()))
                         {
                             case Entity.AVATAR:
                                 UUID agentUUID;
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
                                                 message)), out agentUUID) && !AgentNameToUUID(
-                                                    wasUriUnescapeDataString(
+                                                    wasInput(
                                                         wasKeyValueGet(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            wasOutput(
+                                                                wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                                             message)),
-                                                    wasUriUnescapeDataString(
+                                                    wasInput(
                                                         wasKeyValueGet(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
+                                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
+                                                            message)),
                                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                                     Configuration.DATA_TIMEOUT_DECAY,
                                                     ref agentUUID))
@@ -5776,8 +5850,8 @@ namespace Corrade
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
                                 Client.Self.InstantMessage(agentUUID,
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
                                             message)));
                                 break;
                             case Entity.GROUP:
@@ -5832,16 +5906,17 @@ namespace Corrade
                                     }
                                 }
                                 Client.Self.InstantMessageGroup(groupUUID,
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
                                             message)));
                                 break;
                             case Entity.LOCAL:
                                 int chatChannel;
                                 if (
                                     !int.TryParse(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.CHANNEL),
+                                        wasInput(
+                                            wasKeyValueGet(
+                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.CHANNEL)),
                                                 message)),
                                         out chatChannel))
                                 {
@@ -5852,13 +5927,14 @@ namespace Corrade
                                     .FirstOrDefault(
                                         o =>
                                             o.Name.Equals(
-                                                wasUriUnescapeDataString(
-                                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
+                                                wasInput(
+                                                    wasKeyValueGet(
+                                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
                                                         message)),
                                                 StringComparison.Ordinal));
                                 Client.Self.Chat(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
                                             message)),
                                     chatChannel,
                                     chatTypeInfo != null
@@ -5869,14 +5945,14 @@ namespace Corrade
                                 break;
                             case Entity.ESTATE:
                                 Client.Estate.EstateMessage(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
                                             message)));
                                 break;
                             case Entity.REGION:
                                 Client.Estate.SimulatorMessage(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
                                             message)));
                                 break;
                             default:
@@ -5917,15 +5993,17 @@ namespace Corrade
                         GroupNotice notice = new GroupNotice
                         {
                             Message =
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
+                                        message)),
                             Subject =
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.SUBJECT), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SUBJECT)),
+                                        message)),
                             OwnerID = Client.Self.AgentID
                         };
                         string item =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
                                 message));
                         if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out notice.AttachmentID))
                         {
@@ -5952,8 +6030,8 @@ namespace Corrade
                         int amount;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT)), message)),
                                 out amount))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PAY_AMOUNT));
@@ -5974,8 +6052,8 @@ namespace Corrade
                         UUID targetUUID;
                         switch (
                             wasGetEnumValueFromDescription<Entity>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
                                         message)).ToLowerInvariant()))
                         {
                             case Entity.GROUP:
@@ -5990,23 +6068,25 @@ namespace Corrade
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                                 }
                                 Client.Self.GiveGroupMoney(targetUUID, amount,
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REASON),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REASON)),
                                             message)));
                                 break;
                             case Entity.AVATAR:
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
                                                 message)), out targetUUID) && !AgentNameToUUID(
-                                                    wasUriUnescapeDataString(
+                                                    wasInput(
                                                         wasKeyValueGet(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            wasOutput(
+                                                                wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                                             message)),
-                                                    wasUriUnescapeDataString(
+                                                    wasInput(
                                                         wasKeyValueGet(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
+                                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
+                                                            message)),
                                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                                     Configuration.DATA_TIMEOUT_DECAY,
                                                     ref targetUUID))
@@ -6014,23 +6094,23 @@ namespace Corrade
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
                                 Client.Self.GiveAvatarMoney(targetUUID, amount,
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REASON),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REASON)),
                                             message)));
                                 break;
                             case Entity.OBJECT:
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)),
                                                 message)),
                                         out targetUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PAY_TARGET));
                                 }
                                 Client.Self.GiveObjectMoney(targetUUID, amount,
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REASON),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REASON)),
                                             message)));
                                 break;
                             default:
@@ -6067,7 +6147,7 @@ namespace Corrade
                         // We override the default teleport since region names are unique and case insensitive.
                         ulong regionHandle = 0;
                         string region =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REGION),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
                                 message));
                         if (string.IsNullOrEmpty(region))
                         {
@@ -6093,8 +6173,9 @@ namespace Corrade
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -6145,14 +6226,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -6160,7 +6241,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         Client.Self.SendTeleportLure(agentUUID,
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
                                 message)));
                     };
                     break;
@@ -6235,7 +6316,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         List<string> data = new List<string>(GetStructuredData(Client.Network.CurrentSim,
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message)))
                             );
                         if (!data.Count.Equals(0))
@@ -6254,7 +6335,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string region =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REGION),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
                                 message));
                         if (string.IsNullOrEmpty(region))
                         {
@@ -6277,7 +6358,7 @@ namespace Corrade
                         Client.Grid.GridRegion -= GridRegionEventHandler;
 
                         List<string> data = new List<string>(GetStructuredData(gridRegion,
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
                         if (!data.Count.Equals(0))
                         {
@@ -6299,8 +6380,8 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
@@ -6308,8 +6389,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -6380,8 +6461,8 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Action action = wasGetEnumValueFromDescription<Action>(
-                            wasUriUnescapeDataString(
-                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                                 .ToLowerInvariant());
                         switch (action)
                         {
@@ -6431,8 +6512,9 @@ namespace Corrade
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -6448,8 +6530,8 @@ namespace Corrade
                             .FirstOrDefault(
                                 o =>
                                     o.Name.Equals(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
                                                 message)),
                                         StringComparison.Ordinal));
                         if (accessField == null)
@@ -6554,8 +6636,9 @@ namespace Corrade
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -6593,8 +6676,9 @@ namespace Corrade
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -6647,8 +6731,9 @@ namespace Corrade
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -6700,8 +6785,9 @@ namespace Corrade
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -6715,8 +6801,9 @@ namespace Corrade
                         bool forGroup;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FORGROUP), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FORGROUP)),
+                                        message)),
                                 out forGroup))
                         {
                             if (
@@ -6731,8 +6818,8 @@ namespace Corrade
                         }
                         bool removeContribution;
                         if (!bool.TryParse(
-                            wasUriUnescapeDataString(
-                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REMOVECONTRIBUTION),
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REMOVECONTRIBUTION)),
                                     message)),
                             out removeContribution))
                         {
@@ -6827,8 +6914,9 @@ namespace Corrade
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -6860,14 +6948,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -6877,7 +6965,7 @@ namespace Corrade
                         bool alsoban;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.BAN),
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.BAN)),
                                     message)),
                                 out alsoban))
                         {
@@ -6906,8 +6994,9 @@ namespace Corrade
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -6939,14 +7028,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -6956,8 +7045,8 @@ namespace Corrade
                         bool freeze;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FREEZE), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FREEZE)), message)),
                                 out freeze))
                         {
                             freeze = false;
@@ -7006,7 +7095,7 @@ namespace Corrade
                         Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
 
                         string fields =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message));
                         wasCSVToStructure(fields, ref properties);
                         wasCSVToStructure(fields, ref interests);
@@ -7026,14 +7115,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -7102,7 +7191,7 @@ namespace Corrade
                         Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
 
                         string fields =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message));
                         List<string> csv = new List<string>();
                         csv.AddRange(GetStructuredData(properties, fields));
@@ -7134,8 +7223,8 @@ namespace Corrade
                         }
                         InventoryBase inventoryBaseItem =
                             FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))
                                 ).FirstOrDefault();
                         if (inventoryBaseItem == null)
                         {
@@ -7143,24 +7232,26 @@ namespace Corrade
                         }
                         switch (
                             wasGetEnumValueFromDescription<Entity>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
                                         message)).ToLowerInvariant()))
                         {
                             case Entity.AVATAR:
                                 UUID agentUUID;
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
                                                 message)), out agentUUID) && !AgentNameToUUID(
-                                                    wasUriUnescapeDataString(
+                                                    wasInput(
                                                         wasKeyValueGet(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            wasOutput(
+                                                                wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                                             message)),
-                                                    wasUriUnescapeDataString(
+                                                    wasInput(
                                                         wasKeyValueGet(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
+                                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
+                                                            message)),
                                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                                     Configuration.DATA_TIMEOUT_DECAY,
                                                     ref agentUUID))
@@ -7178,8 +7269,8 @@ namespace Corrade
                                 float range;
                                 if (
                                     !float.TryParse(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE),
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)),
                                                 message)),
                                         out range))
                                 {
@@ -7188,8 +7279,8 @@ namespace Corrade
                                 Primitive primitive = null;
                                 if (
                                     !FindPrimitive(
-                                        StringOrUUID(wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                        StringOrUUID(wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)),
                                                 message))),
                                         range,
                                         Configuration.SERVICES_TIMEOUT,
@@ -7216,8 +7307,8 @@ namespace Corrade
                         }
                         HashSet<InventoryItem> items =
                             new HashSet<InventoryItem>(FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))
                                 ).Cast<InventoryItem>());
                         if (items.Count.Equals(0))
                         {
@@ -7262,8 +7353,8 @@ namespace Corrade
                         }
                         Action action =
                             wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                                     .ToLowerInvariant());
                         switch (action)
                         {
@@ -7292,7 +7383,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string item =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
                                 message));
                         UUID textureUUID = UUID.Zero;
                         if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out textureUUID))
@@ -7309,7 +7400,7 @@ namespace Corrade
                         ManualResetEvent AvatarPicksReplyEvent = new ManualResetEvent(false);
                         UUID pickUUID = UUID.Zero;
                         string pickName =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                 message));
                         if (string.IsNullOrEmpty(pickName))
                         {
@@ -7337,8 +7428,9 @@ namespace Corrade
                         }
                         Client.Self.PickInfoUpdate(pickUUID, false, UUID.Zero, pickName,
                             Client.Self.GlobalPosition, textureUUID,
-                            wasUriUnescapeDataString(
-                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION), message)));
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                    message)));
                     };
                     break;
                 case ScriptKeys.DELETEPICK:
@@ -7352,7 +7444,7 @@ namespace Corrade
                         }
                         ManualResetEvent AvatarPicksReplyEvent = new ManualResetEvent(false);
                         string pickName =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                 message));
                         if (string.IsNullOrEmpty(pickName))
                         {
@@ -7390,7 +7482,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string item =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
                                 message));
                         UUID textureUUID = UUID.Zero;
                         if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out textureUUID))
@@ -7405,15 +7497,16 @@ namespace Corrade
                             textureUUID = inventoryBaseItem.UUID;
                         }
                         string classifiedName =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                 message));
                         if (string.IsNullOrEmpty(classifiedName))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_CLASSIFIED_NAME));
                         }
                         string classifiedDescription =
-                            wasUriUnescapeDataString(
-                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION), message));
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                    message));
                         ManualResetEvent AvatarClassifiedReplyEvent = new ManualResetEvent(false);
                         UUID classifiedUUID = UUID.Zero;
                         EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedEventHandler = (sender, args) =>
@@ -7441,8 +7534,8 @@ namespace Corrade
                         int price;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.PRICE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PRICE)), message)),
                                 out price))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PRICE));
@@ -7454,8 +7547,8 @@ namespace Corrade
                         bool renew;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RENEW), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RENEW)), message)),
                                 out renew))
                         {
                             renew = false;
@@ -7465,8 +7558,9 @@ namespace Corrade
                             BindingFlags.Static)
                             .FirstOrDefault(o =>
                                 o.Name.Equals(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message)),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                            message)),
                                     StringComparison.Ordinal));
                         Client.Self.UpdateClassifiedInfo(classifiedUUID, classifiedCategoriesField != null
                             ? (DirectoryManager.ClassifiedCategories)
@@ -7483,7 +7577,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string classifiedName =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                 message));
                         if (string.IsNullOrEmpty(classifiedName))
                         {
@@ -7527,8 +7621,8 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
@@ -7536,8 +7630,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -7574,14 +7668,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -7597,16 +7691,17 @@ namespace Corrade
                         bool silence;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.SILENCE), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SILENCE)),
+                                        message)),
                                 out silence))
                         {
                             silence = false;
                         }
                         Type type =
                             wasGetEnumValueFromDescription<Type>(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)), message))
                                     .ToLowerInvariant());
                         switch (type)
                         {
@@ -7662,8 +7757,8 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string wearables =
-                            wasUriUnescapeDataString(wasKeyValueGet(
-                                wasGetDescriptionFromEnumValue(ScriptKeys.WEARABLES), message));
+                            wasInput(wasKeyValueGet(
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.WEARABLES)), message));
                         if (string.IsNullOrEmpty(wearables))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_WEARABLES));
@@ -7671,8 +7766,9 @@ namespace Corrade
                         bool replace;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REPLACE), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REPLACE)),
+                                        message)),
                                 out replace))
                         {
                             replace = true;
@@ -7699,8 +7795,8 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string wearables =
-                            wasUriUnescapeDataString(wasKeyValueGet(
-                                wasGetDescriptionFromEnumValue(ScriptKeys.WEARABLES), message));
+                            wasInput(wasKeyValueGet(
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.WEARABLES)), message));
                         if (string.IsNullOrEmpty(wearables))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_WEARABLES));
@@ -7751,8 +7847,9 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string attachments =
-                            wasUriUnescapeDataString(
-                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ATTACHMENTS), message));
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ATTACHMENTS)),
+                                    message));
                         if (string.IsNullOrEmpty(attachments))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_ATTACHMENTS));
@@ -7760,8 +7857,9 @@ namespace Corrade
                         bool replace;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REPLACE), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REPLACE)),
+                                        message)),
                                 out replace))
                         {
                             replace = true;
@@ -7800,8 +7898,9 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string attachments =
-                            wasUriUnescapeDataString(
-                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ATTACHMENTS), message));
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ATTACHMENTS)),
+                                    message));
                         if (string.IsNullOrEmpty(attachments))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_ATTACHMENTS));
@@ -7843,14 +7942,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -7858,20 +7957,20 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         string type =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
                                 message));
                         switch (
                             wasGetEnumValueFromDescription<Entity>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
                                         message)).ToLowerInvariant()))
                         {
                             case Entity.PARCEL:
                                 Vector3 position;
                                 HashSet<Parcel> parcels = new HashSet<Parcel>();
                                 switch (Vector3.TryParse(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
                                             message)),
                                     out position))
                                 {
@@ -7966,8 +8065,8 @@ namespace Corrade
                                 bool allEstates;
                                 if (
                                     !bool.TryParse(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ALL),
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ALL)),
                                                 message)),
                                         out allEstates))
                                 {
@@ -8010,8 +8109,8 @@ namespace Corrade
                         Vector3 position;
                         HashSet<Parcel> parcels = new HashSet<Parcel>();
                         switch (Vector3.TryParse(
-                            wasUriUnescapeDataString(wasKeyValueGet(
-                                wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                            wasInput(wasKeyValueGet(
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)), message)),
                             out position))
                         {
                             case false:
@@ -8149,7 +8248,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         List<string> data = new List<string>(GetStructuredData(dataGroup,
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
                         if (!data.Count.Equals(0))
                         {
@@ -8171,8 +8270,8 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
@@ -8180,8 +8279,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -8189,7 +8288,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         List<string> data = new List<string>(GetStructuredData(primitive,
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
                         if (!data.Count.Equals(0))
                         {
@@ -8209,8 +8308,9 @@ namespace Corrade
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -8222,7 +8322,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
                         List<string> data = new List<string>(GetStructuredData(parcel,
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
                         if (!data.Count.Equals(0))
                         {
@@ -8252,8 +8352,9 @@ namespace Corrade
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -8276,7 +8377,7 @@ namespace Corrade
                             }
                         }
                         string fields =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message));
                         wasCSVToStructure(fields, ref parcel);
                         parcel.Update(Client.Network.CurrentSim, true);
@@ -8325,7 +8426,7 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string item =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
                                 message));
                         if (string.IsNullOrEmpty(item))
                         {
@@ -8354,8 +8455,9 @@ namespace Corrade
                             .FirstOrDefault(
                                 o =>
                                     o.Name.Equals(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message)),
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                                message)),
                                         StringComparison.Ordinal));
                         if (assetTypeInfo == null)
                         {
@@ -8456,7 +8558,8 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FAILED_TO_DOWNLOAD_ASSET));
                         }
-                        result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA), Convert.ToBase64String(assetData));
+                        result.Add(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                            Convert.ToBase64String(assetData));
                     };
                     break;
                 case ScriptKeys.UPLOAD:
@@ -8468,7 +8571,7 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string name =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                 message));
                         if (string.IsNullOrEmpty(name))
                         {
@@ -8476,8 +8579,9 @@ namespace Corrade
                         }
                         uint permissions = 0;
                         Parallel.ForEach(
-                            wasUriUnescapeDataString(
-                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS), message))
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS)),
+                                    message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
                             o =>
                                 Parallel.ForEach(
@@ -8488,7 +8592,7 @@ namespace Corrade
                                                                                BindingFlags.Static)
                             .FirstOrDefault(o =>
                                 o.Name.Equals(
-                                    wasUriUnescapeDataString(
+                                    wasInput(
                                         wasKeyValueGet(
                                             wasGetDescriptionFromEnumValue(
                                                 ScriptKeys.TYPE),
@@ -8503,7 +8607,7 @@ namespace Corrade
                         try
                         {
                             data = Convert.FromBase64String(
-                                wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                     message)));
                         }
                         catch (Exception)
@@ -8534,8 +8638,9 @@ namespace Corrade
                                 // now create and upload the asset
                                 ManualResetEvent CreateItemFromAssetEvent = new ManualResetEvent(false);
                                 Client.Inventory.RequestCreateItemFromAsset(data, name,
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
+                                    wasInput(
+                                        wasKeyValueGet(
+                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
                                             message)),
                                     assetType,
                                     (InventoryType)
@@ -8562,8 +8667,9 @@ namespace Corrade
                                     .FirstOrDefault(
                                         o =>
                                             o.Name.Equals(
-                                                wasUriUnescapeDataString(
-                                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.WEAR),
+                                                wasInput(
+                                                    wasKeyValueGet(
+                                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.WEAR)),
                                                         message)),
                                                 StringComparison.Ordinal));
                                 if (wearTypeInfo == null)
@@ -8578,8 +8684,9 @@ namespace Corrade
                                 ManualResetEvent CreateWearableEvent = new ManualResetEvent(false);
                                 Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
                                     name,
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
+                                    wasInput(
+                                        wasKeyValueGet(
+                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
                                             message)),
                                     assetType,
                                     wearableUUID, InventoryType.Wearable, (WearableType) wearTypeInfo.GetValue(null),
@@ -8603,8 +8710,9 @@ namespace Corrade
                                 ManualResetEvent CreateLandmarkEvent = new ManualResetEvent(false);
                                 Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
                                     name,
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
+                                    wasInput(
+                                        wasKeyValueGet(
+                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
                                             message)),
                                     assetType,
                                     landmarkUUID, InventoryType.Landmark, PermissionMask.All,
@@ -8623,8 +8731,9 @@ namespace Corrade
                                 InventoryItem newGesture = null;
                                 Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
                                     name,
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
+                                    wasInput(
+                                        wasKeyValueGet(
+                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
                                             message)),
                                     assetType,
                                     UUID.Random(), InventoryType.Gesture,
@@ -8661,8 +8770,9 @@ namespace Corrade
                                 InventoryItem newNotecard = null;
                                 Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
                                     name,
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
+                                    wasInput(
+                                        wasKeyValueGet(
+                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
                                             message)),
                                     assetType,
                                     UUID.Random(), InventoryType.Notecard,
@@ -8699,8 +8809,9 @@ namespace Corrade
                                 InventoryItem newScript = null;
                                 Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
                                     name,
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
+                                    wasInput(
+                                        wasKeyValueGet(
+                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
                                             message)),
                                     assetType,
                                     UUID.Random(), InventoryType.LSL,
@@ -8758,8 +8869,8 @@ namespace Corrade
                         }
                         InventoryBase inventoryBaseItem =
                             FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))
                                 ).FirstOrDefault();
                         if (inventoryBaseItem == null)
                         {
@@ -8768,8 +8879,9 @@ namespace Corrade
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
                                 out position))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
@@ -8777,8 +8889,9 @@ namespace Corrade
                         Quaternion rotation;
                         if (
                             !Quaternion.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION)),
+                                        message)),
                                 out rotation))
                         {
                             rotation = Quaternion.CreateFromEulers(0, 0, 0);
@@ -8825,15 +8938,15 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         UUID folderUUID;
                         string folder =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER)),
                                 message));
                         if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
                         {
@@ -8861,14 +8974,15 @@ namespace Corrade
                             .FirstOrDefault(
                                 o =>
                                     o.Name.Equals(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message)),
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                                message)),
                                         StringComparison.Ordinal));
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -8893,14 +9007,14 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         string entity =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
                                 message));
                         UUID entityUUID;
                         if (!UUID.TryParse(entity, out entityUUID))
@@ -8914,8 +9028,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -8942,8 +9056,8 @@ namespace Corrade
                         }
                         Action action =
                             wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                                     .ToLowerInvariant());
                         switch (action)
                         {
@@ -8997,14 +9111,14 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
                         }
                         string entity =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
                                 message));
                         UUID entityUUID;
                         if (!UUID.TryParse(entity, out entityUUID))
@@ -9018,8 +9132,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -9075,8 +9189,8 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
@@ -9084,8 +9198,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -9118,8 +9232,8 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
@@ -9127,8 +9241,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -9136,7 +9250,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         string entity =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
                                 message));
                         UUID entityUUID;
                         if (!UUID.TryParse(entity, out entityUUID))
@@ -9158,7 +9272,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                         }
                         List<string> data = new List<string>(GetStructuredData(item,
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
                         if (!data.Count.Equals(0))
                         {
@@ -9179,8 +9293,8 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
@@ -9188,8 +9302,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -9197,7 +9311,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         string entity =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
                                 message));
                         UUID entityUUID;
                         if (!UUID.TryParse(entity, out entityUUID))
@@ -9210,8 +9324,8 @@ namespace Corrade
                         }
                         switch (
                             wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
                                         message)).ToLowerInvariant()))
                         {
                             case Action.ADD:
@@ -9255,8 +9369,8 @@ namespace Corrade
                                 }
                                 UUID folderUUID;
                                 string folder =
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER)),
                                             message));
                                 if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
                                 {
@@ -9283,15 +9397,15 @@ namespace Corrade
                         }
                         InventoryBase inventoryBaseItem =
                             FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))
                                 ).FirstOrDefault();
                         if (inventoryBaseItem == null)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                         }
                         List<string> data = new List<string>(GetStructuredData(inventoryBaseItem as InventoryItem,
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
                         if (!data.Count.Equals(0))
                         {
@@ -9311,7 +9425,7 @@ namespace Corrade
                         }
                         HashSet<AssetType> assetTypes = new HashSet<AssetType>();
                         Parallel.ForEach(
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
                                 message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
                             o => Parallel.ForEach(
@@ -9319,7 +9433,7 @@ namespace Corrade
                                     .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                 q => assetTypes.Add((AssetType) q.GetValue(null))));
                         string pattern =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.PATTERN),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATTERN)),
                                 message));
                         if (string.IsNullOrEmpty(pattern))
                         {
@@ -9370,7 +9484,7 @@ namespace Corrade
                         }
                         HashSet<AssetType> assetTypes = new HashSet<AssetType>();
                         Parallel.ForEach(
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
                                 message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
                             o => Parallel.ForEach(
@@ -9378,7 +9492,7 @@ namespace Corrade
                                     .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                 q => assetTypes.Add((AssetType) q.GetValue(null))));
                         string pattern =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.PATTERN),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATTERN)),
                                 message));
                         if (string.IsNullOrEmpty(pattern))
                         {
@@ -9416,8 +9530,8 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
@@ -9425,8 +9539,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -9567,7 +9681,7 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string name =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                 message));
                         if (string.IsNullOrEmpty(name))
                         {
@@ -9578,8 +9692,9 @@ namespace Corrade
                         InventoryItem newItem = null;
                         Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(AssetType.Notecard),
                             name,
-                            wasUriUnescapeDataString(
-                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION), message)),
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                    message)),
                             AssetType.Notecard,
                             UUID.Random(), InventoryType.Notecard, PermissionMask.All,
                             delegate(bool completed, InventoryItem createdItem)
@@ -9618,7 +9733,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_UPLOAD_ITEM));
                         }
                         string text =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TEXT),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TEXT)),
                                 message));
                         if (!string.IsNullOrEmpty(text))
                         {
@@ -9722,8 +9837,8 @@ namespace Corrade
                             roleData.FirstOrDefault(
                                 o =>
                                     o.Key.Equals(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TITLE),
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TITLE)),
                                                 message)),
                                         StringComparison.Ordinal))
                                 .Value;
@@ -9745,16 +9860,16 @@ namespace Corrade
                         }
                         switch (
                             wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
                                         message)).ToLowerInvariant()))
                         {
                             case Action.START:
                                 Vector3 position;
                                 if (
                                     !Vector3.TryParse(
-                                        wasUriUnescapeDataString(wasKeyValueGet(
-                                            wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                                        wasInput(wasKeyValueGet(
+                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)), message)),
                                         out position))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
@@ -9791,8 +9906,9 @@ namespace Corrade
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
                                 out position))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
@@ -9810,8 +9926,8 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         switch (wasGetEnumValueFromDescription<Direction>(
-                            wasUriUnescapeDataString(wasKeyValueGet(
-                                wasGetDescriptionFromEnumValue(ScriptKeys.DIRECTION),
+                            wasInput(wasKeyValueGet(
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DIRECTION)),
                                 message))
                                 .ToLowerInvariant()))
                         {
@@ -9906,8 +10022,9 @@ namespace Corrade
                         int duration;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION)),
+                                        message)),
                                 out duration))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PROPOSAL_DURATION));
@@ -9915,8 +10032,9 @@ namespace Corrade
                         float majority;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MAJORITY), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MAJORITY)),
+                                        message)),
                                 out majority))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PROPOSAL_MAJORITY));
@@ -9924,14 +10042,14 @@ namespace Corrade
                         int quorum;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.QUORUM), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.QUORUM)), message)),
                                 out quorum))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PROPOSAL_QUORUM));
                         }
                         string text =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TEXT),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TEXT)),
                                 message));
                         if (string.IsNullOrEmpty(text))
                         {
@@ -9957,16 +10075,16 @@ namespace Corrade
                         UUID targetUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)), message)),
                                 out targetUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_MUTE_TARGET));
                         }
                         switch (
                             wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
                                         message)).ToLowerInvariant()))
                         {
                             case Action.MUTE:
@@ -9975,8 +10093,9 @@ namespace Corrade
                                     .FirstOrDefault(
                                         o =>
                                             o.Name.Equals(
-                                                wasUriUnescapeDataString(
-                                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
+                                                wasInput(
+                                                    wasKeyValueGet(
+                                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
                                                         message)),
                                                 StringComparison.Ordinal));
                                 ManualResetEvent MuteListUpdatedEvent = new ManualResetEvent(false);
@@ -9988,8 +10107,8 @@ namespace Corrade
                                         muteTypeInfo
                                             .GetValue(null)
                                     : MuteType.ByName, targetUUID,
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                             message)));
                                 if (!MuteListUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
@@ -10002,8 +10121,9 @@ namespace Corrade
                                 break;
                             case Action.UNMUTE:
                                 Client.Self.RemoveMuteListEntry(targetUUID,
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME), message)));
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
+                                            message)));
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
@@ -10051,14 +10171,15 @@ namespace Corrade
                         }
                         switch (
                             wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
                                         message)).ToLowerInvariant()))
                         {
                             case Action.GET:
                                 string databaseGetkey =
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.KEY), message));
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.KEY)),
+                                            message));
                                 if (string.IsNullOrEmpty(databaseGetkey))
                                 {
                                     throw new Exception(
@@ -10078,7 +10199,7 @@ namespace Corrade
                                     if (!string.IsNullOrEmpty(databaseGetValue))
                                     {
                                         result.Add(databaseGetkey,
-                                            wasUriUnescapeDataString(databaseGetValue));
+                                            wasInput(databaseGetValue));
                                     }
                                 }
                                 lock (DatabaseFileLock)
@@ -10091,16 +10212,17 @@ namespace Corrade
                                 break;
                             case Action.SET:
                                 string databaseSetKey =
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.KEY), message));
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.KEY)),
+                                            message));
                                 if (string.IsNullOrEmpty(databaseSetKey))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_DATABASE_KEY_SPECIFIED));
                                 }
                                 string databaseSetValue =
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.VALUE),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.VALUE)),
                                             message));
                                 if (string.IsNullOrEmpty(databaseSetValue))
                                 {
@@ -10135,8 +10257,9 @@ namespace Corrade
                                 break;
                             case Action.DELETE:
                                 string databaseDeleteKey =
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.KEY), message));
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.KEY)),
+                                            message));
                                 if (string.IsNullOrEmpty(databaseDeleteKey))
                                 {
                                     throw new Exception(
@@ -10181,14 +10304,15 @@ namespace Corrade
                         }
                         switch (
                             wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
                                         message)).ToLowerInvariant()))
                         {
                             case Action.SET:
                                 string url =
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.URL), message));
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.URL)),
+                                            message));
                                 if (string.IsNullOrEmpty(url))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_URL_PROVIDED));
@@ -10199,8 +10323,9 @@ namespace Corrade
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_URL_PROVIDED));
                                 }
                                 string notificationTypes =
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                            message))
                                         .ToLowerInvariant();
                                 if (string.IsNullOrEmpty(notificationTypes))
                                 {
@@ -10279,14 +10404,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -10296,14 +10421,15 @@ namespace Corrade
                         UUID sessionUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION)),
+                                        message)),
                                 out sessionUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_SESSION_SPECIFIED));
                         }
                         Client.Self.TeleportLureRespond(agentUUID, sessionUUID, wasGetEnumValueFromDescription<Action>(
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
                                 message))
                                 .ToLowerInvariant()).Equals(Action.ACCEPT));
                     };
@@ -10351,8 +10477,8 @@ namespace Corrade
                         UUID itemUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message)),
                                 out itemUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
@@ -10360,16 +10486,17 @@ namespace Corrade
                         UUID taskUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.TASK), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TASK)), message)),
                                 out taskUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_TASK_SPECIFIED));
                         }
                         int permissionMask = 0;
                         Parallel.ForEach(
-                            wasUriUnescapeDataString(
-                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS), message))
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS)),
+                                    message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
                             o =>
                                 Parallel.ForEach(
@@ -10432,8 +10559,9 @@ namespace Corrade
                         int channel;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.CHANNEL), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.CHANNEL)),
+                                        message)),
                                 out channel))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CHANNEL_SPECIFIED));
@@ -10441,14 +10569,14 @@ namespace Corrade
                         int index;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.INDEX), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.INDEX)), message)),
                                 out index))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_BUTTON_INDEX_SPECIFIED));
                         }
                         string label =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.BUTTON),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.BUTTON)),
                                 message));
                         if (string.IsNullOrEmpty(label))
                         {
@@ -10457,8 +10585,8 @@ namespace Corrade
                         UUID itemUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message)),
                                 out itemUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
@@ -10515,7 +10643,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string item =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
                                 message));
                         if (string.IsNullOrEmpty(item))
                         {
@@ -10535,8 +10663,8 @@ namespace Corrade
                         }
                         switch (
                             wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
                                         message)).ToLowerInvariant()))
                         {
                             case Action.START:
@@ -10558,7 +10686,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string item =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
                                 message));
                         if (string.IsNullOrEmpty(item))
                         {
@@ -10615,16 +10743,16 @@ namespace Corrade
                         int delay;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.DELAY), message))
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DELAY)), message))
                                     .ToLowerInvariant(), out delay))
                         {
                             delay = LINDEN_CONSTANTS.ESTATE.REGION_RESTART_DELAY;
                         }
                         switch (
                             wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
                                         message)).ToLowerInvariant()))
                         {
                             case Action.RESTART:
@@ -10655,8 +10783,9 @@ namespace Corrade
                         bool scripts;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.SCRIPTS), message))
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SCRIPTS)),
+                                        message))
                                     .ToLowerInvariant(), out scripts))
                         {
                             scripts = false;
@@ -10664,8 +10793,8 @@ namespace Corrade
                         bool collisions;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.COLLISIONS),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.COLLISIONS)),
                                         message))
                                     .ToLowerInvariant(), out collisions))
                         {
@@ -10674,8 +10803,9 @@ namespace Corrade
                         bool physics;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.PHYSICS), message))
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PHYSICS)),
+                                        message))
                                     .ToLowerInvariant(), out physics))
                         {
                             physics = false;
@@ -10697,8 +10827,8 @@ namespace Corrade
                         int amount;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT)), message)),
                                 out amount))
                         {
                             amount = 5;
@@ -10706,8 +10836,8 @@ namespace Corrade
                         Dictionary<UUID, EstateTask> topTasks = new Dictionary<UUID, EstateTask>();
                         switch (
                             wasGetEnumValueFromDescription<Type>(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)), message))
                                     .ToLowerInvariant()))
                         {
                             case Type.SCRIPTS:
@@ -10783,7 +10913,7 @@ namespace Corrade
                         bool allEstates;
                         if (
                             !bool.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ALL),
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ALL)),
                                     message)),
                                 out allEstates))
                         {
@@ -10792,23 +10922,25 @@ namespace Corrade
                         UUID targetUUID;
                         switch (
                             wasGetEnumValueFromDescription<Type>(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)), message))
                                     .ToLowerInvariant()))
                         {
                             case Type.BAN:
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
                                                 message)), out targetUUID) && !AgentNameToUUID(
-                                                    wasUriUnescapeDataString(
+                                                    wasInput(
                                                         wasKeyValueGet(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            wasOutput(
+                                                                wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                                             message)),
-                                                    wasUriUnescapeDataString(
+                                                    wasInput(
                                                         wasKeyValueGet(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
+                                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
+                                                            message)),
                                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                                     Configuration.DATA_TIMEOUT_DECAY,
                                                     ref targetUUID))
@@ -10817,8 +10949,9 @@ namespace Corrade
                                 }
                                 switch (
                                     wasGetEnumValueFromDescription<Action>(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
+                                        wasInput(
+                                            wasKeyValueGet(
+                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                                             .ToLowerInvariant()))
                                 {
                                     case Action.ADD:
@@ -10835,12 +10968,13 @@ namespace Corrade
                             case Type.GROUP:
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)),
                                                 message)),
                                         out targetUUID) && !GroupNameToUUID(
-                                            wasUriUnescapeDataString(
-                                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                            wasInput(
+                                                wasKeyValueGet(
+                                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)),
                                                     message)),
                                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                             Configuration.DATA_TIMEOUT_DECAY, ref targetUUID))
@@ -10849,8 +10983,9 @@ namespace Corrade
                                 }
                                 switch (
                                     wasGetEnumValueFromDescription<Action>(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
+                                        wasInput(
+                                            wasKeyValueGet(
+                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                                             .ToLowerInvariant()))
                                 {
                                     case Action.ADD:
@@ -10867,16 +11002,18 @@ namespace Corrade
                             case Type.USER:
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
                                                 message)), out targetUUID) && !AgentNameToUUID(
-                                                    wasUriUnescapeDataString(
+                                                    wasInput(
                                                         wasKeyValueGet(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            wasOutput(
+                                                                wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                                             message)),
-                                                    wasUriUnescapeDataString(
+                                                    wasInput(
                                                         wasKeyValueGet(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
+                                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
+                                                            message)),
                                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                                     Configuration.DATA_TIMEOUT_DECAY,
                                                     ref targetUUID))
@@ -10885,8 +11022,9 @@ namespace Corrade
                                 }
                                 switch (
                                     wasGetEnumValueFromDescription<Action>(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
+                                        wasInput(
+                                            wasKeyValueGet(
+                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                                             .ToLowerInvariant()))
                                 {
                                     case Action.ADD:
@@ -10903,16 +11041,18 @@ namespace Corrade
                             case Type.MANAGER:
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
                                                 message)), out targetUUID) && !AgentNameToUUID(
-                                                    wasUriUnescapeDataString(
+                                                    wasInput(
                                                         wasKeyValueGet(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            wasOutput(
+                                                                wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                                             message)),
-                                                    wasUriUnescapeDataString(
+                                                    wasInput(
                                                         wasKeyValueGet(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
+                                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
+                                                            message)),
                                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                                     Configuration.DATA_TIMEOUT_DECAY,
                                                     ref targetUUID))
@@ -10921,8 +11061,9 @@ namespace Corrade
                                 }
                                 switch (
                                     wasGetEnumValueFromDescription<Action>(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
+                                        wasInput(
+                                            wasKeyValueGet(
+                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                                             .ToLowerInvariant()))
                                 {
                                     case Action.ADD:
@@ -10959,8 +11100,8 @@ namespace Corrade
                         };
                         switch (
                             wasGetEnumValueFromDescription<Type>(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)), message))
                                     .ToLowerInvariant()))
                         {
                             case Type.BAN:
@@ -11075,14 +11216,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -11142,7 +11283,7 @@ namespace Corrade
                         Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
                         Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
                         List<string> data = new List<string>(GetStructuredData(avatar,
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
                         if (!data.Count.Equals(0))
                         {
@@ -11162,16 +11303,17 @@ namespace Corrade
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
                         }
                         Entity entity =
                             wasGetEnumValueFromDescription<Entity>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY), message))
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)), message))
                                     .ToLowerInvariant());
                         Parcel parcel = null;
                         UUID agentUUID = UUID.Zero;
@@ -11182,16 +11324,18 @@ namespace Corrade
                             case Entity.AVATAR:
                                 if (
                                     !UUID.TryParse(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
                                                 message)), out agentUUID) && !AgentNameToUUID(
-                                                    wasUriUnescapeDataString(
+                                                    wasInput(
                                                         wasKeyValueGet(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                            wasOutput(
+                                                                wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                                             message)),
-                                                    wasUriUnescapeDataString(
+                                                    wasInput(
                                                         wasKeyValueGet(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), message)),
+                                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
+                                                            message)),
                                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                                     Configuration.DATA_TIMEOUT_DECAY,
                                                     ref agentUUID))
@@ -11284,15 +11428,16 @@ namespace Corrade
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
                         }
                         Entity entity = wasGetEnumValueFromDescription<Entity>(
-                            wasUriUnescapeDataString(
-                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY), message))
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)), message))
                                 .ToLowerInvariant());
                         Parcel parcel = null;
                         switch (entity)
@@ -11349,7 +11494,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string region =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.REGION),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
                                 message));
                         if (string.IsNullOrEmpty(region))
                         {
@@ -11404,7 +11549,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         List<string> data = new List<string>(GetStructuredData(Client.Self,
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
                         if (!data.Count.Equals(0))
                         {
@@ -11434,8 +11579,8 @@ namespace Corrade
                             });
                         switch (
                             wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
                                         message)).ToLowerInvariant()))
                         {
                             case Action.GET:
@@ -11443,8 +11588,9 @@ namespace Corrade
                                 break;
                             case Action.SET:
                                 string name =
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME), message));
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
+                                            message));
                                 if (string.IsNullOrEmpty(name))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_NAME_PROVIDED));
@@ -11497,16 +11643,19 @@ namespace Corrade
                                 lock (LockObject)
                                 {
                                     csv.AddRange(new[]
-                                    {wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME), name.First()});
+                                    {wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)), name.First()});
                                     csv.AddRange(new[]
-                                    {wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME), name.Last()});
-                                    csv.AddRange(new[]
-                                    {wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), o.Key.AssetType.ToString()});
-                                    csv.AddRange(new[]
-                                    {wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE), o.Key.Offer.Message});
+                                    {wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)), name.Last()});
                                     csv.AddRange(new[]
                                     {
-                                        wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
+                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                        o.Key.AssetType.ToString()
+                                    });
+                                    csv.AddRange(new[]
+                                    {wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)), o.Key.Offer.Message});
+                                    csv.AddRange(new[]
+                                    {
+                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION)),
                                         o.Key.Offer.IMSessionID.ToString()
                                     });
                                 }
@@ -11529,8 +11678,9 @@ namespace Corrade
                         UUID session;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION)),
+                                        message)),
                                 out session))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_SESSION_SPECIFIED));
@@ -11550,7 +11700,7 @@ namespace Corrade
                         }
                         UUID folderUUID;
                         string folder =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER)),
                                 message));
                         if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
                         {
@@ -11574,8 +11724,8 @@ namespace Corrade
                         }
                         switch (
                             wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
                                         message)).ToLowerInvariant()))
                         {
                             case Action.ACCEPT:
@@ -11658,14 +11808,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -11686,8 +11836,8 @@ namespace Corrade
                         }
                         switch (
                             wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
                                         message)).ToLowerInvariant()))
                         {
                             case Action.ACCEPT:
@@ -11711,14 +11861,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -11731,7 +11881,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FRIEND_NOT_FOUND));
                         }
                         List<string> data = new List<string>(GetStructuredData(friend,
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
                         if (!data.Count.Equals(0))
                         {
@@ -11751,14 +11901,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -11771,7 +11921,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_ALREADY_FRIEND));
                         }
                         Client.Friends.OfferFriendship(agentUUID,
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
                                 message)));
                     };
                     break;
@@ -11785,14 +11935,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -11817,14 +11967,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -11838,7 +11988,7 @@ namespace Corrade
                         }
                         int rights = 0;
                         Parallel.ForEach(
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.RIGHTS),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RIGHTS)),
                                 message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
                             o =>
@@ -11859,14 +12009,14 @@ namespace Corrade
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.AGENT), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
                                 out agentUUID) && !AgentNameToUUID(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
                                             message)),
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                     Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
@@ -11944,8 +12094,8 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
@@ -11953,8 +12103,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -11963,7 +12113,7 @@ namespace Corrade
                         }
                         byte who = 0;
                         Parallel.ForEach(
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.WHO),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.WHO)),
                                 message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
                             o =>
@@ -11973,8 +12123,9 @@ namespace Corrade
                                     q => { who |= ((byte) q.GetValue(null)); }));
                         uint permissions = 0;
                         Parallel.ForEach(
-                            wasUriUnescapeDataString(
-                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS), message))
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS)),
+                                    message))
                                 .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
                             o =>
                                 Parallel.ForEach(
@@ -12005,8 +12156,8 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
@@ -12014,8 +12165,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -12045,8 +12196,8 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
@@ -12054,8 +12205,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -12076,8 +12227,8 @@ namespace Corrade
                         int price;
                         if (
                             !int.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.PRICE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PRICE)), message)),
                                 out price))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PRICE));
@@ -12089,8 +12240,8 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
@@ -12098,8 +12249,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -12110,8 +12261,9 @@ namespace Corrade
                                                                              BindingFlags.Static)
                             .FirstOrDefault(o =>
                                 o.Name.Equals(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message)),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                            message)),
                                     StringComparison.Ordinal));
                         Client.Objects.SetSaleInfo(Client.Network.CurrentSim, primitive.LocalID, saleTypeInfo != null
                             ? (SaleType)
@@ -12129,8 +12281,8 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
@@ -12138,8 +12290,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -12149,8 +12301,9 @@ namespace Corrade
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
@@ -12168,8 +12321,8 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
@@ -12177,8 +12330,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -12188,8 +12341,9 @@ namespace Corrade
                         Quaternion rotation;
                         if (
                             !Quaternion.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION)),
+                                        message)),
                                 out rotation))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_ROTATION));
@@ -12207,8 +12361,8 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
@@ -12216,8 +12370,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -12225,7 +12379,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         string name =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                 message));
                         if (string.IsNullOrEmpty(name))
                         {
@@ -12244,8 +12398,8 @@ namespace Corrade
                         float range;
                         if (
                             !float.TryParse(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.RANGE), message)),
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
@@ -12253,8 +12407,8 @@ namespace Corrade
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM), message))),
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
                                 Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
@@ -12262,8 +12416,9 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         string description =
-                            wasUriUnescapeDataString(
-                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION), message));
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                    message));
                         if (string.IsNullOrEmpty(description))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_DESCRIPTION_PROVIDED));
@@ -12279,7 +12434,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string folder =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER)),
                                 message));
                         if (string.IsNullOrEmpty(folder))
                         {
@@ -12349,15 +12504,16 @@ namespace Corrade
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION), message)),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
                                 out position))
                         {
                             position = Client.Self.SimPosition;
                         }
                         float gain;
                         if (!float.TryParse(
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.GAIN),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GAIN)),
                                 message)),
                             out gain))
                         {
@@ -12365,7 +12521,7 @@ namespace Corrade
                         }
                         UUID itemUUID;
                         string item =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
                                 message));
                         if (!UUID.TryParse(item, out itemUUID))
                         {
@@ -12390,7 +12546,7 @@ namespace Corrade
                         }
                         byte[] data = null;
                         switch (wasGetEnumValueFromDescription<Action>(
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
                                 message))
                                 .ToLowerInvariant()))
                         {
@@ -12440,8 +12596,8 @@ namespace Corrade
                                 try
                                 {
                                     data = Convert.FromBase64String(
-                                        wasUriUnescapeDataString(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                                 message)));
                                 }
                                 catch (Exception)
@@ -12486,8 +12642,8 @@ namespace Corrade
                         Vector3 southwest;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.SOUTHWEST),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SOUTHWEST)),
                                         message)),
                                 out southwest))
                         {
@@ -12496,8 +12652,8 @@ namespace Corrade
                         Vector3 northeast;
                         if (
                             !Vector3.TryParse(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NORTHEAST),
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NORTHEAST)),
                                         message)),
                                 out northeast))
                         {
@@ -12547,8 +12703,8 @@ namespace Corrade
                         }
                         Action action =
                             wasGetEnumValueFromDescription<Action>(
-                                wasUriUnescapeDataString(
-                                    wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                                     .ToLowerInvariant());
                         switch (action)
                         {
@@ -12575,8 +12731,8 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Action action =
-                            wasGetEnumValueFromDescription<Action>(wasUriUnescapeDataString(
-                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
+                            wasGetEnumValueFromDescription<Action>(wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                                 .ToLowerInvariant());
                         switch (action)
                         {
@@ -12603,15 +12759,15 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string file =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.FILE),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FILE)),
                                 message));
                         if (string.IsNullOrEmpty(file))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_EXECUTABLE_FILE_PROVIDED));
                         }
                         ProcessStartInfo p = new ProcessStartInfo(file,
-                            wasUriUnescapeDataString(wasKeyValueGet(
-                                wasGetDescriptionFromEnumValue(ScriptKeys.PARAMETER), message)))
+                            wasInput(wasKeyValueGet(
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PARAMETER)), message)))
                         {
                             RedirectStandardOutput = true,
                             RedirectStandardError = true,
@@ -12667,8 +12823,8 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        switch (wasGetEnumValueFromDescription<Action>(wasUriUnescapeDataString(
-                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
+                        switch (wasGetEnumValueFromDescription<Action>(wasInput(
+                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                             .ToLowerInvariant()))
                         {
                             case Action.READ:
@@ -12680,7 +12836,7 @@ namespace Corrade
                                 Configuration.Write(CORRADE_CONSTANTS.CONFIGURATION_FILE,
                                     Encoding.ASCII.GetString(
                                         Convert.FromBase64String(
-                                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                                 message))));
                                 break;
                             default:
@@ -12695,8 +12851,8 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        switch (wasGetEnumValueFromDescription<Action>(wasUriUnescapeDataString(
-                            wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION), message))
+                        switch (wasGetEnumValueFromDescription<Action>(wasInput(
+                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                             .ToLowerInvariant()))
                         {
                             case Action.PURGE:
@@ -12731,8 +12887,8 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         switch (wasGetEnumValueFromDescription<Action>(
-                            wasUriUnescapeDataString(
-                                wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
                                     message)).ToLowerInvariant()))
                         {
                             case Action.ENABLE:
@@ -12741,6 +12897,93 @@ namespace Corrade
                             case Action.DISABLE:
                                 EnableCorradeRLV = false;
                                 RLVRules.Clear();
+                                break;
+                        }
+                    };
+                    break;
+                case ScriptKeys.FILTER:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FILTER))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        switch (wasGetEnumValueFromDescription<Action>(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                                    message)).ToLowerInvariant()))
+                        {
+                            case Action.SET:
+                                List<Filter> inputFilters = new List<Filter>();
+                                string input =
+                                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.INPUT)),
+                                        message));
+                                if (!string.IsNullOrEmpty(input))
+                                {
+                                    foreach (KeyValuePair<string, string> i in CORRADE_CONSTANTS.CSVRegex.Matches(input)
+                                        .Cast<Match>()
+                                        .ToDictionary(o => o.Groups["key"].Value, o => o.Groups["value"].Value))
+                                    {
+                                        inputFilters.Add(wasGetEnumValueFromDescription<Filter>(i.Key));
+                                        inputFilters.Add(wasGetEnumValueFromDescription<Filter>(i.Value));
+                                    }
+                                    lock (InputFiltersLock)
+                                    {
+                                        Configuration.INPUT_FILTERS = inputFilters;
+                                    }
+                                }
+                                List<Filter> outputFilters = new List<Filter>();
+                                string output =
+                                    wasInput(wasKeyValueGet(
+                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.OUTPUT)),
+                                        message));
+                                if (!string.IsNullOrEmpty(output))
+                                {
+                                    foreach (
+                                        KeyValuePair<string, string> i in CORRADE_CONSTANTS.CSVRegex.Matches(output)
+                                            .Cast<Match>()
+                                            .ToDictionary(o => o.Groups["key"].Value, o => o.Groups["value"].Value))
+                                    {
+                                        outputFilters.Add(wasGetEnumValueFromDescription<Filter>(i.Key));
+                                        outputFilters.Add(wasGetEnumValueFromDescription<Filter>(i.Value));
+                                    }
+                                    lock (OutputFiltersLock)
+                                    {
+                                        Configuration.OUTPUT_FILTERS = outputFilters;
+                                    }
+                                }
+                                break;
+                            case Action.GET:
+                                switch (wasGetEnumValueFromDescription<Type>(
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                            message)).ToLowerInvariant()))
+                                {
+                                    case Type.INPUT:
+                                        lock (InputFiltersLock)
+                                        {
+                                            if (!Configuration.INPUT_FILTERS.Count.Equals(0))
+                                            {
+                                                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                                    string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                                        Configuration.INPUT_FILTERS.Select(
+                                                            o => wasGetDescriptionFromEnumValue(o)).ToArray()));
+                                            }
+                                        }
+                                        break;
+                                    case Type.OUTPUT:
+                                        lock (OutputFiltersLock)
+                                        {
+                                            if (!Configuration.OUTPUT_FILTERS.Count.Equals(0))
+                                            {
+                                                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                                    string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                                        Configuration.OUTPUT_FILTERS.Select(
+                                                            o => wasGetDescriptionFromEnumValue(o)).ToArray()));
+                                            }
+                                        }
+                                        break;
+                                }
                                 break;
                         }
                     };
@@ -12764,22 +13007,23 @@ namespace Corrade
                         int handledEvents = 0;
                         int counter = 1;
                         string name =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                 message));
                         string fields =
-                            wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message));
                         switch (
                             wasGetEnumValueFromDescription<Type>(
-                                wasUriUnescapeDataString(wasKeyValueGet(
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.TYPE), message))
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)), message))
                                     .ToLowerInvariant()))
                         {
                             case Type.CLASSIFIED:
                                 DirectoryManager.Classified searchClassified = new DirectoryManager.Classified();
                                 wasCSVToStructure(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA), message)),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                            message)),
                                     ref searchClassified);
                                 Dictionary<DirectoryManager.Classified, int> classifieds =
                                     new Dictionary<DirectoryManager.Classified, int>();
@@ -12801,13 +13045,23 @@ namespace Corrade
                                                             where r.Equals(s)
                                                             select r).Count())
                                             : 0;
-                                        classifieds.Add(o, score);
+                                        lock (LockObject)
+                                        {
+                                            classifieds.Add(o, score);
+                                        }
                                     });
                                 Client.Directory.DirClassifiedsReply += DirClassifiedsEventHandler;
                                 Client.Directory.StartClassifiedSearch(name);
                                 DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
                                 Client.Directory.DirClassifiedsReply -= DirClassifiedsEventHandler;
-                                Parallel.ForEach(classifieds.OrderByDescending(o => o.Value),
+                                Dictionary<DirectoryManager.Classified, int> safeClassifieds;
+                                lock (LockObject)
+                                {
+                                    safeClassifieds =
+                                        classifieds.OrderByDescending(o => o.Value)
+                                            .ToDictionary(o => o.Key, p => p.Value);
+                                }
+                                Parallel.ForEach(safeClassifieds,
                                     o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
                                     {
                                         lock (LockObject)
@@ -12820,8 +13074,9 @@ namespace Corrade
                             case Type.EVENT:
                                 DirectoryManager.EventsSearchData searchEvent = new DirectoryManager.EventsSearchData();
                                 wasCSVToStructure(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA), message)),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                            message)),
                                     ref searchEvent);
                                 Dictionary<DirectoryManager.EventsSearchData, int> events =
                                     new Dictionary<DirectoryManager.EventsSearchData, int>();
@@ -12863,7 +13118,13 @@ namespace Corrade
                                     (uint) handledEvents);
                                 DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
                                 Client.Directory.DirEventsReply -= DirEventsEventHandler;
-                                Parallel.ForEach(events.OrderByDescending(o => o.Value),
+                                Dictionary<DirectoryManager.EventsSearchData, int> safeEvents;
+                                lock (LockObject)
+                                {
+                                    safeEvents = events.OrderByDescending(o => o.Value)
+                                        .ToDictionary(o => o.Key, p => p.Value);
+                                }
+                                Parallel.ForEach(safeEvents,
                                     o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
                                     {
                                         lock (LockObject)
@@ -12881,8 +13142,9 @@ namespace Corrade
                                 }
                                 DirectoryManager.GroupSearchData searchGroup = new DirectoryManager.GroupSearchData();
                                 wasCSVToStructure(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA), message)),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                            message)),
                                     ref searchGroup);
                                 Dictionary<DirectoryManager.GroupSearchData, int> groups =
                                     new Dictionary<DirectoryManager.GroupSearchData, int>();
@@ -12923,7 +13185,13 @@ namespace Corrade
                                 Client.Directory.StartGroupSearch(name, handledEvents);
                                 DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
                                 Client.Directory.DirGroupsReply -= DirGroupsEventHandler;
-                                Parallel.ForEach(groups.OrderByDescending(o => o.Value),
+                                Dictionary<DirectoryManager.GroupSearchData, int> safeGroups;
+                                lock (LockObject)
+                                {
+                                    safeGroups = groups.OrderByDescending(o => o.Value)
+                                        .ToDictionary(o => o.Key, p => p.Value);
+                                }
+                                Parallel.ForEach(safeGroups,
                                     o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
                                     {
                                         lock (LockObject)
@@ -12936,8 +13204,9 @@ namespace Corrade
                             case Type.LAND:
                                 DirectoryManager.DirectoryParcel searchLand = new DirectoryManager.DirectoryParcel();
                                 wasCSVToStructure(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA), message)),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                            message)),
                                     ref searchLand);
                                 Dictionary<DirectoryManager.DirectoryParcel, int> lands =
                                     new Dictionary<DirectoryManager.DirectoryParcel, int>();
@@ -12981,7 +13250,13 @@ namespace Corrade
                                     DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue, handledEvents);
                                 DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
                                 Client.Directory.DirLandReply -= DirLandReplyEventArgs;
-                                Parallel.ForEach(lands.OrderByDescending(o => o.Value),
+                                Dictionary<DirectoryManager.DirectoryParcel, int> safeLands;
+                                lock (LockObject)
+                                {
+                                    safeLands = lands.OrderByDescending(o => o.Value)
+                                        .ToDictionary(o => o.Key, p => p.Value);
+                                }
+                                Parallel.ForEach(safeLands,
                                     o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
                                     {
                                         lock (LockObject)
@@ -13038,7 +13313,13 @@ namespace Corrade
                                 Client.Directory.StartPeopleSearch(name, handledEvents);
                                 DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
                                 Client.Directory.DirPeopleReply -= DirPeopleReplyEventHandler;
-                                Parallel.ForEach(agents.OrderByDescending(o => o.Value),
+                                Dictionary<DirectoryManager.AgentSearchData, int> safeAgents;
+                                lock (LockObject)
+                                {
+                                    safeAgents = agents.OrderByDescending(o => o.Value)
+                                        .ToDictionary(o => o.Key, p => p.Value);
+                                }
+                                Parallel.ForEach(safeAgents,
                                     o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
                                     {
                                         lock (LockObject)
@@ -13056,8 +13337,9 @@ namespace Corrade
                                 }
                                 DirectoryManager.PlacesSearchData searchPlaces = new DirectoryManager.PlacesSearchData();
                                 wasCSVToStructure(
-                                    wasUriUnescapeDataString(
-                                        wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.DATA), message)),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                            message)),
                                     ref searchPlaces);
                                 Dictionary<DirectoryManager.PlacesSearchData, int> places =
                                     new Dictionary<DirectoryManager.PlacesSearchData, int>();
@@ -13078,13 +13360,22 @@ namespace Corrade
                                                             where r.Equals(s)
                                                             select r).Count())
                                             : 0;
-                                        places.Add(o, score);
+                                        lock (LockObject)
+                                        {
+                                            places.Add(o, score);
+                                        }
                                     });
                                 Client.Directory.PlacesReply += DirPlacesReplyEventHandler;
                                 Client.Directory.StartPlacesSearch(name);
                                 DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
                                 Client.Directory.PlacesReply -= DirPlacesReplyEventHandler;
-                                Parallel.ForEach(places.OrderByDescending(o => o.Value),
+                                Dictionary<DirectoryManager.PlacesSearchData, int> safePlaces;
+                                lock (LockObject)
+                                {
+                                    safePlaces = places.OrderByDescending(o => o.Value)
+                                        .ToDictionary(o => o.Key, p => p.Value);
+                                }
+                                Parallel.ForEach(safePlaces,
                                     o => Parallel.ForEach(wasGetFields(o.Key, o.Key.GetType().Name), p =>
                                     {
                                         lock (LockObject)
@@ -13115,7 +13406,7 @@ namespace Corrade
             System.Action sift = () =>
             {
                 string pattern =
-                    wasUriUnescapeDataString(wasKeyValueGet(wasGetDescriptionFromEnumValue(ScriptKeys.SIFT), message));
+                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SIFT)), message));
                 if (string.IsNullOrEmpty(pattern)) return;
                 string data;
                 if (!result.TryGetValue(wasGetDescriptionFromEnumValue(ResultKeys.DATA), out data)) return;
@@ -13163,12 +13454,13 @@ namespace Corrade
             Parallel.ForEach(wasKeyValueDecode(message), o =>
             {
                 // remove keys that are script keys, result keys or invalid key-value pairs
-                if (string.IsNullOrEmpty(o.Key) || resultKeys.Contains(o.Key) || scriptKeys.Contains(o.Key) ||
+                if (string.IsNullOrEmpty(o.Key) || resultKeys.Contains(wasInput(o.Key)) ||
+                    scriptKeys.Contains(wasInput(o.Key)) ||
                     string.IsNullOrEmpty(o.Value))
                     return;
                 lock (AfterBurnLock)
                 {
-                    result.Add(wasUriEscapeDataString(o.Key), wasUriEscapeDataString(o.Value));
+                    result.Add(o.Key, o.Value);
                 }
             });
 
@@ -13335,6 +13627,514 @@ namespace Corrade
                 Client.Self.SimPosition
                 );
         }
+
+        #region CRYPTOGRAPHY
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Gets an array element at a given modulo index.
+        /// </summary>
+        /// <typeparam name="T">the array type</typeparam>
+        /// <param name="index">a positive or negative index of the element</param>
+        /// <param name="data">the array</param>
+        /// <return>an array element</return>
+        public static T wasGetElementAt<T>(T[] data, int index)
+        {
+            switch (index < 0)
+            {
+                case true:
+                    return data[((index%data.Length) + data.Length)%data.Length];
+                default:
+                    return data[index%data.Length];
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Gets a sub-array from an array.
+        /// </summary>
+        /// <typeparam name="T">the array type</typeparam>
+        /// <param name="data">the array</param>
+        /// <param name="start">the start index</param>
+        /// <param name="stop">the stop index (-1 denotes the end)</param>
+        /// <returns>the array slice between start and stop</returns>
+        public static T[] wasGetSubArray<T>(T[] data, int start, int stop)
+        {
+            if (stop.Equals(-1))
+                stop = data.Length - 1;
+            T[] result = new T[stop - start + 1];
+            Array.Copy(data, start, result, 0, stop - start + 1);
+            return result;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Delete a sub-array and return the result.
+        /// </summary>
+        /// <typeparam name="T">the array type</typeparam>
+        /// <param name="data">the array</param>
+        /// <param name="start">the start index</param>
+        /// <param name="stop">the stop index (-1 denotes the end)</param>
+        /// <returns>the array without elements between start and stop</returns>
+        public static T[] wasDeleteSubArray<T>(T[] data, int start, int stop)
+        {
+            if (stop.Equals(-1))
+                stop = data.Length - 1;
+            T[] result = new T[data.Length - (stop - start) - 1];
+            Array.Copy(data, 0, result, 0, start);
+            Array.Copy(data, stop + 1, result, start, data.Length - stop - 1);
+            return result;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Concatenate multiple arrays.
+        /// </summary>
+        /// <typeparam name="T">the array type</typeparam>
+        /// <param name="arrays">multiple arrays</param>
+        /// <returns>a flat array with all arrays concatenated</returns>
+        public static T[] wasConcatenateArrays<T>(params T[][] arrays)
+        {
+            int resultLength = 0;
+            foreach (T[] o in arrays)
+            {
+                resultLength += o.Length;
+            }
+            T[] result = new T[resultLength];
+            int offset = 0;
+            for (int x = 0; x < arrays.Length; x++)
+            {
+                arrays[x].CopyTo(result, offset);
+                offset += arrays[x].Length;
+            }
+            return result;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Permutes an array in reverse a given number of times.
+        /// </summary>
+        /// <typeparam name="T">the array type</typeparam>
+        /// <param name="input">the array</param>
+        /// <param name="times">the number of times to permute</param>
+        /// <returns>the array with the elements permuted</returns>
+        private static T[] wasReversePermuteArrayElements<T>(T[] input, int times)
+        {
+            if (times.Equals(0)) return input;
+            T[] slice = new T[input.Length];
+            Array.Copy(input, 1, slice, 0, input.Length - 1);
+            Array.Copy(input, 0, slice, input.Length - 1, 1);
+            return wasReversePermuteArrayElements(slice, --times);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Permutes an array forward a given number of times.
+        /// </summary>
+        /// <typeparam name="T">the array type</typeparam>
+        /// <param name="input">the array</param>
+        /// <param name="times">the number of times to permute</param>
+        /// <returns>the array with the elements permuted</returns>
+        private static T[] wasForwardPermuteArrayElements<T>(T[] input, int times)
+        {
+            if (times.Equals(0)) return input;
+            T[] slice = new T[input.Length];
+            Array.Copy(input, input.Length - 1, slice, 0, 1);
+            Array.Copy(input, 0, slice, 1, input.Length - 1);
+            return wasForwardPermuteArrayElements(slice, --times);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Encrypt or decrypt a message given a set of rotors, plugs and a reflector.
+        /// </summary>
+        /// <param name="message">the message to encyrpt or decrypt</param>
+        /// <param name="rotors">any combination of: 1, 2, 3, 4, 5, 6, 7, 8, b, g</param>
+        /// <param name="plugs">the letter representing the start character for the rotor</param>
+        /// <param name="reflector">any one of: B, b, C, c</param>
+        /// <returns>either a decrypted or encrypted string</returns>
+        private static string wasEnigma(string message, char[] rotors, char[] plugs, char reflector)
+        {
+            Dictionary<char, char[]> def_rotors = new Dictionary<char, char[]>
+            {
+                {
+                    '1', new[]
+                    {
+                        'e', 'k', 'm', 'f', 'l',
+                        'g', 'd', 'q', 'v', 'z',
+                        'n', 't', 'o', 'w', 'y',
+                        'h', 'x', 'u', 's', 'p',
+                        'a', 'i', 'b', 'r', 'c',
+                        'j'
+                    }
+                },
+                {
+                    '2', new[]
+                    {
+                        'a', 'j', 'd', 'k', 's',
+                        'i', 'r', 'u', 'x', 'b',
+                        'l', 'h', 'w', 't', 'm',
+                        'c', 'q', 'g', 'z', 'n',
+                        'p', 'y', 'f', 'v', 'o',
+                        'e'
+                    }
+                },
+                {
+                    '3', new[]
+                    {
+                        'b', 'd', 'f', 'h', 'j',
+                        'l', 'c', 'p', 'r', 't',
+                        'x', 'v', 'z', 'n', 'y',
+                        'e', 'i', 'w', 'g', 'a',
+                        'k', 'm', 'u', 's', 'q',
+                        'o'
+                    }
+                },
+                {
+                    '4', new[]
+                    {
+                        'e', 's', 'o', 'v', 'p',
+                        'z', 'j', 'a', 'y', 'q',
+                        'u', 'i', 'r', 'h', 'x',
+                        'l', 'n', 'f', 't', 'g',
+                        'k', 'd', 'c', 'm', 'w',
+                        'b'
+                    }
+                },
+                {
+                    '5', new[]
+                    {
+                        'v', 'z', 'b', 'r', 'g',
+                        'i', 't', 'y', 'u', 'p',
+                        's', 'd', 'n', 'h', 'l',
+                        'x', 'a', 'w', 'm', 'j',
+                        'q', 'o', 'f', 'e', 'c',
+                        'k'
+                    }
+                },
+                {
+                    '6', new[]
+                    {
+                        'j', 'p', 'g', 'v', 'o',
+                        'u', 'm', 'f', 'y', 'q',
+                        'b', 'e', 'n', 'h', 'z',
+                        'r', 'd', 'k', 'a', 's',
+                        'x', 'l', 'i', 'c', 't',
+                        'w'
+                    }
+                },
+                {
+                    '7', new[]
+                    {
+                        'n', 'z', 'j', 'h', 'g',
+                        'r', 'c', 'x', 'm', 'y',
+                        's', 'w', 'b', 'o', 'u',
+                        'f', 'a', 'i', 'v', 'l',
+                        'p', 'e', 'k', 'q', 'd',
+                        't'
+                    }
+                },
+                {
+                    '8', new[]
+                    {
+                        'f', 'k', 'q', 'h', 't',
+                        'l', 'x', 'o', 'c', 'b',
+                        'j', 's', 'p', 'd', 'z',
+                        'r', 'a', 'm', 'e', 'w',
+                        'n', 'i', 'u', 'y', 'g',
+                        'v'
+                    }
+                },
+                {
+                    'b', new[]
+                    {
+                        'l', 'e', 'y', 'j', 'v',
+                        'c', 'n', 'i', 'x', 'w',
+                        'p', 'b', 'q', 'm', 'd',
+                        'r', 't', 'a', 'k', 'z',
+                        'g', 'f', 'u', 'h', 'o',
+                        's'
+                    }
+                },
+                {
+                    'g', new[]
+                    {
+                        'f', 's', 'o', 'k', 'a',
+                        'n', 'u', 'e', 'r', 'h',
+                        'm', 'b', 't', 'i', 'y',
+                        'c', 'w', 'l', 'q', 'p',
+                        'z', 'x', 'v', 'g', 'j',
+                        'd'
+                    }
+                }
+            };
+
+            Dictionary<char, char[]> def_reflectors = new Dictionary<char, char[]>
+            {
+                {
+                    'B', new[]
+                    {
+                        'a', 'y', 'b', 'r', 'c', 'u', 'd', 'h',
+                        'e', 'q', 'f', 's', 'g', 'l', 'i', 'p',
+                        'j', 'x', 'k', 'n', 'm', 'o', 't', 'z',
+                        'v', 'w'
+                    }
+                },
+                {
+                    'b', new[]
+                    {
+                        'a', 'e', 'b', 'n', 'c', 'k', 'd', 'q',
+                        'f', 'u', 'g', 'y', 'h', 'w', 'i', 'j',
+                        'l', 'o', 'm', 'p', 'r', 'x', 's', 'z',
+                        't', 'v'
+                    }
+                },
+                {
+                    'C', new[]
+                    {
+                        'a', 'f', 'b', 'v', 'c', 'p', 'd', 'j',
+                        'e', 'i', 'g', 'o', 'h', 'y', 'k', 'r',
+                        'l', 'z', 'm', 'x', 'n', 'w', 't', 'q',
+                        's', 'u'
+                    }
+                },
+                {
+                    'c', new[]
+                    {
+                        'a', 'r', 'b', 'd', 'c', 'o', 'e', 'j',
+                        'f', 'n', 'g', 't', 'h', 'k', 'i', 'v',
+                        'l', 'm', 'p', 'w', 'q', 'z', 's', 'x',
+                        'u', 'y'
+                    }
+                }
+            };
+
+            // Setup rotors from plugs.
+            foreach (char rotor in rotors)
+            {
+                char plug = plugs[Array.IndexOf(rotors, rotor)];
+                int i = Array.IndexOf(def_rotors[rotor], plug);
+                if (i.Equals(0)) continue;
+                def_rotors[rotor] = wasConcatenateArrays(new[] {plug},
+                    wasGetSubArray(wasDeleteSubArray(def_rotors[rotor], i, i), i, -1),
+                    wasGetSubArray(wasDeleteSubArray(def_rotors[rotor], i + 1, -1), 0, i - 1));
+            }
+
+            StringBuilder result = new StringBuilder();
+            foreach (char c in message)
+            {
+                if (!char.IsLetter(c))
+                {
+                    result.Append(c);
+                    continue;
+                }
+
+                // Normalize to lower.
+                char l = char.ToLower(c);
+
+                Action<char[]> rotate = o =>
+                {
+                    int i = o.Length - 1;
+                    do
+                    {
+                        def_rotors[o[0]] = wasForwardPermuteArrayElements(def_rotors[o[0]], 1);
+                        if (i.Equals(0))
+                        {
+                            rotors = wasReversePermuteArrayElements(o, 1);
+                            continue;
+                        }
+                        l = wasGetElementAt(def_rotors[o[1]], Array.IndexOf(def_rotors[o[0]], l) - 1);
+                        o = wasReversePermuteArrayElements(o, 1);
+                    } while (--i > -1);
+                };
+
+                // Forward pass through the Enigma's rotors.
+                rotate.Invoke(rotors);
+
+                // Reflect
+                int x = Array.IndexOf(def_reflectors[reflector], l);
+                l = (x + 1)%2 == 0 ? def_reflectors[reflector][x - 1] : def_reflectors[reflector][x + 1];
+
+                // Reverse the order of the rotors.
+                Array.Reverse(rotors);
+
+                // Reverse pass through the Enigma's rotors.
+                rotate.Invoke(rotors);
+
+                if (char.IsUpper(c))
+                {
+                    l = char.ToUpper(l);
+                }
+                result.Append(l);
+            }
+
+            return result.ToString();
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Expand the VIGENRE key to the length of the input.
+        /// </summary>
+        /// <param name="input">the input to expand to</param>
+        /// <param name="enc_key">the key to expand</param>
+        /// <returns>the expanded key</returns>
+        private static string wasVigenereExpandKey(string input, string enc_key)
+        {
+            string exp_key = "";
+            int i = 0, j = 0;
+            do
+            {
+                char p = input[i];
+                if (!char.IsLetter(p))
+                {
+                    exp_key += p;
+                    ++i;
+                    continue;
+                }
+                int m = j%enc_key.Length;
+                exp_key += enc_key[m];
+                ++j;
+                ++i;
+            } while (i < input.Length);
+            return exp_key;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Encrypt using VIGENERE.
+        /// </summary>
+        /// <param name="input">the input to encrypt</param>
+        /// <param name="enc_key">the key to encrypt with</param>
+        /// <returns>the encrypted input</returns>
+        private static string wasEncryptVIGENERE(string input, string enc_key)
+        {
+            char[] a =
+            {
+                'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+                'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+            };
+
+            enc_key = wasVigenereExpandKey(input, enc_key);
+            string result = "";
+            int i = 0;
+            do
+            {
+                char p = input[i];
+                if (!char.IsLetter(p))
+                {
+                    result += p;
+                    ++i;
+                    continue;
+                }
+                char q =
+                    wasReversePermuteArrayElements(a, Array.IndexOf(a, enc_key[i]))[
+                        Array.IndexOf(a, char.ToLowerInvariant(p))];
+                if (char.IsUpper(p))
+                {
+                    q = char.ToUpperInvariant(q);
+                }
+                result += q;
+                ++i;
+            } while (i < input.Length);
+            return result;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Decrypt using VIGENERE.
+        /// </summary>
+        /// <param name="input">the input to decrypt</param>
+        /// <param name="enc_key">the key to decrypt with</param>
+        /// <returns>the decrypted input</returns>
+        private static string wasDecryptVIGENERE(string input, string enc_key)
+        {
+            char[] a =
+            {
+                'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+                'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+            };
+
+            enc_key = wasVigenereExpandKey(input, enc_key);
+            string result = "";
+            int i = 0;
+            do
+            {
+                char p = input[i];
+                if (!char.IsLetter(p))
+                {
+                    result += p;
+                    ++i;
+                    continue;
+                }
+                char q =
+                    a[
+                        Array.IndexOf(wasReversePermuteArrayElements(a, Array.IndexOf(a, enc_key[i])),
+                            char.ToLowerInvariant(p))];
+                if (char.IsUpper(p))
+                {
+                    q = char.ToUpperInvariant(q);
+                }
+                result += q;
+                ++i;
+            } while (i < input.Length);
+            return result;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2015 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     An implementation of the ATBASH cypher for latin alphabets.
+        /// </summary>
+        /// <param name="data">the data to encrypt or decrypt</param>
+        /// <returns>the encrypted or decrypted data</returns>
+        private static string wasATBASH(string data)
+        {
+            char[] a =
+            {
+                'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+                'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+            };
+
+            char[] input = data.ToArray();
+
+            Parallel.ForEach(Enumerable.Range(0, data.Length), i =>
+            {
+                char e = input[i];
+                if (!char.IsLetter(e)) return;
+                int x = 25 - Array.BinarySearch(a, char.ToLowerInvariant(e));
+                if (!char.IsUpper(e))
+                {
+                    input[i] = a[x];
+                    return;
+                }
+                input[i] = char.ToUpperInvariant(a[x]);
+            });
+
+            return new string(input);
+        }
+
+        #endregion
 
         #region NAME AND UUID RESOLVERS
 
@@ -13895,7 +14695,7 @@ namespace Corrade
             Dictionary<string, string> output = new Dictionary<string, string>();
             foreach (KeyValuePair<string, string> tuple in data)
             {
-                output.Add(wasUriEscapeDataString(tuple.Key), wasUriEscapeDataString(tuple.Value));
+                output.Add(wasOutput(tuple.Key), wasOutput(tuple.Value));
             }
             return output;
         }
@@ -14131,6 +14931,10 @@ namespace Corrade
             public static int GROUP_CREATE_FEE;
             public static HashSet<Group> GROUPS;
             public static HashSet<Master> MASTERS;
+            public static List<Filter> INPUT_FILTERS;
+            public static List<Filter> OUTPUT_FILTERS;
+            public static string VIGENERE_SECRET;
+            public static ENIGMA ENIGMA;
 
             public static string Read(string file)
             {
@@ -14182,6 +14986,15 @@ namespace Corrade
                 GROUP_CREATE_FEE = 100;
                 GROUPS = new HashSet<Group>();
                 MASTERS = new HashSet<Master>();
+                INPUT_FILTERS = new List<Filter> { Filter.RFC3986 };
+                OUTPUT_FILTERS = new List<Filter> { Filter.RFC3986 };
+                ENIGMA = new ENIGMA
+                {
+                    rotors = new[] {'3', 'g', '1'},
+                    plugs = new[] {'z', 'p', 'q'},
+                    reflector = 'b'
+                };
+                VIGENERE_SECRET = string.Empty;
 
                 try
                 {
@@ -14289,6 +15102,126 @@ namespace Corrade
                     catch (Exception e)
                     {
                         Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                    }
+
+                    // Process filters.
+                    nodeList = root.SelectNodes("/config/filters/*");
+                    if (nodeList != null)
+                    {
+                        try
+                        {
+                            foreach (XmlNode FilterNode in nodeList)
+                            {
+                                switch (FilterNode.Name.ToLowerInvariant())
+                                {
+                                    case ConfigurationKeys.INPUT:
+                                        XmlNodeList inputFilterNodeList = FilterNode.SelectNodes("*");
+                                        if (inputFilterNodeList == null)
+                                        {
+                                            throw new Exception("error in filters section");
+                                        }
+                                        foreach (XmlNode inputFilterNode in inputFilterNodeList)
+                                        {
+                                            switch (inputFilterNode.Name.ToLowerInvariant())
+                                            {
+                                                case ConfigurationKeys.ENCODE:
+                                                case ConfigurationKeys.DECODE:
+                                                case ConfigurationKeys.ENCRYPT:
+                                                case ConfigurationKeys.DECRYPT:
+                                                    INPUT_FILTERS.Add(wasGetEnumValueFromDescription<Filter>(
+                                                        inputFilterNode.InnerText));
+                                                    break;
+                                                default:
+                                                    throw new Exception("error in input filters section");
+                                            }
+                                        }
+                                        break;
+                                    case ConfigurationKeys.OUTPUT:
+                                        XmlNodeList outputFilterNodeList = FilterNode.SelectNodes("*");
+                                        if (outputFilterNodeList == null)
+                                        {
+                                            throw new Exception("error in filters section");
+                                        }
+                                        foreach (XmlNode outputFilterNode in outputFilterNodeList)
+                                        {
+                                            switch (outputFilterNode.Name.ToLowerInvariant())
+                                            {
+                                                case ConfigurationKeys.ENCODE:
+                                                case ConfigurationKeys.DECODE:
+                                                case ConfigurationKeys.ENCRYPT:
+                                                case ConfigurationKeys.DECRYPT:
+                                                    OUTPUT_FILTERS.Add(wasGetEnumValueFromDescription<Filter>(
+                                                        outputFilterNode.InnerText));
+                                                    break;
+                                                default:
+                                                    throw new Exception("error in output filters section");
+                                            }
+                                        }
+                                        break;
+                                }
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                        }
+                    }
+
+                    // Process cryptography.
+                    nodeList = root.SelectNodes("/config/cryptography/*");
+                    if (nodeList != null)
+                    {
+                        try
+                        {
+                            foreach (XmlNode FilterNode in nodeList)
+                            {
+                                switch (FilterNode.Name.ToLowerInvariant())
+                                {
+                                    case ConfigurationKeys.ENIGMA:
+                                        XmlNodeList ENIGMANodeList = FilterNode.SelectNodes("*");
+                                        if (ENIGMANodeList == null)
+                                        {
+                                            throw new Exception("error in cryptography section");
+                                        }
+                                        foreach (XmlNode ENIGMANode in ENIGMANodeList)
+                                        {
+                                            switch (ENIGMANode.Name.ToLowerInvariant())
+                                            {
+                                                case ConfigurationKeys.ROTORS:
+                                                    ENIGMA.rotors = ENIGMANode.InnerText.ToArray();
+                                                    break;
+                                                case ConfigurationKeys.PLUGS:
+                                                    ENIGMA.plugs = ENIGMANode.InnerText.ToArray();
+                                                    break;
+                                                case ConfigurationKeys.REFLECTOR:
+                                                    ENIGMA.reflector = ENIGMANode.InnerText.SingleOrDefault();
+                                                    break;
+                                            }
+                                        }
+                                        break;
+                                    case ConfigurationKeys.VIGENERE:
+                                        XmlNodeList VIGENERENodeList = FilterNode.SelectNodes("*");
+                                        if (VIGENERENodeList == null)
+                                        {
+                                            throw new Exception("error in cryptography section");
+                                        }
+                                        foreach (XmlNode VIGENERENode in VIGENERENodeList)
+                                        {
+                                            switch (VIGENERENode.Name.ToLowerInvariant())
+                                            {
+                                                case ConfigurationKeys.SECRET:
+                                                    VIGENERE_SECRET = VIGENERENode.InnerText;
+                                                    break;
+                                            }
+                                        }
+                                        break;
+                                }
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                        }
                     }
 
                     // Process RLV.
@@ -14901,6 +15834,18 @@ namespace Corrade
             public const string COMMANDS = @"commands";
             public const string RLV = @"rlv";
             public const string WORKERS = @"workers";
+            public const string ENCODE = @"encode";
+            public const string DECODE = @"decode";
+            public const string ENCRYPT = @"encrypt";
+            public const string DECRYPT = @"decrypt";
+            public const string INPUT = @"input";
+            public const string OUTPUT = @"output";
+            public const string ENIGMA = @"enigma";
+            public const string ROTORS = @"rotors";
+            public const string PLUGS = @"plugs";
+            public const string REFLECTOR = @"reflector";
+            public const string SECRET = @"secret";
+            public const string VIGENERE = @"vigenere";
         }
 
         /// <summary>
@@ -15002,6 +15947,16 @@ namespace Corrade
         }
 
         /// <summary>
+        ///     ENIGMA machine settings.
+        /// </summary>
+        private struct ENIGMA
+        {
+            public char[] plugs;
+            public char reflector;
+            public char[] rotors;
+        }
+
+        /// <summary>
         ///     Possible entities.
         /// </summary>
         private enum Entity : uint
@@ -15014,6 +15969,19 @@ namespace Corrade
             [Description("region")] REGION,
             [Description("object")] OBJECT,
             [Description("parcel")] PARCEL
+        }
+
+        /// <summary>
+        ///     Possible input and output filters.
+        /// </summary>
+        private enum Filter : uint
+        {
+            [Description("none")] NONE = 0,
+            [Description("rfc3986")] RFC3986,
+            [Description("enigma")] ENIGMA,
+            [Description("vigenere")] VIGENERE,
+            [Description("atbash")] ATBASH,
+            [Description("base64")] BASE64
         }
 
         /// <summary>
@@ -15207,7 +16175,8 @@ namespace Corrade
             [Description("system")] PERMISSION_SYSTEM = 2048,
             [Description("friendship")] PERMISSION_FRIENDSHIP = 4096,
             [Description("execute")] PERMISSION_EXECUTE = 8192,
-            [Description("group")] PERMISSION_GROUP = 16384
+            [Description("group")] PERMISSION_GROUP = 16384,
+            [Description("filter")] PERMISSION_FILTER = 32768
         }
 
         /// <summary>
@@ -15398,6 +16367,7 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+            [Description("filter")] FILTER,
             [Description("run")] RUN,
             [Description("relax")] RELAX,
             [Description("sift")] SIFT,
@@ -15530,7 +16500,6 @@ namespace Corrade
             [Description("all")] ALL,
             [Description("getregiontop")] GETREGIONTOP,
             [Description("restartregion")] RESTARTREGION,
-            [Description("timeout")] TIMEOUT,
             [Description("directorysearch")] DIRECTORYSEARCH,
             [Description("getprofiledata")] GETPROFILEDATA,
             [Description("getparticlesystem")] GETPARTICLESYSTEM,
@@ -15624,6 +16593,8 @@ namespace Corrade
             [Description("effect")] EFFECT,
             [Description("id")] ID,
             [Description("terrain")] TERRAIN,
+            [Description("output")] OUTPUT,
+            [Description("input")] INPUT
         }
 
         /// <summary>
@@ -15668,7 +16639,9 @@ namespace Corrade
             [Description("place")] PLACE,
             [Description("command")] COMMAND,
             [Description("rlv")] RLV,
-            [Description("notification")] NOTIFICATION
+            [Description("notification")] NOTIFICATION,
+            [Description("input")] INPUT,
+            [Description("output")] OUTPUT
         }
 
         /// <summary>
