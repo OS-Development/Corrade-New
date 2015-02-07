@@ -89,6 +89,9 @@
     <Reference Include="System.ServiceProcess">
       <Private>False</Private>
     </Reference>
+    <Reference Include="System.Speech">
+      <RequiredTargetFramework>3.0</RequiredTargetFramework>
+    </Reference>
     <Reference Include="System.Xml">
       <Private>False</Private>
     </Reference>

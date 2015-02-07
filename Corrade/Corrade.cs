@@ -19,6 +19,7 @@ using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.ServiceProcess;
+using System.Speech.Synthesis;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -5957,6 +5958,30 @@ namespace Corrade
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
+                        }
+                    };
+                    break;
+                case ScriptKeys.SPEAK:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int)Permissions.PERMISSION_TALK))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        switch (
+                            wasGetEnumValueFromDescription<Entity>(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
+                                        message)).ToLowerInvariant()))
+                        {
+                            case Entity.LOCAL:
+                                using(SpeechSynthesizer synth = new SpeechSynthesizer()) {
+                                    synth.SetOutputToDefaultAudioDevice();
+                                    synth.Speak(wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
+                                                message)));
+                                }
+                                break;
                         }
                     };
                     break;
@@ -16367,6 +16392,7 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+            [Description("speak")] SPEAK,
             [Description("filter")] FILTER,
             [Description("run")] RUN,
             [Description("relax")] RELAX,
