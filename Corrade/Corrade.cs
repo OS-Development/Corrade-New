@@ -161,6 +161,9 @@ namespace Corrade
 
         public static EventHandler ConsoleEventHandler;
 
+        /// <summary>
+        ///     Corrade's input filter function.
+        /// </summary>
         private static readonly Func<string, string> wasInput = o =>
         {
             if (string.IsNullOrEmpty(o)) return string.Empty;
@@ -195,6 +198,9 @@ namespace Corrade
             return o;
         };
 
+        /// <summary>
+        ///     Corrade's output filter function.
+        /// </summary>
         private static readonly Func<string, string> wasOutput = o =>
         {
             if (string.IsNullOrEmpty(o)) return string.Empty;
@@ -229,6 +235,30 @@ namespace Corrade
             return o;
         };
 
+        /// <summary>
+        ///     Gets the first name and last name from an avatar name.
+        /// </summary>
+        /// <returns>the firstname and the lastname or resident</returns>
+        private static readonly Func<string, IEnumerable<string>> GetAvatarNames = o => CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(o)
+            .Cast<Match>()
+            .ToDictionary(p => new[]
+            {
+                p.Groups["first"].Value,
+                p.Groups["last"].Value
+            })
+            .SelectMany(
+                p =>
+                    new[]
+                    {
+                        p.Key[0],
+                        !string.IsNullOrEmpty(p.Key[1])
+                            ? p.Key[1]
+                            : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                    });
+
+        /// <summary>
+        ///     Loads the OpenMetaverse inventory cache.
+        /// </summary>
         private static readonly System.Action LoadInventoryCache = () =>
         {
             int itemsLoaded =
@@ -239,6 +269,9 @@ namespace Corrade
                 itemsLoaded < 0 ? "0" : itemsLoaded.ToString(CultureInfo.InvariantCulture));
         };
 
+        /// <summary>
+        ///     Goes through the whole inventory and updates all the nodes.
+        /// </summary>
         private static readonly System.Action InventoryUpdate = () =>
         {
             // Create the queue of folders.
@@ -293,6 +326,9 @@ namespace Corrade
             } while (!inventoryFolders.Count.Equals(0));
         };
 
+        /// <summary>
+        ///     Saves the OpenMetaverse inventory cache.
+        /// </summary>
         private static readonly System.Action SaveInventoryCache = () =>
         {
             string path = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
@@ -304,6 +340,9 @@ namespace Corrade
                 itemsSaved.ToString(CultureInfo.InvariantCulture));
         };
 
+        /// <summary>
+        ///     Loads Corrade's caches.
+        /// </summary>
         private static readonly System.Action LoadCorradeCache = () =>
         {
             lock (Cache.Locks.AgentCacheLock)
@@ -320,6 +359,9 @@ namespace Corrade
             }
         };
 
+        /// <summary>
+        ///     Saves Corrade's caches.
+        /// </summary>
         private static readonly System.Action SaveCorradeCache = () =>
         {
             lock (Cache.Locks.AgentCacheLock)
@@ -352,33 +394,6 @@ namespace Corrade
                 EventLog.CreateEventSource(CorradeLog.Source, CorradeLog.Log);
             }
             ((ISupportInitialize) (CorradeLog)).EndInit();
-        }
-
-        /// <summary>
-        ///     Gets the first name and last name from an avatar name.
-        /// </summary>
-        /// <param name="name">the avatar full name</param>
-        /// <returns>the firstname and the lastname or resident</returns>
-        private static IEnumerable<string> GetAvatarNames(string name)
-        {
-            return
-                Regex.Matches(name,
-                    @"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$")
-                    .Cast<Match>()
-                    .ToDictionary(o => new[]
-                    {
-                        o.Groups["first"].Value,
-                        o.Groups["last"].Value
-                    })
-                    .SelectMany(
-                        o =>
-                            new[]
-                            {
-                                o.Key[0],
-                                !string.IsNullOrEmpty(o.Key[1])
-                                    ? o.Key[1]
-                                    : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                            });
         }
 
         private static bool ConsoleCtrlCheck(NativeMethods.CtrlType ctrlType)
@@ -14791,6 +14806,9 @@ namespace Corrade
             public const string CACHE_DIRECTORY = @"cache";
 
             public static readonly Regex CSVRegex = new Regex(@"\s*(?<key>.+?)\s*,\s*(?<value>.+?)\s*(,|$)",
+                RegexOptions.Compiled);
+
+            public static readonly Regex AvatarFullNameRegex = new Regex(@"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$",
                 RegexOptions.Compiled);
 
             public static readonly Regex OneOrMoRegex = new Regex(@".+?", RegexOptions.Compiled);
