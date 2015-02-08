@@ -140,6 +140,9 @@ namespace Corrade
                 {CorradeThreadType.NOTIFICATION, new CorradeThread()}
             };
 
+        /// <summary>
+        ///     Global rebake timer.
+        /// </summary>
         private static readonly Timer RebakeTimer = new Timer(Rebake =>
         {
             ManualResetEvent AppearanceSetEvent = new ManualResetEvent(false);
@@ -150,6 +153,9 @@ namespace Corrade
             Client.Appearance.AppearanceSet -= HandleAppearanceSet;
         });
 
+        /// <summary>
+        ///     Current land group activation timer.
+        /// </summary>
         private static readonly Timer ActivateCurrentLandGroupTimer = new Timer(ActivateCurrentLandGroup =>
         {
             Parcel parcel = null;
@@ -238,23 +244,24 @@ namespace Corrade
         /// <summary>
         ///     Gets the first name and last name from an avatar name.
         /// </summary>
-        /// <returns>the firstname and the lastname or resident</returns>
-        private static readonly Func<string, IEnumerable<string>> GetAvatarNames = o => CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(o)
-            .Cast<Match>()
-            .ToDictionary(p => new[]
-            {
-                p.Groups["first"].Value,
-                p.Groups["last"].Value
-            })
-            .SelectMany(
-                p =>
-                    new[]
-                    {
-                        p.Key[0],
-                        !string.IsNullOrEmpty(p.Key[1])
-                            ? p.Key[1]
-                            : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                    });
+        /// <returns>the firstname and the lastname or Resident</returns>
+        private static readonly Func<string, IEnumerable<string>> GetAvatarNames =
+            o => CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(o)
+                .Cast<Match>()
+                .ToDictionary(p => new[]
+                {
+                    p.Groups["first"].Value,
+                    p.Groups["last"].Value
+                })
+                .SelectMany(
+                    p =>
+                        new[]
+                        {
+                            p.Key[0],
+                            !string.IsNullOrEmpty(p.Key[1])
+                                ? p.Key[1]
+                                : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                        });
 
         /// <summary>
         ///     Loads the OpenMetaverse inventory cache.

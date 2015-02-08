@@ -372,6 +372,7 @@
       <Link>openmetaverse_data\upperbody_shading_alpha.tga</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="App.config" />
     <None Include="Corrade.exe.manifest">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
