@@ -1810,6 +1810,10 @@ namespace Corrade
             Client.Settings.USE_ASSET_CACHE = true;
             Client.Settings.USE_INTERPOLATION_TIMER = true;
             Client.Settings.FETCH_MISSING_INVENTORY = true;
+            // Enable multiple simulators
+            Client.Settings.MULTIPLE_SIMS = true;
+            // Set the maximum draw-distance possible.
+            Client.Self.Movement.Camera.Far = LINDEN_CONSTANTS.VIEWER.MAXIMUM_DRAW_DISTANCE;
             Client.Settings.LOGIN_TIMEOUT = Configuration.SERVICES_TIMEOUT;
             Client.Settings.LOGOUT_TIMEOUT = Configuration.SERVICES_TIMEOUT;
             // Install global event handlers.
@@ -6208,9 +6212,10 @@ namespace Corrade
                         {
                             switch (args.Status)
                             {
+                                case TeleportStatus.Cancelled:
+                                case TeleportStatus.Failed:
                                 case TeleportStatus.Finished:
-                                    succeeded = Client.Network.CurrentSim.Name.Equals(region,
-                                        StringComparison.InvariantCultureIgnoreCase);
+                                    succeeded = args.Status.Equals(TeleportStatus.Finished);
                                     TeleportEvent.Set();
                                     break;
                             }
@@ -6228,7 +6233,6 @@ namespace Corrade
                             Client.Self.TeleportProgress -= TeleportEventHandler;
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_DURING_TELEPORT));
                         }
-
                         Client.Self.TeleportProgress -= TeleportEventHandler;
                         if (!succeeded)
                         {
@@ -6378,7 +6382,6 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_REGION));
                         }
                         Client.Grid.GridRegion -= GridRegionEventHandler;
-
                         List<string> data = new List<string>(GetStructuredData(gridRegion,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
@@ -16124,6 +16127,11 @@ namespace Corrade
             {
                 public const string CSV_DELIMITER = @", ";
                 public const float SENSOR_RANGE = 96;
+            }
+
+            public struct VIEWER
+            {
+                public const float MAXIMUM_DRAW_DISTANCE = 4096;
             }
         }
 
