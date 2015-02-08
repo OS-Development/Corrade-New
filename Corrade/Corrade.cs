@@ -19,7 +19,6 @@ using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.ServiceProcess;
-using System.Speech.Synthesis;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -5958,30 +5957,6 @@ namespace Corrade
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
-                        }
-                    };
-                    break;
-                case ScriptKeys.SPEAK:
-                    execute = () =>
-                    {
-                        if (!HasCorradePermission(group, (int)Permissions.PERMISSION_TALK))
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
-                        }
-                        switch (
-                            wasGetEnumValueFromDescription<Entity>(
-                                wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
-                                        message)).ToLowerInvariant()))
-                        {
-                            case Entity.LOCAL:
-                                using(SpeechSynthesizer synth = new SpeechSynthesizer()) {
-                                    synth.SetOutputToDefaultAudioDevice();
-                                    synth.Speak(wasInput(
-                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
-                                                message)));
-                                }
-                                break;
                         }
                     };
                     break;
@@ -15011,8 +14986,8 @@ namespace Corrade
                 GROUP_CREATE_FEE = 100;
                 GROUPS = new HashSet<Group>();
                 MASTERS = new HashSet<Master>();
-                INPUT_FILTERS = new List<Filter> { Filter.RFC3986 };
-                OUTPUT_FILTERS = new List<Filter> { Filter.RFC3986 };
+                INPUT_FILTERS = new List<Filter> {Filter.RFC3986};
+                OUTPUT_FILTERS = new List<Filter> {Filter.RFC3986};
                 ENIGMA = new ENIGMA
                 {
                     rotors = new[] {'3', 'g', '1'},
@@ -15145,6 +15120,7 @@ namespace Corrade
                                         {
                                             throw new Exception("error in filters section");
                                         }
+                                        INPUT_FILTERS = new List<Filter>();
                                         foreach (XmlNode inputFilterNode in inputFilterNodeList)
                                         {
                                             switch (inputFilterNode.Name.ToLowerInvariant())
@@ -15167,6 +15143,7 @@ namespace Corrade
                                         {
                                             throw new Exception("error in filters section");
                                         }
+                                        OUTPUT_FILTERS = new List<Filter>();
                                         foreach (XmlNode outputFilterNode in outputFilterNodeList)
                                         {
                                             switch (outputFilterNode.Name.ToLowerInvariant())
@@ -15879,7 +15856,7 @@ namespace Corrade
         private enum ConsoleError
         {
             [Description("none")] NONE = 0,
-            [Description("access denied")] ACCESS_DENIED = 1,
+            [Description("access denied")] ACCESS_DENIED,
             [Description("invalid configuration file")] INVALID_CONFIGURATION_FILE,
 
             [Description(
@@ -15993,7 +15970,8 @@ namespace Corrade
             [Description("estate")] ESTATE,
             [Description("region")] REGION,
             [Description("object")] OBJECT,
-            [Description("parcel")] PARCEL
+            [Description("parcel")] PARCEL,
+            [Description("host")] HOST
         }
 
         /// <summary>
@@ -16392,6 +16370,7 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+            [Description("voice")] VOICE,
             [Description("speak")] SPEAK,
             [Description("filter")] FILTER,
             [Description("run")] RUN,
@@ -16663,9 +16642,6 @@ namespace Corrade
             [Description("land")] LAND,
             [Description("people")] PEOPLE,
             [Description("place")] PLACE,
-            [Description("command")] COMMAND,
-            [Description("rlv")] RLV,
-            [Description("notification")] NOTIFICATION,
             [Description("input")] INPUT,
             [Description("output")] OUTPUT
         }
