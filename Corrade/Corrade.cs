@@ -137,7 +137,8 @@ namespace Corrade
             {
                 {CorradeThreadType.COMMAND, new CorradeThread()},
                 {CorradeThreadType.RLV, new CorradeThread()},
-                {CorradeThreadType.NOTIFICATION, new CorradeThread()}
+                {CorradeThreadType.NOTIFICATION, new CorradeThread()},
+                {CorradeThreadType.INSTANT_MESSAGE, new CorradeThread()}
             };
 
         /// <summary>
@@ -1845,7 +1846,9 @@ namespace Corrade
             Client.Network.SimChanged += HandleSimChanged;
             Client.Self.MoneyBalanceReply += HandleMoneyBalance;
             // Each Instant Message is processed in its own thread.
-            Client.Self.IM += HandleSelfIM;
+            Client.Self.IM += (sender, args) => CorradeThreadPool[CorradeThreadType.INSTANT_MESSAGE].Spawn(
+                () => HandleSelfIM(sender, args),
+                Configuration.MAXIMUM_INSTANT_MESSAGE_THREADS);
             // Write the logo in interactive mode.
             if (Environment.UserInteractive)
             {
@@ -3356,13 +3359,16 @@ namespace Corrade
                         () => SendNotification(Notifications.NOTIFICATION_GROUP_INVITE, args),
                         Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     // If a master sends it, then accept.
-                    if (
-                        !Configuration.MASTERS.Select(
-                            o =>
-                                string.Format(CultureInfo.InvariantCulture, "{0}.{1}", o.FirstName, o.LastName))
-                            .
-                            Any(p => p.Equals(args.IM.FromAgentName, StringComparison.OrdinalIgnoreCase)))
-                        return;
+                    lock (ClientInstanceLock)
+                    {
+                        if (
+                            !Configuration.MASTERS.Select(
+                                o =>
+                                    string.Format(CultureInfo.InvariantCulture, "{0}.{1}", o.FirstName, o.LastName))
+                                .
+                                Any(p => p.Equals(args.IM.FromAgentName, StringComparison.OrdinalIgnoreCase)))
+                            return;
+                    }
                     Client.Self.GroupInviteRespond(inviteGroup.ID, args.IM.IMSessionID, true);
                     return;
                     // Group notice inventory accepted, declined or notice received.
@@ -3397,34 +3403,39 @@ namespace Corrade
                             () => SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, args),
                             Configuration.MAXIMUM_NOTIFICATION_THREADS);
                         // Log group messages
-                        Parallel.ForEach(
-                            Configuration.GROUPS.Where(o => o.Name.Equals(messageGroup.Name, StringComparison.Ordinal)),
-                            o =>
-                            {
-                                // Attempt to write to log file,
-                                try
+                        lock (ClientInstanceLock)
+                        {
+                            Parallel.ForEach(
+                                Configuration.GROUPS.Where(
+                                    o => o.Name.Equals(messageGroup.Name, StringComparison.Ordinal)),
+                                o =>
                                 {
-                                    lock (LogFileLock)
+                                    // Attempt to write to log file,
+                                    try
                                     {
-                                        using (StreamWriter logWriter = File.AppendText(o.ChatLog))
+                                        lock (LogFileLock)
                                         {
-                                            logWriter.WriteLine("[{0}] {1} : {2}",
-                                                DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                    DateTimeFormatInfo.InvariantInfo), args.IM.FromAgentName, message);
-                                            logWriter.Flush();
-                                            //logWriter.Close();
+                                            using (StreamWriter logWriter = File.AppendText(o.ChatLog))
+                                            {
+                                                logWriter.WriteLine("[{0}] {1} : {2}",
+                                                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                        DateTimeFormatInfo.InvariantInfo), args.IM.FromAgentName,
+                                                    message);
+                                                logWriter.Flush();
+                                                //logWriter.Close();
+                                            }
                                         }
                                     }
-                                }
-                                catch (Exception e)
-                                {
-                                    // or fail and append the fail message.
-                                    Feedback(
-                                        wasGetDescriptionFromEnumValue(
-                                            ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOGFILE),
-                                        e.Message);
-                                }
-                            });
+                                    catch (Exception e)
+                                    {
+                                        // or fail and append the fail message.
+                                        Feedback(
+                                            wasGetDescriptionFromEnumValue(
+                                                ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOGFILE),
+                                            e.Message);
+                                    }
+                                });
+                        }
                         return;
                     }
                     // Check if this is an instant message.
@@ -6205,6 +6216,12 @@ namespace Corrade
                                 out position))
                         {
                             position = Client.Self.SimPosition;
+                        }
+                        if (regionHandle.Equals(Client.Network.CurrentSim.Handle) &&
+                            Vector3.Distance(Client.Self.SimPosition, position) <
+                            LINDEN_CONSTANTS.REGION.TELEPORT_MINIMUM_DISTANCE)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.DESTINATION_TOO_CLOSE));
                         }
                         ManualResetEvent TeleportEvent = new ManualResetEvent(false);
                         bool succeeded = false;
@@ -14943,6 +14960,7 @@ namespace Corrade
             public static int MAXIMUM_NOTIFICATION_THREADS;
             public static int MAXIMUM_COMMAND_THREADS;
             public static int MAXIMUM_RLV_THREADS;
+            public static int MAXIMUM_INSTANT_MESSAGE_THREADS;
             public static bool USE_NAGGLE;
             public static bool USE_EXPECT100CONTINUE;
             public static int SERVICES_TIMEOUT;
@@ -14999,6 +15017,7 @@ namespace Corrade
                 MAXIMUM_NOTIFICATION_THREADS = 10;
                 MAXIMUM_COMMAND_THREADS = 10;
                 MAXIMUM_RLV_THREADS = 10;
+                MAXIMUM_INSTANT_MESSAGE_THREADS = 10;
                 USE_NAGGLE = false;
                 SERVICES_TIMEOUT = 60000;
                 DATA_TIMEOUT = 5000;
@@ -15397,6 +15416,27 @@ namespace Corrade
                                                             out MAXIMUM_COMMAND_THREADS))
                                                     {
                                                         throw new Exception("error in commands limits section");
+                                                    }
+                                                    break;
+                                            }
+                                        }
+                                        break;
+                                    case ConfigurationKeys.IM:
+                                        XmlNodeList instantMessageLimitNodeList = limitsNode.SelectNodes("*");
+                                        if (instantMessageLimitNodeList == null)
+                                        {
+                                            throw new Exception("error in instant message limits section");
+                                        }
+                                        foreach (XmlNode instantMessageLimitNode in instantMessageLimitNodeList)
+                                        {
+                                            switch (instantMessageLimitNode.Name.ToLowerInvariant())
+                                            {
+                                                case ConfigurationKeys.THREADS:
+                                                    if (
+                                                        !int.TryParse(instantMessageLimitNode.InnerText,
+                                                            out MAXIMUM_INSTANT_MESSAGE_THREADS))
+                                                    {
+                                                        throw new Exception("error in instant message limits section");
                                                     }
                                                     break;
                                             }
@@ -15876,6 +15916,7 @@ namespace Corrade
             public const string REFLECTOR = @"reflector";
             public const string SECRET = @"secret";
             public const string VIGENERE = @"vigenere";
+            public const string IM = @"im";
         }
 
         /// <summary>
@@ -15959,7 +16000,8 @@ namespace Corrade
         {
             COMMAND = 1,
             RLV = 2,
-            NOTIFICATION = 3
+            NOTIFICATION = 3,
+            INSTANT_MESSAGE = 4
         };
 
         /// <summary>
@@ -16127,6 +16169,11 @@ namespace Corrade
             {
                 public const string CSV_DELIMITER = @", ";
                 public const float SENSOR_RANGE = 96;
+            }
+
+            public struct REGION
+            {
+                public const float TELEPORT_MINIMUM_DISTANCE = 1;
             }
 
             public struct VIEWER
@@ -16394,7 +16441,8 @@ namespace Corrade
             [Description("unable to obtain money balance")] UNABLE_TO_OBTAIN_MONEY_BALANCE,
             [Description("timeout getting avatar data")] TIMEOUT_GETTING_AVATAR_DATA,
             [Description("avatar is not on the current region")] AVATAR_NOT_ON_CURRENT_REGION,
-            [Description("timeout retrieving estate list")] TIMEOUT_RETRIEVING_ESTATE_LIST
+            [Description("timeout retrieving estate list")] TIMEOUT_RETRIEVING_ESTATE_LIST,
+            [Description("destination too close")] DESTINATION_TOO_CLOSE
         }
 
         /// <summary>
