@@ -2903,6 +2903,7 @@ namespace Corrade
             switch (e.Type)
             {
                 case ChatType.OwnerSay:
+                    // Process RLV
                     if (!EnableCorradeRLV || !e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR)) return;
                     CorradeThreadPool[CorradeThreadType.RLV].Spawn(
                         () => HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1), e.SourceID),
@@ -3303,20 +3304,23 @@ namespace Corrade
                         () => SendNotification(Notifications.NOTIFICATION_TELEPORT_LURE, args),
                         Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     // If we got a teleport request from a master, then accept it (for the moment).
-                    if (Configuration.MASTERS.Select(
-                        o =>
-                            string.Format(CultureInfo.InvariantCulture, "{0} {1}", o.FirstName, o.LastName))
-                        .
-                        Any(p => p.Equals(args.IM.FromAgentName, StringComparison.OrdinalIgnoreCase)))
+                    lock (ClientInstanceLock)
                     {
-                        if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
+                        if (Configuration.MASTERS.Select(
+                            o =>
+                                string.Format(CultureInfo.InvariantCulture, "{0} {1}", o.FirstName, o.LastName))
+                            .
+                            Any(p => p.Equals(args.IM.FromAgentName, StringComparison.OrdinalIgnoreCase)))
                         {
-                            Client.Self.Stand();
+                            if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
+                            {
+                                Client.Self.Stand();
+                            }
+                            Client.Self.SignaledAnimations.ForEach(
+                                animation => Client.Self.AnimationStop(animation.Key, true));
+                            Client.Self.TeleportLureRespond(args.IM.FromAgentID, args.IM.IMSessionID, true);
+                            return;
                         }
-                        Client.Self.SignaledAnimations.ForEach(
-                            animation => Client.Self.AnimationStop(animation.Key, true));
-                        Client.Self.TeleportLureRespond(args.IM.FromAgentID, args.IM.IMSessionID, true);
-                        return;
                     }
                     return;
                     // Group invitations received
