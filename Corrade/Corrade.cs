@@ -3674,13 +3674,14 @@ namespace Corrade
                 case RLVBehaviour.SETROT:
                     execute = () =>
                     {
-                        double rotation = 0;
+                        double rotation;
                         if (!RLVrule.Param.Equals(RLV_CONSTANTS.FORCE) ||
                             !double.TryParse(RLVrule.Option, NumberStyles.Float, CultureInfo.InvariantCulture,
                                 out rotation))
                         {
-                            Client.Self.Movement.UpdateFromHeading(Math.PI/2d - rotation, true);
+                            return;
                         }
+                        Client.Self.Movement.UpdateFromHeading(Math.PI/2d - rotation, true);
                     };
                     break;
                 case RLVBehaviour.TPTO:
