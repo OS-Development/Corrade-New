@@ -1359,7 +1359,7 @@ namespace Corrade
             }
             Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
             if (localGroups.Count.Equals(0)) return false;
-            groups = localGroups;
+            groups = new HashSet<OpenMetaverse.Group>(localGroups);
             return true;
         }
 
@@ -1814,7 +1814,7 @@ namespace Corrade
             // Enable multiple simulators
             Client.Settings.MULTIPLE_SIMS = true;
             // Set the maximum draw-distance possible.
-            Client.Self.Movement.Camera.Far = LINDEN_CONSTANTS.VIEWER.MAXIMUM_DRAW_DISTANCE;
+            Client.Self.Movement.Camera.Far = Configuration.RANGE;
             Client.Settings.LOGIN_TIMEOUT = Configuration.SERVICES_TIMEOUT;
             Client.Settings.LOGOUT_TIMEOUT = Configuration.SERVICES_TIMEOUT;
             // Install global event handlers.
@@ -14962,6 +14962,7 @@ namespace Corrade
             public static int NOTIFICATION_THROTTLE;
             public static int NOTIFICATION_QUEUE_LENGTH;
             public static int CONNECTION_LIMIT;
+            public static float RANGE;
             public static int MAXIMUM_NOTIFICATION_THREADS;
             public static int MAXIMUM_COMMAND_THREADS;
             public static int MAXIMUM_RLV_THREADS;
@@ -15019,6 +15020,7 @@ namespace Corrade
                 NOTIFICATION_THROTTLE = 1000;
                 NOTIFICATION_QUEUE_LENGTH = 100;
                 CONNECTION_LIMIT = 100;
+                RANGE = 4096;
                 MAXIMUM_NOTIFICATION_THREADS = 10;
                 MAXIMUM_COMMAND_THREADS = 10;
                 MAXIMUM_RLV_THREADS = 10;
@@ -15384,6 +15386,13 @@ namespace Corrade
                             {
                                 switch (limitsNode.Name.ToLowerInvariant())
                                 {
+                                    case ConfigurationKeys.RANGE:
+                                        if (!float.TryParse(limitsNode.InnerText,
+                                            out RANGE))
+                                        {
+                                            throw new Exception("error in range limits section");
+                                        }
+                                        break;
                                     case ConfigurationKeys.RLV:
                                         XmlNodeList rlvLimitNodeList = limitsNode.SelectNodes("*");
                                         if (rlvLimitNodeList == null)
@@ -15922,6 +15931,7 @@ namespace Corrade
             public const string SECRET = @"secret";
             public const string VIGENERE = @"vigenere";
             public const string IM = @"im";
+            public const string RANGE = @"range";
         }
 
         /// <summary>
