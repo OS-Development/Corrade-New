@@ -1331,36 +1331,47 @@ namespace Corrade
         /// </summary>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="groups">a hash set to hold the current groups</param>
         /// <param name="mean">the mean to use for data decay</param>
-        /// <returns>true if the current groups could have been successfully retrieved</returns>
-        private static bool RequestCurrentGroups(int millisecondsTimeout, int dataTimeout, int mean,
-            ref HashSet<OpenMetaverse.Group> groups)
+        /// <returns>the groups that Corrade is a member of</returns>
+        private static IEnumerable<OpenMetaverse.Group> GetCurrentGroups(int millisecondsTimeout, int dataTimeout,
+            int mean)
         {
             wasAlarm CurrentGroupsReceivedAlarm = new wasAlarm
             {
                 Heuristics = (wasAlarm.Mean) mean
             };
-            HashSet<OpenMetaverse.Group> localGroups = new HashSet<OpenMetaverse.Group>();
-            EventHandler<CurrentGroupsEventArgs> CurrentGroupsEventHandler = (s, a) =>
+            Queue<OpenMetaverse.Group> groups = new Queue<OpenMetaverse.Group>();
+            object LockObject = new object();
+            EventHandler<CurrentGroupsEventArgs> CurrentGroupsEventHandler = (sender, args) =>
             {
                 CurrentGroupsReceivedAlarm.Alarm(dataTimeout);
-                foreach (OpenMetaverse.Group group in a.Groups.Select(o => o.Value))
+                foreach (OpenMetaverse.Group group in args.Groups.Select(o => o.Value))
                 {
-                    localGroups.Add(group);
+                    lock (LockObject)
+                    {
+                        groups.Enqueue(group);
+                    }
                 }
             };
             Client.Groups.CurrentGroups += CurrentGroupsEventHandler;
             Client.Groups.RequestCurrentGroups();
-            if (!CurrentGroupsReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
-            {
-                Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
-                return false;
-            }
+            CurrentGroupsReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false);
             Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
-            if (localGroups.Count.Equals(0)) return false;
-            groups = new HashSet<OpenMetaverse.Group>(localGroups);
-            return true;
+            int groupCount;
+            do
+            {
+                lock (LockObject)
+                {
+                    groupCount = groups.Count;
+                }
+                if (!groupCount.Equals(0))
+                {
+                    lock (LockObject)
+                    {
+                        yield return groups.Dequeue();
+                    }
+                }
+            } while (!groupCount.Equals(0));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1976,76 +1987,33 @@ namespace Corrade
                 }
             }) {IsBackground = true};
             NotificationThread.Start();
-            Thread GroupMemberSweepThread = new Thread(() =>
-            {
-                while (runGroupMemberSweepThread)
+            Thread GroupMemberSweepThread = new Thread(
+                () =>
                 {
-                    Thread.Sleep(1);
+                    Queue<UUID> groupUUIDs = new Queue<UUID>();
+                    Queue<int> memberCount = new Queue<int>();
+                    // The total list of members.
+                    HashSet<UUID> groupMembers = new HashSet<UUID>();
+                    // New members that have joined the group.
+                    HashSet<UUID> joinedMembers = new HashSet<UUID>();
+                    // Members that have parted the group.
+                    HashSet<UUID> partedMembers = new HashSet<UUID>();
 
-                    if (!Client.Network.Connected || Configuration.GROUPS.Count.Equals(0)) continue;
-
-                    // Request all the current groups.
-                    HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>();
-                    lock (ClientInstanceLock)
+                    ManualResetEvent GroupMembersReplyEvent = new ManualResetEvent(false);
+                    EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
                     {
                         if (
-                            !RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY, ref groups))
-                            continue;
-                    }
-
-                    // Enqueue configured groups that are currently joined groups.
-                    Queue<UUID> groupUUIDs = new Queue<UUID>();
-                    foreach (Group group in Configuration.GROUPS)
-                    {
-                        UUID groupUUID = group.UUID;
-                        if (groups.Any(o => o.ID.Equals(groupUUID)))
+                            !GroupMembers.FirstOrDefault(p => p.Key.Equals(args.GroupID)).Equals(
+                                default(KeyValuePair<UUID, HashSet<UUID>>)))
                         {
-                            groupUUIDs.Enqueue(group.UUID);
-                        }
-                    }
-
-                    // Bail if no configured groups are also joined.
-                    if (groupUUIDs.Count.Equals(0)) continue;
-
-                    // Get the last member count.
-                    Queue<int> memberCount = new Queue<int>();
-                    lock (GroupMembersLock)
-                    {
-                        foreach (KeyValuePair<UUID, HashSet<UUID>> groupMembers in
-                            GroupMembers.SelectMany(groupMembers => groupUUIDs,
-                                (groupMembers, groupUUID) => new {groupMembers, groupUUID})
-                                .Where(o => o.groupUUID.Equals(o.groupMembers.Key))
-                                .Select(p => p.groupMembers))
-                        {
-                            memberCount.Enqueue(groupMembers.Value.Count);
-                        }
-                    }
-
-                    while (!groupUUIDs.Count.Equals(0) && runGroupMemberSweepThread)
-                    {
-                        UUID groupUUID = groupUUIDs.Dequeue();
-                        // The total list of members.
-                        HashSet<UUID> groupMembers = new HashSet<UUID>();
-                        // New members that have joined the group.
-                        HashSet<UUID> joinedMembers = new HashSet<UUID>();
-                        // Members that have parted the group.
-                        HashSet<UUID> partedMembers = new HashSet<UUID>();
-                        ManualResetEvent GroupMembersReplyEvent = new ManualResetEvent(false);
-                        EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
-                        {
-                            KeyValuePair<UUID, HashSet<UUID>> currentGroupMembers;
-                            lock (GroupMembersLock)
-                            {
-                                currentGroupMembers =
-                                    GroupMembers.FirstOrDefault(p => p.Key.Equals(args.GroupID));
-                            }
-                            if (!currentGroupMembers.Equals(default(KeyValuePair<UUID, HashSet<UUID>>)))
-                            {
-                                object LockObject = new object();
-                                Parallel.ForEach(args.Members.Values, o =>
+                            object LockObject = new object();
+                            Parallel.ForEach(
+                                args.Members.Values,
+                                o =>
                                 {
-                                    if (!currentGroupMembers.Value.Contains(o.ID))
+                                    if (
+                                        !GroupMembers.FirstOrDefault(p => p.Key.Equals(args.GroupID)).Value.Contains(
+                                            o.ID))
                                     {
                                         lock (LockObject)
                                         {
@@ -2053,7 +2021,9 @@ namespace Corrade
                                         }
                                     }
                                 });
-                                Parallel.ForEach(currentGroupMembers.Value, o =>
+                            Parallel.ForEach(
+                                GroupMembers.FirstOrDefault(p => p.Key.Equals(args.GroupID)).Value,
+                                o =>
                                 {
                                     if (!args.Members.Values.Any(p => p.ID.Equals(o)))
                                     {
@@ -2063,83 +2033,159 @@ namespace Corrade
                                         }
                                     }
                                 });
-                            }
-                            groupMembers = new HashSet<UUID>(args.Members.Values.Select(o => o.ID));
-                            GroupMembersReplyEvent.Set();
-                        };
-                        Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+                        }
+                        groupMembers.UnionWith(args.Members.Values.Select(o => o.ID));
+                        GroupMembersReplyEvent.Set();
+                    };
+
+                    while (runGroupMemberSweepThread)
+                    {
+                        Thread.Sleep(1);
+
+                        if (!Client.Network.Connected || Configuration.GROUPS.Count.Equals(0)) continue;
+
+                        // Enqueue configured groups that are currently joined groups.
+                        groupUUIDs.Clear();
                         lock (ClientInstanceLock)
                         {
-                            Client.Groups.RequestGroupMembers(groupUUID);
+                            foreach (Group group in
+                                Configuration.GROUPS.Select(o => new {group = o, groupUUID = o.UUID})
+                                    .Where(p => GetCurrentGroups(
+                                        Configuration.SERVICES_TIMEOUT,
+                                        Configuration.DATA_TIMEOUT,
+                                        Configuration.DATA_TIMEOUT_DECAY).Any(o => o.ID.Equals(p.groupUUID)))
+                                    .Select(o => o.group))
+                            {
+                                groupUUIDs.Enqueue(group.UUID);
+                            }
                         }
-                        GroupMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
-                        Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+
+                        // Bail if no configured groups are also joined.
+                        if (groupUUIDs.Count.Equals(0)) continue;
+
+                        // Get the last member count.
+                        memberCount.Clear();
                         lock (GroupMembersLock)
                         {
-                            if (!GroupMembers.ContainsKey(groupUUID))
+                            foreach (KeyValuePair<UUID, HashSet<UUID>> members in
+                                GroupMembers.SelectMany(
+                                    members => groupUUIDs,
+                                    (members, groupUUID) => new {members, groupUUID})
+                                    .Where(o => o.groupUUID.Equals(o.members.Key))
+                                    .Select(p => p.members))
                             {
-                                GroupMembers.Add(groupUUID, groupMembers);
+                                memberCount.Enqueue(members.Value.Count);
+                            }
+                        }
+
+                        while (!groupUUIDs.Count.Equals(0) && runGroupMemberSweepThread)
+                        {
+                            UUID groupUUID = groupUUIDs.Dequeue();
+                            // The total list of members.
+                            groupMembers.Clear();
+                            // New members that have joined the group.
+                            joinedMembers.Clear();
+                            // Members that have parted the group.
+                            partedMembers.Clear();
+                            Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+                            GroupMembersReplyEvent.Reset();
+                            lock (ClientInstanceLock)
+                            {
+                                Client.Groups.RequestGroupMembers(groupUUID);
+                            }
+                            if (!GroupMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            {
+                                Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                                 continue;
                             }
-                        }
-                        if (!memberCount.Count.Equals(0))
-                        {
-                            if (!memberCount.Dequeue().Equals(groupMembers.Count))
+                            Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+                            lock (GroupMembersLock)
                             {
-                                if (!joinedMembers.Count.Equals(0))
+                                if (!GroupMembers.ContainsKey(groupUUID))
                                 {
-                                    Parallel.ForEach(joinedMembers, o =>
-                                    {
-                                        string agentName = string.Empty;
-                                        lock (ClientInstanceLock)
-                                        {
-                                            if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT, ref agentName))
-                                            {
-                                                CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                                    () => SendNotification(Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
-                                                        new GroupMembershipEventArgs
-                                                        {
-                                                            AgentName = agentName,
-                                                            AgentUUID = o,
-                                                            Action = Action.JOINED
-                                                        }),
-                                                    Configuration.MAXIMUM_NOTIFICATION_THREADS);
-                                            }
-                                        }
-                                    });
-                                }
-                                if (!partedMembers.Count.Equals(0))
-                                {
-                                    Parallel.ForEach(partedMembers, o =>
-                                    {
-                                        string agentName = string.Empty;
-                                        lock (ClientInstanceLock)
-                                        {
-                                            if (AgentUUIDToName(o, Configuration.SERVICES_TIMEOUT, ref agentName))
-                                            {
-                                                CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                                    () => SendNotification(Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
-                                                        new GroupMembershipEventArgs
-                                                        {
-                                                            AgentName = agentName,
-                                                            AgentUUID = o,
-                                                            Action = Action.PARTED
-                                                        }),
-                                                    Configuration.MAXIMUM_NOTIFICATION_THREADS);
-                                            }
-                                        }
-                                    });
+                                    GroupMembers.Add(groupUUID, new HashSet<UUID>(groupMembers));
+                                    continue;
                                 }
                             }
+                            if (!memberCount.Count.Equals(0))
+                            {
+                                if (!memberCount.Dequeue().Equals(groupMembers.Count))
+                                {
+                                    if (!joinedMembers.Count.Equals(0))
+                                    {
+                                        Parallel.ForEach(
+                                            joinedMembers,
+                                            o =>
+                                            {
+                                                string agentName = string.Empty;
+                                                lock (ClientInstanceLock)
+                                                {
+                                                    if (AgentUUIDToName(
+                                                        o,
+                                                        Configuration.SERVICES_TIMEOUT,
+                                                        ref agentName))
+                                                    {
+                                                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                                            () =>
+                                                                SendNotification(
+                                                                    Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
+                                                                    new GroupMembershipEventArgs
+                                                                    {
+                                                                        AgentName = agentName,
+                                                                        AgentUUID = o,
+                                                                        Action = Action.JOINED
+                                                                    }),
+                                                            Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                                                    }
+                                                }
+                                            });
+                                    }
+                                    joinedMembers.Clear();
+                                    if (!partedMembers.Count.Equals(0))
+                                    {
+                                        Parallel.ForEach(
+                                            partedMembers,
+                                            o =>
+                                            {
+                                                string agentName = string.Empty;
+                                                lock (ClientInstanceLock)
+                                                {
+                                                    if (AgentUUIDToName(
+                                                        o,
+                                                        Configuration.SERVICES_TIMEOUT,
+                                                        ref agentName))
+                                                    {
+                                                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                                            () =>
+                                                                SendNotification(
+                                                                    Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
+                                                                    new GroupMembershipEventArgs
+                                                                    {
+                                                                        AgentName = agentName,
+                                                                        AgentUUID = o,
+                                                                        Action = Action.PARTED
+                                                                    }),
+                                                            Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                                                    }
+                                                }
+                                            });
+                                    }
+                                }
+                                partedMembers.Clear();
+                            }
+                            lock (GroupMembersLock)
+                            {
+                                GroupMembers[groupUUID].Clear();
+                                foreach (UUID member in groupMembers)
+                                {
+                                    GroupMembers[groupUUID].Add(member);
+                                }
+                            }
+                            groupMembers.Clear();
+                            Thread.Sleep(Configuration.MEMBERSHIP_SWEEP_INTERVAL);
                         }
-                        lock (GroupMembersLock)
-                        {
-                            GroupMembers[groupUUID] = groupMembers;
-                        }
-                        Thread.Sleep(Configuration.MEMBERSHIP_SWEEP_INTERVAL);
                     }
-                }
-            }) {IsBackground = true};
+                }) {IsBackground = true};
             GroupMemberSweepThread.Start();
             // Load Corrade Caches
             LoadCorradeCache.Invoke();
@@ -3390,17 +3436,11 @@ namespace Corrade
                     // such that the only way to determine if we have a group message is to check that the UUID
                     // of the session is actually the UUID of a current group. Furthermore, what's worse is that 
                     // group mesages can appear both through SessionSend and from MessageFromAgent. Hence the problem.
-                    HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>();
-                    lock (ClientInstanceLock)
-                    {
-                        if (
-                            !RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY, ref groups))
-                            return;
-                    }
-                    bool messageFromGroup = groups.Any(o => o.ID.Equals(args.IM.IMSessionID));
-                    OpenMetaverse.Group messageGroup = groups.FirstOrDefault(o => o.ID.Equals(args.IM.IMSessionID));
-                    if (messageFromGroup)
+                    OpenMetaverse.Group messageGroup = GetCurrentGroups(
+                        Configuration.SERVICES_TIMEOUT,
+                        Configuration.DATA_TIMEOUT,
+                        Configuration.DATA_TIMEOUT_DECAY).FirstOrDefault(o => o.ID.Equals(args.IM.IMSessionID));
+                    if (messageGroup.Equals(default(OpenMetaverse.Group)))
                     {
                         // Send group notice notifications.
                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
@@ -3554,18 +3594,17 @@ namespace Corrade
                             return;
                         }
                         UUID groupUUID = Client.Self.ActiveGroup;
-                        HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>();
-                        if (
-                            !RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY, ref groups))
-                        {
-                            return;
-                        }
+                        HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>(GetCurrentGroups(
+                            Configuration.SERVICES_TIMEOUT,
+                            Configuration.DATA_TIMEOUT,
+                            Configuration.DATA_TIMEOUT_DECAY));
                         if (!groups.Any(o => o.ID.Equals(groupUUID)))
                         {
                             return;
                         }
-                        Client.Self.Chat(groups.FirstOrDefault(o => o.ID.Equals(groupUUID)).Name, channel,
+                        Client.Self.Chat(
+                            groups.FirstOrDefault(o => o.ID.Equals(groupUUID)).Name,
+                            channel,
                             ChatType.Normal);
                     };
                     break;
@@ -3576,13 +3615,10 @@ namespace Corrade
                         {
                             return;
                         }
-                        HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>();
-                        if (
-                            !RequestCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY, ref groups))
-                        {
-                            return;
-                        }
+                        HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>(GetCurrentGroups(
+                            Configuration.SERVICES_TIMEOUT,
+                            Configuration.DATA_TIMEOUT,
+                            Configuration.DATA_TIMEOUT_DECAY));
                         UUID groupUUID;
                         if (!UUID.TryParse(RLVrule.Option, out groupUUID))
                         {
@@ -16466,8 +16502,6 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
-            [Description("voice")] VOICE,
-            [Description("speak")] SPEAK,
             [Description("filter")] FILTER,
             [Description("run")] RUN,
             [Description("relax")] RELAX,
