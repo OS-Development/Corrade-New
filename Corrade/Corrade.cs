@@ -16415,7 +16415,7 @@ namespace Corrade
             [Description("invite")] NOTIFICATION_GROUP_INVITE = 131072,
             [Description("economy")] NOTIFICATION_ECONOMY = 262144,
             [Description("membership")] NOTIFICATION_GROUP_MEMBERSHIP = 524288,
-            [Description("url")] NOTIFICATION_LOAD_URL
+            [Description("url")] NOTIFICATION_LOAD_URL = 1048576
         }
 
         /// <summary>
