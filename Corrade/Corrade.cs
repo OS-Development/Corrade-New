@@ -1016,16 +1016,12 @@ namespace Corrade
         /// <param name="powers">a GroupPowers structure</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="mean">the mean to use for data decay</param>
         /// <returns>true if the agent has the powers</returns>
         private static bool HasGroupPowers(UUID agentUUID, UUID groupUUID, GroupPowers powers,
-            int millisecondsTimeout, int dataTimeout, int mean)
+            int millisecondsTimeout, int dataTimeout)
         {
             bool hasPowers = false;
-            wasAlarm AvatarGroupsReceivedAlarm = new wasAlarm
-            {
-                Heuristics = (wasAlarm.Mean) mean
-            };
+            wasAlarm AvatarGroupsReceivedAlarm = new wasAlarm();
             EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
             {
                 AvatarGroupsReceivedAlarm.Alarm(dataTimeout);
@@ -1055,16 +1051,11 @@ namespace Corrade
         /// <param name="groupUUID">the UUID of the groupt</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="mean">the mean to use for data decay</param>
         /// <returns>true if the agent is in the group</returns>
-        private static bool AgentInGroup(UUID agentUUID, UUID groupUUID, int millisecondsTimeout, int dataTimeout,
-            int mean)
+        private static bool AgentInGroup(UUID agentUUID, UUID groupUUID, int millisecondsTimeout, int dataTimeout)
         {
             bool agentInGroup = false;
-            wasAlarm GroupMembersReceivedAlarm = new wasAlarm
-            {
-                Heuristics = (wasAlarm.Mean) mean
-            };
+            wasAlarm GroupMembersReceivedAlarm = new wasAlarm();
             EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
             {
                 GroupMembersReceivedAlarm.Alarm(dataTimeout);
@@ -1331,15 +1322,10 @@ namespace Corrade
         /// </summary>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="mean">the mean to use for data decay</param>
         /// <returns>the groups that Corrade is a member of</returns>
-        private static IEnumerable<OpenMetaverse.Group> GetCurrentGroups(int millisecondsTimeout, int dataTimeout,
-            int mean)
+        private static IEnumerable<OpenMetaverse.Group> GetCurrentGroups(int millisecondsTimeout, int dataTimeout)
         {
-            wasAlarm CurrentGroupsReceivedAlarm = new wasAlarm
-            {
-                Heuristics = (wasAlarm.Mean) mean
-            };
+            wasAlarm CurrentGroupsReceivedAlarm = new wasAlarm();
             Queue<OpenMetaverse.Group> groups = new Queue<OpenMetaverse.Group>();
             object LockObject = new object();
             EventHandler<CurrentGroupsEventArgs> CurrentGroupsEventHandler = (sender, args) =>
@@ -2046,8 +2032,7 @@ namespace Corrade
                                 Configuration.GROUPS.Select(o => new {group = o, groupUUID = o.UUID})
                                     .Where(p => GetCurrentGroups(
                                         Configuration.SERVICES_TIMEOUT,
-                                        Configuration.DATA_TIMEOUT,
-                                        Configuration.DATA_TIMEOUT_DECAY).Any(o => o.ID.Equals(p.groupUUID)))
+                                        Configuration.DATA_TIMEOUT).Any(o => o.ID.Equals(p.groupUUID)))
                                     .Select(o => o.group))
                             {
                                 groupUUIDs.Enqueue(group.UUID);
@@ -3086,7 +3071,7 @@ namespace Corrade
             {
                 if (
                     !AgentNameToUUID(owner.First(), owner.Last(), Configuration.SERVICES_TIMEOUT,
-                        Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY,
+                        Configuration.DATA_TIMEOUT,
                         ref ownerUUID))
                 {
                     return;
@@ -3395,7 +3380,7 @@ namespace Corrade
                         if (
                             !AgentNameToUUID(groupInviteName.First(), groupInviteName.Last(),
                                 Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY,
+                                Configuration.DATA_TIMEOUT,
                                 ref inviteGroupAgent)) return;
                     }
                     // Add the group invite - have to track them manually.
@@ -3448,8 +3433,7 @@ namespace Corrade
                     // group mesages can appear both through SessionSend and from MessageFromAgent. Hence the problem.
                     OpenMetaverse.Group messageGroup = GetCurrentGroups(
                         Configuration.SERVICES_TIMEOUT,
-                        Configuration.DATA_TIMEOUT,
-                        Configuration.DATA_TIMEOUT_DECAY).FirstOrDefault(o => o.ID.Equals(args.IM.IMSessionID));
+                        Configuration.DATA_TIMEOUT).FirstOrDefault(o => o.ID.Equals(args.IM.IMSessionID));
                     if (messageGroup.Equals(default(OpenMetaverse.Group)))
                     {
                         // Send group notice notifications.
@@ -3626,8 +3610,7 @@ namespace Corrade
                         UUID groupUUID = Client.Self.ActiveGroup;
                         HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>(GetCurrentGroups(
                             Configuration.SERVICES_TIMEOUT,
-                            Configuration.DATA_TIMEOUT,
-                            Configuration.DATA_TIMEOUT_DECAY));
+                            Configuration.DATA_TIMEOUT));
                         if (!groups.Any(o => o.ID.Equals(groupUUID)))
                         {
                             return;
@@ -3647,8 +3630,7 @@ namespace Corrade
                         }
                         HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>(GetCurrentGroups(
                             Configuration.SERVICES_TIMEOUT,
-                            Configuration.DATA_TIMEOUT,
-                            Configuration.DATA_TIMEOUT_DECAY));
+                            Configuration.DATA_TIMEOUT));
                         UUID groupUUID;
                         if (!UUID.TryParse(RLVrule.Option, out groupUUID))
                         {
@@ -4680,13 +4662,12 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                            Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                            Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ALREADY_IN_GROUP));
                         }
@@ -4712,7 +4693,7 @@ namespace Corrade
                         Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_JOIN_GROUP));
                         }
@@ -4780,15 +4761,13 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.Invite,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -4804,13 +4783,12 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         if (AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                            Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                            Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ALREADY_IN_GROUP));
                         }
@@ -4821,8 +4799,7 @@ namespace Corrade
                         UUID roleUUID = UUID.Zero;
                         if (!string.IsNullOrEmpty(role) && !UUID.TryParse(role, out roleUUID) &&
                             !RoleNameToRoleUUID(role, groupUUID,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY, ref roleUUID))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref roleUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
                         }
@@ -4831,8 +4808,7 @@ namespace Corrade
                         {
                             if (
                                 !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
-                                    Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY))
+                                    Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT))
                             {
                                 throw new Exception(
                                     wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -4858,13 +4834,12 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                            Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                            Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ALREADY_IN_GROUP));
                         }
@@ -4962,16 +4937,15 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.Eject,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY) ||
+                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT) ||
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RemoveMember,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -4987,14 +4961,13 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -5061,7 +5034,6 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
@@ -5128,21 +5100,19 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ChangeIdentity,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -5170,14 +5140,13 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -5215,21 +5184,19 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.CreateRole,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -5273,7 +5240,7 @@ namespace Corrade
                                         .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                     q => { powers |= ((ulong) q.GetValue(null)); }));
                         if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ChangeActions,
-                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -5294,8 +5261,7 @@ namespace Corrade
                         UUID roleUUID = UUID.Zero;
                         if (
                             !RoleNameToRoleUUID(role, groupUUID,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY, ref roleUUID))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref roleUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_CREATE_ROLE));
                         }
@@ -5313,14 +5279,13 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -5366,15 +5331,13 @@ namespace Corrade
                                 .UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -5423,14 +5386,13 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -5446,14 +5408,13 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
                         }
@@ -5469,7 +5430,7 @@ namespace Corrade
                                 string roleName = string.Empty;
                                 if (
                                     !RoleUUIDToName(pair.Key, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                        Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY,
+                                        Configuration.DATA_TIMEOUT,
                                         ref roleName))
                                     continue;
                                 csv.Add(roleName);
@@ -5505,15 +5466,13 @@ namespace Corrade
                                 .UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -5534,7 +5493,7 @@ namespace Corrade
                                     string roleName = string.Empty;
                                     if (
                                         !RoleUUIDToName(pair.Key, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                            Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY,
+                                            Configuration.DATA_TIMEOUT,
                                             ref roleName))
                                         continue;
                                     if (!roleName.Equals(role))
@@ -5577,15 +5536,13 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -5599,7 +5556,7 @@ namespace Corrade
                                     string roleName = string.Empty;
                                     if (
                                         !RoleUUIDToName(pair.Key, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                            Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY,
+                                            Configuration.DATA_TIMEOUT,
                                             ref roleName))
                                         continue;
                                     string agentName = string.Empty;
@@ -5641,22 +5598,19 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RoleProperties,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -5665,7 +5619,7 @@ namespace Corrade
                                 message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
-                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY,
+                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                             ref roleUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
@@ -5712,24 +5666,21 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.DeleteRole,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY) ||
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT) ||
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RemoveMember,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -5738,7 +5689,7 @@ namespace Corrade
                                 message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
-                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY,
+                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                             ref roleUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
@@ -5789,21 +5740,19 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -5819,8 +5768,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -5829,7 +5777,7 @@ namespace Corrade
                                 message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
-                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY,
+                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                             ref roleUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
@@ -5855,21 +5803,19 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RemoveMember,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -5885,8 +5831,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -5895,7 +5840,7 @@ namespace Corrade
                                 message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
-                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY,
+                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                             ref roleUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
@@ -5950,7 +5895,6 @@ namespace Corrade
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                                             message)),
                                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                                    Configuration.DATA_TIMEOUT_DECAY,
                                                     ref agentUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
@@ -5966,14 +5910,13 @@ namespace Corrade
                                         o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                                 if (groupUUID.Equals(UUID.Zero) &&
                                     !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                        Configuration.DATA_TIMEOUT_DECAY,
                                         ref groupUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                                 }
                                 if (
                                     !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                        Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                        Configuration.DATA_TIMEOUT))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                                 }
@@ -5981,8 +5924,7 @@ namespace Corrade
                                 {
                                     if (
                                         !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.JoinChat,
-                                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                            Configuration.DATA_TIMEOUT_DECAY))
+                                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                     {
                                         throw new Exception(
                                             wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -6078,21 +6020,19 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.SendNotices,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -6168,7 +6108,6 @@ namespace Corrade
                                         o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                                 if (targetUUID.Equals(UUID.Zero) &&
                                     !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                        Configuration.DATA_TIMEOUT_DECAY,
                                         ref targetUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
@@ -6194,7 +6133,6 @@ namespace Corrade
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                                             message)),
                                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                                    Configuration.DATA_TIMEOUT_DECAY,
                                                     ref targetUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
@@ -6347,8 +6285,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -6615,7 +6552,6 @@ namespace Corrade
                                 .UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
@@ -6665,7 +6601,7 @@ namespace Corrade
                                         if (
                                             !HasGroupPowers(Client.Self.AgentID, groupUUID,
                                                 GroupPowers.LandManageAllowed, Configuration.SERVICES_TIMEOUT,
-                                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                                Configuration.DATA_TIMEOUT))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -6674,8 +6610,7 @@ namespace Corrade
                                     case AccessList.Ban:
                                         if (
                                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandManageBanned,
-                                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                                Configuration.DATA_TIMEOUT_DECAY))
+                                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -6685,15 +6620,14 @@ namespace Corrade
                                         if (
                                             !HasGroupPowers(Client.Self.AgentID, groupUUID,
                                                 GroupPowers.LandManageAllowed, Configuration.SERVICES_TIMEOUT,
-                                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                                Configuration.DATA_TIMEOUT))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                         }
                                         if (
                                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandManageBanned,
-                                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                                Configuration.DATA_TIMEOUT_DECAY))
+                                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -6779,7 +6713,6 @@ namespace Corrade
                                 .UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
@@ -6811,8 +6744,7 @@ namespace Corrade
                                 }
                                 if (
                                     !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandRelease,
-                                        Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                        Configuration.DATA_TIMEOUT_DECAY))
+                                        Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -6834,7 +6766,6 @@ namespace Corrade
                                 .UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
@@ -6868,8 +6799,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandDeed,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -6888,7 +6818,6 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
@@ -6919,8 +6848,7 @@ namespace Corrade
                         {
                             if (
                                 !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandDeed,
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                             {
                                 throw new Exception(
                                     wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -7017,7 +6945,6 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
@@ -7048,8 +6975,7 @@ namespace Corrade
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                                 if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandEjectAndFreeze,
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -7068,8 +6994,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -7097,7 +7022,6 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
@@ -7128,8 +7052,7 @@ namespace Corrade
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                                 if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandEjectAndFreeze,
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -7148,8 +7071,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -7235,15 +7157,11 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
-                        wasAlarm ProfileDataReceivedAlarm = new wasAlarm
-                        {
-                            Heuristics = (wasAlarm.Mean) Configuration.DATA_TIMEOUT_DECAY
-                        };
+                        wasAlarm ProfileDataReceivedAlarm = new wasAlarm();
                         Avatar.AvatarProperties properties = new Avatar.AvatarProperties();
                         Avatar.Interests interests = new Avatar.Interests();
                         List<AvatarGroup> groups = new List<AvatarGroup>();
@@ -7368,7 +7286,6 @@ namespace Corrade
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                                             message)),
                                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                                    Configuration.DATA_TIMEOUT_DECAY,
                                                     ref agentUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
@@ -7768,15 +7685,13 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ModerateChat,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -7792,14 +7707,13 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
                         }
@@ -8049,7 +7963,6 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
@@ -8066,8 +7979,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -8157,8 +8069,7 @@ namespace Corrade
                                                 break;
                                         }
                                         if (!HasGroupPowers(Client.Self.AgentID, groupUUID, power,
-                                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                            Configuration.DATA_TIMEOUT_DECAY))
+                                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -8216,7 +8127,6 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
@@ -8277,8 +8187,7 @@ namespace Corrade
                                     }, p =>
                                     {
                                         if (HasGroupPowers(Client.Self.AgentID, groupUUID, p,
-                                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                            Configuration.DATA_TIMEOUT_DECAY))
+                                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                         {
                                             permissions = true;
                                         }
@@ -8352,7 +8261,6 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
@@ -8459,7 +8367,6 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
@@ -8977,7 +8884,6 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
@@ -9028,8 +8934,7 @@ namespace Corrade
                                             wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                     }
                                     if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AllowRez,
-                                        Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                        Configuration.DATA_TIMEOUT_DECAY))
+                                        Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                     {
                                         throw new Exception(
                                             wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -9892,14 +9797,13 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
                         }
@@ -9920,14 +9824,13 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
                         }
@@ -10014,14 +9917,13 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
                         }
@@ -10034,7 +9936,7 @@ namespace Corrade
                                 string roleName = string.Empty;
                                 if (
                                     !RoleUUIDToName(title.Value.RoleID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                        Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY,
+                                        Configuration.DATA_TIMEOUT,
                                         ref roleName))
                                     continue;
                                 csv.Add(title.Value.Title);
@@ -10213,21 +10115,19 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.StartProposal,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -10625,8 +10525,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -11154,7 +11053,6 @@ namespace Corrade
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                                             message)),
                                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                                    Configuration.DATA_TIMEOUT_DECAY,
                                                     ref targetUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
@@ -11188,8 +11086,7 @@ namespace Corrade
                                                 wasKeyValueGet(
                                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)),
                                                     message)),
-                                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                            Configuration.DATA_TIMEOUT_DECAY, ref targetUUID))
+                                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref targetUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                                 }
@@ -11227,7 +11124,6 @@ namespace Corrade
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                                             message)),
                                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                                    Configuration.DATA_TIMEOUT_DECAY,
                                                     ref targetUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
@@ -11266,7 +11162,6 @@ namespace Corrade
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                                             message)),
                                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                                    Configuration.DATA_TIMEOUT_DECAY,
                                                     ref targetUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
@@ -11306,10 +11201,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_LAND_RIGHTS));
                         }
                         List<UUID> estateList = new List<UUID>();
-                        wasAlarm EstateListReceivedAlarm = new wasAlarm
-                        {
-                            Heuristics = (wasAlarm.Mean) Configuration.DATA_TIMEOUT_DECAY
-                        };
+                        wasAlarm EstateListReceivedAlarm = new wasAlarm();
                         switch (
                             wasGetEnumValueFromDescription<Type>(
                                 wasInput(wasKeyValueGet(
@@ -11437,8 +11329,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -11447,10 +11338,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AVATAR_NOT_ON_CURRENT_REGION));
                         }
-                        wasAlarm ProfileDataReceivedAlarm = new wasAlarm
-                        {
-                            Heuristics = (wasAlarm.Mean) Configuration.DATA_TIMEOUT_DECAY
-                        };
+                        wasAlarm ProfileDataReceivedAlarm = new wasAlarm();
                         object LockObject = new object();
                         EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
                         {
@@ -11553,7 +11441,6 @@ namespace Corrade
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                                             message)),
                                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                                    Configuration.DATA_TIMEOUT_DECAY,
                                                     ref agentUUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
@@ -12033,8 +11920,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -12086,8 +11972,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -12126,8 +12011,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -12160,8 +12044,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -12192,8 +12075,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -12234,8 +12116,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT_DECAY, ref agentUUID))
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
@@ -12364,7 +12245,6 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
@@ -12404,7 +12284,6 @@ namespace Corrade
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                Configuration.DATA_TIMEOUT_DECAY,
                                 ref groupUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
@@ -13214,10 +13093,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        wasAlarm DirectorySearchResultsAlarm = new wasAlarm
-                        {
-                            Heuristics = (wasAlarm.Mean) Configuration.DATA_TIMEOUT_DECAY
-                        };
+                        wasAlarm DirectorySearchResultsAlarm = new wasAlarm();
                         object LockObject = new object();
                         List<string> csv = new List<string>();
                         int handledEvents = 0;
@@ -13696,6 +13572,7 @@ namespace Corrade
         private static IEnumerable<string> GetStructuredData<T>(T structure, string query)
         {
             HashSet<string[]> result = new HashSet<string[]>();
+            if (structure.Equals(default(T))) return result.SelectMany(data => data);
             object LockObject = new object();
             Parallel.ForEach(query.Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER},
                 StringSplitOptions.RemoveEmptyEntries), name =>
@@ -14404,16 +14281,12 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="groupUUID">an object in which to store the UUID of the group</param>
-        /// <param name="mean">the mean to use for data decay</param>
         /// <returns>true if the group name could be resolved to an UUID</returns>
-        private static bool directGroupNameToUUID(string groupName, int millisecondsTimeout, int dataTimeout, int mean,
+        private static bool directGroupNameToUUID(string groupName, int millisecondsTimeout, int dataTimeout,
             ref UUID groupUUID)
         {
             UUID localGroupUUID = UUID.Zero;
-            wasAlarm DirGroupsReceivedAlarm = new wasAlarm
-            {
-                Heuristics = (wasAlarm.Mean) mean
-            };
+            wasAlarm DirGroupsReceivedAlarm = new wasAlarm();
             EventHandler<DirGroupsReplyEventArgs> DirGroupsReplyDelegate = (sender, args) =>
             {
                 DirGroupsReceivedAlarm.Alarm(dataTimeout);
@@ -14438,10 +14311,9 @@ namespace Corrade
         /// <param name="groupName">the name of the group to resolve</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="mean">the mean to use for data decay</param>
         /// <param name="groupUUID">an object in which to store the UUID of the group</param>
         /// <returns>true if the group name could be resolved to an UUID</returns>
-        private static bool GroupNameToUUID(string groupName, int millisecondsTimeout, int dataTimeout, int mean,
+        private static bool GroupNameToUUID(string groupName, int millisecondsTimeout, int dataTimeout,
             ref UUID groupUUID)
         {
             lock (Cache.Locks.GroupCacheLock)
@@ -14454,7 +14326,7 @@ namespace Corrade
                     return true;
                 }
             }
-            bool succeeded = directGroupNameToUUID(groupName, millisecondsTimeout, dataTimeout, mean, ref groupUUID);
+            bool succeeded = directGroupNameToUUID(groupName, millisecondsTimeout, dataTimeout, ref groupUUID);
             if (succeeded)
             {
                 lock (Cache.Locks.GroupCacheLock)
@@ -14481,17 +14353,13 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="agentUUID">an object to store the agent UUID</param>
-        /// <param name="mean">the mean to use for data decay</param>
         /// <returns>true if the agent name could be resolved to an UUID</returns>
         private static bool directAgentNameToUUID(string agentFirstName, string agentLastName, int millisecondsTimeout,
-            int dataTimeout, int mean,
+            int dataTimeout,
             ref UUID agentUUID)
         {
             UUID localAgentUUID = UUID.Zero;
-            wasAlarm DirPeopleReceivedAlarm = new wasAlarm
-            {
-                Heuristics = (wasAlarm.Mean) mean
-            };
+            wasAlarm DirPeopleReceivedAlarm = new wasAlarm();
             EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyDelegate = (sender, args) =>
             {
                 DirPeopleReceivedAlarm.Alarm(dataTimeout);
@@ -14522,11 +14390,10 @@ namespace Corrade
         /// <param name="agentLastName">the last name of the agent</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="mean">the mean to use for data decay</param>
         /// <param name="agentUUID">an object to store the agent UUID</param>
         /// <returns>true if the agent name could be resolved to an UUID</returns>
         private static bool AgentNameToUUID(string agentFirstName, string agentLastName, int millisecondsTimeout,
-            int dataTimeout, int mean,
+            int dataTimeout,
             ref UUID agentUUID)
         {
             lock (Cache.Locks.AgentCacheLock)
@@ -14541,7 +14408,7 @@ namespace Corrade
                     return true;
                 }
             }
-            bool succeeded = directAgentNameToUUID(agentFirstName, agentLastName, millisecondsTimeout, dataTimeout, mean,
+            bool succeeded = directAgentNameToUUID(agentFirstName, agentLastName, millisecondsTimeout, dataTimeout,
                 ref agentUUID);
             if (succeeded)
             {
@@ -14642,17 +14509,13 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="roleUUID">an UUID object to store the role UUID in</param>
-        /// <param name="mean">the mean to use for data decay</param>
         /// <returns>true if the role could be found</returns>
         private static bool RoleNameToRoleUUID(string roleName, UUID groupUUID, int millisecondsTimeout,
-            int dataTimeout, int mean,
+            int dataTimeout,
             ref UUID roleUUID)
         {
             UUID localRoleUUID = UUID.Zero;
-            wasAlarm GroupRoleDataReceivedAlarm = new wasAlarm
-            {
-                Heuristics = (wasAlarm.Mean) mean
-            };
+            wasAlarm GroupRoleDataReceivedAlarm = new wasAlarm();
             EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
             {
                 GroupRoleDataReceivedAlarm.Alarm(dataTimeout);
@@ -14684,19 +14547,14 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="roleName">a string object to store the role name in</param>
-        /// <param name="mean">the mean to use for data decay</param>
         /// <returns>true if the role could be resolved</returns>
         private static bool RoleUUIDToName(UUID RoleUUID, UUID GroupUUID, int millisecondsTimeout, int dataTimeout,
-            int mean,
             ref string roleName)
         {
             if (RoleUUID.Equals(UUID.Zero) || GroupUUID.Equals(UUID.Zero))
                 return false;
             string localRoleName = string.Empty;
-            wasAlarm GroupRoleDataReceivedAlarm = new wasAlarm
-            {
-                Heuristics = (wasAlarm.Mean) mean
-            };
+            wasAlarm GroupRoleDataReceivedAlarm = new wasAlarm();
             EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
             {
                 GroupRoleDataReceivedAlarm.Alarm(dataTimeout);
@@ -15135,7 +14993,6 @@ namespace Corrade
             public static bool USE_EXPECT100CONTINUE;
             public static int SERVICES_TIMEOUT;
             public static int DATA_TIMEOUT;
-            public static int DATA_TIMEOUT_DECAY;
             public static int REBAKE_DELAY;
             public static int MEMBERSHIP_SWEEP_INTERVAL;
             public static bool TOS_ACCEPTED;
@@ -15184,15 +15041,14 @@ namespace Corrade
                 NOTIFICATION_THROTTLE = 1000;
                 NOTIFICATION_QUEUE_LENGTH = 100;
                 CONNECTION_LIMIT = 100;
-                RANGE = 4096;
+                RANGE = 64;
                 MAXIMUM_NOTIFICATION_THREADS = 10;
                 MAXIMUM_COMMAND_THREADS = 10;
                 MAXIMUM_RLV_THREADS = 10;
                 MAXIMUM_INSTANT_MESSAGE_THREADS = 10;
                 USE_NAGGLE = false;
                 SERVICES_TIMEOUT = 60000;
-                DATA_TIMEOUT = 5000;
-                DATA_TIMEOUT_DECAY = 3;
+                DATA_TIMEOUT = 2500;
                 REBAKE_DELAY = 1000;
                 ACTIVATE_DELAY = 5000;
                 MEMBERSHIP_SWEEP_INTERVAL = 1000;
@@ -15795,31 +15651,6 @@ namespace Corrade
                                                         throw new Exception("error in data limits section");
                                                     }
                                                     break;
-                                                case ConfigurationKeys.DECAY:
-                                                    if (!string.IsNullOrEmpty(dataLimitNode.InnerText))
-                                                    {
-                                                        switch (dataLimitNode.InnerText)
-                                                        {
-                                                            case ConfigurationKeys.ARITHMETIC:
-                                                                DATA_TIMEOUT_DECAY = 1;
-                                                                break;
-                                                            case ConfigurationKeys.GEOMETRIC:
-                                                                DATA_TIMEOUT_DECAY = 2;
-                                                                break;
-                                                            case ConfigurationKeys.HARMONIC:
-                                                                DATA_TIMEOUT_DECAY = 3;
-                                                                break;
-                                                            case ConfigurationKeys.HERONIAN:
-                                                                DATA_TIMEOUT_DECAY = 4;
-                                                                break;
-                                                            case ConfigurationKeys.QUADRATIC:
-                                                                DATA_TIMEOUT_DECAY = 5;
-                                                                break;
-                                                            default:
-                                                                throw new Exception("error in data limits section");
-                                                        }
-                                                    }
-                                                    break;
                                             }
                                         }
                                         break;
@@ -16072,12 +15903,6 @@ namespace Corrade
             public const string REBAKE = @"rebake";
             public const string ACTIVATE = @"activate";
             public const string DATA = @"data";
-            public const string DECAY = @"decay";
-            public const string ARITHMETIC = @"arithmetic";
-            public const string GEOMETRIC = @"geometric";
-            public const string HARMONIC = @"harmonic";
-            public const string HERONIAN = @"heronian";
-            public const string QUADRATIC = @"quadratic";
             public const string THREADS = @"threads";
             public const string COMMANDS = @"commands";
             public const string RLV = @"rlv";
@@ -16219,8 +16044,7 @@ namespace Corrade
             [Description("estate")] ESTATE,
             [Description("region")] REGION,
             [Description("object")] OBJECT,
-            [Description("parcel")] PARCEL,
-            [Description("host")] HOST
+            [Description("parcel")] PARCEL
         }
 
         /// <summary>
@@ -16852,7 +16676,6 @@ namespace Corrade
             [Description("getprimitivedata")] GETPRIMITIVEDATA,
             [Description("activate")] ACTIVATE,
             [Description("move")] MOVE,
-            [Description("settitle")] SETTITLE,
             [Description("mute")] MUTE,
             [Description("getmutes")] GETMUTES,
             [Description("notify")] NOTIFY,
@@ -16908,73 +16731,35 @@ namespace Corrade
             [Description("output")] OUTPUT
         }
 
-        /// <summary>
-        ///     An alarm class similar to the UNIX alarm but with extra additions.
-        /// </summary>
-        /// <remarks>(C) Wizardry and Steamworks 2014 - License: GNU GPLv3</remarks>
-        internal class wasAlarm
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2013 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>An alarm class similar to the UNIX alarm</summary>
+        public class wasAlarm
         {
-            public enum Mean
-            {
-                NONE = 0,
-                ARITHMETIC = 1,
-                GEOMETRIC = 2,
-                HARMONIC = 3,
-                HERONIAN = 4,
-                QUADRATIC = 5
-            }
-
-            private readonly System.Timers.Timer alarm = new System.Timers.Timer();
-            private readonly Stopwatch elapsed = new Stopwatch();
-
-            private double lastRunTime;
+            private System.Timers.Timer alarm;
 
             public wasAlarm()
             {
                 Signal = new ManualResetEvent(false);
-                Heuristics = Mean.HARMONIC;
-                alarm.Elapsed += (o, p) =>
-                {
-                    Signal.Set();
-                    alarm.Dispose();
-                };
             }
 
             public ManualResetEvent Signal { get; set; }
 
-            public Mean Heuristics { get; set; }
-
-            public void Alarm(double deadline)
+            public void Alarm(int deadline)
             {
-                alarm.Stop();
-                double mean;
-                switch (Heuristics)
+                if (alarm == null)
                 {
-                    case Mean.ARITHMETIC:
-                        mean = (elapsed.ElapsedMilliseconds + lastRunTime)/2.0;
-                        break;
-                    case Mean.GEOMETRIC:
-                        mean = Math.Sqrt(elapsed.ElapsedMilliseconds*lastRunTime);
-                        break;
-                    case Mean.HARMONIC:
-                        mean = 2.0/((1.0/elapsed.ElapsedMilliseconds) + (1.0/lastRunTime));
-                        break;
-                    case Mean.HERONIAN:
-                        mean =
-                            (elapsed.ElapsedMilliseconds + Math.Sqrt(elapsed.ElapsedMilliseconds*lastRunTime) +
-                             lastRunTime)*1.0/3.0;
-                        break;
-                    case Mean.QUADRATIC:
-                        mean = Math.Sqrt(Math.Pow(elapsed.ElapsedMilliseconds, 2) + Math.Pow(lastRunTime, 2))*1.0/2.0;
-                        break;
-                    default:
-                        mean = deadline;
-                        break;
+                    alarm = new System.Timers.Timer(deadline);
+                    alarm.Elapsed += (o, p) =>
+                    {
+                        Signal.Set();
+                        alarm.Dispose();
+                    };
+                    alarm.Start();
+                    return;
                 }
-                alarm.Interval = mean > 0 ? mean : 1;
-                lastRunTime = elapsed.ElapsedMilliseconds;
-                elapsed.Reset();
-                alarm.Start();
+                alarm.Interval = deadline;
             }
         }
 
