@@ -2295,7 +2295,7 @@ namespace Corrade
             }
             // Disable the watcher.
             configurationWatcher.EnableRaisingEvents = false;
-            configurationWatcher.Dispose();
+            configurationWatcher.Changed -= HandleConfigurationFileChanged;
             // Logout
             if (Client.Network.Connected)
             {
