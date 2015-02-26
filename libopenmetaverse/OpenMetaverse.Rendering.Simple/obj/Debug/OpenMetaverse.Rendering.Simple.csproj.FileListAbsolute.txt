@@ -1,0 +1,15 @@
+X:\corrade\libopenmetaverse\bin\OpenMetaverse.Rendering.Simple.dll
+X:\corrade\libopenmetaverse\bin\OpenMetaverse.Rendering.Simple.pdb
+X:\corrade\libopenmetaverse\OpenMetaverse.Rendering.Simple\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade\libopenmetaverse\OpenMetaverse.Rendering.Simple\obj\Debug\OpenMetaverse.Rendering.Simple.dll
+X:\corrade\libopenmetaverse\OpenMetaverse.Rendering.Simple\obj\Debug\OpenMetaverse.Rendering.Simple.pdb
+X:\corrade-service\Corrade\libopenmetaverse\bin\OpenMetaverse.Rendering.Simple.dll
+X:\corrade-service\Corrade\libopenmetaverse\bin\OpenMetaverse.Rendering.Simple.pdb
+X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverse.Rendering.Simple\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverse.Rendering.Simple\obj\Debug\OpenMetaverse.Rendering.Simple.dll
+X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverse.Rendering.Simple\obj\Debug\OpenMetaverse.Rendering.Simple.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\OpenMetaverse.Rendering.Simple.dll
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\OpenMetaverse.Rendering.Simple.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\OpenMetaverse.Rendering.Simple\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\OpenMetaverse.Rendering.Simple\obj\Debug\OpenMetaverse.Rendering.Simple.dll
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\OpenMetaverse.Rendering.Simple\obj\Debug\OpenMetaverse.Rendering.Simple.pdb

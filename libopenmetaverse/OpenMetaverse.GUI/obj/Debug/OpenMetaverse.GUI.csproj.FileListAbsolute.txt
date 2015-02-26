@@ -1,0 +1,15 @@
+X:\corrade\libopenmetaverse\bin\OpenMetaverse.GUI.dll
+X:\corrade\libopenmetaverse\bin\OpenMetaverse.GUI.pdb
+X:\corrade\libopenmetaverse\OpenMetaverse.GUI\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade\libopenmetaverse\OpenMetaverse.GUI\obj\Debug\OpenMetaverse.GUI.dll
+X:\corrade\libopenmetaverse\OpenMetaverse.GUI\obj\Debug\OpenMetaverse.GUI.pdb
+X:\corrade-service\Corrade\libopenmetaverse\bin\OpenMetaverse.GUI.dll
+X:\corrade-service\Corrade\libopenmetaverse\bin\OpenMetaverse.GUI.pdb
+X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverse.GUI\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverse.GUI\obj\Debug\OpenMetaverse.GUI.dll
+X:\corrade-service\Corrade\libopenmetaverse\OpenMetaverse.GUI\obj\Debug\OpenMetaverse.GUI.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\OpenMetaverse.GUI.dll
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\OpenMetaverse.GUI.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\OpenMetaverse.GUI\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\OpenMetaverse.GUI\obj\Debug\OpenMetaverse.GUI.dll
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\OpenMetaverse.GUI\obj\Debug\OpenMetaverse.GUI.pdb

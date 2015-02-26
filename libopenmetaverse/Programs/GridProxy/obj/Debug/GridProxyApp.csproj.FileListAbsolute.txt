@@ -1,0 +1,15 @@
+X:\corrade\libopenmetaverse\bin\GridProxyApp.exe
+X:\corrade\libopenmetaverse\bin\GridProxyApp.pdb
+X:\corrade\libopenmetaverse\Programs\GridProxy\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade\libopenmetaverse\Programs\GridProxy\obj\Debug\GridProxyApp.exe
+X:\corrade\libopenmetaverse\Programs\GridProxy\obj\Debug\GridProxyApp.pdb
+X:\corrade-service\Corrade\libopenmetaverse\bin\GridProxyApp.exe
+X:\corrade-service\Corrade\libopenmetaverse\bin\GridProxyApp.pdb
+X:\corrade-service\Corrade\libopenmetaverse\Programs\GridProxy\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade-service\Corrade\libopenmetaverse\Programs\GridProxy\obj\Debug\GridProxyApp.exe
+X:\corrade-service\Corrade\libopenmetaverse\Programs\GridProxy\obj\Debug\GridProxyApp.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\GridProxyApp.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\GridProxyApp.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\GridProxy\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\GridProxy\obj\Debug\GridProxyApp.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\GridProxy\obj\Debug\GridProxyApp.pdb

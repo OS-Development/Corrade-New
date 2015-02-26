@@ -1,0 +1,15 @@
+X:\corrade\libopenmetaverse\bin\importprimscript.exe
+X:\corrade\libopenmetaverse\bin\importprimscript.pdb
+X:\corrade\libopenmetaverse\Programs\importprimscript\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade\libopenmetaverse\Programs\importprimscript\obj\Debug\importprimscript.exe
+X:\corrade\libopenmetaverse\Programs\importprimscript\obj\Debug\importprimscript.pdb
+X:\corrade-service\Corrade\libopenmetaverse\bin\importprimscript.exe
+X:\corrade-service\Corrade\libopenmetaverse\bin\importprimscript.pdb
+X:\corrade-service\Corrade\libopenmetaverse\Programs\importprimscript\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade-service\Corrade\libopenmetaverse\Programs\importprimscript\obj\Debug\importprimscript.exe
+X:\corrade-service\Corrade\libopenmetaverse\Programs\importprimscript\obj\Debug\importprimscript.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\importprimscript.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\importprimscript.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\importprimscript\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\importprimscript\obj\Debug\importprimscript.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\importprimscript\obj\Debug\importprimscript.pdb

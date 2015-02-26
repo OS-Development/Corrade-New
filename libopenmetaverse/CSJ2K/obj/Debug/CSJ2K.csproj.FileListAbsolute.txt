@@ -1,0 +1,15 @@
+X:\corrade\libopenmetaverse\bin\CSJ2K.dll
+X:\corrade\libopenmetaverse\bin\CSJ2K.pdb
+X:\corrade\libopenmetaverse\CSJ2K\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade\libopenmetaverse\CSJ2K\obj\Debug\CSJ2K.dll
+X:\corrade\libopenmetaverse\CSJ2K\obj\Debug\CSJ2K.pdb
+X:\corrade-service\Corrade\libopenmetaverse\bin\CSJ2K.dll
+X:\corrade-service\Corrade\libopenmetaverse\bin\CSJ2K.pdb
+X:\corrade-service\Corrade\libopenmetaverse\CSJ2K\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade-service\Corrade\libopenmetaverse\CSJ2K\obj\Debug\CSJ2K.dll
+X:\corrade-service\Corrade\libopenmetaverse\CSJ2K\obj\Debug\CSJ2K.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\CSJ2K.dll
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\CSJ2K.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\CSJ2K\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\CSJ2K\obj\Debug\CSJ2K.dll
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\CSJ2K\obj\Debug\CSJ2K.pdb

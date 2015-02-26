@@ -1,0 +1,15 @@
+X:\corrade\libopenmetaverse\bin\IRCGateway.exe
+X:\corrade\libopenmetaverse\bin\IRCGateway.pdb
+X:\corrade\libopenmetaverse\Programs\examples\IRCGateway\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade\libopenmetaverse\Programs\examples\IRCGateway\obj\Debug\IRCGateway.exe
+X:\corrade\libopenmetaverse\Programs\examples\IRCGateway\obj\Debug\IRCGateway.pdb
+X:\corrade-service\Corrade\libopenmetaverse\bin\IRCGateway.exe
+X:\corrade-service\Corrade\libopenmetaverse\bin\IRCGateway.pdb
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\IRCGateway\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\IRCGateway\obj\Debug\IRCGateway.exe
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\IRCGateway\obj\Debug\IRCGateway.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\IRCGateway.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\IRCGateway.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\examples\IRCGateway\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\examples\IRCGateway\obj\Debug\IRCGateway.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\examples\IRCGateway\obj\Debug\IRCGateway.pdb

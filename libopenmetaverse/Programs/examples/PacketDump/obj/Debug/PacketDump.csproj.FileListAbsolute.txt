@@ -1,0 +1,15 @@
+X:\corrade\libopenmetaverse\bin\PacketDump.exe
+X:\corrade\libopenmetaverse\bin\PacketDump.pdb
+X:\corrade\libopenmetaverse\Programs\examples\PacketDump\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade\libopenmetaverse\Programs\examples\PacketDump\obj\Debug\PacketDump.exe
+X:\corrade\libopenmetaverse\Programs\examples\PacketDump\obj\Debug\PacketDump.pdb
+X:\corrade-service\Corrade\libopenmetaverse\bin\PacketDump.exe
+X:\corrade-service\Corrade\libopenmetaverse\bin\PacketDump.pdb
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\PacketDump\obj\Debug\ResolveAssemblyReference.cache
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\PacketDump\obj\Debug\PacketDump.exe
+X:\corrade-service\Corrade\libopenmetaverse\Programs\examples\PacketDump\obj\Debug\PacketDump.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\PacketDump.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\bin\PacketDump.pdb
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\examples\PacketDump\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\examples\PacketDump\obj\Debug\PacketDump.exe
+C:\Users\evacomaroski\Desktop\corrade\libopenmetaverse\Programs\examples\PacketDump\obj\Debug\PacketDump.pdb

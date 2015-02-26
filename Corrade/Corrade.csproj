@@ -51,46 +51,37 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="AIMLbot, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\AIMLbot\AIMLbot.dll</HintPath>
-    </Reference>
     <Reference Include="Mono.Posix, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\libmono\Mono.Posix.dll</HintPath>
     </Reference>
     <Reference Include="OpenMetaverse, Version=0.9.2.3173, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\libopenmetaverse\OpenMetaverse.dll</HintPath>
+      <HintPath>..\libopenmetaverse\bin\OpenMetaverse.dll</HintPath>
     </Reference>
     <Reference Include="OpenMetaverse.StructuredData, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\libopenmetaverse\OpenMetaverse.StructuredData.dll</HintPath>
+      <HintPath>..\libopenmetaverse\bin\OpenMetaverse.StructuredData.dll</HintPath>
     </Reference>
     <Reference Include="OpenMetaverseTypes, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\libopenmetaverse\OpenMetaverseTypes.dll</HintPath>
+      <HintPath>..\libopenmetaverse\bin\OpenMetaverseTypes.dll</HintPath>
     </Reference>
     <Reference Include="System">
       <Private>False</Private>
-      <HintPath>..\..\..\..\..\Windows\Microsoft.NET\Framework\v2.0.50727\System.dll</HintPath>
     </Reference>
     <Reference Include="System.Configuration.Install">
       <Private>False</Private>
-      <HintPath>..\..\..\..\..\Windows\Microsoft.NET\Framework\v2.0.50727\System.Configuration.Install.dll</HintPath>
     </Reference>
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
       <Private>False</Private>
-      <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\v3.5\System.Core.dll</HintPath>
     </Reference>
     <Reference Include="System.ServiceProcess">
       <Private>False</Private>
-      <HintPath>..\..\..\..\..\Windows\Microsoft.NET\Framework\v2.0.50727\System.ServiceProcess.dll</HintPath>
     </Reference>
     <Reference Include="System.Xml">
       <Private>False</Private>
-      <HintPath>..\..\..\..\..\Windows\Microsoft.NET\Framework\v2.0.50727\System.XML.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -113,486 +104,262 @@
       <DependentUpon>ProjectInstaller.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <Content Include="..\AIMLbotData\AIML\AI.aiml">
-      <Link>AIMLbot\AIML\AI.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Astrology.aiml">
-      <Link>AIMLbot\AIML\Astrology.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Atomic.aiml">
-      <Link>AIMLbot\AIML\Atomic.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Badanswer.aiml">
-      <Link>AIMLbot\AIML\Badanswer.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Biography.aiml">
-      <Link>AIMLbot\AIML\Biography.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Bot.aiml">
-      <Link>AIMLbot\AIML\Bot.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Botmaster.aiml">
-      <Link>AIMLbot\AIML\Botmaster.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Client.aiml">
-      <Link>AIMLbot\AIML\Client.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Computers.aiml">
-      <Link>AIMLbot\AIML\Computers.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\CustomTagTest.aiml">
-      <Link>AIMLbot\AIML\CustomTagTest.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Date.aiml">
-      <Link>AIMLbot\AIML\Date.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Default.aiml">
-      <Link>AIMLbot\AIML\Default.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Dialog.aiml">
-      <Link>AIMLbot\AIML\Dialog.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Drugs.aiml">
-      <Link>AIMLbot\AIML\Drugs.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Emotion.aiml">
-      <Link>AIMLbot\AIML\Emotion.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Facts.aiml">
-      <Link>AIMLbot\AIML\Facts.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Food.aiml">
-      <Link>AIMLbot\AIML\Food.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Geography.aiml">
-      <Link>AIMLbot\AIML\Geography.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Gossip.aiml">
-      <Link>AIMLbot\AIML\Gossip.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Happy.aiml">
-      <Link>AIMLbot\AIML\Happy.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\History.aiml">
-      <Link>AIMLbot\AIML\History.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Humor.aiml">
-      <Link>AIMLbot\AIML\Humor.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Inquiry.aiml">
-      <Link>AIMLbot\AIML\Inquiry.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Integer.aiml">
-      <Link>AIMLbot\AIML\Integer.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Interjection.aiml">
-      <Link>AIMLbot\AIML\Interjection.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\IU.aiml">
-      <Link>AIMLbot\AIML\IU.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Jokes.aiml">
-      <Link>AIMLbot\AIML\Jokes.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Knowledge.aiml">
-      <Link>AIMLbot\AIML\Knowledge.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Learn.aiml">
-      <Link>AIMLbot\AIML\Learn.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Literature.aiml">
-      <Link>AIMLbot\AIML\Literature.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Luckyslots.aiml">
-      <Link>AIMLbot\AIML\Luckyslots.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Money.aiml">
-      <Link>AIMLbot\AIML\Money.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Movies.aiml">
-      <Link>AIMLbot\AIML\Movies.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Multiple.aiml">
-      <Link>AIMLbot\AIML\Multiple.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Music.aiml">
-      <Link>AIMLbot\AIML\Music.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Parts.aiml">
-      <Link>AIMLbot\AIML\Parts.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Personality.aiml">
-      <Link>AIMLbot\AIML\Personality.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Philosophy.aiml">
-      <Link>AIMLbot\AIML\Philosophy.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Pickup.aiml">
-      <Link>AIMLbot\AIML\Pickup.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Politics.aiml">
-      <Link>AIMLbot\AIML\Politics.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Predicates.aiml">
-      <Link>AIMLbot\AIML\Predicates.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Psychology.aiml">
-      <Link>AIMLbot\AIML\Psychology.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Reduce.aiml">
-      <Link>AIMLbot\AIML\Reduce.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Reducer.aiml">
-      <Link>AIMLbot\AIML\Reducer.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Reductions.aiml">
-      <Link>AIMLbot\AIML\Reductions.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Salutations.aiml">
-      <Link>AIMLbot\AIML\Salutations.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Science.aiml">
-      <Link>AIMLbot\AIML\Science.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Sex.aiml">
-      <Link>AIMLbot\AIML\Sex.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Spam.aiml">
-      <Link>AIMLbot\AIML\Spam.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Sports.aiml">
-      <Link>AIMLbot\AIML\Sports.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Stack.aiml">
-      <Link>AIMLbot\AIML\Stack.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Stories.aiml">
-      <Link>AIMLbot\AIML\Stories.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Teach.aiml">
-      <Link>AIMLbot\AIML\Teach.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\That.aiml">
-      <Link>AIMLbot\AIML\That.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\update.aiml">
-      <Link>AIMLbot\AIML\update.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\AIML\Utilities.aiml">
-      <Link>AIMLbot\AIML\Utilities.aiml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse-overrides\libopenjpeg-dotnet-2-1.5.0-dotnet-1-arm.so">
+    <None Include="..\libopenmetaverse-overrides\libopenjpeg-dotnet-2-1.5.0-dotnet-1-arm.so">
       <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1-arm.so</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    </None>
     <None Include="..\libopenmetaverse-overrides\OpenMetaverse.dll.config">
       <Link>OpenMetaverse.dll.config</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\blush_alpha.tga">
-      <Link>openmetaverse_data\blush_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\bodyfreckles_alpha.tga">
-      <Link>openmetaverse_data\bodyfreckles_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\body_skingrain.tga">
-      <Link>openmetaverse_data\body_skingrain.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\bump_face_wrinkles.tga">
-      <Link>openmetaverse_data\bump_face_wrinkles.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\bump_head_base.tga">
-      <Link>openmetaverse_data\bump_head_base.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\bump_lowerbody_base.tga">
-      <Link>openmetaverse_data\bump_lowerbody_base.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\bump_pants_wrinkles.tga">
-      <Link>openmetaverse_data\bump_pants_wrinkles.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\bump_shirt_wrinkles.tga">
-      <Link>openmetaverse_data\bump_shirt_wrinkles.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\bump_upperbody_base.tga">
-      <Link>openmetaverse_data\bump_upperbody_base.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\eyebrows_alpha.tga">
-      <Link>openmetaverse_data\eyebrows_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\eyeliner_alpha.tga">
-      <Link>openmetaverse_data\eyeliner_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\eyeshadow_inner_alpha.tga">
-      <Link>openmetaverse_data\eyeshadow_inner_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\eyeshadow_outer_alpha.tga">
-      <Link>openmetaverse_data\eyeshadow_outer_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\eyewhite.tga">
-      <Link>openmetaverse_data\eyewhite.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\facehair_chincurtains_alpha.tga">
-      <Link>openmetaverse_data\facehair_chincurtains_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\facehair_moustache_alpha.tga">
-      <Link>openmetaverse_data\facehair_moustache_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\facehair_sideburns_alpha.tga">
-      <Link>openmetaverse_data\facehair_sideburns_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\facehair_soulpatch_alpha.tga">
-      <Link>openmetaverse_data\facehair_soulpatch_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\freckles_alpha.tga">
-      <Link>openmetaverse_data\freckles_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\gloves_fingers_alpha.tga">
-      <Link>openmetaverse_data\gloves_fingers_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\glove_length_alpha.tga">
-      <Link>openmetaverse_data\glove_length_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\head_alpha.tga">
-      <Link>openmetaverse_data\head_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\head_color.tga">
-      <Link>openmetaverse_data\head_color.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\head_hair.tga">
-      <Link>openmetaverse_data\head_hair.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\head_highlights_alpha.tga">
-      <Link>openmetaverse_data\head_highlights_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\head_shading_alpha.tga">
-      <Link>openmetaverse_data\head_shading_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\head_skingrain.tga">
-      <Link>openmetaverse_data\head_skingrain.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\jacket_length_lower_alpha.tga">
-      <Link>openmetaverse_data\jacket_length_lower_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\jacket_length_upper_alpha.tga">
-      <Link>openmetaverse_data\jacket_length_upper_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\jacket_open_lower_alpha.tga">
-      <Link>openmetaverse_data\jacket_open_lower_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\jacket_open_upper_alpha.tga">
-      <Link>openmetaverse_data\jacket_open_upper_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\lipgloss_alpha.tga">
-      <Link>openmetaverse_data\lipgloss_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\lipstick_alpha.tga">
-      <Link>openmetaverse_data\lipstick_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\lips_mask.tga">
-      <Link>openmetaverse_data\lips_mask.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\lowerbody_color.tga">
-      <Link>openmetaverse_data\lowerbody_color.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\lowerbody_highlights_alpha.tga">
-      <Link>openmetaverse_data\lowerbody_highlights_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\lowerbody_shading_alpha.tga">
-      <Link>openmetaverse_data\lowerbody_shading_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\nailpolish_alpha.tga">
-      <Link>openmetaverse_data\nailpolish_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\pants_length_alpha.tga">
-      <Link>openmetaverse_data\pants_length_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\pants_waist_alpha.tga">
-      <Link>openmetaverse_data\pants_waist_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\rosyface_alpha.tga">
-      <Link>openmetaverse_data\rosyface_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\rouge_alpha.tga">
-      <Link>openmetaverse_data\rouge_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\shirt_bottom_alpha.tga">
-      <Link>openmetaverse_data\shirt_bottom_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\shirt_collar_alpha.tga">
-      <Link>openmetaverse_data\shirt_collar_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\shirt_collar_back_alpha.tga">
-      <Link>openmetaverse_data\shirt_collar_back_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\shirt_sleeve_alpha.tga">
-      <Link>openmetaverse_data\shirt_sleeve_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\shoe_height_alpha.tga">
-      <Link>openmetaverse_data\shoe_height_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\skirt_length_alpha.tga">
-      <Link>openmetaverse_data\skirt_length_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\skirt_slit_back_alpha.tga">
-      <Link>openmetaverse_data\skirt_slit_back_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\skirt_slit_front_alpha.tga">
-      <Link>openmetaverse_data\skirt_slit_front_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\skirt_slit_left_alpha.tga">
-      <Link>openmetaverse_data\skirt_slit_left_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\skirt_slit_right_alpha.tga">
-      <Link>openmetaverse_data\skirt_slit_right_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\underpants_trial_female.tga">
-      <Link>openmetaverse_data\underpants_trial_female.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\underpants_trial_male.tga">
-      <Link>openmetaverse_data\underpants_trial_male.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\undershirt_trial_female.tga">
-      <Link>openmetaverse_data\undershirt_trial_female.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\upperbodyfreckles_alpha.tga">
-      <Link>openmetaverse_data\upperbodyfreckles_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\upperbody_color.tga">
-      <Link>openmetaverse_data\upperbody_color.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\upperbody_highlights_alpha.tga">
-      <Link>openmetaverse_data\upperbody_highlights_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\upperbody_shading_alpha.tga">
-      <Link>openmetaverse_data\upperbody_shading_alpha.tga</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\libopenjpeg-dotnet-2-1.5.0-dotnet-1-i686.so">
+    <None Include="..\libopenmetaverse\bin\libopenjpeg-dotnet-2-1.5.0-dotnet-1-i686.so">
       <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1-i686.so</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\libopenjpeg-dotnet-2-1.5.0-dotnet-1-x86_64.so">
+    </None>
+    <None Include="..\libopenmetaverse\bin\libopenjpeg-dotnet-2-1.5.0-dotnet-1-x86_64.so">
       <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1-x86_64.so</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\libopenjpeg-dotnet-2-1.5.0-dotnet-1.dylib">
+    </None>
+    <None Include="..\libopenmetaverse\bin\libopenjpeg-dotnet-2-1.5.0-dotnet-1.dylib">
       <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1.dylib</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\blush_alpha.tga">
+      <Link>openmetaverse_data\blush_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\bodyfreckles_alpha.tga">
+      <Link>openmetaverse_data\bodyfreckles_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\body_skingrain.tga">
+      <Link>openmetaverse_data\body_skingrain.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\bump_face_wrinkles.tga">
+      <Link>openmetaverse_data\bump_face_wrinkles.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\bump_head_base.tga">
+      <Link>openmetaverse_data\bump_head_base.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\bump_lowerbody_base.tga">
+      <Link>openmetaverse_data\bump_lowerbody_base.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\bump_pants_wrinkles.tga">
+      <Link>openmetaverse_data\bump_pants_wrinkles.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\bump_shirt_wrinkles.tga">
+      <Link>openmetaverse_data\bump_shirt_wrinkles.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\bump_upperbody_base.tga">
+      <Link>openmetaverse_data\bump_upperbody_base.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\eyebrows_alpha.tga">
+      <Link>openmetaverse_data\eyebrows_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\eyeliner_alpha.tga">
+      <Link>openmetaverse_data\eyeliner_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\eyeshadow_inner_alpha.tga">
+      <Link>openmetaverse_data\eyeshadow_inner_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\eyeshadow_outer_alpha.tga">
+      <Link>openmetaverse_data\eyeshadow_outer_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\eyewhite.tga">
+      <Link>openmetaverse_data\eyewhite.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\facehair_chincurtains_alpha.tga">
+      <Link>openmetaverse_data\facehair_chincurtains_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\facehair_moustache_alpha.tga">
+      <Link>openmetaverse_data\facehair_moustache_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\facehair_sideburns_alpha.tga">
+      <Link>openmetaverse_data\facehair_sideburns_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\facehair_soulpatch_alpha.tga">
+      <Link>openmetaverse_data\facehair_soulpatch_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\freckles_alpha.tga">
+      <Link>openmetaverse_data\freckles_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\gloves_fingers_alpha.tga">
+      <Link>openmetaverse_data\gloves_fingers_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\glove_length_alpha.tga">
+      <Link>openmetaverse_data\glove_length_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\head_alpha.tga">
+      <Link>openmetaverse_data\head_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\head_color.tga">
+      <Link>openmetaverse_data\head_color.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\head_hair.tga">
+      <Link>openmetaverse_data\head_hair.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\head_highlights_alpha.tga">
+      <Link>openmetaverse_data\head_highlights_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\head_shading_alpha.tga">
+      <Link>openmetaverse_data\head_shading_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\head_skingrain.tga">
+      <Link>openmetaverse_data\head_skingrain.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\jacket_length_lower_alpha.tga">
+      <Link>openmetaverse_data\jacket_length_lower_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\jacket_length_upper_alpha.tga">
+      <Link>openmetaverse_data\jacket_length_upper_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\jacket_open_lower_alpha.tga">
+      <Link>openmetaverse_data\jacket_open_lower_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\jacket_open_upper_alpha.tga">
+      <Link>openmetaverse_data\jacket_open_upper_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\lipgloss_alpha.tga">
+      <Link>openmetaverse_data\lipgloss_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\lipstick_alpha.tga">
+      <Link>openmetaverse_data\lipstick_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\lips_mask.tga">
+      <Link>openmetaverse_data\lips_mask.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\lowerbody_color.tga">
+      <Link>openmetaverse_data\lowerbody_color.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\lowerbody_highlights_alpha.tga">
+      <Link>openmetaverse_data\lowerbody_highlights_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\lowerbody_shading_alpha.tga">
+      <Link>openmetaverse_data\lowerbody_shading_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\nailpolish_alpha.tga">
+      <Link>openmetaverse_data\nailpolish_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\pants_length_alpha.tga">
+      <Link>openmetaverse_data\pants_length_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\pants_waist_alpha.tga">
+      <Link>openmetaverse_data\pants_waist_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\rosyface_alpha.tga">
+      <Link>openmetaverse_data\rosyface_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\rouge_alpha.tga">
+      <Link>openmetaverse_data\rouge_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\shirt_bottom_alpha.tga">
+      <Link>openmetaverse_data\shirt_bottom_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\shirt_collar_alpha.tga">
+      <Link>openmetaverse_data\shirt_collar_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\shirt_collar_back_alpha.tga">
+      <Link>openmetaverse_data\shirt_collar_back_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\shirt_sleeve_alpha.tga">
+      <Link>openmetaverse_data\shirt_sleeve_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\shoe_height_alpha.tga">
+      <Link>openmetaverse_data\shoe_height_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\skirt_length_alpha.tga">
+      <Link>openmetaverse_data\skirt_length_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\skirt_slit_back_alpha.tga">
+      <Link>openmetaverse_data\skirt_slit_back_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\skirt_slit_front_alpha.tga">
+      <Link>openmetaverse_data\skirt_slit_front_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\skirt_slit_left_alpha.tga">
+      <Link>openmetaverse_data\skirt_slit_left_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\skirt_slit_right_alpha.tga">
+      <Link>openmetaverse_data\skirt_slit_right_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\underpants_trial_female.tga">
+      <Link>openmetaverse_data\underpants_trial_female.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\underpants_trial_male.tga">
+      <Link>openmetaverse_data\underpants_trial_male.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\undershirt_trial_female.tga">
+      <Link>openmetaverse_data\undershirt_trial_female.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\upperbodyfreckles_alpha.tga">
+      <Link>openmetaverse_data\upperbodyfreckles_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\upperbody_color.tga">
+      <Link>openmetaverse_data\upperbody_color.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\upperbody_highlights_alpha.tga">
+      <Link>openmetaverse_data\upperbody_highlights_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\upperbody_shading_alpha.tga">
+      <Link>openmetaverse_data\upperbody_shading_alpha.tga</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="Corrade.exe.manifest">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -623,54 +390,25 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="..\AIMLbotData\config\DefaultPredicates.xml">
-      <Link>AIMLbot\config\DefaultPredicates.xml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\config\GenderSubstitutions.xml">
-      <Link>AIMLbot\config\GenderSubstitutions.xml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\config\Person2Substitutions.xml">
-      <Link>AIMLbot\config\Person2Substitutions.xml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\config\PersonSubstitutions.xml">
-      <Link>AIMLbot\config\PersonSubstitutions.xml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\config\Settings.xml">
-      <Link>AIMLbot\config\Settings.xml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\config\Splitters.xml">
-      <Link>AIMLbot\config\Splitters.xml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\AIMLbotData\config\Substitutions.xml">
-      <Link>AIMLbot\config\Substitutions.xml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\openjpeg-dotnet-x86_64.dll">
+    <Content Include="..\libopenmetaverse\bin\openjpeg-dotnet-x86_64.dll">
       <Link>openjpeg-dotnet-x86_64.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\libopenmetaverse\openjpeg-dotnet.dll">
+    <Content Include="..\libopenmetaverse\bin\openjpeg-dotnet.dll">
       <Link>openjpeg-dotnet.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\libopenmetaverse\openmetaverse_data\avatar_lad.xml">
+    <Content Include="..\libopenmetaverse\bin\openmetaverse_data\avatar_lad.xml">
       <Link>openmetaverse_data\avatar_lad.xml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\libopenmetaverse\SmartThreadPool.dll">
+    <Content Include="..\libopenmetaverse\bin\SmartThreadPool.dll">
       <Link>SmartThreadPool.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Corrade.ico" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="AIMLbot\logs\" />
     <Folder Include="cache\" />
     <Folder Include="databases\" />
     <Folder Include="groupchat\" />
