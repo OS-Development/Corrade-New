@@ -3431,10 +3431,14 @@ namespace Corrade
                     // such that the only way to determine if we have a group message is to check that the UUID
                     // of the session is actually the UUID of a current group. Furthermore, what's worse is that 
                     // group mesages can appear both through SessionSend and from MessageFromAgent. Hence the problem.
-                    OpenMetaverse.Group messageGroup = GetCurrentGroups(
-                        Configuration.SERVICES_TIMEOUT,
-                        Configuration.DATA_TIMEOUT).FirstOrDefault(o => o.ID.Equals(args.IM.IMSessionID));
-                    if (messageGroup.Equals(default(OpenMetaverse.Group)))
+                    OpenMetaverse.Group messageGroup;
+                    lock (ClientInstanceLock)
+                    {
+                        messageGroup = GetCurrentGroups(
+                            Configuration.SERVICES_TIMEOUT,
+                            Configuration.DATA_TIMEOUT).FirstOrDefault(o => o.ID.Equals(args.IM.IMSessionID));
+                    }
+                    if (!messageGroup.Equals(default(OpenMetaverse.Group)))
                     {
                         // Send group notice notifications.
                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
