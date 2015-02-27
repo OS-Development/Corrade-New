@@ -51,6 +51,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="AIMLbot, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\AIMLBot\AIMLbot\bin\Release\AIMLbot.dll</HintPath>
+    </Reference>
     <Reference Include="Mono.Posix, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\libmono\Mono.Posix.dll</HintPath>
@@ -122,6 +126,168 @@
     </None>
     <None Include="..\libopenmetaverse\bin\libopenjpeg-dotnet-2-1.5.0-dotnet-1.dylib">
       <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1.dylib</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Corrade.exe.manifest">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Corrade.ini">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.2.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 2.0 %28x86%29</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.0 %28x86%29</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
+      <Visible>False</Visible>
+      <ProductName>Windows Installer 3.1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\AIMLBot-data\AIML\AI.aiml">
+      <Link>AIMLBot\AIML\AI.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Atomic.aiml">
+      <Link>AIMLBot\AIML\Atomic.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Biography.aiml">
+      <Link>AIMLBot\AIML\Biography.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Bot.aiml">
+      <Link>AIMLBot\AIML\Bot.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Botmaster.aiml">
+      <Link>AIMLBot\AIML\Botmaster.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Client.aiml">
+      <Link>AIMLBot\AIML\Client.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Computers.aiml">
+      <Link>AIMLBot\AIML\Computers.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Default.aiml">
+      <Link>AIMLBot\AIML\Default.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Emotion.aiml">
+      <Link>AIMLBot\AIML\Emotion.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Food.aiml">
+      <Link>AIMLBot\AIML\Food.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Geography.aiml">
+      <Link>AIMLBot\AIML\Geography.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\History.aiml">
+      <Link>AIMLBot\AIML\History.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Inquiry.aiml">
+      <Link>AIMLBot\AIML\Inquiry.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Interjection.aiml">
+      <Link>AIMLBot\AIML\Interjection.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\IU.aiml">
+      <Link>AIMLBot\AIML\IU.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Knowledge.aiml">
+      <Link>AIMLBot\AIML\Knowledge.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Literature.aiml">
+      <Link>AIMLBot\AIML\Literature.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Money.aiml">
+      <Link>AIMLBot\AIML\Money.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Movies.aiml">
+      <Link>AIMLBot\AIML\Movies.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Music.aiml">
+      <Link>AIMLBot\AIML\Music.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Philosophy.aiml">
+      <Link>AIMLBot\AIML\Philosophy.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Pickup.aiml">
+      <Link>AIMLBot\AIML\Pickup.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Predicates.aiml">
+      <Link>AIMLBot\AIML\Predicates.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Reduce.aiml">
+      <Link>AIMLBot\AIML\Reduce.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Reductions.aiml">
+      <Link>AIMLBot\AIML\Reductions.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Salutations.aiml">
+      <Link>AIMLBot\AIML\Salutations.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Science.aiml">
+      <Link>AIMLBot\AIML\Science.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Stack.aiml">
+      <Link>AIMLBot\AIML\Stack.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Stories.aiml">
+      <Link>AIMLBot\AIML\Stories.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\That.aiml">
+      <Link>AIMLBot\AIML\That.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\brain\AIMLBot.brain">
+      <Link>AIMLBot\brain\AIMLBot.brain</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openjpeg-dotnet-x86_64.dll">
+      <Link>openjpeg-dotnet-x86_64.dll</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openjpeg-dotnet.dll">
+      <Link>openjpeg-dotnet.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\libopenmetaverse\bin\openmetaverse_data\blush_alpha.tga">
@@ -360,55 +526,46 @@
       <Link>openmetaverse_data\upperbody_shading_alpha.tga</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="Corrade.exe.manifest">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Corrade.ini">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.2.0">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 2.0 %28x86%29</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.0">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.0 %28x86%29</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5</ProductName>
-      <Install>true</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
-      <Visible>False</Visible>
-      <ProductName>Windows Installer 3.1</ProductName>
-      <Install>true</Install>
-    </BootstrapperPackage>
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="..\libopenmetaverse\bin\openjpeg-dotnet-x86_64.dll">
-      <Link>openjpeg-dotnet-x86_64.dll</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\bin\openjpeg-dotnet.dll">
-      <Link>openjpeg-dotnet.dll</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\bin\openmetaverse_data\avatar_lad.xml">
-      <Link>openmetaverse_data\avatar_lad.xml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="..\libopenmetaverse\bin\SmartThreadPool.dll">
+    <None Include="..\libopenmetaverse\bin\SmartThreadPool.dll">
       <Link>SmartThreadPool.dll</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    </None>
+    <None Include="..\libopenmetaverse\bin\openmetaverse_data\avatar_lad.xml">
+      <Link>openmetaverse_data\avatar_lad.xml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\config\DefaultPredicates.xml">
+      <Link>AIMLBot\config\DefaultPredicates.xml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\config\GenderSubstitutions.xml">
+      <Link>AIMLBot\config\GenderSubstitutions.xml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\config\Person2Substitutions.xml">
+      <Link>AIMLBot\config\Person2Substitutions.xml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\config\PersonSubstitutions.xml">
+      <Link>AIMLBot\config\PersonSubstitutions.xml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\config\Settings.xml">
+      <Link>AIMLBot\config\Settings.xml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\config\Splitters.xml">
+      <Link>AIMLBot\config\Splitters.xml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\config\Substitutions.xml">
+      <Link>AIMLBot\config\Substitutions.xml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <Content Include="Corrade.ico" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="AIMLBot\logs\" />
     <Folder Include="cache\" />
     <Folder Include="databases\" />
     <Folder Include="groupchat\" />

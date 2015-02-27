@@ -24,6 +24,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Xml;
 using System.Xml.Serialization;
+using AIMLbot;
 using Mono.Unix;
 using Mono.Unix.Native;
 using OpenMetaverse;
@@ -69,6 +70,21 @@ namespace Corrade
         private static readonly EventLog CorradeLog = new EventLog();
 
         private static readonly GridClient Client = new GridClient();
+
+        private static readonly Bot AIMLBot = new Bot
+        {
+            TrustAIML = false
+        };
+
+        private static readonly User AIMLBotUser = new User(CORRADE_CONSTANTS.CORRADE, AIMLBot);
+
+        private static readonly FileSystemWatcher AIMLBotConfigurationWatcher = new FileSystemWatcher
+        {
+            Path = wasPathCombine(Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY),
+            NotifyFilter = NotifyFilters.LastWrite
+        };
+
+        private static readonly object AIMLBotLock = new object();
 
         private static readonly object ClientInstanceLock = new object();
 
@@ -128,7 +144,9 @@ namespace Corrade
 
         private static readonly object OutputFiltersLock = new object();
 
-        private static volatile bool EnableCorradeRLV;
+        private static volatile bool EnableRLV;
+
+        private static volatile bool EnableAIML;
 
         private static InventoryFolder OutfitFolder;
 
@@ -384,6 +402,45 @@ namespace Corrade
             }
         };
 
+        /// <summary>
+        ///     Loads the chatbot configuration and AIML files.
+        /// </summary>
+        private static readonly System.Action LoadChatBotFiles = () =>
+        {
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READING_AIML_BOT_CONFIGURATION));
+            try
+            {
+                lock (AIMLBotLock)
+                {
+                    AIMLBot.isAcceptingUserInput = false;
+                    AIMLBot.loadSettings(wasPathCombine(
+                        Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
+                        AIML_BOT_CONSTANTS.CONFIG.DIRECTORY, AIML_BOT_CONSTANTS.CONFIG.SETTINGS_FILE));
+                    string AIMLBotBrain =
+                        wasPathCombine(
+                            Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
+                            AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_FILE);
+                    switch (File.Exists(AIMLBotBrain))
+                    {
+                        case true:
+                            AIMLBot.loadFromBinaryFile(AIMLBotBrain);
+                            break;
+                        default:
+                            AIMLBot.loadAIMLFromFiles();
+                            AIMLBot.saveToBinaryFile(AIMLBotBrain);
+                            break;
+                    }
+                    AIMLBot.isAcceptingUserInput = true;
+                }
+            }
+            catch (Exception exception)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_CONFIGURING_AIML_BOT), exception.Message);
+                return;
+            }
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_AIML_BOT_CONFIGURATION));
+        };
+
         private static volatile bool runCallbackThread = true;
         private static volatile bool runGroupMemberSweepThread = true;
         private static volatile bool runNotificationThread = true;
@@ -415,6 +472,21 @@ namespace Corrade
             // Wait for threads to finish.
             Thread.Sleep(Configuration.SERVICES_TIMEOUT);
             return true;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Combine multiple paths.
+        /// </summary>
+        /// <param name="paths">an array of paths</param>
+        /// <returns>a combined path</returns>
+        private static string wasPathCombine(params string[] paths)
+        {
+            if (paths.Length.Equals(0)) return string.Empty;
+            return paths.Length < 2
+                ? paths[0] : Path.Combine(Path.Combine(paths[0], paths[1]), wasPathCombine(paths.Skip(2).ToArray()));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1556,7 +1628,7 @@ namespace Corrade
         {
             List<string> output = new List<string>
             {
-                "Corrade",
+                CORRADE_CONSTANTS.CORRADE,
                 string.Format(CultureInfo.InvariantCulture, "[{0}]",
                     DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP, DateTimeFormatInfo.InvariantInfo)),
             };
@@ -1742,6 +1814,11 @@ namespace Corrade
         // Main entry point.
         public void Program()
         {
+            // Write the logo in interactive mode.
+            if (Environment.UserInteractive)
+            {
+                WriteLogo();
+            }
             // Create a thread for signals.
             Thread BindSignalsThread = null;
             // Branch on platform and set-up termination handlers.
@@ -1777,8 +1854,6 @@ namespace Corrade
             }
             // Set the current directory to the service directory.
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
-            // Load the configuration file.
-            Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
             // Set-up watcher for dynamically reading the configuration file.
             FileSystemWatcher configurationWatcher = new FileSystemWatcher
             {
@@ -1788,6 +1863,14 @@ namespace Corrade
             };
             configurationWatcher.Changed += HandleConfigurationFileChanged;
             configurationWatcher.EnableRaisingEvents = true;
+            // Load the configuration file.
+            Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
+            // Set-up the AIML bot in case it has been enabled.
+            AIMLBotConfigurationWatcher.Changed += HandleAIMLBotConfigurationChanged;
+            if (EnableAIML)
+            {
+                LoadChatBotFiles.BeginInvoke(o => { AIMLBotConfigurationWatcher.EnableRaisingEvents = true; }, null);
+            }
             // Network Tweaks
             ServicePointManager.DefaultConnectionLimit = Configuration.CONNECTION_LIMIT;
             ServicePointManager.UseNagleAlgorithm = Configuration.USE_NAGGLE;
@@ -1845,11 +1928,6 @@ namespace Corrade
             Client.Self.IM += (sender, args) => CorradeThreadPool[CorradeThreadType.INSTANT_MESSAGE].Spawn(
                 () => HandleSelfIM(sender, args),
                 Configuration.MAXIMUM_INSTANT_MESSAGE_THREADS);
-            // Write the logo in interactive mode.
-            if (Environment.UserInteractive)
-            {
-                WriteLogo();
-            }
             // Check TOS
             if (!Configuration.TOS_ACCEPTED)
             {
@@ -1869,7 +1947,9 @@ namespace Corrade
                 Author = CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS,
                 AgreeToTos = Configuration.TOS_ACCEPTED,
                 Start = Configuration.START_LOCATION,
-                UserAgent = string.Format("{0}/{1} ({2})", "Corrade", CORRADE_VERSION, "http://was.fm/")
+                UserAgent =
+                    string.Format("{0}/{1} ({2})", CORRADE_CONSTANTS.CORRADE, CORRADE_VERSION,
+                        CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS_WEBSITE)
             };
             // Set the MAC if specified in the configuration file.
             if (!string.IsNullOrEmpty(Configuration.NETWORK_CARD_MAC))
@@ -2293,9 +2373,12 @@ namespace Corrade
                     o.Value.Set();
                 });
             }
-            // Disable the watcher.
+            // Disable the configuration watcher.
             configurationWatcher.EnableRaisingEvents = false;
             configurationWatcher.Changed -= HandleConfigurationFileChanged;
+            // Disable the AIML bot configuration watcher.
+            AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
+            AIMLBotConfigurationWatcher.Changed -= HandleAIMLBotConfigurationChanged;
             // Logout
             if (Client.Network.Connected)
             {
@@ -2952,7 +3035,7 @@ namespace Corrade
             {
                 case ChatType.OwnerSay:
                     // Process RLV
-                    if (!EnableCorradeRLV || !e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR)) return;
+                    if (!EnableRLV || !e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR)) return;
                     CorradeThreadPool[CorradeThreadType.RLV].Spawn(
                         () => HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1), e.SourceID),
                         Configuration.MAXIMUM_RLV_THREADS);
@@ -3115,6 +3198,12 @@ namespace Corrade
         {
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
             Configuration.Load(e.Name);
+        }
+
+        private static void HandleAIMLBotConfigurationChanged(object sender, FileSystemEventArgs e)
+        {
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AIML_CONFIGURATION_MODIFIED));
+            LoadChatBotFiles.Invoke();
         }
 
         private static void HandleDisconnected(object sender, DisconnectedEventArgs e)
@@ -6009,6 +6098,79 @@ namespace Corrade
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
+                        }
+                    };
+                    break;
+                case ScriptKeys.AI:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_TALK))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        switch (wasGetEnumValueFromDescription<Action>(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
+                                .ToLowerInvariant()))
+                        {
+                            case Action.PROCESS:
+                                string request =
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
+                                            message));
+                                if (string.IsNullOrEmpty(request))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_MESSAGE_PROVIDED));
+                                }
+                                if (AIMLBot.isAcceptingUserInput)
+                                {
+                                    lock (AIMLBotLock)
+                                    {
+                                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                            AIMLBot.Chat(new Request(request, AIMLBotUser, AIMLBot)).Output);
+                                    }
+                                }
+                                break;
+                            case Action.ENABLE:
+                                lock (AIMLBotLock)
+                                {
+                                    AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
+                                    AIMLBot.isAcceptingUserInput = true;
+                                }
+                                break;
+                            case Action.DISABLE:
+                                lock (AIMLBotLock)
+                                {
+                                    AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
+                                    AIMLBot.isAcceptingUserInput = false;
+                                }
+                                break;
+                            case Action.REBUILD:
+                                lock (AIMLBotLock)
+                                {
+                                    AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
+                                    string AIMLBotBrain =
+                                        wasPathCombine(
+                                            Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
+                                            AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_FILE);
+                                    if (File.Exists(AIMLBotBrain))
+                                    {
+                                        try
+                                        {
+                                            File.Delete(AIMLBotBrain);
+                                        }
+                                        catch (Exception)
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_REMOVE_BRAIN_FILE));
+                                        }
+                                    }
+                                    LoadChatBotFiles.Invoke();
+                                    AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
+                                }
+                                break;
+                            default:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
                         }
                     };
                     break;
@@ -12991,10 +13153,10 @@ namespace Corrade
                                     message)).ToLowerInvariant()))
                         {
                             case Action.ENABLE:
-                                EnableCorradeRLV = true;
+                                EnableRLV = true;
                                 break;
                             case Action.DISABLE:
-                                EnableCorradeRLV = false;
+                                EnableRLV = false;
                                 RLVRules.Clear();
                                 break;
                         }
@@ -13670,7 +13832,8 @@ namespace Corrade
             request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             request.Method = WebRequestMethods.Http.Post;
             request.ContentType = "application/x-www-form-urlencoded";
-            request.UserAgent = string.Format("{0}/{1} ({2})", "Corrade", CORRADE_VERSION, "http://was.fm/");
+            request.UserAgent = string.Format("{0}/{1} ({2})", CORRADE_CONSTANTS.CORRADE, CORRADE_VERSION,
+                CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS_WEBSITE);
             byte[] byteArray =
                 Encoding.UTF8.GetBytes(wasKeyValueEncode(message));
             request.ContentLength = byteArray.Length;
@@ -14779,6 +14942,40 @@ namespace Corrade
         #endregion
 
         /// <summary>
+        ///     Constants for Corrade's integrated chat bot.
+        /// </summary>
+        private struct AIML_BOT_CONSTANTS
+        {
+            public const string DIRECTORY = @"AIMLBot";
+            public const string BRAIN_FILE = @"AIMLBot.brain";
+
+            public struct AIML
+            {
+                public const string DIRECTORY = @"AIML";
+            }
+
+            public struct BRAIN
+            {
+                public const string DIRECTORY = @"brain";
+            }
+
+            public struct CONFIG
+            {
+                public const string DIRECTORY = @"config";
+                public const string SETTINGS_FILE = @"Settings.xml";
+                public const string NAME = @"NAME";
+                public const string AIMLDIRECTORY = @"AIMLDIRECTORY";
+                public const string CONFIGDIRECTORY = @"CONFIGDIRECTORY";
+                public const string LOGDIRECTORY = @"LOGDIRECTORY";
+            }
+
+            public struct LOG
+            {
+                public const string DIRECTORY = @"logs";
+            }
+        }
+
+        /// <summary>
         ///     Possible actions.
         /// </summary>
         private enum Action : uint
@@ -14819,7 +15016,9 @@ namespace Corrade
             [Description("save")] SAVE,
             [Description("load")] LOAD,
             [Description("enable")] ENABLE,
-            [Description("disable")] DISABLE
+            [Description("disable")] DISABLE,
+            [Description("process")] PROCESS,
+            [Description("rebuild")] REBUILD
         }
 
         /// <summary>
@@ -14843,6 +15042,9 @@ namespace Corrade
             public const string COPYRIGHT = @"(c) Copyright 2013 Wizardry and Steamworks";
 
             public const string WIZARDRY_AND_STEAMWORKS = @"Wizardry and Steamworks";
+
+            public const string CORRADE = @"Corrade";
+            public const string WIZARDRY_AND_STEAMWORKS_WEBSITE = @"http://was.fm";
 
             /// <summary>
             ///     Censor characters for passwords.
@@ -15074,6 +15276,8 @@ namespace Corrade
                 };
                 VIGENERE_SECRET = string.Empty;
 
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READING_CORRADE_CONFIGURATION));
+
                 try
                 {
                     lock (ConfigurationFileLock)
@@ -15304,6 +15508,33 @@ namespace Corrade
                         }
                     }
 
+                    // Process AIML.
+                    nodeList = root.SelectNodes("/config/aiml/*");
+                    if (nodeList != null)
+                    {
+                        try
+                        {
+                            foreach (XmlNode AIMLNode in nodeList)
+                            {
+                                switch (AIMLNode.Name.ToLowerInvariant())
+                                {
+                                    case ConfigurationKeys.ENABLE:
+                                        bool enable;
+                                        if (!bool.TryParse(AIMLNode.InnerText, out enable))
+                                        {
+                                            throw new Exception("error in AIML section");
+                                        }
+                                        EnableAIML = enable;
+                                        break;
+                                }
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                        }
+                    }
+
                     // Process RLV.
                     nodeList = root.SelectNodes("/config/rlv/*");
                     if (nodeList != null)
@@ -15320,7 +15551,7 @@ namespace Corrade
                                         {
                                             throw new Exception("error in RLV section");
                                         }
-                                        EnableCorradeRLV = enable;
+                                        EnableRLV = enable;
                                         break;
                                 }
                             }
@@ -15864,7 +16095,7 @@ namespace Corrade
                         }
                     }
                 }
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_CONFIGURATION_FILE));
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
             }
         }
 
@@ -15954,7 +16185,8 @@ namespace Corrade
             [Description("logging in")] LOGGING_IN,
             [Description("could not write to group chat logfile")] COULD_NOT_WRITE_TO_GROUP_CHAT_LOGFILE,
             [Description("agent not found")] AGENT_NOT_FOUND,
-            [Description("read configuration file")] READ_CONFIGURATION_FILE,
+            [Description("reading Corrade configuration")] READING_CORRADE_CONFIGURATION,
+            [Description("read Corrade configuration")] READ_CORRADE_CONFIGURATION,
             [Description("configuration file modified")] CONFIGURATION_FILE_MODIFIED,
             [Description("HTTP server error")] HTTP_SERVER_ERROR,
             [Description("HTTP server not supported")] HTTP_SERVER_NOT_SUPPORTED,
@@ -15970,7 +16202,11 @@ namespace Corrade
             [Description("unable to save Corrade cache")] UNABLE_TO_SAVE_CORRADE_CACHE,
             [Description("failed to manifest RLV behaviour")] FAILED_TO_MANIFEST_RLV_BEHAVIOUR,
             [Description("behaviour not implemented")] BEHAVIOUR_NOT_IMPLEMENTED,
-            [Description("workers exceeded")] WORKERS_EXCEEDED
+            [Description("workers exceeded")] WORKERS_EXCEEDED,
+            [Description("error configuring AIML bot")] ERROR_CONFIGURING_AIML_BOT,
+            [Description("AIML bot configuration modified")] AIML_CONFIGURATION_MODIFIED,
+            [Description("read AIML bot configuration")] READ_AIML_BOT_CONFIGURATION,
+            [Description("reading AIML bot configuration")] READING_AIML_BOT_CONFIGURATION
         }
 
         /// <summary>
@@ -16451,7 +16687,9 @@ namespace Corrade
             [Description("avatar is not on the current region")] AVATAR_NOT_ON_CURRENT_REGION,
             [Description("timeout retrieving estate list")] TIMEOUT_RETRIEVING_ESTATE_LIST,
             [Description("destination too close")] DESTINATION_TOO_CLOSE,
-            [Description("timeout getting group titles")] TIMEOUT_GETTING_GROUP_TITLES
+            [Description("timeout getting group titles")] TIMEOUT_GETTING_GROUP_TITLES,
+            [Description("no message provided")] NO_MESSAGE_PROVIDED,
+            [Description("could not remove brain file")] COULD_NOT_REMOVE_BRAIN_FILE
         }
 
         /// <summary>
@@ -16460,6 +16698,7 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+            [Description("ai")] AI,
             [Description("gettitles")] GETTITLES,
             [Description("tag")] TAG,
             [Description("filter")] FILTER,
