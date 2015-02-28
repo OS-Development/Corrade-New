@@ -10337,6 +10337,18 @@ namespace Corrade
                         {
                             effectUUID = UUID.Random();
                         }
+                        Vector3 offset;
+                        if (
+                            !Vector3.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(
+                                        wasOutput(
+                                            wasGetDescriptionFromEnumValue(ScriptKeys.OFFSET)),
+                                        message)),
+                                out offset))
+                        {
+                            offset = Client.Self.SimPosition;
+                        }
                         ViewerEffectType viewerEffectType = wasGetEnumValueFromDescription<ViewerEffectType>(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.EFFECT)), message))
@@ -10416,7 +10428,7 @@ namespace Corrade
                                                 lookAtTypeInfo
                                                     .GetValue(null)
                                             : LookAtType.None;
-                                        Client.Self.LookAtEffect(Client.Self.AgentID, targetUUID, Vector3.Zero,
+                                        Client.Self.LookAtEffect(Client.Self.AgentID, targetUUID, offset,
                                             lookAtType, effectUUID);
                                         if (LookAtEffects.Any(o => o.Effect.Equals(effectUUID)))
                                         {
@@ -10427,7 +10439,7 @@ namespace Corrade
                                             LookAtEffects.Add(new LookAtEffect
                                             {
                                                 Effect = effectUUID,
-                                                Offset = Vector3.Zero,
+                                                Offset = offset,
                                                 Source = Client.Self.AgentID,
                                                 Target = targetUUID,
                                                 Type = lookAtType
@@ -10450,7 +10462,7 @@ namespace Corrade
                                                 pointAtTypeInfo
                                                     .GetValue(null)
                                             : PointAtType.None;
-                                        Client.Self.PointAtEffect(Client.Self.AgentID, targetUUID, Vector3.Zero,
+                                        Client.Self.PointAtEffect(Client.Self.AgentID, targetUUID, offset,
                                             pointAtType, effectUUID);
                                         if (PointAtEffects.Any(o => o.Effect.Equals(effectUUID)))
                                         {
@@ -10461,7 +10473,7 @@ namespace Corrade
                                             PointAtEffects.Add(new PointAtEffect
                                             {
                                                 Effect = effectUUID,
-                                                Offset = Vector3.Zero,
+                                                Offset = offset,
                                                 Source = Client.Self.AgentID,
                                                 Target = targetUUID,
                                                 Type = pointAtType
@@ -10479,7 +10491,9 @@ namespace Corrade
                                                         message)),
                                                 out RGB))
                                         {
-                                            RGB = Vector3.Zero;
+                                            RGB = new Vector3(Client.Settings.DEFAULT_EFFECT_COLOR.R,
+                                                Client.Settings.DEFAULT_EFFECT_COLOR.G,
+                                                Client.Settings.DEFAULT_EFFECT_COLOR.B);
                                         }
                                         Single alpha;
                                         if (Single.TryParse(
@@ -10488,7 +10502,7 @@ namespace Corrade
                                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ALPHA)),
                                                     message)), out alpha))
                                         {
-                                            alpha = 1;
+                                            alpha = Client.Settings.DEFAULT_EFFECT_COLOR.A;
                                         }
                                         float duration;
                                         if (
@@ -10505,7 +10519,7 @@ namespace Corrade
                                         switch (viewerEffectType)
                                         {
                                             case ViewerEffectType.BEAM:
-                                                Client.Self.BeamEffect(Client.Self.AgentID, targetUUID, Vector3.Zero,
+                                                Client.Self.BeamEffect(Client.Self.AgentID, targetUUID, offset,
                                                     color, duration, effectUUID);
                                                 lock (BeamEffectsLock)
                                                 {
@@ -10520,25 +10534,13 @@ namespace Corrade
                                                         Target = targetUUID,
                                                         Color = color,
                                                         Duration = duration,
-                                                        Offset = Vector3.Zero,
+                                                        Offset = offset,
                                                         Termination = DateTime.Now.AddSeconds(duration)
                                                     });
                                                 }
                                                 break;
                                             case ViewerEffectType.SPHERE:
-                                                Vector3 position;
-                                                if (
-                                                    !Vector3.TryParse(
-                                                        wasInput(
-                                                            wasKeyValueGet(
-                                                                wasOutput(
-                                                                    wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
-                                                                message)),
-                                                        out position))
-                                                {
-                                                    position = Client.Self.SimPosition;
-                                                }
-                                                Client.Self.SphereEffect(position, color, duration,
+                                                Client.Self.SphereEffect(offset, color, duration,
                                                     effectUUID);
                                                 lock (SphereEffectsLock)
                                                 {
@@ -10551,7 +10553,7 @@ namespace Corrade
                                                         Color = color,
                                                         Duration = duration,
                                                         Effect = effectUUID,
-                                                        Offset = position,
+                                                        Offset = offset,
                                                         Termination = DateTime.Now.AddSeconds(duration)
                                                     });
                                                 }
@@ -17213,6 +17215,7 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+            [Description("offset")] OFFSET,
             [Description("alpha")] ALPHA,
             [Description("color")] COLOR,
             [Description("deleteviewereffect")] DELETEVIEWEREFFECT,
