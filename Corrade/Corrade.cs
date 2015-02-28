@@ -40,18 +40,6 @@ namespace Corrade
         public delegate bool EventHandler(NativeMethods.CtrlType ctrlType);
 
         /// <summary>
-        ///     Corrade version sent to the simulator.
-        /// </summary>
-        private static readonly string CORRADE_VERSION = Assembly.GetEntryAssembly().GetName().Version.ToString();
-
-        /// <summary>
-        ///     Corrade compile date.
-        /// </summary>
-        private static readonly string CORRADE_COMPILE_DATE = new DateTime(2000, 1, 1).Add(new TimeSpan(
-            TimeSpan.TicksPerDay*Assembly.GetEntryAssembly().GetName().Version.Build + // days since 1 January 2000
-            TimeSpan.TicksPerSecond*2*Assembly.GetEntryAssembly().GetName().Version.Revision)).ToLongDateString();
-
-        /// <summary>
         ///     Semaphores that sense the state of the connection. When any of these semaphores fail,
         ///     Corrade does not consider itself connected anymore and terminates.
         /// </summary>
@@ -1689,39 +1677,6 @@ namespace Corrade
             Console.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
         }
 
-        /// <summary>
-        ///     Writes the logo and the version.
-        /// </summary>
-        private static void WriteLogo()
-        {
-            List<string> logo = new List<string>
-            {
-                Environment.NewLine,
-                Environment.NewLine,
-                @"       _..--=--..._  " + Environment.NewLine,
-                @"    .-'            '-.  .-.  " + Environment.NewLine,
-                @"   /.'              '.\/  /  " + Environment.NewLine,
-                @"  |=-     Corrade    -=| (  " + Environment.NewLine,
-                @"   \'.              .'/\  \  " + Environment.NewLine,
-                @"    '-.,_____ _____.-'  '-'  " + Environment.NewLine,
-                @"          [_____]=8  " + Environment.NewLine,
-                @"               \  " + Environment.NewLine,
-                @"                 Good day!  ",
-                Environment.NewLine,
-                Environment.NewLine,
-                string.Format(CultureInfo.InvariantCulture,
-                    Environment.NewLine + "Version: {0} Compiled: {1}" + Environment.NewLine, CORRADE_VERSION,
-                    CORRADE_COMPILE_DATE),
-                string.Format(CultureInfo.InvariantCulture,
-                    CORRADE_CONSTANTS.COPYRIGHT + Environment.NewLine),
-            };
-            foreach (string line in logo)
-            {
-                Console.Write(line);
-            }
-            Console.WriteLine();
-        }
-
         public static int Main(string[] args)
         {
             if (Environment.UserInteractive)
@@ -1827,10 +1782,12 @@ namespace Corrade
         // Main entry point.
         public void Program()
         {
-            // Write the logo in interactive mode.
-            if (Environment.UserInteractive)
+            // Load the configuration file.
+            Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
+            // Write the logo.
+            foreach (string line in CORRADE_CONSTANTS.LOGO)
             {
-                WriteLogo();
+                Feedback(line);
             }
             // Create a thread for signals.
             Thread BindSignalsThread = null;
@@ -1876,8 +1833,6 @@ namespace Corrade
             };
             configurationWatcher.Changed += HandleConfigurationFileChanged;
             configurationWatcher.EnableRaisingEvents = true;
-            // Load the configuration file.
-            Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
             // Set-up the AIML bot in case it has been enabled.
             AIMLBotConfigurationWatcher.Changed += HandleAIMLBotConfigurationChanged;
             if (EnableAIML)
@@ -1954,14 +1909,14 @@ namespace Corrade
                 Configuration.LAST_NAME,
                 Configuration.PASSWORD,
                 CORRADE_CONSTANTS.CLIENT_CHANNEL,
-                CORRADE_VERSION.ToString(CultureInfo.InvariantCulture),
+                CORRADE_CONSTANTS.CORRADE_VERSION.ToString(CultureInfo.InvariantCulture),
                 Configuration.LOGIN_URL)
             {
                 Author = CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS,
                 AgreeToTos = Configuration.TOS_ACCEPTED,
                 Start = Configuration.START_LOCATION,
                 UserAgent =
-                    string.Format("{0}/{1} ({2})", CORRADE_CONSTANTS.CORRADE, CORRADE_VERSION,
+                    string.Format("{0}/{1} ({2})", CORRADE_CONSTANTS.CORRADE, CORRADE_CONSTANTS.CORRADE_VERSION,
                         CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS_WEBSITE)
             };
             // Set the MAC if specified in the configuration file.
@@ -3730,7 +3685,8 @@ namespace Corrade
                         }
                         Client.Self.Chat(
                             string.Format("{0} v{1} (Corrade Version: {2} Compiled: {3})", RLV_CONSTANTS.VIEWER,
-                                RLV_CONSTANTS.SHORT_VERSION, CORRADE_VERSION, CORRADE_COMPILE_DATE), channel,
+                                RLV_CONSTANTS.SHORT_VERSION, CORRADE_CONSTANTS.CORRADE_VERSION,
+                                CORRADE_CONSTANTS.CORRADE_COMPILE_DATE), channel,
                             ChatType.Normal);
                     };
                     break;
@@ -10495,8 +10451,8 @@ namespace Corrade
                                                 Client.Settings.DEFAULT_EFFECT_COLOR.G,
                                                 Client.Settings.DEFAULT_EFFECT_COLOR.B);
                                         }
-                                        Single alpha;
-                                        if (Single.TryParse(
+                                        float alpha;
+                                        if (!float.TryParse(
                                             wasInput(
                                                 wasKeyValueGet(
                                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ALPHA)),
@@ -10532,7 +10488,8 @@ namespace Corrade
                                                         Effect = effectUUID,
                                                         Source = Client.Self.AgentID,
                                                         Target = targetUUID,
-                                                        Color = color,
+                                                        Color = new Vector3(color.R, color.G, color.B),
+                                                        Alpha = color.A,
                                                         Duration = duration,
                                                         Offset = offset,
                                                         Termination = DateTime.Now.AddSeconds(duration)
@@ -10550,7 +10507,8 @@ namespace Corrade
                                                     }
                                                     SphereEffects.Add(new SphereEffect
                                                     {
-                                                        Color = color,
+                                                        Color = new Vector3(color.R, color.G, color.B),
+                                                        Alpha = color.A,
                                                         Duration = duration,
                                                         Effect = effectUUID,
                                                         Offset = offset,
@@ -10641,6 +10599,8 @@ namespace Corrade
                                             csv.AddRange(new[]
                                             {wasGetStructureMemberDescription(o, o.Color), o.Color.ToString()});
                                             csv.AddRange(new[]
+                                            {wasGetStructureMemberDescription(o, o.Alpha), o.Alpha.ToString()});
+                                            csv.AddRange(new[]
                                             {
                                                 wasGetStructureMemberDescription(o, o.Duration),
                                                 o.Duration.ToString(CultureInfo.InvariantCulture)
@@ -10671,6 +10631,8 @@ namespace Corrade
                                             {wasGetStructureMemberDescription(o, o.Target), o.Target.ToString()});
                                             csv.AddRange(new[]
                                             {wasGetStructureMemberDescription(o, o.Color), o.Color.ToString()});
+                                            csv.AddRange(new[]
+                                            {wasGetStructureMemberDescription(o, o.Alpha), o.Alpha.ToString()});
                                             csv.AddRange(new[]
                                             {
                                                 wasGetStructureMemberDescription(o, o.Duration),
@@ -13725,7 +13687,10 @@ namespace Corrade
                     };
                     break;
                 case ScriptKeys.VERSION:
-                    execute = () => result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), CORRADE_VERSION);
+                    execute =
+                        () =>
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                CORRADE_CONSTANTS.CORRADE_VERSION);
                     break;
                 case ScriptKeys.DIRECTORYSEARCH:
                     execute = () =>
@@ -14307,7 +14272,8 @@ namespace Corrade
             request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             request.Method = WebRequestMethods.Http.Post;
             request.ContentType = "application/x-www-form-urlencoded";
-            request.UserAgent = string.Format("{0}/{1} ({2})", CORRADE_CONSTANTS.CORRADE, CORRADE_VERSION,
+            request.UserAgent = string.Format("{0}/{1} ({2})", CORRADE_CONSTANTS.CORRADE,
+                CORRADE_CONSTANTS.CORRADE_VERSION,
                 CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS_WEBSITE);
             byte[] byteArray =
                 Encoding.UTF8.GetBytes(wasKeyValueEncode(message));
@@ -15511,7 +15477,8 @@ namespace Corrade
         /// </summary>
         private struct BeamEffect
         {
-            [Description("color")] public Color4 Color;
+            [Description("alpha")] public float Alpha;
+            [Description("color")] public Vector3 Color;
             [Description("duration")] public float Duration;
             [Description("effect")] public UUID Effect;
             [Description("offset")] public Vector3d Offset;
@@ -15531,7 +15498,6 @@ namespace Corrade
             public const string COPYRIGHT = @"(c) Copyright 2013 Wizardry and Steamworks";
 
             public const string WIZARDRY_AND_STEAMWORKS = @"Wizardry and Steamworks";
-
             public const string CORRADE = @"Corrade";
             public const string WIZARDRY_AND_STEAMWORKS_WEBSITE = @"http://was.fm";
 
@@ -15558,6 +15524,39 @@ namespace Corrade
             public const string PATH_SEPARATOR = @"/";
             public const string ERROR_SEPARATOR = @" : ";
             public const string CACHE_DIRECTORY = @"cache";
+
+            /// <summary>
+            ///     Corrade version.
+            /// </summary>
+            public static readonly string CORRADE_VERSION = Assembly.GetEntryAssembly().GetName().Version.ToString();
+
+            /// <summary>
+            ///     Corrade compile date.
+            /// </summary>
+            public static readonly string CORRADE_COMPILE_DATE = new DateTime(2000, 1, 1).Add(new TimeSpan(
+                TimeSpan.TicksPerDay*Assembly.GetEntryAssembly().GetName().Version.Build + // days since 1 January 2000
+                TimeSpan.TicksPerSecond*2*Assembly.GetEntryAssembly().GetName().Version.Revision)).ToLongDateString();
+
+            /// <summary>
+            ///     Corrade Logo.
+            /// </summary>
+            public static readonly List<string> LOGO = new List<string>
+            {
+                @"",
+                @"       _..--=--..._  ",
+                @"    .-'            '-.  .-.  ",
+                @"   /.'              '.\/  /  ",
+                @"  |=-     Corrade    -=| (  ",
+                @"   \'.              .'/\  \  ",
+                @"    '-.,_____ _____.-'  '-'  ",
+                @"          [_____]=8  ",
+                @"               \  ",
+                @"                 Good day!  ",
+                @"",
+                string.Format(CultureInfo.InvariantCulture, "Version: {0}, Compiled: {1}", CORRADE_VERSION,
+                    CORRADE_COMPILE_DATE),
+                string.Format(CultureInfo.InvariantCulture, "Copyright: {0}", COPYRIGHT)
+            };
 
             public static readonly Regex CSVRegex = new Regex(@"\s*(?<key>.+?)\s*,\s*(?<value>.+?)\s*(,|$)",
                 RegexOptions.Compiled);
@@ -17470,7 +17469,8 @@ namespace Corrade
         /// </summary>
         private struct SphereEffect
         {
-            [Description("color")] public Color4 Color;
+            [Description("alpha")] public float Alpha;
+            [Description("color")] public Vector3 Color;
             [Description("duration")] public float Duration;
             [Description("effect")] public UUID Effect;
             [Description("offset")] public Vector3d Offset;
