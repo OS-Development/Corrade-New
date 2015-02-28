@@ -140,6 +140,14 @@ namespace Corrade
 
         private static readonly object GroupWorkersLock = new object();
 
+        private static readonly HashSet<LookAtEffect> LookAtEffects = new HashSet<LookAtEffect>();
+
+        private static readonly HashSet<PointAtEffect> PointAtEffects = new HashSet<PointAtEffect>();
+
+        private static readonly HashSet<SphereEffect> SphereEffects = new HashSet<SphereEffect>();
+
+        private static readonly object SphereEffectsLock = new object();
+
         private static readonly object InputFiltersLock = new object();
 
         private static readonly object OutputFiltersLock = new object();
@@ -444,6 +452,7 @@ namespace Corrade
         private static volatile bool runCallbackThread = true;
         private static volatile bool runGroupMemberSweepThread = true;
         private static volatile bool runNotificationThread = true;
+        private static volatile bool runSphereEffectsExpirationThread = true;
 
         public Corrade()
         {
@@ -2246,6 +2255,19 @@ namespace Corrade
                     }
                 }) {IsBackground = true};
             GroupMemberSweepThread.Start();
+            // Start sphere effect expiration thread
+            Thread SphereEffectsExpirationThread = new Thread(() =>
+            {
+                while (runSphereEffectsExpirationThread)
+                {
+                    lock (SphereEffectsLock)
+                    {
+                        SphereEffects.RemoveWhere(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
+                    }
+                    Thread.Sleep(1);
+                }
+            }) {IsBackground = true};
+            SphereEffectsExpirationThread.Start();
             // Load Corrade Caches
             LoadCorradeCache.Invoke();
             /*
@@ -2289,6 +2311,23 @@ namespace Corrade
             Client.Appearance.AppearanceSet -= HandleAppearanceSet;
             Client.Network.LoginProgress -= HandleLoginProgress;
             Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
+            // Stop the sphere effects expiration thread.
+            runSphereEffectsExpirationThread = false;
+            if (
+                (SphereEffectsExpirationThread.ThreadState.Equals(ThreadState.Running) ||
+                 SphereEffectsExpirationThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+            {
+                if (!SphereEffectsExpirationThread.Join(1000))
+                {
+                    try
+                    {
+                        SphereEffectsExpirationThread.Abort();
+                    }
+                    catch (ThreadStateException)
+                    {
+                    }
+                }
+            }
             // Stop the group sweep thread.
             runGroupMemberSweepThread = false;
             if (
@@ -10269,6 +10308,363 @@ namespace Corrade
                         }
                     };
                     break;
+                case ScriptKeys.SETVIEWEREFFECT:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(group,
+                                (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        UUID effectUUID;
+                        if (!UUID.TryParse(wasInput(wasKeyValueGet(
+                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ID)), message)), out effectUUID))
+                        {
+                            effectUUID = UUID.Random();
+                        }
+                        ViewerEffectType viewerEffectType = wasGetEnumValueFromDescription<ViewerEffectType>(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.EFFECT)), message))
+                                .ToLowerInvariant());
+                        switch (viewerEffectType)
+                        {
+                            case ViewerEffectType.POINT:
+                            case ViewerEffectType.LOOK:
+                                string item = wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message));
+                                UUID targetUUID;
+                                switch (!string.IsNullOrEmpty(item))
+                                {
+                                    case true:
+                                        float range;
+                                        if (
+                                            !float.TryParse(
+                                                wasInput(wasKeyValueGet(
+                                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                                out range))
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                                        }
+                                        Primitive primitive = null;
+                                        if (
+                                            !FindPrimitive(
+                                                StringOrUUID(item),
+                                                range,
+                                                Configuration.SERVICES_TIMEOUT,
+                                                ref primitive))
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                                        }
+                                        targetUUID = primitive.ID;
+                                        break;
+                                    default:
+                                        if (
+                                            !UUID.TryParse(
+                                                wasInput(wasKeyValueGet(
+                                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
+                                                out targetUUID) && !AgentNameToUUID(
+                                                    wasInput(
+                                                        wasKeyValueGet(
+                                                            wasOutput(
+                                                                wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                                            message)),
+                                                    wasInput(
+                                                        wasKeyValueGet(
+                                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
+                                                            message)),
+                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    ref targetUUID))
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
+                                        }
+                                        break;
+                                }
+                                switch (viewerEffectType)
+                                {
+                                    case ViewerEffectType.LOOK:
+                                        FieldInfo lookAtTypeInfo = typeof (LookAtType).GetFields(BindingFlags.Public |
+                                                                                                 BindingFlags.Static)
+                                            .FirstOrDefault(
+                                                o =>
+                                                    o.Name.Equals(
+                                                        wasInput(
+                                                            wasKeyValueGet(
+                                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                                                message)),
+                                                        StringComparison.Ordinal));
+                                        LookAtType lookAtType = lookAtTypeInfo != null
+                                            ? (LookAtType)
+                                                lookAtTypeInfo
+                                                    .GetValue(null)
+                                            : LookAtType.None;
+                                        Client.Self.LookAtEffect(Client.Self.AgentID, targetUUID, Vector3.Zero,
+                                            lookAtType, effectUUID);
+                                        if (LookAtEffects.Any(o => o.Effect.Equals(effectUUID)))
+                                        {
+                                            LookAtEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
+                                        }
+                                        if (!lookAtType.Equals(LookAtType.None))
+                                        {
+                                            LookAtEffects.Add(new LookAtEffect
+                                            {
+                                                Effect = effectUUID,
+                                                Offset = Vector3.Zero,
+                                                Source = Client.Self.AgentID,
+                                                Target = targetUUID,
+                                                Type = lookAtType
+                                            });
+                                        }
+                                        break;
+                                    case ViewerEffectType.POINT:
+                                        FieldInfo pointAtTypeInfo = typeof (PointAtType).GetFields(BindingFlags.Public |
+                                                                                                   BindingFlags.Static)
+                                            .FirstOrDefault(
+                                                o =>
+                                                    o.Name.Equals(
+                                                        wasInput(
+                                                            wasKeyValueGet(
+                                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                                                message)),
+                                                        StringComparison.Ordinal));
+                                        PointAtType pointAtType = pointAtTypeInfo != null
+                                            ? (PointAtType)
+                                                pointAtTypeInfo
+                                                    .GetValue(null)
+                                            : PointAtType.None;
+                                        Client.Self.PointAtEffect(Client.Self.AgentID, targetUUID, Vector3.Zero,
+                                            pointAtType, effectUUID);
+                                        if (PointAtEffects.Any(o => o.Effect.Equals(effectUUID)))
+                                        {
+                                            PointAtEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
+                                        }
+                                        if (!pointAtType.Equals(PointAtType.None))
+                                        {
+                                            PointAtEffects.Add(new PointAtEffect
+                                            {
+                                                Effect = effectUUID,
+                                                Offset = Vector3.Zero,
+                                                Source = Client.Self.AgentID,
+                                                Target = targetUUID,
+                                                Type = pointAtType
+                                            });
+                                        }
+                                        break;
+                                }
+                                break;
+                            case ViewerEffectType.SPHERE:
+                                Vector3 position;
+                                if (
+                                    !Vector3.TryParse(
+                                        wasInput(
+                                            wasKeyValueGet(
+                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                                message)),
+                                        out position))
+                                {
+                                    position = Client.Self.SimPosition;
+                                }
+                                Vector3 RGB;
+                                if (
+                                    !Vector3.TryParse(
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.COLOR)),
+                                                message)),
+                                        out RGB))
+                                {
+                                    RGB = Vector3.Zero;
+                                }
+                                Single alpha;
+                                if (Single.TryParse(
+                                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
+                                        message)), out alpha))
+                                {
+                                    alpha = 1;
+                                }
+                                float duration;
+                                if (
+                                    !float.TryParse(
+                                        wasInput(
+                                            wasKeyValueGet(
+                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION)),
+                                                message)),
+                                        out duration))
+                                {
+                                    duration = 1;
+                                }
+                                Color4 color = new Color4(RGB.X, RGB.Y, RGB.Z, alpha);
+                                Client.Self.SphereEffect(position, color, duration,
+                                    effectUUID);
+                                lock (SphereEffectsLock)
+                                {
+                                    if (SphereEffects.Any(o => o.Effect.Equals(effectUUID)))
+                                    {
+                                        SphereEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
+                                    }
+                                    SphereEffects.Add(new SphereEffect
+                                    {
+                                        Color = color,
+                                        Duration = duration,
+                                        Effect = effectUUID,
+                                        Offset = position,
+                                        Termination = DateTime.Now.AddSeconds(duration)
+                                    });
+                                }
+                                break;
+                            default:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_EFFECT));
+                        }
+                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), effectUUID.ToString());
+                    };
+                    break;
+                case ScriptKeys.GETVIEWEREFFECTS:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(group,
+                                (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        List<string> csv = new List<string>();
+                        object LockObject = new object();
+                        ViewerEffectType viewerEffectType = wasGetEnumValueFromDescription<ViewerEffectType>(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.EFFECT)), message))
+                                .ToLowerInvariant());
+                        switch (viewerEffectType)
+                        {
+                            case ViewerEffectType.LOOK:
+                                Parallel.ForEach(LookAtEffects, o =>
+                                {
+                                    lock (LockObject)
+                                    {
+                                        csv.AddRange(new[]
+                                        {wasGetStructureMemberDescription(o, o.Effect), o.Effect.ToString()});
+                                        csv.AddRange(new[]
+                                        {wasGetStructureMemberDescription(o, o.Source), o.Source.ToString()});
+                                        csv.AddRange(new[]
+                                        {wasGetStructureMemberDescription(o, o.Target), o.Target.ToString()});
+                                        csv.AddRange(new[]
+                                        {wasGetStructureMemberDescription(o, o.Offset), o.Offset.ToString()});
+                                        csv.AddRange(new[]
+                                        {
+                                            wasGetStructureMemberDescription(o, o.Type),
+                                            Enum.GetName(typeof (LookAtType), o.Type)
+                                        });
+                                    }
+                                });
+                                break;
+                            case ViewerEffectType.POINT:
+                                Parallel.ForEach(PointAtEffects, o =>
+                                {
+                                    lock (LockObject)
+                                    {
+                                        csv.AddRange(new[]
+                                        {wasGetStructureMemberDescription(o, o.Effect), o.Effect.ToString()});
+                                        csv.AddRange(new[]
+                                        {wasGetStructureMemberDescription(o, o.Source), o.Source.ToString()});
+                                        csv.AddRange(new[]
+                                        {wasGetStructureMemberDescription(o, o.Target), o.Target.ToString()});
+                                        csv.AddRange(new[]
+                                        {wasGetStructureMemberDescription(o, o.Offset), o.Offset.ToString()});
+                                        csv.AddRange(new[]
+                                        {
+                                            wasGetStructureMemberDescription(o, o.Type),
+                                            Enum.GetName(typeof (PointAtType), o.Type)
+                                        });
+                                    }
+                                });
+                                break;
+                            case ViewerEffectType.SPHERE:
+                                lock (SphereEffectsLock)
+                                {
+                                    Parallel.ForEach(SphereEffects, o =>
+                                    {
+                                        lock (LockObject)
+                                        {
+                                            csv.AddRange(new[]
+                                            {wasGetStructureMemberDescription(o, o.Effect), o.Effect.ToString()});
+                                            csv.AddRange(new[]
+                                            {wasGetStructureMemberDescription(o, o.Offset), o.Offset.ToString()});
+                                            csv.AddRange(new[]
+                                            {wasGetStructureMemberDescription(o, o.Color), o.Color.ToString()});
+                                            csv.AddRange(new[]
+                                            {
+                                                wasGetStructureMemberDescription(o, o.Duration),
+                                                o.Duration.ToString(CultureInfo.InvariantCulture)
+                                            });
+                                            csv.AddRange(new[]
+                                            {
+                                                wasGetStructureMemberDescription(o, o.Termination),
+                                                o.Termination.ToString(CultureInfo.InvariantCulture)
+                                            });
+                                        }
+                                    });
+                                }
+                                break;
+                            default:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_EFFECT));
+                        }
+                        if (!csv.Count.Equals(0))
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.ToArray()));
+                        }
+                    };
+                    break;
+                case ScriptKeys.DELETEVIEWEREFFECT:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(group,
+                                (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        UUID effectUUID;
+                        if (!UUID.TryParse(wasInput(wasKeyValueGet(
+                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ID)), message)), out effectUUID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_EFFECT_UUID_PROVIDED));
+                        }
+                        ViewerEffectType viewerEffectType = wasGetEnumValueFromDescription<ViewerEffectType>(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.EFFECT)), message))
+                                .ToLowerInvariant());
+                        switch (viewerEffectType)
+                        {
+                            case ViewerEffectType.LOOK:
+                                LookAtEffect lookAtEffect =
+                                    LookAtEffects.FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                                if (lookAtEffect.Equals(default(LookAtEffect)))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EFFECT_NOT_FOUND));
+                                }
+                                Client.Self.LookAtEffect(Client.Self.AgentID, lookAtEffect.Target, Vector3.Zero,
+                                    LookAtType.None, effectUUID);
+                                LookAtEffects.Remove(lookAtEffect);
+                                break;
+                            case ViewerEffectType.POINT:
+                                PointAtEffect pointAtEffect =
+                                    PointAtEffects.FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                                if (pointAtEffect.Equals(default(PointAtEffect)))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EFFECT_NOT_FOUND));
+                                }
+                                Client.Self.PointAtEffect(Client.Self.AgentID, pointAtEffect.Target, Vector3.Zero,
+                                    PointAtType.None, effectUUID);
+                                PointAtEffects.Remove(pointAtEffect);
+                                break;
+                            default:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_VIEWER_EFFECT));
+                        }
+                    };
+                    break;
                 case ScriptKeys.STARTPROPOSAL:
                     execute = () =>
                     {
@@ -11912,19 +12308,19 @@ namespace Corrade
                                 lock (LockObject)
                                 {
                                     csv.AddRange(new[]
-                                    {wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)), name.First()});
+                                    {wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME), name.First()});
                                     csv.AddRange(new[]
-                                    {wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)), name.Last()});
+                                    {wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME), name.Last()});
                                     csv.AddRange(new[]
                                     {
-                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                        wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
                                         o.Key.AssetType.ToString()
                                     });
                                     csv.AddRange(new[]
-                                    {wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)), o.Key.Offer.Message});
+                                    {wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE), o.Key.Offer.Message});
                                     csv.AddRange(new[]
                                     {
-                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION)),
+                                        wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
                                         o.Key.Offer.IMSessionID.ToString()
                                     });
                                 }
@@ -16426,6 +16822,18 @@ namespace Corrade
         }
 
         /// <summary>
+        ///     A structure to track LookAt effects.
+        /// </summary>
+        private struct LookAtEffect
+        {
+            [Description("effect")] public UUID Effect;
+            [Description("offset")] public Vector3d Offset;
+            [Description("source")] public UUID Source;
+            [Description("target")] public UUID Target;
+            [Description("type")] public LookAtType Type;
+        }
+
+        /// <summary>
         ///     Masters structure.
         /// </summary>
         private struct Master
@@ -16504,6 +16912,18 @@ namespace Corrade
             [Description("execute")] PERMISSION_EXECUTE = 8192,
             [Description("group")] PERMISSION_GROUP = 16384,
             [Description("filter")] PERMISSION_FILTER = 32768
+        }
+
+        /// <summary>
+        ///     A structure to track PointAt effects.
+        /// </summary>
+        private struct PointAtEffect
+        {
+            [Description("effect")] public UUID Effect;
+            [Description("offset")] public Vector3d Offset;
+            [Description("source")] public UUID Source;
+            [Description("target")] public UUID Target;
+            [Description("type")] public PointAtType Type;
         }
 
         /// <summary>
@@ -16689,7 +17109,11 @@ namespace Corrade
             [Description("destination too close")] DESTINATION_TOO_CLOSE,
             [Description("timeout getting group titles")] TIMEOUT_GETTING_GROUP_TITLES,
             [Description("no message provided")] NO_MESSAGE_PROVIDED,
-            [Description("could not remove brain file")] COULD_NOT_REMOVE_BRAIN_FILE
+            [Description("could not remove brain file")] COULD_NOT_REMOVE_BRAIN_FILE,
+            [Description("unknown effect")] UNKNOWN_EFFECT,
+            [Description("no effect UUID provided")] NO_EFFECT_UUID_PROVIDED,
+            [Description("effect not found")] EFFECT_NOT_FOUND,
+            [Description("invalid viewer effect")] INVALID_VIEWER_EFFECT
         }
 
         /// <summary>
@@ -16698,6 +17122,10 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+            [Description("color")] COLOR,
+            [Description("deleteviewereffect")] DELETEVIEWEREFFECT,
+            [Description("getviewereffects")] GETVIEWEREFFECTS,
+            [Description("setviewereffect")] SETVIEWEREFFECT,
             [Description("ai")] AI,
             [Description("gettitles")] GETTITLES,
             [Description("tag")] TAG,
@@ -16943,6 +17371,18 @@ namespace Corrade
         }
 
         /// <summary>
+        ///     A structure to track Sphere effects.
+        /// </summary>
+        private struct SphereEffect
+        {
+            [Description("color")] public Color4 Color;
+            [Description("duration")] public float Duration;
+            [Description("effect")] public UUID Effect;
+            [Description("offset")] public Vector3d Offset;
+            [Description("termination")] public DateTime Termination;
+        }
+
+        /// <summary>
         ///     A structure for teleport lures.
         /// </summary>
         private struct TeleportLure
@@ -16972,6 +17412,17 @@ namespace Corrade
             [Description("place")] PLACE,
             [Description("input")] INPUT,
             [Description("output")] OUTPUT
+        }
+
+        /// <summary>
+        ///     Possible viewer effects.
+        /// </summary>
+        private enum ViewerEffectType : uint
+        {
+            [Description("none")] NONE = 0,
+            [Description("look")] LOOK,
+            [Description("point")] POINT,
+            [Description("sphere")] SPHERE
         }
 
         ///////////////////////////////////////////////////////////////////////////

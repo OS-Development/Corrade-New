@@ -6,7 +6,7 @@ using System.Resources;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("Corrade")]
-[assembly: AssemblyDescription("Second Life and OpenSim Scripted Agent")]
+[assembly: AssemblyDescription("Linden Virtual World Scripted Agent")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Wizardry and Steamworks")]
 [assembly: AssemblyProduct("Corrade")]
@@ -29,5 +29,5 @@ using System.Resources;
 //      Build Number
 //      Revision
 //
-[assembly: AssemblyVersion("7.74.*")]
+[assembly: AssemblyVersion("7.75.*")]
 [assembly: NeutralResourcesLanguageAttribute("en")]
