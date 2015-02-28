@@ -148,6 +148,10 @@ namespace Corrade
 
         private static readonly object SphereEffectsLock = new object();
 
+        private static readonly HashSet<BeamEffect> BeamEffects = new HashSet<BeamEffect>();
+
+        private static readonly object BeamEffectsLock = new object();
+
         private static readonly object InputFiltersLock = new object();
 
         private static readonly object OutputFiltersLock = new object();
@@ -452,7 +456,7 @@ namespace Corrade
         private static volatile bool runCallbackThread = true;
         private static volatile bool runGroupMemberSweepThread = true;
         private static volatile bool runNotificationThread = true;
-        private static volatile bool runSphereEffectsExpirationThread = true;
+        private static volatile bool runEffectsExpirationThread = true;
 
         public Corrade()
         {
@@ -2109,7 +2113,7 @@ namespace Corrade
 
                     while (runGroupMemberSweepThread)
                     {
-                        Thread.Sleep(1);
+                        Thread.Sleep(1000);
 
                         if (!Client.Network.Connected || Configuration.GROUPS.Count.Equals(0)) continue;
 
@@ -2256,18 +2260,28 @@ namespace Corrade
                 }) {IsBackground = true};
             GroupMemberSweepThread.Start();
             // Start sphere effect expiration thread
-            Thread SphereEffectsExpirationThread = new Thread(() =>
+            Thread EffectsExpirationThread = new Thread(() =>
             {
-                while (runSphereEffectsExpirationThread)
+                while (runEffectsExpirationThread)
                 {
-                    lock (SphereEffectsLock)
+                    if (runEffectsExpirationThread)
                     {
-                        SphereEffects.RemoveWhere(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
+                        lock (SphereEffectsLock)
+                        {
+                            SphereEffects.RemoveWhere(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
+                        }
                     }
-                    Thread.Sleep(1);
+                    if (runEffectsExpirationThread)
+                    {
+                        lock (BeamEffectsLock)
+                        {
+                            BeamEffects.RemoveWhere(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
+                        }
+                    }
+                    Thread.Sleep(1000);
                 }
             }) {IsBackground = true};
-            SphereEffectsExpirationThread.Start();
+            EffectsExpirationThread.Start();
             // Load Corrade Caches
             LoadCorradeCache.Invoke();
             /*
@@ -2312,16 +2326,16 @@ namespace Corrade
             Client.Network.LoginProgress -= HandleLoginProgress;
             Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
             // Stop the sphere effects expiration thread.
-            runSphereEffectsExpirationThread = false;
+            runEffectsExpirationThread = false;
             if (
-                (SphereEffectsExpirationThread.ThreadState.Equals(ThreadState.Running) ||
-                 SphereEffectsExpirationThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                (EffectsExpirationThread.ThreadState.Equals(ThreadState.Running) ||
+                 EffectsExpirationThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
             {
-                if (!SphereEffectsExpirationThread.Join(1000))
+                if (!EffectsExpirationThread.Join(1000))
                 {
                     try
                     {
-                        SphereEffectsExpirationThread.Abort();
+                        EffectsExpirationThread.Abort();
                     }
                     catch (ThreadStateException)
                     {
@@ -10329,6 +10343,7 @@ namespace Corrade
                                 .ToLowerInvariant());
                         switch (viewerEffectType)
                         {
+                            case ViewerEffectType.BEAM:
                             case ViewerEffectType.POINT:
                             case ViewerEffectType.LOOK:
                                 string item = wasInput(wasKeyValueGet(
@@ -10453,65 +10468,96 @@ namespace Corrade
                                             });
                                         }
                                         break;
-                                }
-                                break;
-                            case ViewerEffectType.SPHERE:
-                                Vector3 position;
-                                if (
-                                    !Vector3.TryParse(
-                                        wasInput(
-                                            wasKeyValueGet(
-                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
-                                                message)),
-                                        out position))
-                                {
-                                    position = Client.Self.SimPosition;
-                                }
-                                Vector3 RGB;
-                                if (
-                                    !Vector3.TryParse(
-                                        wasInput(
-                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.COLOR)),
-                                                message)),
-                                        out RGB))
-                                {
-                                    RGB = Vector3.Zero;
-                                }
-                                Single alpha;
-                                if (Single.TryParse(
-                                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
-                                        message)), out alpha))
-                                {
-                                    alpha = 1;
-                                }
-                                float duration;
-                                if (
-                                    !float.TryParse(
-                                        wasInput(
-                                            wasKeyValueGet(
-                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION)),
-                                                message)),
-                                        out duration))
-                                {
-                                    duration = 1;
-                                }
-                                Color4 color = new Color4(RGB.X, RGB.Y, RGB.Z, alpha);
-                                Client.Self.SphereEffect(position, color, duration,
-                                    effectUUID);
-                                lock (SphereEffectsLock)
-                                {
-                                    if (SphereEffects.Any(o => o.Effect.Equals(effectUUID)))
-                                    {
-                                        SphereEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
-                                    }
-                                    SphereEffects.Add(new SphereEffect
-                                    {
-                                        Color = color,
-                                        Duration = duration,
-                                        Effect = effectUUID,
-                                        Offset = position,
-                                        Termination = DateTime.Now.AddSeconds(duration)
-                                    });
+                                    case ViewerEffectType.BEAM:
+                                    case ViewerEffectType.SPHERE:
+                                        Vector3 RGB;
+                                        if (
+                                            !Vector3.TryParse(
+                                                wasInput(
+                                                    wasKeyValueGet(
+                                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.COLOR)),
+                                                        message)),
+                                                out RGB))
+                                        {
+                                            RGB = Vector3.Zero;
+                                        }
+                                        Single alpha;
+                                        if (Single.TryParse(
+                                            wasInput(
+                                                wasKeyValueGet(
+                                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ALPHA)),
+                                                    message)), out alpha))
+                                        {
+                                            alpha = 1;
+                                        }
+                                        float duration;
+                                        if (
+                                            !float.TryParse(
+                                                wasInput(
+                                                    wasKeyValueGet(
+                                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION)),
+                                                        message)),
+                                                out duration))
+                                        {
+                                            duration = 1;
+                                        }
+                                        Color4 color = new Color4(RGB.X, RGB.Y, RGB.Z, alpha);
+                                        switch (viewerEffectType)
+                                        {
+                                            case ViewerEffectType.BEAM:
+                                                Client.Self.BeamEffect(Client.Self.AgentID, targetUUID, Vector3.Zero,
+                                                    color, duration, effectUUID);
+                                                lock (BeamEffectsLock)
+                                                {
+                                                    if (BeamEffects.Any(o => o.Effect.Equals(effectUUID)))
+                                                    {
+                                                        BeamEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
+                                                    }
+                                                    BeamEffects.Add(new BeamEffect
+                                                    {
+                                                        Effect = effectUUID,
+                                                        Source = Client.Self.AgentID,
+                                                        Target = targetUUID,
+                                                        Color = color,
+                                                        Duration = duration,
+                                                        Offset = Vector3.Zero,
+                                                        Termination = DateTime.Now.AddSeconds(duration)
+                                                    });
+                                                }
+                                                break;
+                                            case ViewerEffectType.SPHERE:
+                                                Vector3 position;
+                                                if (
+                                                    !Vector3.TryParse(
+                                                        wasInput(
+                                                            wasKeyValueGet(
+                                                                wasOutput(
+                                                                    wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                                                message)),
+                                                        out position))
+                                                {
+                                                    position = Client.Self.SimPosition;
+                                                }
+                                                Client.Self.SphereEffect(position, color, duration,
+                                                    effectUUID);
+                                                lock (SphereEffectsLock)
+                                                {
+                                                    if (SphereEffects.Any(o => o.Effect.Equals(effectUUID)))
+                                                    {
+                                                        SphereEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
+                                                    }
+                                                    SphereEffects.Add(new SphereEffect
+                                                    {
+                                                        Color = color,
+                                                        Duration = duration,
+                                                        Effect = effectUUID,
+                                                        Offset = position,
+                                                        Termination = DateTime.Now.AddSeconds(duration)
+                                                    });
+                                                }
+                                                break;
+                                        }
+                                        break;
                                 }
                                 break;
                             default:
@@ -10590,6 +10636,37 @@ namespace Corrade
                                             {wasGetStructureMemberDescription(o, o.Effect), o.Effect.ToString()});
                                             csv.AddRange(new[]
                                             {wasGetStructureMemberDescription(o, o.Offset), o.Offset.ToString()});
+                                            csv.AddRange(new[]
+                                            {wasGetStructureMemberDescription(o, o.Color), o.Color.ToString()});
+                                            csv.AddRange(new[]
+                                            {
+                                                wasGetStructureMemberDescription(o, o.Duration),
+                                                o.Duration.ToString(CultureInfo.InvariantCulture)
+                                            });
+                                            csv.AddRange(new[]
+                                            {
+                                                wasGetStructureMemberDescription(o, o.Termination),
+                                                o.Termination.ToString(CultureInfo.InvariantCulture)
+                                            });
+                                        }
+                                    });
+                                }
+                                break;
+                            case ViewerEffectType.BEAM:
+                                lock (BeamEffectsLock)
+                                {
+                                    Parallel.ForEach(BeamEffects, o =>
+                                    {
+                                        lock (LockObject)
+                                        {
+                                            csv.AddRange(new[]
+                                            {wasGetStructureMemberDescription(o, o.Effect), o.Effect.ToString()});
+                                            csv.AddRange(new[]
+                                            {wasGetStructureMemberDescription(o, o.Offset), o.Offset.ToString()});
+                                            csv.AddRange(new[]
+                                            {wasGetStructureMemberDescription(o, o.Source), o.Source.ToString()});
+                                            csv.AddRange(new[]
+                                            {wasGetStructureMemberDescription(o, o.Target), o.Target.ToString()});
                                             csv.AddRange(new[]
                                             {wasGetStructureMemberDescription(o, o.Color), o.Color.ToString()});
                                             csv.AddRange(new[]
@@ -15428,6 +15505,20 @@ namespace Corrade
         }
 
         /// <summary>
+        ///     A structure to track Beam effects.
+        /// </summary>
+        private struct BeamEffect
+        {
+            [Description("color")] public Color4 Color;
+            [Description("duration")] public float Duration;
+            [Description("effect")] public UUID Effect;
+            [Description("offset")] public Vector3d Offset;
+            [Description("source")] public UUID Source;
+            [Description("target")] public UUID Target;
+            [Description("termination")] public DateTime Termination;
+        }
+
+        /// <summary>
         ///     Constants used by Corrade.
         /// </summary>
         private struct CORRADE_CONSTANTS
@@ -17122,6 +17213,7 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+            [Description("alpha")] ALPHA,
             [Description("color")] COLOR,
             [Description("deleteviewereffect")] DELETEVIEWEREFFECT,
             [Description("getviewereffects")] GETVIEWEREFFECTS,
@@ -17422,7 +17514,8 @@ namespace Corrade
             [Description("none")] NONE = 0,
             [Description("look")] LOOK,
             [Description("point")] POINT,
-            [Description("sphere")] SPHERE
+            [Description("sphere")] SPHERE,
+            [Description("beam")] BEAM
         }
 
         ///////////////////////////////////////////////////////////////////////////
