@@ -66,11 +66,7 @@ namespace Corrade
 
         private static readonly User AIMLBotUser = new User(CORRADE_CONSTANTS.CORRADE, AIMLBot);
 
-        private static readonly FileSystemWatcher AIMLBotConfigurationWatcher = new FileSystemWatcher
-        {
-            Path = wasPathCombine(Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY),
-            NotifyFilter = NotifyFilters.LastWrite
-        };
+        private static readonly FileSystemWatcher AIMLBotConfigurationWatcher = new FileSystemWatcher();
 
         private static readonly object AIMLBotLock = new object();
 
@@ -1782,6 +1778,8 @@ namespace Corrade
         // Main entry point.
         public void Program()
         {
+            // Set the current directory to the service directory.
+            Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
             // Load the configuration file.
             Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
             // Write the logo.
@@ -1822,8 +1820,6 @@ namespace Corrade
                     BindSignalsThread.Start();
                     break;
             }
-            // Set the current directory to the service directory.
-            Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
             // Set-up watcher for dynamically reading the configuration file.
             FileSystemWatcher configurationWatcher = new FileSystemWatcher
             {
@@ -1834,6 +1830,9 @@ namespace Corrade
             configurationWatcher.Changed += HandleConfigurationFileChanged;
             configurationWatcher.EnableRaisingEvents = true;
             // Set-up the AIML bot in case it has been enabled.
+            AIMLBotConfigurationWatcher.Path = wasPathCombine(Directory.GetCurrentDirectory(),
+                AIML_BOT_CONSTANTS.DIRECTORY);
+            AIMLBotConfigurationWatcher.NotifyFilter = NotifyFilters.LastWrite;
             AIMLBotConfigurationWatcher.Changed += HandleAIMLBotConfigurationChanged;
             if (EnableAIML)
             {
@@ -4641,6 +4640,11 @@ namespace Corrade
             // Get group and password.
             string group =
                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)), message));
+            // If an UUID was sent, try to resolve to a name and bail if not.
+            UUID groupUUID;
+            if (UUID.TryParse(group, out groupUUID) &&
+                !GroupUUIDToName(groupUUID, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref group))
+                return null;
             // Bail if no group set.
             if (string.IsNullOrEmpty(group)) return null;
             // Get password.
@@ -14935,6 +14939,75 @@ namespace Corrade
                 }
             }
             bool succeeded = directGroupNameToUUID(groupName, millisecondsTimeout, dataTimeout, ref groupUUID);
+            if (succeeded)
+            {
+                lock (Cache.Locks.GroupCacheLock)
+                {
+                    Cache.GroupCache.Add(new Cache.Groups
+                    {
+                        Name = groupName,
+                        UUID = groupUUID
+                    });
+                }
+            }
+            return succeeded;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Resolves a group name to an UUID by using the directory search.
+        /// </summary>
+        /// <param name="groupName">a string to store the name to</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
+        /// <param name="groupUUID">the UUID of the group to resolve</param>
+        /// <returns>true if the group UUID could be resolved to an name</returns>
+        private static bool directGroupUUIDToName(UUID groupUUID, int millisecondsTimeout, int dataTimeout,
+            ref string groupName)
+        {
+            string localGroupName = groupName;
+            wasAlarm GroupProfileReceivedAlarm = new wasAlarm();
+            EventHandler<GroupProfileEventArgs> GroupProfileDelegate = (o, s) =>
+            {
+                GroupProfileReceivedAlarm.Alarm(dataTimeout);
+                localGroupName = s.Group.Name;
+            };
+            Client.Groups.GroupProfile += GroupProfileDelegate;
+            Client.Groups.RequestGroupProfile(groupUUID);
+            if (!GroupProfileReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
+            {
+                Client.Groups.GroupProfile -= GroupProfileDelegate;
+                return false;
+            }
+            Client.Groups.GroupProfile -= GroupProfileDelegate;
+            groupName = localGroupName;
+            return true;
+        }
+
+        /// <summary>
+        ///     A wrapper for resolving group names to UUIDs by using Corrade's internal cache.
+        /// </summary>
+        /// <param name="groupName">a string to store the name to</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
+        /// <param name="groupUUID">the UUID of the group to resolve</param>
+        /// <returns>true if the group UUID could be resolved to an name</returns>
+        private static bool GroupUUIDToName(UUID groupUUID, int millisecondsTimeout, int dataTimeout,
+            ref string groupName)
+        {
+            lock (Cache.Locks.GroupCacheLock)
+            {
+                Cache.Groups group = Cache.GroupCache.FirstOrDefault(o => o.UUID.Equals(groupUUID));
+
+                if (!group.Equals(default(Cache.Groups)))
+                {
+                    groupName = group.Name;
+                    return true;
+                }
+            }
+            bool succeeded = directGroupUUIDToName(groupUUID, millisecondsTimeout, dataTimeout, ref groupName);
             if (succeeded)
             {
                 lock (Cache.Locks.GroupCacheLock)

@@ -128,9 +128,6 @@
       <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1.dylib</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="Corrade.exe.manifest">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="Corrade.ini">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -560,6 +557,9 @@
     </None>
     <None Include="..\AIMLBot-data\config\Substitutions.xml">
       <Link>AIMLBot\config\Substitutions.xml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Corrade.exe.manifest">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <Content Include="Corrade.ico" />
