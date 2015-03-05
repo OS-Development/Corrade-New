@@ -146,6 +146,9 @@ namespace Corrade
 
         private static InventoryFolder OutfitFolder;
 
+        /// <summary>
+        ///     The various types of threads used by Corrade.
+        /// </summary>
         private static readonly Dictionary<CorradeThreadType, CorradeThread> CorradeThreadPool =
             new Dictionary<CorradeThreadType, CorradeThread>
             {
@@ -154,6 +157,45 @@ namespace Corrade
                 {CorradeThreadType.NOTIFICATION, new CorradeThread()},
                 {CorradeThreadType.INSTANT_MESSAGE, new CorradeThread()}
             };
+
+        /// <summary>
+        ///     Group membership sweep thread.
+        /// </summary>
+        private static Thread GroupMembershipSweepThread;
+
+        /// <summary>
+        ///     Group membership sweep thread starter.
+        /// </summary>
+        private static readonly System.Action StartGroupMembershipSweepThread = () =>
+        {
+            if (GroupMembershipSweepThread != null &&
+                (GroupMembershipSweepThread.ThreadState.Equals(ThreadState.Running) ||
+                 GroupMembershipSweepThread.ThreadState.Equals(ThreadState.WaitSleepJoin))) return;
+            runGroupMembershipSweepThread = true;
+            GroupMembershipSweepThread = new Thread(GroupMembershipSweep) {IsBackground = true};
+            GroupMembershipSweepThread.Start();
+        };
+
+        /// <summary>
+        ///     Group membership sweep thread stopper.
+        /// </summary>
+        private static readonly System.Action StopGroupMembershipSweepThread = () =>
+        {
+            // Stop the notification thread.
+            runGroupMembershipSweepThread = false;
+            if (GroupMembershipSweepThread == null ||
+                (!GroupMembershipSweepThread.ThreadState.Equals(ThreadState.Running) &&
+                 !GroupMembershipSweepThread.ThreadState.Equals(ThreadState.WaitSleepJoin))) return;
+            if (GroupMembershipSweepThread.Join(1000)) return;
+            try
+            {
+                GroupMembershipSweepThread.Abort();
+                GroupMembershipSweepThread.Join();
+            }
+            catch (ThreadStateException)
+            {
+            }
+        };
 
         /// <summary>
         ///     Global rebake timer.
@@ -304,63 +346,6 @@ namespace Corrade
         };
 
         /// <summary>
-        ///     Goes through the whole inventory and updates all the nodes.
-        /// </summary>
-        private static readonly System.Action InventoryUpdate = () =>
-        {
-            // Create the queue of folders.
-            Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
-            // Enqueue the first folder (root).
-            inventoryFolders.Enqueue(Client.Inventory.Store.RootFolder);
-
-            // Create a list of semaphores indexed by the folder UUID.
-            Dictionary<UUID, AutoResetEvent> FolderUpdatedEvents = new Dictionary<UUID, AutoResetEvent>();
-            object FolderUpdatedEventsLock = new object();
-            EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (sender, args) =>
-            {
-                // Enqueue all the new folders.
-                Client.Inventory.Store.GetContents(args.FolderID).ForEach(o =>
-                {
-                    if (o is InventoryFolder)
-                    {
-                        inventoryFolders.Enqueue(o as InventoryFolder);
-                    }
-                });
-                FolderUpdatedEvents[args.FolderID].Set();
-            };
-
-            do
-            {
-                // Dequeue all the folders in the queue (can also limit to a number of folders).
-                HashSet<InventoryFolder> folders = new HashSet<InventoryFolder>();
-                do
-                {
-                    folders.Add(inventoryFolders.Dequeue());
-                } while (!inventoryFolders.Count.Equals(0));
-                // Process all the dequeued elements in parallel.
-                Parallel.ForEach(folders.Where(o => o != null), o =>
-                {
-                    // Add an semaphore to wait for the folder contents.
-                    lock (FolderUpdatedEventsLock)
-                    {
-                        FolderUpdatedEvents.Add(o.UUID, new AutoResetEvent(false));
-                    }
-                    Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                    Client.Inventory.RequestFolderContents(o.UUID, Client.Self.AgentID, true, true,
-                        InventorySortOrder.ByDate);
-                    // Wait on the semaphore.
-                    FolderUpdatedEvents[o.UUID].WaitOne(Configuration.SERVICES_TIMEOUT, false);
-                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                    // Remove the semaphore for the folder.
-                    lock (FolderUpdatedEventsLock)
-                    {
-                        FolderUpdatedEvents.Remove(o.UUID);
-                    }
-                });
-            } while (!inventoryFolders.Count.Equals(0));
-        };
-
-        /// <summary>
         ///     Saves the OpenMetaverse inventory cache.
         /// </summary>
         private static readonly System.Action SaveInventoryCache = () =>
@@ -450,7 +435,7 @@ namespace Corrade
         };
 
         private static volatile bool runCallbackThread = true;
-        private static volatile bool runGroupMemberSweepThread = true;
+        private static volatile bool runGroupMembershipSweepThread = true;
         private static volatile bool runNotificationThread = true;
         private static volatile bool runEffectsExpirationThread = true;
 
@@ -468,6 +453,208 @@ namespace Corrade
                 EventLog.CreateEventSource(CorradeLog.Source, CorradeLog.Log);
             }
             ((ISupportInitialize) (CorradeLog)).EndInit();
+        }
+
+        /// <summary>
+        ///     Sweep for group members.
+        /// </summary>
+        private static void GroupMembershipSweep()
+        {
+            Queue<UUID> groupUUIDs = new Queue<UUID>();
+            Queue<int> memberCount = new Queue<int>();
+            // The total list of members.
+            HashSet<UUID> groupMembers = new HashSet<UUID>();
+            // New members that have joined the group.
+            HashSet<UUID> joinedMembers = new HashSet<UUID>();
+            // Members that have parted the group.
+            HashSet<UUID> partedMembers = new HashSet<UUID>();
+
+            ManualResetEvent GroupMembersReplyEvent = new ManualResetEvent(false);
+            EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
+            {
+                if (GroupMembers.ContainsKey(args.GroupID))
+                {
+                    object LockObject = new object();
+                    Parallel.ForEach(
+                        args.Members.Values,
+                        o =>
+                        {
+                            lock (GroupMembersLock)
+                            {
+                                if (GroupMembers[args.GroupID].Contains(o.ID)) return;
+                            }
+                            lock (LockObject)
+                            {
+                                joinedMembers.Add(o.ID);
+                            }
+                        });
+                    lock (GroupMembersLock)
+                    {
+                        Parallel.ForEach(
+                            GroupMembers[args.GroupID],
+                            o =>
+                            {
+                                if (args.Members.Values.Any(p => p.ID.Equals(o))) return;
+                                lock (LockObject)
+                                {
+                                    partedMembers.Add(o);
+                                }
+                            });
+                    }
+                }
+                groupMembers.UnionWith(args.Members.Values.Select(o => o.ID));
+                GroupMembersReplyEvent.Set();
+            };
+
+            while (runGroupMembershipSweepThread)
+            {
+                if (!Client.Network.Connected)
+                {
+                    Thread.Sleep(1000);
+                    continue;
+                }
+
+                Thread.Sleep(Configuration.MEMBERSHIP_SWEEP_INTERVAL);
+
+                // Enqueue configured groups that are currently joined groups.
+                groupUUIDs.Clear();
+                lock (ClientInstanceLock)
+                {
+                    foreach (Group group in
+                        Configuration.GROUPS.Select(o => new {group = o, groupUUID = o.UUID})
+                            .Where(p => GetCurrentGroups(
+                                Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT).Any(o => o.ID.Equals(p.groupUUID)))
+                            .Select(o => o.group))
+                    {
+                        groupUUIDs.Enqueue(group.UUID);
+                    }
+                }
+
+                // Bail if no configured groups are also joined.
+                if (groupUUIDs.Count.Equals(0)) continue;
+
+                // Get the last member count.
+                memberCount.Clear();
+                lock (GroupMembersLock)
+                {
+                    foreach (KeyValuePair<UUID, HashSet<UUID>> members in
+                        GroupMembers.SelectMany(
+                            members => groupUUIDs,
+                            (members, groupUUID) => new {members, groupUUID})
+                            .Where(o => o.groupUUID.Equals(o.members.Key))
+                            .Select(p => p.members))
+                    {
+                        memberCount.Enqueue(members.Value.Count);
+                    }
+                }
+
+                do
+                {
+                    UUID groupUUID = groupUUIDs.Dequeue();
+                    // The total list of members.
+                    groupMembers.Clear();
+                    // New members that have joined the group.
+                    joinedMembers.Clear();
+                    // Members that have parted the group.
+                    partedMembers.Clear();
+                    lock (ClientInstanceLock)
+                    {
+                        Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+                        GroupMembersReplyEvent.Reset();
+                        Client.Groups.RequestGroupMembers(groupUUID);
+                        if (!GroupMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                        {
+                            Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+                            continue;
+                        }
+                        Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+                    }
+                    lock (GroupMembersLock)
+                    {
+                        if (!GroupMembers.ContainsKey(groupUUID))
+                        {
+                            GroupMembers.Add(groupUUID, new HashSet<UUID>(groupMembers));
+                            continue;
+                        }
+                    }
+                    if (!memberCount.Count.Equals(0))
+                    {
+                        if (!memberCount.Dequeue().Equals(groupMembers.Count))
+                        {
+                            if (!joinedMembers.Count.Equals(0))
+                            {
+                                Parallel.ForEach(
+                                    joinedMembers,
+                                    o =>
+                                    {
+                                        string agentName = string.Empty;
+                                        lock (ClientInstanceLock)
+                                        {
+                                            if (AgentUUIDToName(
+                                                o,
+                                                Configuration.SERVICES_TIMEOUT,
+                                                ref agentName))
+                                            {
+                                                CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                                    () =>
+                                                        SendNotification(
+                                                            Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
+                                                            new GroupMembershipEventArgs
+                                                            {
+                                                                AgentName = agentName,
+                                                                AgentUUID = o,
+                                                                Action = Action.JOINED
+                                                            }),
+                                                    Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                                            }
+                                        }
+                                    });
+                            }
+                            joinedMembers.Clear();
+                            if (!partedMembers.Count.Equals(0))
+                            {
+                                Parallel.ForEach(
+                                    partedMembers,
+                                    o =>
+                                    {
+                                        string agentName = string.Empty;
+                                        lock (ClientInstanceLock)
+                                        {
+                                            if (AgentUUIDToName(
+                                                o,
+                                                Configuration.SERVICES_TIMEOUT,
+                                                ref agentName))
+                                            {
+                                                CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                                    () =>
+                                                        SendNotification(
+                                                            Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
+                                                            new GroupMembershipEventArgs
+                                                            {
+                                                                AgentName = agentName,
+                                                                AgentUUID = o,
+                                                                Action = Action.PARTED
+                                                            }),
+                                                    Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                                            }
+                                        }
+                                    });
+                            }
+                        }
+                        partedMembers.Clear();
+                    }
+                    lock (GroupMembersLock)
+                    {
+                        GroupMembers[groupUUID].Clear();
+                        foreach (UUID member in groupMembers)
+                        {
+                            GroupMembers[groupUUID].Add(member);
+                        }
+                    }
+                    groupMembers.Clear();
+                } while (!groupUUIDs.Count.Equals(0) && runGroupMembershipSweepThread);
+            }
         }
 
         private static bool ConsoleCtrlCheck(NativeMethods.CtrlType ctrlType)
@@ -1437,24 +1624,36 @@ namespace Corrade
         private static IEnumerable<OpenMetaverse.Group> GetCurrentGroups(int millisecondsTimeout, int dataTimeout)
         {
             wasAlarm CurrentGroupsReceivedAlarm = new wasAlarm();
-            HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>();
+            Queue<OpenMetaverse.Group> groups = new Queue<OpenMetaverse.Group>();
             object LockObject = new object();
             EventHandler<CurrentGroupsEventArgs> CurrentGroupsEventHandler = (sender, args) =>
             {
                 CurrentGroupsReceivedAlarm.Alarm(dataTimeout);
                 foreach (OpenMetaverse.Group group in args.Groups.Select(o => o.Value))
                 {
-                    groups.Add(group);
+                    lock (LockObject)
+                    {
+                        groups.Enqueue(group);
+                    }
                 }
             };
             Client.Groups.CurrentGroups += CurrentGroupsEventHandler;
             Client.Groups.RequestCurrentGroups();
             CurrentGroupsReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false);
             Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
-            lock (LockObject)
+            int groupCount;
+            do
             {
-                return groups;
-            }
+                lock (LockObject)
+                {
+                    groupCount = groups.Count;
+                }
+                if (groupCount.Equals(0)) continue;
+                lock (LockObject)
+                {
+                    yield return groups.Dequeue();
+                }
+            } while (!groupCount.Equals(0));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1816,7 +2015,10 @@ namespace Corrade
             // Set the current directory to the service directory.
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
             // Load the configuration file.
-            Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
+            lock (ClientInstanceLock)
+            {
+                Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
+            }
             // Write the logo.
             foreach (string line in CORRADE_CONSTANTS.LOGO)
             {
@@ -2054,199 +2256,6 @@ namespace Corrade
                 }
             }) {IsBackground = true};
             NotificationThread.Start();
-            Thread GroupMemberSweepThread = new Thread(() =>
-                {
-                    Queue<UUID> groupUUIDs = new Queue<UUID>();
-                    Queue<int> memberCount = new Queue<int>();
-                    // The total list of members.
-                    HashSet<UUID> groupMembers = new HashSet<UUID>();
-                    // New members that have joined the group.
-                    HashSet<UUID> joinedMembers = new HashSet<UUID>();
-                    // Members that have parted the group.
-                    HashSet<UUID> partedMembers = new HashSet<UUID>();
-
-                    ManualResetEvent GroupMembersReplyEvent = new ManualResetEvent(false);
-                    EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
-                    {
-                        if (
-                            !GroupMembers.FirstOrDefault(p => p.Key.Equals(args.GroupID)).Equals(
-                                default(KeyValuePair<UUID, HashSet<UUID>>)))
-                        {
-                            object LockObject = new object();
-                            Parallel.ForEach(
-                                args.Members.Values,
-                                o =>
-                                {
-                                    if (GroupMembers.FirstOrDefault(p => p.Key.Equals(args.GroupID)).Value.Contains(
-                                        o.ID)) return;
-                                    lock (LockObject)
-                                    {
-                                        joinedMembers.Add(o.ID);
-                                    }
-                                });
-                            Parallel.ForEach(
-                                GroupMembers.FirstOrDefault(p => p.Key.Equals(args.GroupID)).Value,
-                                o =>
-                                {
-                                    if (args.Members.Values.Any(p => p.ID.Equals(o))) return;
-                                    lock (LockObject)
-                                    {
-                                        partedMembers.Add(o);
-                                    }
-                                });
-                        }
-                        groupMembers.UnionWith(args.Members.Values.Select(o => o.ID));
-                        GroupMembersReplyEvent.Set();
-                    };
-
-                    while (runGroupMemberSweepThread)
-                    {
-                        Thread.Sleep(1000);
-
-                        if (!Client.Network.Connected || Configuration.GROUPS.Count.Equals(0)) continue;
-
-                        // Enqueue configured groups that are currently joined groups.
-                        groupUUIDs.Clear();
-                        lock (ClientInstanceLock)
-                        {
-                            foreach (Group group in
-                                Configuration.GROUPS.Select(o => new {group = o, groupUUID = o.UUID})
-                                    .Where(p => GetCurrentGroups(
-                                        Configuration.SERVICES_TIMEOUT,
-                                        Configuration.DATA_TIMEOUT).Any(o => o.ID.Equals(p.groupUUID)))
-                                    .Select(o => o.group))
-                            {
-                                groupUUIDs.Enqueue(group.UUID);
-                            }
-                        }
-
-                        // Bail if no configured groups are also joined.
-                        if (groupUUIDs.Count.Equals(0)) continue;
-
-                        // Get the last member count.
-                        memberCount.Clear();
-                        lock (GroupMembersLock)
-                        {
-                            foreach (KeyValuePair<UUID, HashSet<UUID>> members in
-                                GroupMembers.SelectMany(
-                                    members => groupUUIDs,
-                                    (members, groupUUID) => new {members, groupUUID})
-                                    .Where(o => o.groupUUID.Equals(o.members.Key))
-                                    .Select(p => p.members))
-                            {
-                                memberCount.Enqueue(members.Value.Count);
-                            }
-                        }
-
-                        while (!groupUUIDs.Count.Equals(0) && runGroupMemberSweepThread)
-                        {
-                            UUID groupUUID = groupUUIDs.Dequeue();
-                            // The total list of members.
-                            groupMembers.Clear();
-                            // New members that have joined the group.
-                            joinedMembers.Clear();
-                            // Members that have parted the group.
-                            partedMembers.Clear();
-                            Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
-                            GroupMembersReplyEvent.Reset();
-                            lock (ClientInstanceLock)
-                            {
-                                Client.Groups.RequestGroupMembers(groupUUID);
-                            }
-                            if (!GroupMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                            {
-                                Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                                continue;
-                            }
-                            Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                            lock (GroupMembersLock)
-                            {
-                                if (!GroupMembers.ContainsKey(groupUUID))
-                                {
-                                    GroupMembers.Add(groupUUID, new HashSet<UUID>(groupMembers));
-                                    continue;
-                                }
-                            }
-                            if (!memberCount.Count.Equals(0))
-                            {
-                                if (!memberCount.Dequeue().Equals(groupMembers.Count))
-                                {
-                                    if (!joinedMembers.Count.Equals(0))
-                                    {
-                                        Parallel.ForEach(
-                                            joinedMembers,
-                                            o =>
-                                            {
-                                                string agentName = string.Empty;
-                                                lock (ClientInstanceLock)
-                                                {
-                                                    if (AgentUUIDToName(
-                                                        o,
-                                                        Configuration.SERVICES_TIMEOUT,
-                                                        ref agentName))
-                                                    {
-                                                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                                            () =>
-                                                                SendNotification(
-                                                                    Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
-                                                                    new GroupMembershipEventArgs
-                                                                    {
-                                                                        AgentName = agentName,
-                                                                        AgentUUID = o,
-                                                                        Action = Action.JOINED
-                                                                    }),
-                                                            Configuration.MAXIMUM_NOTIFICATION_THREADS);
-                                                    }
-                                                }
-                                            });
-                                    }
-                                    joinedMembers.Clear();
-                                    if (!partedMembers.Count.Equals(0))
-                                    {
-                                        Parallel.ForEach(
-                                            partedMembers,
-                                            o =>
-                                            {
-                                                string agentName = string.Empty;
-                                                lock (ClientInstanceLock)
-                                                {
-                                                    if (AgentUUIDToName(
-                                                        o,
-                                                        Configuration.SERVICES_TIMEOUT,
-                                                        ref agentName))
-                                                    {
-                                                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                                            () =>
-                                                                SendNotification(
-                                                                    Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
-                                                                    new GroupMembershipEventArgs
-                                                                    {
-                                                                        AgentName = agentName,
-                                                                        AgentUUID = o,
-                                                                        Action = Action.PARTED
-                                                                    }),
-                                                            Configuration.MAXIMUM_NOTIFICATION_THREADS);
-                                                    }
-                                                }
-                                            });
-                                    }
-                                }
-                                partedMembers.Clear();
-                            }
-                            lock (GroupMembersLock)
-                            {
-                                GroupMembers[groupUUID].Clear();
-                                foreach (UUID member in groupMembers)
-                                {
-                                    GroupMembers[groupUUID].Add(member);
-                                }
-                            }
-                            groupMembers.Clear();
-                            Thread.Sleep(Configuration.MEMBERSHIP_SWEEP_INTERVAL);
-                        }
-                    }
-                }) {IsBackground = true};
-            GroupMemberSweepThread.Start();
             // Start sphere effect expiration thread
             Thread EffectsExpirationThread = new Thread(() =>
             {
@@ -2324,6 +2333,7 @@ namespace Corrade
                     try
                     {
                         EffectsExpirationThread.Abort();
+                        EffectsExpirationThread.Join();
                     }
                     catch (ThreadStateException)
                     {
@@ -2331,22 +2341,7 @@ namespace Corrade
                 }
             }
             // Stop the group sweep thread.
-            runGroupMemberSweepThread = false;
-            if (
-                (GroupMemberSweepThread.ThreadState.Equals(ThreadState.Running) ||
-                 GroupMemberSweepThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
-            {
-                if (!GroupMemberSweepThread.Join(1000))
-                {
-                    try
-                    {
-                        GroupMemberSweepThread.Abort();
-                    }
-                    catch (ThreadStateException)
-                    {
-                    }
-                }
-            }
+            StopGroupMembershipSweepThread.Invoke();
             // Stop the notification thread.
             runNotificationThread = false;
             if (
@@ -2358,6 +2353,7 @@ namespace Corrade
                     try
                     {
                         NotificationThread.Abort();
+                        NotificationThread.Join();
                     }
                     catch (ThreadStateException)
                     {
@@ -2375,6 +2371,7 @@ namespace Corrade
                     try
                     {
                         CallbackThread.Abort();
+                        CallbackThread.Join();
                     }
                     catch (ThreadStateException)
                     {
@@ -2397,6 +2394,7 @@ namespace Corrade
                             try
                             {
                                 HTTPListenerThread.Abort();
+                                HTTPListenerThread.Join();
                             }
                             catch (ThreadStateException)
                             {
@@ -2444,7 +2442,22 @@ namespace Corrade
             // Close signals
             if (Environment.OSVersion.Platform.Equals(PlatformID.Unix) && BindSignalsThread != null)
             {
-                BindSignalsThread.Abort();
+                if (
+                    (BindSignalsThread.ThreadState.Equals(ThreadState.Running) ||
+                     BindSignalsThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                {
+                    if (!CallbackThread.Join(1000))
+                    {
+                        try
+                        {
+                            BindSignalsThread.Abort();
+                            BindSignalsThread.Join();
+                        }
+                        catch (ThreadStateException)
+                        {
+                        }
+                    }
+                }
             }
             Environment.Exit(0);
         }
@@ -3308,7 +3321,10 @@ namespace Corrade
         private static void HandleConfigurationFileChanged(object sender, FileSystemEventArgs e)
         {
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
-            Configuration.Load(e.Name);
+            lock (ClientInstanceLock)
+            {
+                Configuration.Load(e.Name);
+            }
         }
 
         private static void HandleAIMLBotConfigurationChanged(object sender, FileSystemEventArgs e)
@@ -3357,54 +3373,46 @@ namespace Corrade
                             ActivateCurrentLandGroupTimer.Change(Configuration.ACTIVATE_DELAY, 0);
                         }
                     }) {IsBackground = true}.Start();
-                    // Start the inventory update thread.
-                    new Thread(() =>
-                    {
-                        lock (ClientInstanceLock)
-                        {
-                            LoadInventoryCache.Invoke();
-                            InventoryUpdate.Invoke();
-                            SaveInventoryCache.Invoke();
-                        }
-                    }) {IsBackground = true}.Start();
                     // Get or create the outfit folder.
                     new Thread(() =>
                     {
+                        HashSet<InventoryBase> rootFolders = new HashSet<InventoryBase>();
+                        ManualResetEvent FolderUpdatedEvent = new ManualResetEvent(false);
+                        EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
+                        {
+                            if (q.FolderID.Equals(Client.Inventory.Store.RootFolder.UUID) && q.Success)
+                            {
+                                rootFolders =
+                                    new HashSet<InventoryBase>(
+                                        Client.Inventory.Store.GetContents(Client.Inventory.Store.RootFolder.UUID));
+                            }
+                            FolderUpdatedEvent.Set();
+                        };
                         lock (ClientInstanceLock)
                         {
-                            HashSet<InventoryBase> rootFolders = new HashSet<InventoryBase>();
-                            ManualResetEvent FolderUpdatedEvent = new ManualResetEvent(false);
-                            EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
-                            {
-                                if (q.FolderID.Equals(Client.Inventory.Store.RootFolder.UUID) && q.Success)
-                                {
-                                    rootFolders =
-                                        new HashSet<InventoryBase>(
-                                            Client.Inventory.Store.GetContents(Client.Inventory.Store.RootFolder.UUID));
-                                }
-                                FolderUpdatedEvent.Set();
-                            };
-
                             Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
                             Client.Inventory.RequestFolderContents(Client.Inventory.Store.RootFolder.UUID,
                                 Client.Self.AgentID,
                                 true, true, InventorySortOrder.ByDate);
                             FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT);
                             Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                            if (!rootFolders.Count.Equals(0))
+                        }
+                        if (!rootFolders.Count.Equals(0))
+                        {
+                            InventoryFolder inventoryFolder =
+                                rootFolders.FirstOrDefault(
+                                    o =>
+                                        o is InventoryFolder &&
+                                        ((InventoryFolder) o).PreferredType == AssetType.CurrentOutfitFolder) as
+                                    InventoryFolder;
+                            if (inventoryFolder != null)
                             {
-                                InventoryFolder inventoryFolder =
-                                    rootFolders.FirstOrDefault(
-                                        o =>
-                                            o is InventoryFolder &&
-                                            ((InventoryFolder) o).PreferredType == AssetType.CurrentOutfitFolder) as
-                                        InventoryFolder;
-                                if (inventoryFolder != null)
-                                {
-                                    OutfitFolder = inventoryFolder;
-                                    return;
-                                }
+                                OutfitFolder = inventoryFolder;
+                                return;
                             }
+                        }
+                        lock (ClientInstanceLock)
+                        {
                             UUID currentOutfitFolderUUID =
                                 Client.Inventory.CreateFolder(Client.Inventory.Store.RootFolder.UUID,
                                     CORRADE_CONSTANTS.CURRENT_OUTFIT_FOLDER_NAME, AssetType.CurrentOutfitFolder);
@@ -3414,6 +3422,75 @@ namespace Corrade
                                 OutfitFolder =
                                     (InventoryFolder) Client.Inventory.Store.Items[currentOutfitFolderUUID].Data;
                             }
+                        }
+                    }) {IsBackground = true}.Start();
+                    // Start inventory update thread.
+                    new Thread(() =>
+                    {
+                        // First load the caches.
+                        lock (ClientInstanceLock)
+                        {
+                            LoadInventoryCache.Invoke();
+                        }
+
+                        // Create the queue of folders.
+                        Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
+                        // Enqueue the first folder (root).
+                        inventoryFolders.Enqueue(Client.Inventory.Store.RootFolder);
+
+                        // Create a list of semaphores indexed by the folder UUID.
+                        Dictionary<UUID, AutoResetEvent> FolderUpdatedEvents = new Dictionary<UUID, AutoResetEvent>();
+                        object FolderUpdatedEventsLock = new object();
+                        EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
+                        {
+                            // Enqueue all the new folders.
+                            Client.Inventory.Store.GetContents(q.FolderID).ForEach(o =>
+                            {
+                                if (o is InventoryFolder)
+                                {
+                                    inventoryFolders.Enqueue(o as InventoryFolder);
+                                }
+                            });
+                            FolderUpdatedEvents[q.FolderID].Set();
+                        };
+
+                        lock (ClientInstanceLock)
+                        {
+                            while (!inventoryFolders.Count.Equals(0))
+                            {
+                                // Dequeue all the folders in the queue (can also limit to a number of folders).
+                                HashSet<InventoryFolder> folders = new HashSet<InventoryFolder>();
+                                do
+                                {
+                                    folders.Add(inventoryFolders.Dequeue());
+                                } while (!inventoryFolders.Count.Equals(0));
+                                // Process all the dequeued elements in parallel.
+                                Parallel.ForEach(folders.Where(o => o != null), o =>
+                                {
+                                    // Add an semaphore to wait for the folder contents.
+                                    lock (FolderUpdatedEventsLock)
+                                    {
+                                        FolderUpdatedEvents.Add(o.UUID, new AutoResetEvent(false));
+                                    }
+                                    Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                                    Client.Inventory.RequestFolderContents(o.UUID, Client.Self.AgentID, true, true,
+                                        InventorySortOrder.ByDate);
+                                    // Wait on the semaphore.
+                                    FolderUpdatedEvents[o.UUID].WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                                    // Remove the semaphore for the folder.
+                                    lock (FolderUpdatedEventsLock)
+                                    {
+                                        FolderUpdatedEvents.Remove(o.UUID);
+                                    }
+                                });
+                            }
+                        }
+
+                        // Now save the caches.
+                        lock (ClientInstanceLock)
+                        {
+                            SaveInventoryCache.Invoke();
                         }
                     }) {IsBackground = true}.Start();
                     break;
@@ -16774,6 +16851,18 @@ namespace Corrade
                         {
                             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
                         }
+                    }
+                    switch (GROUPS.Any(
+                        o => !(o.NotificationMask & (uint) Notifications.NOTIFICATION_GROUP_MEMBERSHIP).Equals(0)))
+                    {
+                        case true:
+                            // Start the group membership thread.
+                            StartGroupMembershipSweepThread.Invoke();
+                            break;
+                        case false:
+                            // Stop the group sweep thread.
+                            StopGroupMembershipSweepThread.Invoke();
+                            break;
                     }
                 }
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
