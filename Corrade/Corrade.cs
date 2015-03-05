@@ -3034,6 +3034,8 @@ namespace Corrade
                                 ownerSayEventArgs.Message);
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
                                 ownerSayEventArgs.SourceID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                ownerSayEventArgs.FromName);
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
                                 ownerSayEventArgs.Position.ToString());
                             break;
@@ -3045,6 +3047,8 @@ namespace Corrade
                                 regionSayToEventArgs.OwnerID.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
                                 regionSayToEventArgs.SourceID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                regionSayToEventArgs.FromName);
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
                                 regionSayToEventArgs.Position.ToString());
                             break;
@@ -3064,6 +3068,8 @@ namespace Corrade
                             ChatEventArgs RLVEventArgs = (ChatEventArgs) args;
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
                                 RLVEventArgs.SourceID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                RLVEventArgs.FromName);
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
                                 RLVEventArgs.Position.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.RLV),
