@@ -257,6 +257,18 @@ namespace Corrade
         };
 
         /// <summary>
+        ///     Determines whether a string is a Corrade command.
+        /// </summary>
+        /// <returns>true if the string is a Corrade command</returns>
+        private static readonly Func<string, bool> IsCorradeCommand = o =>
+        {
+            Dictionary<string, string> data = wasKeyValueDecode(o);
+            return !data.Count.Equals(0) && data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND)) &&
+                   data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)) &&
+                   data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD));
+        };
+
+        /// <summary>
         ///     Gets the first name and last name from an avatar name.
         /// </summary>
         /// <returns>the firstname and the lastname or Resident</returns>
@@ -475,6 +487,40 @@ namespace Corrade
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
+        ///     Serialize an RLV message to a CSV string.
+        /// </summary>
+        /// <returns>in order: behaviours, options, parameters</returns>
+        private static IEnumerable<string> wasRLVToCSV(string message)
+        {
+            if (string.IsNullOrEmpty(message)) yield break;
+
+            // Split all commands.
+            string[] unpack = message.Split(',');
+            // Pop first command to process.
+            string first = unpack.First();
+            // Remove command.
+            unpack = unpack.Where(o => !o.Equals(first)).ToArray();
+            // Keep rest of message.
+            message = string.Join(RLV_CONSTANTS.CSV_DELIMITER, unpack);
+
+            Match match = RLV_CONSTANTS.RLVRegex.Match(first);
+            if (!match.Success) goto CONTINUE;
+
+            yield return match.Groups["behaviour"].ToString().ToLowerInvariant();
+            yield return match.Groups["option"].ToString().ToLowerInvariant();
+            yield return match.Groups["param"].ToString().ToLowerInvariant();
+
+            CONTINUE:
+            foreach (string slice in wasRLVToCSV(message))
+            {
+                yield return slice;
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
         ///     Combine multiple paths.
         /// </summary>
         /// <param name="paths">an array of paths</param>
@@ -558,13 +604,9 @@ namespace Corrade
         /// <returns>the real inventory item</returns>
         private static InventoryItem ResolveItemLink(InventoryItem item)
         {
-            if (item.IsLink() && Client.Inventory.Store.Contains(item.AssetUUID) &&
-                Client.Inventory.Store[item.AssetUUID] is InventoryItem)
-            {
-                return Client.Inventory.Store[item.AssetUUID] as InventoryItem;
-            }
-
-            return item;
+            return item.IsLink() && Client.Inventory.Store.Contains(item.AssetUUID) &&
+                   Client.Inventory.Store[item.AssetUUID] is InventoryItem
+                ? Client.Inventory.Store[item.AssetUUID] as InventoryItem : item;
         }
 
         /// <summary>
@@ -1395,36 +1437,24 @@ namespace Corrade
         private static IEnumerable<OpenMetaverse.Group> GetCurrentGroups(int millisecondsTimeout, int dataTimeout)
         {
             wasAlarm CurrentGroupsReceivedAlarm = new wasAlarm();
-            Queue<OpenMetaverse.Group> groups = new Queue<OpenMetaverse.Group>();
+            HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>();
             object LockObject = new object();
             EventHandler<CurrentGroupsEventArgs> CurrentGroupsEventHandler = (sender, args) =>
             {
                 CurrentGroupsReceivedAlarm.Alarm(dataTimeout);
                 foreach (OpenMetaverse.Group group in args.Groups.Select(o => o.Value))
                 {
-                    lock (LockObject)
-                    {
-                        groups.Enqueue(group);
-                    }
+                    groups.Add(group);
                 }
             };
             Client.Groups.CurrentGroups += CurrentGroupsEventHandler;
             Client.Groups.RequestCurrentGroups();
             CurrentGroupsReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false);
             Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
-            int groupCount;
-            do
+            lock (LockObject)
             {
-                lock (LockObject)
-                {
-                    groupCount = groups.Count;
-                }
-                if (groupCount.Equals(0)) continue;
-                lock (LockObject)
-                {
-                    yield return groups.Dequeue();
-                }
-            } while (!groupCount.Equals(0));
+                return groups;
+            }
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1482,15 +1512,20 @@ namespace Corrade
                 InventoryItem inventoryItem = Client.Inventory.Store[root.Data.UUID] as InventoryItem;
                 if (inventoryItem != null)
                 {
-                    foreach (
-                        KeyValuePair<WearableType, AppearanceManager.WearableData> wearable in
-                            Client.Appearance.GetWearables()
-                                .Where(wearable => inventoryItem.UUID.Equals(wearable.Value.ItemID)))
+                    WearableType wearableType = Client.Appearance.IsItemWorn(inventoryItem);
+                    if (!wearableType.Equals(WearableType.Invalid))
                     {
-                        yield return
-                            new KeyValuePair<AppearanceManager.WearableData, WearableType>(wearable.Value,
-                                wearable.Key);
+                        foreach (
+                            KeyValuePair<WearableType, AppearanceManager.WearableData> wearable in
+                                Client.Appearance.GetWearables()
+                                    .Where(o => o.Value.ItemID.Equals(inventoryItem.UUID)))
+                        {
+                            yield return
+                                new KeyValuePair<AppearanceManager.WearableData, WearableType>(wearable.Value,
+                                    wearable.Key);
+                        }
                     }
+                    yield break;
                 }
             }
             foreach (
@@ -2019,8 +2054,7 @@ namespace Corrade
                 }
             }) {IsBackground = true};
             NotificationThread.Start();
-            Thread GroupMemberSweepThread = new Thread(
-                () =>
+            Thread GroupMemberSweepThread = new Thread(() =>
                 {
                     Queue<UUID> groupUUIDs = new Queue<UUID>();
                     Queue<int> memberCount = new Queue<int>();
@@ -2528,17 +2562,19 @@ namespace Corrade
                                     scriptDialogEventArgs.ButtonLabels.ToArray()));
                             break;
                         case Notifications.NOTIFICATION_LOCAL_CHAT:
-                            ChatEventArgs chatEventArgs = (ChatEventArgs) args;
+                            ChatEventArgs localChatEventArgs = (ChatEventArgs) args;
                             List<string> chatName =
-                                new List<string>(GetAvatarNames(chatEventArgs.FromName));
+                                new List<string>(GetAvatarNames(localChatEventArgs.FromName));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                chatEventArgs.Message);
+                                localChatEventArgs.Message);
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME), chatName.First());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), chatName.Last());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
-                                chatEventArgs.OwnerID.ToString());
+                                localChatEventArgs.OwnerID.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                chatEventArgs.SourceID.ToString());
+                                localChatEventArgs.SourceID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                localChatEventArgs.Position.ToString());
                             break;
                         case Notifications.NOTIFICATION_BALANCE:
                             BalanceEventArgs balanceEventArgs = (BalanceEventArgs) args;
@@ -2992,6 +3028,48 @@ namespace Corrade
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.URL),
                                 loadURLEventArgs.URL);
                             break;
+                        case Notifications.NOTIFICATION_OWNER_SAY:
+                            ChatEventArgs ownerSayEventArgs = (ChatEventArgs) args;
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                ownerSayEventArgs.Message);
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                ownerSayEventArgs.SourceID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                ownerSayEventArgs.Position.ToString());
+                            break;
+                        case Notifications.NOTIFICATION_REGION_SAY_TO:
+                            ChatEventArgs regionSayToEventArgs = (ChatEventArgs) args;
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                regionSayToEventArgs.Message);
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                                regionSayToEventArgs.OwnerID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                regionSayToEventArgs.SourceID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                regionSayToEventArgs.Position.ToString());
+                            break;
+                        case Notifications.NOTIFICATION_OBJECT_INSTANT_MESSAGE:
+                            InstantMessageEventArgs notificationObjectInstantMessage =
+                                (InstantMessageEventArgs) args;
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                                notificationObjectInstantMessage.IM.FromAgentID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                notificationObjectInstantMessage.IM.IMSessionID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                notificationObjectInstantMessage.IM.FromAgentName);
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                notificationObjectInstantMessage.IM.Message);
+                            break;
+                        case Notifications.NOTIFICATION_RLV_MESSAGE:
+                            ChatEventArgs RLVEventArgs = (ChatEventArgs) args;
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                RLVEventArgs.SourceID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                RLVEventArgs.Position.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.RLV),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    wasRLVToCSV(RLVEventArgs.Message).ToArray()));
+                            break;
                     }
                     if (NotificationQueue.Count < Configuration.NOTIFICATION_QUEUE_LENGTH)
                     {
@@ -3041,11 +3119,22 @@ namespace Corrade
             switch (e.Type)
             {
                 case ChatType.OwnerSay:
-                    // Process RLV
-                    if (!EnableRLV || !e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR)) return;
-                    CorradeThreadPool[CorradeThreadType.RLV].Spawn(
-                        () => HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1), e.SourceID),
-                        Configuration.MAXIMUM_RLV_THREADS);
+                    // If RLV is enabled, process RLV and terminate.
+                    if (EnableRLV && e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR))
+                    {
+                        // Send RLV message notifications.
+                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                            () => SendNotification(Notifications.NOTIFICATION_RLV_MESSAGE, e),
+                            Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                        CorradeThreadPool[CorradeThreadType.RLV].Spawn(
+                            () => HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1), e.SourceID),
+                            Configuration.MAXIMUM_RLV_THREADS);
+                        break;
+                    }
+                    // Otherwise, send llOwnerSay notifications.
+                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                        () => SendNotification(Notifications.NOTIFICATION_OWNER_SAY, e),
+                        Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     break;
                 case ChatType.Debug:
                 case ChatType.Normal:
@@ -3057,6 +3146,15 @@ namespace Corrade
                         Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     break;
                 case (ChatType) 9:
+                    // Send llRegionSayTo notification in case we do not have a command.
+                    if (!IsCorradeCommand(e.Message))
+                    {
+                        // Send chat notifications.
+                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                            () => SendNotification(Notifications.NOTIFICATION_REGION_SAY_TO, e),
+                            Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                        break;
+                    }
                     CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
                         () => HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString()),
                         Configuration.MAXIMUM_COMMAND_THREADS);
@@ -3595,7 +3693,17 @@ namespace Corrade
                     break;
             }
 
-            // Everything else, must be a command.
+            // Where are now in a region where the message is an IM sent by an object.
+            // Check if this is not a Corrade command and send an object IM notification.
+            if (!IsCorradeCommand(args.IM.Message))
+            {
+                CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                    () => SendNotification(Notifications.NOTIFICATION_OBJECT_INSTANT_MESSAGE, args),
+                    Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                return;
+            }
+
+            // Otherwise process the command.
             CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
                 () => HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString()),
                 Configuration.MAXIMUM_COMMAND_THREADS);
@@ -10603,7 +10711,10 @@ namespace Corrade
                                             csv.AddRange(new[]
                                             {wasGetStructureMemberDescription(o, o.Color), o.Color.ToString()});
                                             csv.AddRange(new[]
-                                            {wasGetStructureMemberDescription(o, o.Alpha), o.Alpha.ToString()});
+                                            {
+                                                wasGetStructureMemberDescription(o, o.Alpha),
+                                                o.Alpha.ToString(CultureInfo.InvariantCulture)
+                                            });
                                             csv.AddRange(new[]
                                             {
                                                 wasGetStructureMemberDescription(o, o.Duration),
@@ -10636,7 +10747,10 @@ namespace Corrade
                                             csv.AddRange(new[]
                                             {wasGetStructureMemberDescription(o, o.Color), o.Color.ToString()});
                                             csv.AddRange(new[]
-                                            {wasGetStructureMemberDescription(o, o.Alpha), o.Alpha.ToString()});
+                                            {
+                                                wasGetStructureMemberDescription(o, o.Alpha),
+                                                o.Alpha.ToString(CultureInfo.InvariantCulture)
+                                            });
                                             csv.AddRange(new[]
                                             {
                                                 wasGetStructureMemberDescription(o, o.Duration),
@@ -17052,7 +17166,11 @@ namespace Corrade
             [Description("invite")] NOTIFICATION_GROUP_INVITE = 131072,
             [Description("economy")] NOTIFICATION_ECONOMY = 262144,
             [Description("membership")] NOTIFICATION_GROUP_MEMBERSHIP = 524288,
-            [Description("url")] NOTIFICATION_LOAD_URL = 1048576
+            [Description("url")] NOTIFICATION_LOAD_URL = 1048576,
+            [Description("ownersay")] NOTIFICATION_OWNER_SAY = 2097152,
+            [Description("regionsayto")] NOTIFICATION_REGION_SAY_TO = 4194304,
+            [Description("objectim")] NOTIFICATION_OBJECT_INSTANT_MESSAGE = 8388608,
+            [Description("rlv")] NOTIFICATION_RLV_MESSAGE = 16777216
         }
 
         /// <summary>
