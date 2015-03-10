@@ -11574,7 +11574,12 @@ namespace Corrade
                             {
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                             }
-                            itemUUID = inventoryBaseItem.UUID;
+                            InventoryItem inventoryItem = inventoryBaseItem as InventoryItem;
+                            if (inventoryItem == null)
+                            {
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                            }
+                            itemUUID = inventoryItem.AssetUUID;
                         }
                         switch (
                             wasGetEnumValueFromDescription<Action>(
