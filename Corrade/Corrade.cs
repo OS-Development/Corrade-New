@@ -124,6 +124,10 @@ namespace Corrade
 
         private static readonly object GroupWorkersLock = new object();
 
+        private static readonly Hashtable GroupDirectoryTrackers = new Hashtable();
+
+        private static readonly object GroupDirectoryTrackersLock = new object();
+
         private static readonly HashSet<LookAtEffect> LookAtEffects = new HashSet<LookAtEffect>();
 
         private static readonly HashSet<PointAtEffect> PointAtEffects = new HashSet<PointAtEffect>();
@@ -1301,6 +1305,159 @@ namespace Corrade
                     wasSetInfoValue(info, ref @object, dateTimeData);
                 }
             }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Converts Linden item permissions to a formatted string:
+        ///     CDEMVT - Copy, Damage, Export, Modify, Move, Transfer
+        ///     BBBBBBEEEEEEGGGGGGNNNNNNOOOOOO - Base, Everyone, Group, Next, Owner
+        /// </summary>
+        /// <param name="permissions">the item permissions</param>
+        /// <returns>the literal permissions for an item</returns>
+        private static string wasPermissionsToString(OpenMetaverse.Permissions permissions)
+        {
+            Func<PermissionMask, string> segment = o =>
+            {
+                StringBuilder seg = new StringBuilder();
+
+                switch (!((uint) o & (uint) PermissionMask.Copy).Equals(0))
+                {
+                    case true:
+                        seg.Append("c");
+                        break;
+                    default:
+                        seg.Append("-");
+                        break;
+                }
+
+                switch (!((uint) o & (uint) PermissionMask.Damage).Equals(0))
+                {
+                    case true:
+                        seg.Append("d");
+                        break;
+                    default:
+                        seg.Append("-");
+                        break;
+                }
+
+                switch (!((uint) o & (uint) PermissionMask.Export).Equals(0))
+                {
+                    case true:
+                        seg.Append("e");
+                        break;
+                    default:
+                        seg.Append("-");
+                        break;
+                }
+
+                switch (!((uint) o & (uint) PermissionMask.Modify).Equals(0))
+                {
+                    case true:
+                        seg.Append("m");
+                        break;
+                    default:
+                        seg.Append("-");
+                        break;
+                }
+
+                switch (!((uint) o & (uint) PermissionMask.Move).Equals(0))
+                {
+                    case true:
+                        seg.Append("v");
+                        break;
+                    default:
+                        seg.Append("-");
+                        break;
+                }
+
+                switch (!((uint) o & (uint) PermissionMask.Transfer).Equals(0))
+                {
+                    case true:
+                        seg.Append("t");
+                        break;
+                    default:
+                        seg.Append("-");
+                        break;
+                }
+
+                return seg.ToString();
+            };
+
+            StringBuilder x = new StringBuilder();
+            x.Append(segment(permissions.BaseMask));
+            x.Append(segment(permissions.EveryoneMask));
+            x.Append(segment(permissions.GroupMask));
+            x.Append(segment(permissions.NextOwnerMask));
+            x.Append(segment(permissions.OwnerMask));
+            return x.ToString();
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Converts a formatted string to item permissions:
+        ///     CDEMVT - Copy, Damage, Export, Modify, Move, Transfer
+        ///     BBBBBBEEEEEEGGGGGGNNNNNNOOOOOO - Base, Everyone, Group, Next, Owner
+        /// </summary>
+        /// <param name="permissions">the item permissions</param>
+        /// <returns>the permissions for an item</returns>
+        private static OpenMetaverse.Permissions wasStringToPermissions(string permissions)
+        {
+            Func<string, uint> segment = o =>
+            {
+                uint r = 0;
+                switch (!char.ToLower(o[0]).Equals('c'))
+                {
+                    case false:
+                        r |= (uint) PermissionMask.Copy;
+                        break;
+                }
+
+                switch (!char.ToLower(o[1]).Equals('d'))
+                {
+                    case false:
+                        r |= (uint) PermissionMask.Damage;
+                        break;
+                }
+
+                switch (!char.ToLower(o[2]).Equals('e'))
+                {
+                    case false:
+                        r |= (uint) PermissionMask.Export;
+                        break;
+                }
+
+                switch (!char.ToLower(o[3]).Equals('m'))
+                {
+                    case false:
+                        r |= (uint) PermissionMask.Modify;
+                        break;
+                }
+
+                switch (!char.ToLower(o[4]).Equals('v'))
+                {
+                    case false:
+                        r |= (uint) PermissionMask.Move;
+                        break;
+                }
+
+                switch (!char.ToLower(o[5]).Equals('t'))
+                {
+                    case false:
+                        r |= (uint) PermissionMask.Transfer;
+                        break;
+                }
+
+                return r;
+            };
+
+            return new OpenMetaverse.Permissions(segment(permissions.Substring(0, 6)),
+                segment(permissions.Substring(6, 6)), segment(permissions.Substring(12, 6)),
+                segment(permissions.Substring(18, 6)), segment(permissions.Substring(24, 6)));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -3197,6 +3354,11 @@ namespace Corrade
 
         private static void HandleInventoryObjectOffered(object sender, InventoryObjectOfferedEventArgs e)
         {
+            // Send notification
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_INVENTORY, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+
             // Accept anything from master avatars.
             if (
                 Configuration.MASTERS.Select(
@@ -3233,10 +3395,6 @@ namespace Corrade
                         Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)].Data);
             }
 
-            // Send notification
-            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_INVENTORY, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
             // Wait for a reply.
             wait.WaitOne(Timeout.Infinite);
 
@@ -3797,7 +3955,7 @@ namespace Corrade
             if (string.IsNullOrEmpty(message)) return;
 
             // Split all commands.
-            string[] unpack = message.Split(',');
+            string[] unpack = message.Split(RLV_CONSTANTS.CSV_DELIMITER[0]);
             // Pop first command to process.
             string first = unpack.First();
             // Remove command.
@@ -13892,6 +14050,355 @@ namespace Corrade
                         }
                     };
                     break;
+                case ScriptKeys.INVENTORY:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        UUID groupUUID =
+                            Configuration.GROUPS.FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
+                        if (groupUUID.Equals(UUID.Zero) &&
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        }
+                        lock (GroupDirectoryTrackersLock)
+                        {
+                            if (!GroupDirectoryTrackers.Contains(groupUUID))
+                            {
+                                GroupDirectoryTrackers.Add(groupUUID, Client.Inventory.Store.RootFolder);
+                            }
+                        }
+                        string path =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATH)),
+                                message));
+                        Func<string, InventoryBase, InventoryBase> findPath = null;
+                        findPath = (o, p) =>
+                        {
+                            if (string.IsNullOrEmpty(o)) return p;
+
+                            // Split all paths.
+                            string[] unpack = o.Split(CORRADE_CONSTANTS.PATH_SEPARATOR[0]);
+                            // Pop first item to process.
+                            string first = unpack.First();
+                            // Remove item.
+                            unpack = unpack.Where(q => !q.Equals(first)).ToArray();
+
+                            InventoryBase next = p;
+
+                            // Avoid preceeding slashes.
+                            if (string.IsNullOrEmpty(first)) goto CONTINUE;
+
+                            HashSet<InventoryBase> contents =
+                                new HashSet<InventoryBase>(Client.Inventory.Store.GetContents(p.UUID));
+                            try
+                            {
+                                UUID itemUUID;
+                                switch (!UUID.TryParse(first, out itemUUID))
+                                {
+                                    case true:
+                                        next = contents.SingleOrDefault(q => q.Name.Equals(first));
+                                        break;
+                                    default:
+                                        next = contents.SingleOrDefault(q => q.UUID.Equals(itemUUID));
+                                        break;
+                                }
+                            }
+                            catch (Exception)
+                            {
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AMBIGUOUS_PATH));
+                            }
+
+                            if (next == null || next.Equals(default(InventoryBase)))
+                            {
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PATH_NOT_FOUND));
+                            }
+
+                            if (!(next is InventoryFolder))
+                            {
+                                return next;
+                            }
+
+                            CONTINUE:
+                            return findPath(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR, unpack),
+                                Client.Inventory.Store[next.UUID]);
+                        };
+                        InventoryBase item;
+                        List<string> csv = new List<string>();
+                        switch (wasGetEnumValueFromDescription<Action>(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
+                                .ToLowerInvariant()))
+                        {
+                            case Action.LS:
+                                switch (!string.IsNullOrEmpty(path))
+                                {
+                                    case true:
+                                        if (path[0].Equals(CORRADE_CONSTANTS.PATH_SEPARATOR[0]))
+                                        {
+                                            item = Client.Inventory.Store.RootFolder;
+                                            break;
+                                        }
+                                        goto default;
+                                    default:
+                                        lock (GroupDirectoryTrackersLock)
+                                        {
+                                            item = GroupDirectoryTrackers[groupUUID] as InventoryBase;
+                                        }
+                                        break;
+                                }
+                                item = findPath(path, item);
+                                switch (item is InventoryFolder)
+                                {
+                                    case true:
+                                        foreach (DirItem dirItem in Client.Inventory.Store.GetContents(
+                                            item.UUID).Select(
+                                                o => new DirItem().FromInventoryBase(o)))
+                                        {
+                                            csv.AddRange(new[]
+                                            {wasGetStructureMemberDescription(dirItem, dirItem.Name), dirItem.Name});
+                                            csv.AddRange(new[]
+                                            {
+                                                wasGetStructureMemberDescription(dirItem, dirItem.Item),
+                                                dirItem.Item.ToString()
+                                            });
+                                            csv.AddRange(new[]
+                                            {
+                                                wasGetStructureMemberDescription(dirItem, dirItem.Type),
+                                                wasGetDescriptionFromEnumValue(dirItem.Type)
+                                            });
+                                            csv.AddRange(new[]
+                                            {
+                                                wasGetStructureMemberDescription(dirItem, dirItem.Permissions),
+                                                dirItem.Permissions
+                                            });
+                                        }
+                                        break;
+                                    case false:
+                                        DirItem dir = new DirItem().FromInventoryBase(item);
+                                        csv.AddRange(new[] {wasGetStructureMemberDescription(dir, dir.Name), dir.Name});
+                                        csv.AddRange(new[]
+                                        {
+                                            wasGetStructureMemberDescription(dir, dir.Item),
+                                            dir.Item.ToString()
+                                        });
+                                        csv.AddRange(new[]
+                                        {
+                                            wasGetStructureMemberDescription(dir, dir.Type),
+                                            wasGetDescriptionFromEnumValue(dir.Type)
+                                        });
+                                        csv.AddRange(new[]
+                                        {
+                                            wasGetStructureMemberDescription(dir, dir.Permissions),
+                                            dir.Permissions
+                                        });
+                                        break;
+                                }
+                                break;
+                            case Action.CWD:
+                                lock (GroupDirectoryTrackersLock)
+                                {
+                                    DirItem dirItem =
+                                        new DirItem().FromInventoryBase(
+                                            GroupDirectoryTrackers[groupUUID] as InventoryBase);
+                                    csv.AddRange(new[]
+                                    {wasGetStructureMemberDescription(dirItem, dirItem.Name), dirItem.Name});
+                                    csv.AddRange(new[]
+                                    {wasGetStructureMemberDescription(dirItem, dirItem.Item), dirItem.Item.ToString()});
+                                    csv.AddRange(new[]
+                                    {
+                                        wasGetStructureMemberDescription(dirItem, dirItem.Type),
+                                        wasGetDescriptionFromEnumValue(dirItem.Type)
+                                    });
+                                    csv.AddRange(new[]
+                                    {
+                                        wasGetStructureMemberDescription(dirItem, dirItem.Permissions),
+                                        dirItem.Permissions
+                                    });
+                                }
+                                break;
+                            case Action.CD:
+                                if (string.IsNullOrEmpty(path))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_PATH_PROVIDED));
+                                }
+                                switch (!path[0].Equals(CORRADE_CONSTANTS.PATH_SEPARATOR[0]))
+                                {
+                                    case true:
+                                        lock (GroupDirectoryTrackersLock)
+                                        {
+                                            item = GroupDirectoryTrackers[groupUUID] as InventoryBase;
+                                        }
+                                        break;
+                                    default:
+                                        item = Client.Inventory.Store.RootFolder;
+                                        break;
+                                }
+                                item = findPath(path, item);
+                                if (!(item is InventoryFolder))
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.UNEXPECTED_ITEM_IN_PATH));
+                                }
+                                lock (GroupDirectoryTrackersLock)
+                                {
+                                    GroupDirectoryTrackers[groupUUID] = item;
+                                }
+                                break;
+                            case Action.MKDIR:
+                                string mkdirName =
+                                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
+                                        message));
+                                if (string.IsNullOrEmpty(mkdirName))
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_NAME_PROVIDED));
+                                }
+                                switch (!string.IsNullOrEmpty(path))
+                                {
+                                    case true:
+                                        if (path[0].Equals(CORRADE_CONSTANTS.PATH_SEPARATOR[0]))
+                                        {
+                                            item = Client.Inventory.Store.RootFolder;
+                                            break;
+                                        }
+                                        goto default;
+                                    default:
+                                        lock (GroupDirectoryTrackersLock)
+                                        {
+                                            item = GroupDirectoryTrackers[groupUUID] as InventoryBase;
+                                        }
+                                        break;
+                                }
+                                item = findPath(path, item);
+                                if (!(item is InventoryFolder))
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.UNEXPECTED_ITEM_IN_PATH));
+                                }
+                                if (Client.Inventory.CreateFolder(item.UUID, mkdirName) == UUID.Zero)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_CREATE_FOLDER));
+                                }
+                                break;
+                            case Action.CHMOD:
+                                string itemPermissions =
+                                    wasInput(
+                                        wasKeyValueGet(
+                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS)), message));
+                                if (string.IsNullOrEmpty(itemPermissions))
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_PERMISSIONS_PROVIDED));
+                                }
+                                switch (!string.IsNullOrEmpty(path))
+                                {
+                                    case true:
+                                        if (path[0].Equals(CORRADE_CONSTANTS.PATH_SEPARATOR[0]))
+                                        {
+                                            item = Client.Inventory.Store.RootFolder;
+                                            break;
+                                        }
+                                        goto default;
+                                    default:
+                                        lock (GroupDirectoryTrackersLock)
+                                        {
+                                            item = GroupDirectoryTrackers[groupUUID] as InventoryBase;
+                                        }
+                                        break;
+                                }
+                                item = findPath(path, item);
+                                Action<InventoryItem, string> setPermissions = (o, p) =>
+                                {
+                                    OpenMetaverse.Permissions permissions = wasStringToPermissions(p);
+                                    o.Permissions = permissions;
+                                    Client.Inventory.RequestUpdateItem(o);
+                                    bool succeeded = false;
+                                    ManualResetEvent ItemReceivedEvent = new ManualResetEvent(false);
+                                    EventHandler<ItemReceivedEventArgs> ItemReceivedEventHandler =
+                                        (sender, args) =>
+                                        {
+                                            if (args.Item.UUID.Equals(o.UUID))
+                                            {
+                                                succeeded = args.Item.Permissions.Equals(permissions);
+                                                ItemReceivedEvent.Set();
+                                            }
+                                        };
+                                    Client.Inventory.ItemReceived += ItemReceivedEventHandler;
+                                    Client.Inventory.RequestFetchInventory(o.UUID, o.OwnerID);
+                                    if (!ItemReceivedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                    {
+                                        Client.Inventory.ItemReceived -= ItemReceivedEventHandler;
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_RETRIEVING_ITEM));
+                                    }
+                                    Client.Inventory.ItemReceived -= ItemReceivedEventHandler;
+                                    if (!succeeded)
+                                    {
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.SETTING_PERMISSIONS_FAILED));
+                                    }
+                                };
+                                switch (item is InventoryFolder)
+                                {
+                                    case true:
+                                        foreach (InventoryItem inventoryItem in Client.Inventory.Store.GetContents(
+                                            item.UUID).OfType<InventoryItem>())
+                                        {
+                                            setPermissions.Invoke(inventoryItem, itemPermissions);
+                                        }
+                                        break;
+                                    default:
+                                        setPermissions.Invoke(item as InventoryItem, itemPermissions);
+                                        break;
+                                }
+                                break;
+                            case Action.RM:
+                                switch (!string.IsNullOrEmpty(path))
+                                {
+                                    case true:
+                                        if (path[0].Equals(CORRADE_CONSTANTS.PATH_SEPARATOR[0]))
+                                        {
+                                            item = Client.Inventory.Store.RootFolder;
+                                            break;
+                                        }
+                                        goto default;
+                                    default:
+                                        lock (GroupDirectoryTrackersLock)
+                                        {
+                                            item = GroupDirectoryTrackers[groupUUID] as InventoryBase;
+                                        }
+                                        break;
+                                }
+                                item = findPath(path, item);
+                                switch (item is InventoryFolder)
+                                {
+                                    case true:
+                                        Client.Inventory.MoveFolder(item.UUID,
+                                            Client.Inventory.FindFolderForType(AssetType.TrashFolder));
+                                        break;
+                                    default:
+                                        Client.Inventory.MoveItem(item.UUID,
+                                            Client.Inventory.FindFolderForType(AssetType.TrashFolder));
+                                        break;
+                                }
+                                break;
+                            default:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
+                        }
+                        if (!csv.Count.Equals(0))
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.ToArray()));
+                        }
+                    };
+                    break;
                 case ScriptKeys.VERSION:
                     execute =
                         () =>
@@ -15053,6 +15560,10 @@ namespace Corrade
         /// <returns>an UUID or the supplied string in case data could not be resolved</returns>
         private static object StringOrUUID(string data)
         {
+            if (string.IsNullOrEmpty(data))
+            {
+                return null;
+            }
             UUID @UUID;
             if (!UUID.TryParse(data, out @UUID))
             {
@@ -15734,7 +16245,13 @@ namespace Corrade
             [Description("enable")] ENABLE,
             [Description("disable")] DISABLE,
             [Description("process")] PROCESS,
-            [Description("rebuild")] REBUILD
+            [Description("rebuild")] REBUILD,
+            [Description("ls")] LS,
+            [Description("cwd")] CWD,
+            [Description("cd")] CD,
+            [Description("mkdir")] MKDIR,
+            [Description("chmod")] CHMOD,
+            [Description("rm")] RM
         }
 
         /// <summary>
@@ -17024,6 +17541,163 @@ namespace Corrade
         };
 
         /// <summary>
+        ///     An inventory item.
+        /// </summary>
+        private struct DirItem
+        {
+            [Description("item")] public UUID Item;
+            [Description("name")] public string Name;
+            [Description("permissions")] public string Permissions;
+            [Description("type")] public DirItemType Type;
+
+            public DirItem FromInventoryBase(InventoryBase inventoryBase)
+            {
+                DirItem item = new DirItem
+                {
+                    Name = inventoryBase.Name,
+                    Item = inventoryBase.UUID,
+                    Permissions = "------------------------------"
+                };
+
+                if (inventoryBase is InventoryFolder)
+                {
+                    item.Type = DirItemType.FOLDER;
+                    return item;
+                }
+
+                if (!(inventoryBase is InventoryItem)) return item;
+
+                InventoryItem inventoryItem = inventoryBase as InventoryItem;
+                item.Permissions = wasPermissionsToString(inventoryItem.Permissions);
+
+                if (inventoryItem is InventoryWearable)
+                {
+                    item.Type = (DirItemType) typeof (DirItemType).GetFields(BindingFlags.Public |
+                                                                             BindingFlags.Static)
+                        .FirstOrDefault(
+                            o =>
+                                string.Equals(o.Name,
+                                    Enum.GetName(typeof (WearableType),
+                                        (inventoryItem as InventoryWearable).WearableType),
+                                    StringComparison.InvariantCultureIgnoreCase)).GetValue(null);
+                    return item;
+                }
+
+                if (inventoryItem is InventoryTexture)
+                {
+                    item.Type = DirItemType.TEXTURE;
+                    return item;
+                }
+
+                if (inventoryItem is InventorySound)
+                {
+                    item.Type = DirItemType.SOUND;
+                    return item;
+                }
+
+                if (inventoryItem is InventoryCallingCard)
+                {
+                    item.Type = DirItemType.CALLINGCARD;
+                    return item;
+                }
+
+                if (inventoryItem is InventoryLandmark)
+                {
+                    item.Type = DirItemType.LANDMARK;
+                    return item;
+                }
+
+                if (inventoryItem is InventoryObject)
+                {
+                    item.Type = DirItemType.OBJECT;
+                    return item;
+                }
+
+                if (inventoryItem is InventoryNotecard)
+                {
+                    item.Type = DirItemType.NOTECARD;
+                    return item;
+                }
+
+                if (inventoryItem is InventoryCategory)
+                {
+                    item.Type = DirItemType.CATEGORY;
+                    return item;
+                }
+
+                if (inventoryItem is InventoryLSL)
+                {
+                    item.Type = DirItemType.LSL;
+                    return item;
+                }
+
+                if (inventoryItem is InventorySnapshot)
+                {
+                    item.Type = DirItemType.SNAPSHOT;
+                    return item;
+                }
+
+                if (inventoryItem is InventoryAttachment)
+                {
+                    item.Type = DirItemType.ATTACHMENT;
+                    return item;
+                }
+
+                if (inventoryItem is InventoryAnimation)
+                {
+                    item.Type = DirItemType.ANIMATION;
+                    return item;
+                }
+
+                if (inventoryItem is InventoryGesture)
+                {
+                    item.Type = DirItemType.GESTURE;
+                    return item;
+                }
+
+                item.Type = DirItemType.NONE;
+                return item;
+            }
+        }
+
+        /// <summary>
+        ///     Holds item types with the wearable inventory item type expanded to wearable types.
+        /// </summary>
+        private enum DirItemType : uint
+        {
+            [Description("none")] NONE = 0,
+            [Description("texture")] TEXTURE,
+            [Description("sound")] SOUND,
+            [Description("callingcard")] CALLINGCARD,
+            [Description("landmark")] LANDMARK,
+            [Description("object")] OBJECT,
+            [Description("notecard")] NOTECARD,
+            [Description("category")] CATEGORY,
+            [Description("LSL")] LSL,
+            [Description("snapshot")] SNAPSHOT,
+            [Description("attachment")] ATTACHMENT,
+            [Description("animation")] ANIMATION,
+            [Description("gesture")] GESTURE,
+            [Description("folder")] FOLDER,
+            [Description("shape")] SHAPE,
+            [Description("skin")] SKIN,
+            [Description("hair")] HAIR,
+            [Description("eyes")] EYES,
+            [Description("shirt")] SHIRT,
+            [Description("pants")] PANTS,
+            [Description("shoes")] SHOES,
+            [Description("socks")] SOCKS,
+            [Description("jacket")] JACKET,
+            [Description("gloves")] GLOVES,
+            [Description("undershirt")] UNDERSHIRT,
+            [Description("underpants")] UNDERPANTS,
+            [Description("skirt")] SKIRT,
+            [Description("tattoo")] TATTOO,
+            [Description("alpha")] ALPHA,
+            [Description("physics")] PHYSICS
+        }
+
+        /// <summary>
         ///     Directions in 3D cartesian.
         /// </summary>
         private enum Direction : uint
@@ -17496,7 +18170,15 @@ namespace Corrade
             [Description("unknown effect")] UNKNOWN_EFFECT,
             [Description("no effect UUID provided")] NO_EFFECT_UUID_PROVIDED,
             [Description("effect not found")] EFFECT_NOT_FOUND,
-            [Description("invalid viewer effect")] INVALID_VIEWER_EFFECT
+            [Description("invalid viewer effect")] INVALID_VIEWER_EFFECT,
+            [Description("ambiguous path")] AMBIGUOUS_PATH,
+            [Description("path not found")] PATH_NOT_FOUND,
+            [Description("unexpected item in path")] UNEXPECTED_ITEM_IN_PATH,
+            [Description("no path provided")] NO_PATH_PROVIDED,
+            [Description("unable to create folder")] UNABLE_TO_CREATE_FOLDER,
+            [Description("no permissions provided")] NO_PERMISSIONS_PROVIDED,
+            [Description("setting permissions failed")] SETTING_PERMISSIONS_FAILED,
+            [Description("timeout retrieving item")] TIMEOUT_RETRIEVING_ITEM
         }
 
         /// <summary>
@@ -17505,6 +18187,8 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+            [Description("path")] PATH,
+            [Description("inventory")] INVENTORY,
             [Description("offset")] OFFSET,
             [Description("alpha")] ALPHA,
             [Description("color")] COLOR,
