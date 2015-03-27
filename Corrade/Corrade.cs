@@ -337,6 +337,45 @@ namespace Corrade
                         });
 
         /// <summary>
+        ///     Updates the inventory starting from a folder recursively.
+        /// </summary>
+        private static readonly Action<InventoryFolder> UpdateInventoryRecursive = o =>
+        {
+            // Create the queue of folders.
+            Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
+            // Enqueue the first folder (root).
+            inventoryFolders.Enqueue(o);
+
+            AutoResetEvent FolderUpdatedEvent = new AutoResetEvent(false);
+            EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
+            {
+                // Enqueue all the new folders.
+                Client.Inventory.Store.GetContents(q.FolderID).ForEach(r =>
+                {
+                    if (r is InventoryFolder)
+                    {
+                        inventoryFolders.Enqueue(r as InventoryFolder);
+                    }
+                });
+                FolderUpdatedEvent.Set();
+            };
+
+            lock (ClientInstanceLock)
+            {
+                do
+                {
+                    InventoryFolder folder = inventoryFolders.Dequeue();
+                    if (folder == null) continue;
+                    Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                    Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
+                        InventorySortOrder.ByDate);
+                    FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                } while (!inventoryFolders.Count.Equals(0));
+            }
+        };
+
+        /// <summary>
         ///     Loads the OpenMetaverse inventory cache.
         /// </summary>
         private static readonly System.Action LoadInventoryCache = () =>
@@ -2761,20 +2800,90 @@ namespace Corrade
                             if (inventoryOfferedType == typeof (InstantMessageEventArgs))
                             {
                                 InstantMessageEventArgs inventoryOfferEventArgs = (InstantMessageEventArgs) args;
-                                List<string> inventoryOfferName =
-                                    new List<string>(
-                                        GetAvatarNames(inventoryOfferEventArgs.IM.FromAgentName));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                    inventoryOfferName.First());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                    inventoryOfferName.Last());
+                                List<string> inventoryObjectOfferedName =
+                                    new List<string>(CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(
+                                        inventoryOfferEventArgs.IM.FromAgentName)
+                                        .Cast<Match>()
+                                        .ToDictionary(p => new[]
+                                        {
+                                            p.Groups["first"].Value,
+                                            p.Groups["last"].Value
+                                        })
+                                        .SelectMany(
+                                            p =>
+                                                new[]
+                                                {
+                                                    p.Key[0],
+                                                    !string.IsNullOrEmpty(p.Key[1])
+                                                        ? p.Key[1]
+                                                        : string.Empty
+                                                }));
+                                switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
+                                {
+                                    case true:
+                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            inventoryObjectOfferedName.First());
+                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            inventoryObjectOfferedName.Last());
+                                        break;
+                                    default:
+                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                            inventoryObjectOfferedName.First());
+                                        break;
+                                }
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                                     inventoryOfferEventArgs.IM.FromAgentID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    inventoryOfferEventArgs.IM.Dialog == InstantMessageDialog.InventoryAccepted
-                                        ? wasGetDescriptionFromEnumValue(Action.ACCEPT)
-                                        : wasGetDescriptionFromEnumValue(Action.DECLINE));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                switch (inventoryOfferEventArgs.IM.Dialog)
+                                {
+                                    case InstantMessageDialog.InventoryAccepted:
+                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                            wasGetDescriptionFromEnumValue(Action.ACCEPT));
+                                        break;
+                                    case InstantMessageDialog.InventoryDeclined:
+                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                            wasGetDescriptionFromEnumValue(Action.DECLINE));
+                                        break;
+                                    case InstantMessageDialog.TaskInventoryOffered:
+                                    case InstantMessageDialog.InventoryOffered:
+                                        lock (InventoryOffersLock)
+                                        {
+                                            KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>
+                                                inventoryObjectOfferedEventArgs =
+                                                    InventoryOffers.FirstOrDefault(p =>
+                                                        p.Key.Offer.IMSessionID.Equals(
+                                                            inventoryOfferEventArgs.IM.IMSessionID));
+                                            if (
+                                                !inventoryObjectOfferedEventArgs.Equals(
+                                                    default(
+                                                        KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>)))
+                                            {
+                                                switch (inventoryObjectOfferedEventArgs.Key.Accept)
+                                                {
+                                                    case true:
+                                                        notificationData.Add(
+                                                            wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                                            wasGetDescriptionFromEnumValue(Action.ACCEPT));
+                                                        break;
+                                                    default:
+                                                        notificationData.Add(
+                                                            wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                                            wasGetDescriptionFromEnumValue(Action.DECLINE));
+                                                        break;
+                                                }
+                                            }
+                                            GroupCollection groups =
+                                                CORRADE_CONSTANTS.InventoryOfferObjectName.Match(
+                                                    inventoryObjectOfferedEventArgs.Key.Offer.Message).Groups;
+                                            if (groups.Count > 0)
+                                            {
+                                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                                    groups[1].Value);
+                                            }
+                                            InventoryOffers.Remove(inventoryObjectOfferedEventArgs.Key);
+                                        }
+                                        break;
+                                }
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DIRECTION),
                                     wasGetDescriptionFromEnumValue(Action.REPLY));
                                 break;
                             }
@@ -2783,21 +2892,51 @@ namespace Corrade
                                 InventoryObjectOfferedEventArgs inventoryObjectOfferedEventArgs =
                                     (InventoryObjectOfferedEventArgs) args;
                                 List<string> inventoryObjectOfferedName =
-                                    new List<string>(
-                                        GetAvatarNames(inventoryObjectOfferedEventArgs.Offer.FromAgentName));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                    inventoryObjectOfferedName.First());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                    inventoryObjectOfferedName.Last());
+                                    new List<string>(CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(
+                                        inventoryObjectOfferedEventArgs.Offer.FromAgentName)
+                                        .Cast<Match>()
+                                        .ToDictionary(p => new[]
+                                        {
+                                            p.Groups["first"].Value,
+                                            p.Groups["last"].Value
+                                        })
+                                        .SelectMany(
+                                            p =>
+                                                new[]
+                                                {
+                                                    p.Key[0],
+                                                    !string.IsNullOrEmpty(p.Key[1])
+                                                        ? p.Key[1]
+                                                        : string.Empty
+                                                }));
+                                switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
+                                {
+                                    case true:
+                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                            inventoryObjectOfferedName.First());
+                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                            inventoryObjectOfferedName.Last());
+                                        break;
+                                    default:
+                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                            inventoryObjectOfferedName.First());
+                                        break;
+                                }
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                                     inventoryObjectOfferedEventArgs.Offer.FromAgentID.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ASSET),
                                     inventoryObjectOfferedEventArgs.AssetType.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                    inventoryObjectOfferedEventArgs.Offer.Message);
+                                GroupCollection groups =
+                                    CORRADE_CONSTANTS.InventoryOfferObjectName.Match(
+                                        inventoryObjectOfferedEventArgs.Offer.Message).Groups;
+                                if (groups.Count > 0)
+                                {
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                        groups[1].Value);
+                                }
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
                                     inventoryObjectOfferedEventArgs.Offer.IMSessionID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DIRECTION),
                                     wasGetDescriptionFromEnumValue(Action.OFFER));
                             }
                             break;
@@ -3377,12 +3516,15 @@ namespace Corrade
                 InventoryOffers.Add(e, wait);
             }
 
+            UpdateInventoryRecursive.Invoke(
+                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as InventoryFolder);
+
             // Find the item in the inventory.
             InventoryBase inventoryBaseItem =
                 FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, ((Func<string>) (() =>
                 {
-                    GroupCollection groups = Regex.Match(e.Offer.Message, @"'{0,1}(.+)'{0,1}").Groups;
-                    return groups.Count >= 1 ? groups[1].Value : string.Empty;
+                    GroupCollection groups = CORRADE_CONSTANTS.InventoryOfferObjectName.Match(e.Offer.Message).Groups;
+                    return groups.Count > 0 ? groups[1].Value : e.Offer.Message;
                 }))()
                     ).FirstOrDefault();
 
@@ -3391,8 +3533,8 @@ namespace Corrade
                 // Assume we do not want the item.
                 Client.Inventory.Move(
                     inventoryBaseItem,
-                    (InventoryFolder)
-                        Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)].Data);
+                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)].Data as
+                        InventoryFolder);
             }
 
             // Wait for a reply.
@@ -3403,27 +3545,29 @@ namespace Corrade
             // If no folder UUID was specified, move it to the default folder for the asset type.
             if (inventoryBaseItem != null)
             {
-                if (e.FolderID.Equals(UUID.Zero))
+                switch (!e.FolderID.Equals(UUID.Zero))
                 {
-                    Client.Inventory.Move(
-                        inventoryBaseItem,
-                        (InventoryFolder)
-                            Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data);
-                    return;
+                    case true:
+                        // Locate the folder and move.
+                        InventoryBase inventoryBaseFolder =
+                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, e.FolderID
+                                ).FirstOrDefault();
+                        if (inventoryBaseFolder != null)
+                        {
+                            Client.Inventory.Move(inventoryBaseItem, inventoryBaseFolder as InventoryFolder);
+                        }
+                        UpdateInventoryRecursive.Invoke(inventoryBaseFolder as InventoryFolder);
+                        break;
+                    default:
+                        Client.Inventory.Move(
+                            inventoryBaseItem,
+                            Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                                InventoryFolder);
+                        UpdateInventoryRecursive.Invoke(
+                            Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                                InventoryFolder);
+                        break;
                 }
-                // Otherwise, locate the folder and move.
-                InventoryBase inventoryBaseFolder =
-                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, e.FolderID
-                        ).FirstOrDefault();
-                if (inventoryBaseFolder != null)
-                {
-                    Client.Inventory.Move(inventoryBaseItem, inventoryBaseFolder as InventoryFolder);
-                }
-            }
-
-            lock (InventoryOffersLock)
-            {
-                InventoryOffers.Remove(e);
             }
         }
 
@@ -3591,59 +3735,7 @@ namespace Corrade
                             LoadInventoryCache.Invoke();
                         }
 
-                        // Create the queue of folders.
-                        Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
-                        // Enqueue the first folder (root).
-                        inventoryFolders.Enqueue(Client.Inventory.Store.RootFolder);
-
-                        // Create a list of semaphores indexed by the folder UUID.
-                        Dictionary<UUID, AutoResetEvent> FolderUpdatedEvents = new Dictionary<UUID, AutoResetEvent>();
-                        object FolderUpdatedEventsLock = new object();
-                        EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
-                        {
-                            // Enqueue all the new folders.
-                            Client.Inventory.Store.GetContents(q.FolderID).ForEach(o =>
-                            {
-                                if (o is InventoryFolder)
-                                {
-                                    inventoryFolders.Enqueue(o as InventoryFolder);
-                                }
-                            });
-                            FolderUpdatedEvents[q.FolderID].Set();
-                        };
-
-                        lock (ClientInstanceLock)
-                        {
-                            while (!inventoryFolders.Count.Equals(0))
-                            {
-                                // Dequeue all the folders in the queue (can also limit to a number of folders).
-                                HashSet<InventoryFolder> folders = new HashSet<InventoryFolder>();
-                                do
-                                {
-                                    folders.Add(inventoryFolders.Dequeue());
-                                } while (!inventoryFolders.Count.Equals(0));
-                                // Process all the dequeued elements in parallel.
-                                Parallel.ForEach(folders.Where(o => o != null), o =>
-                                {
-                                    // Add an semaphore to wait for the folder contents.
-                                    lock (FolderUpdatedEventsLock)
-                                    {
-                                        FolderUpdatedEvents.Add(o.UUID, new AutoResetEvent(false));
-                                    }
-                                    Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                                    Client.Inventory.RequestFolderContents(o.UUID, Client.Self.AgentID, true, true,
-                                        InventorySortOrder.ByDate);
-                                    // Wait on the semaphore.
-                                    FolderUpdatedEvents[o.UUID].WaitOne(Configuration.SERVICES_TIMEOUT, false);
-                                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                                    // Remove the semaphore for the folder.
-                                    lock (FolderUpdatedEventsLock)
-                                    {
-                                        FolderUpdatedEvents.Remove(o.UUID);
-                                    }
-                                });
-                            }
-                        }
+                        UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
 
                         // Now save the caches.
                         lock (ClientInstanceLock)
@@ -16357,6 +16449,9 @@ namespace Corrade
                 RegexOptions.Compiled);
 
             public static readonly Regex OneOrMoRegex = new Regex(@".+?", RegexOptions.Compiled);
+
+            public static readonly Regex InventoryOfferObjectName = new Regex(@"^[']{0,1}(.+?)(('\s)|$)",
+                RegexOptions.Compiled);
         }
 
         /// <summary>
