@@ -3392,7 +3392,7 @@ namespace Corrade
                         {
                             NotificationQueue.Enqueue(new NotificationQueueElement
                             {
-                                URL = o.URL,
+                                URL = (string) o.URL[notification],
                                 message = wasKeyValueEscape(notificationData)
                             });
                         }
@@ -11498,7 +11498,22 @@ namespace Corrade
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.INVALID_NOTIFICATION_TYPES));
                                 }
-                                uint notifications = 0;
+                                Notification notification;
+                                lock (GroupNotificationsLock)
+                                {
+                                    notification =
+                                        GroupNotifications.FirstOrDefault(
+                                            o => o.GROUP.Equals(group, StringComparison.Ordinal));
+                                }
+                                if (notification.Equals(default(Notification)))
+                                {
+                                    notification = new Notification
+                                    {
+                                        GROUP = group,
+                                        NOTIFICATION_MASK = 0,
+                                        URL = new Hashtable()
+                                    };
+                                }
                                 Parallel.ForEach(
                                     notificationTypes.Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER},
                                         StringSplitOptions.RemoveEmptyEntries),
@@ -11510,15 +11525,17 @@ namespace Corrade
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.NOTIFICATION_NOT_ALLOWED));
                                         }
-                                        notifications |= notificationValue;
+                                        notification.NOTIFICATION_MASK |= notificationValue;
+                                        switch (!notification.URL.ContainsKey((Notifications) notificationValue))
+                                        {
+                                            case true:
+                                                notification.URL.Add((Notifications) notificationValue, url);
+                                                break;
+                                            default:
+                                                notification.URL[(Notifications) notificationValue] = url;
+                                                break;
+                                        }
                                     });
-                                // Build the notification.
-                                Notification notification = new Notification
-                                {
-                                    GROUP = group,
-                                    URL = url,
-                                    NOTIFICATION_MASK = notifications
-                                };
                                 lock (GroupNotificationsLock)
                                 {
                                     // Replace notification.
@@ -11529,34 +11546,47 @@ namespace Corrade
                                 break;
                             case Action.GET:
                                 // If the group has no insalled notifications, bail
+                                List<string> csv = new List<string>();
+                                object LockObject = new object();
                                 lock (GroupNotificationsLock)
                                 {
-                                    if (!GroupNotifications.Any(o => o.GROUP.Equals(group)))
+                                    Notification groupNotification =
+                                        GroupNotifications.FirstOrDefault(
+                                            o => o.GROUP.Equals(group, StringComparison.Ordinal));
+                                    if (!groupNotification.Equals(default(Notification)))
                                     {
-                                        break;
+                                        Parallel.ForEach(wasGetEnumDescriptions<Notifications>(), o =>
+                                        {
+                                            if ((groupNotification.NOTIFICATION_MASK &
+                                                 (uint) wasGetEnumValueFromDescription<Notifications>(o)).Equals(0))
+                                                return;
+                                            lock (LockObject)
+                                            {
+                                                csv.Add(o);
+                                                csv.Add(
+                                                    (string) groupNotification.URL[
+                                                        wasGetEnumValueFromDescription<Notifications>(o)]);
+                                            }
+                                        });
                                     }
                                 }
-                                List<string> data;
-                                lock (GroupNotificationsLock)
-                                {
-                                    data =
-                                        new List<string>(
-                                            wasGetEnumDescriptions<Notifications>().Where(o => !GroupNotifications.Any(
-                                                p =>
-                                                    p.GROUP.Equals(group, StringComparison.Ordinal) &&
-                                                    (p.NOTIFICATION_MASK &
-                                                     (uint) wasGetEnumValueFromDescription<Notifications>(o)).Equals(0))));
-                                }
-                                if (!data.Count.Equals(0))
+                                if (!csv.Count.Equals(0))
                                 {
                                     result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                         string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                            data.ToArray()));
+                                            csv.ToArray()));
+                                }
+                                break;
+                            case Action.CLEAR:
+                                lock (GroupNotificationsLock)
+                                {
+                                    GroupNotifications.RemoveWhere(
+                                        o => o.GROUP.Equals(group, StringComparison.Ordinal));
                                 }
                                 break;
                             default:
                                 throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_NOTIFICATIONS_ACTION));
+                                    wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
                         }
                     };
                     break;
@@ -14221,10 +14251,11 @@ namespace Corrade
                         };
                         InventoryBase item;
                         List<string> csv = new List<string>();
-                        switch (wasGetEnumValueFromDescription<Action>(
+                        Action action = wasGetEnumValueFromDescription<Action>(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
-                                .ToLowerInvariant()))
+                                .ToLowerInvariant());
+                        switch (action)
                         {
                             case Action.LS:
                                 switch (!string.IsNullOrEmpty(path))
@@ -14377,6 +14408,7 @@ namespace Corrade
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_CREATE_FOLDER));
                                 }
+                                UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
                                 break;
                             case Action.CHMOD:
                                 string itemPermissions =
@@ -14449,6 +14481,7 @@ namespace Corrade
                                         setPermissions.Invoke(item as InventoryItem, itemPermissions);
                                         break;
                                 }
+                                UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
                                 break;
                             case Action.RM:
                                 switch (!string.IsNullOrEmpty(path))
@@ -14479,6 +14512,109 @@ namespace Corrade
                                             Client.Inventory.FindFolderForType(AssetType.TrashFolder));
                                         break;
                                 }
+                                UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
+                                break;
+                            case Action.CP:
+                            case Action.MV:
+                            case Action.LN:
+                                string lnSourcePath =
+                                    wasInput(wasKeyValueGet(
+                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE)),
+                                        message));
+                                InventoryBase sourceItem;
+                                switch (!string.IsNullOrEmpty(lnSourcePath))
+                                {
+                                    case true:
+                                        if (lnSourcePath[0].Equals(CORRADE_CONSTANTS.PATH_SEPARATOR[0]))
+                                        {
+                                            sourceItem = Client.Inventory.Store.RootFolder;
+                                            break;
+                                        }
+                                        goto default;
+                                    default:
+                                        lock (GroupDirectoryTrackersLock)
+                                        {
+                                            sourceItem = GroupDirectoryTrackers[groupUUID] as InventoryBase;
+                                        }
+                                        break;
+                                }
+                                sourceItem = findPath(lnSourcePath, sourceItem);
+                                switch (action)
+                                {
+                                    case Action.CP:
+                                    case Action.LN:
+                                        if (sourceItem is InventoryFolder)
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.EXPECTED_ITEM_AS_SOURCE));
+                                        }
+                                        break;
+                                }
+                                string lnTargetPath =
+                                    wasInput(wasKeyValueGet(
+                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)),
+                                        message));
+                                InventoryBase targetItem;
+                                switch (!string.IsNullOrEmpty(lnTargetPath))
+                                {
+                                    case true:
+                                        if (lnTargetPath[0].Equals(CORRADE_CONSTANTS.PATH_SEPARATOR[0]))
+                                        {
+                                            targetItem = Client.Inventory.Store.RootFolder;
+                                            break;
+                                        }
+                                        goto default;
+                                    default:
+                                        lock (GroupDirectoryTrackersLock)
+                                        {
+                                            targetItem = GroupDirectoryTrackers[groupUUID] as InventoryBase;
+                                        }
+                                        break;
+                                }
+                                targetItem = findPath(lnTargetPath, targetItem);
+                                if (!(targetItem is InventoryFolder))
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.EXPECTED_FOLDER_AS_TARGET));
+                                }
+                                switch (action)
+                                {
+                                    case Action.LN:
+                                        Client.Inventory.CreateLink(targetItem.UUID, sourceItem, (succeeded, newItem) =>
+                                        {
+                                            if (!succeeded)
+                                            {
+                                                throw new Exception(
+                                                    wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_CREATE_ITEM));
+                                            }
+                                            Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
+                                        });
+                                        break;
+                                    case Action.MV:
+                                        switch (sourceItem is InventoryFolder)
+                                        {
+                                            case true:
+                                                Client.Inventory.MoveFolder(sourceItem.UUID, targetItem.UUID);
+                                                break;
+                                            default:
+                                                Client.Inventory.MoveItem(sourceItem.UUID, targetItem.UUID);
+                                                break;
+                                        }
+                                        break;
+                                    case Action.CP:
+                                        Client.Inventory.RequestCopyItem(sourceItem.UUID, targetItem.UUID,
+                                            sourceItem.Name,
+                                            newItem =>
+                                            {
+                                                if (newItem == null)
+                                                {
+                                                    throw new Exception(
+                                                        wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_CREATE_ITEM));
+                                                }
+                                            });
+                                        break;
+                                }
+                                UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
@@ -16339,12 +16475,16 @@ namespace Corrade
             [Description("disable")] DISABLE,
             [Description("process")] PROCESS,
             [Description("rebuild")] REBUILD,
+            [Description("clear")] CLEAR,
             [Description("ls")] LS,
             [Description("cwd")] CWD,
             [Description("cd")] CD,
             [Description("mkdir")] MKDIR,
             [Description("chmod")] CHMOD,
-            [Description("rm")] RM
+            [Description("rm")] RM,
+            [Description("ln")] LN,
+            [Description("mv")] MV,
+            [Description("cp")] CP
         }
 
         /// <summary>
@@ -18023,7 +18163,7 @@ namespace Corrade
         {
             public string GROUP;
             public uint NOTIFICATION_MASK;
-            public string URL;
+            public Hashtable URL;
         }
 
         /// <summary>
@@ -18192,7 +18332,6 @@ namespace Corrade
             [Description("cannot delete the everyone role")] CANNOT_DELETE_THE_EVERYONE_ROLE,
             [Description("invalid url provided")] INVALID_URL_PROVIDED,
             [Description("invalid notification types")] INVALID_NOTIFICATION_TYPES,
-            [Description("unknown notifications action")] UNKNOWN_NOTIFICATIONS_ACTION,
             [Description("notification not allowed")] NOTIFICATION_NOT_ALLOWED,
             [Description("no range provided")] NO_RANGE_PROVIDED,
             [Description("unknwon directory search type")] UNKNOWN_DIRECTORY_SEARCH_TYPE,
@@ -18299,7 +18438,9 @@ namespace Corrade
             [Description("unable to create folder")] UNABLE_TO_CREATE_FOLDER,
             [Description("no permissions provided")] NO_PERMISSIONS_PROVIDED,
             [Description("setting permissions failed")] SETTING_PERMISSIONS_FAILED,
-            [Description("timeout retrieving item")] TIMEOUT_RETRIEVING_ITEM
+            [Description("timeout retrieving item")] TIMEOUT_RETRIEVING_ITEM,
+            [Description("expected item as source")] EXPECTED_ITEM_AS_SOURCE,
+            [Description("expected folder as target")] EXPECTED_FOLDER_AS_TARGET
         }
 
         /// <summary>
