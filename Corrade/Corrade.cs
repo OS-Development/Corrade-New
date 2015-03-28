@@ -1515,7 +1515,7 @@ namespace Corrade
             int millisecondsTimeout, int dataTimeout)
         {
             bool hasPowers = false;
-            wasAlarm AvatarGroupsReceivedAlarm = new wasAlarm();
+            wasAdaptiveAlarm AvatarGroupsReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
             EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
             {
                 AvatarGroupsReceivedAlarm.Alarm(dataTimeout);
@@ -1549,7 +1549,7 @@ namespace Corrade
         private static bool AgentInGroup(UUID agentUUID, UUID groupUUID, int millisecondsTimeout, int dataTimeout)
         {
             bool agentInGroup = false;
-            wasAlarm GroupMembersReceivedAlarm = new wasAlarm();
+            wasAdaptiveAlarm GroupMembersReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
             EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
             {
                 GroupMembersReceivedAlarm.Alarm(dataTimeout);
@@ -1819,7 +1819,7 @@ namespace Corrade
         /// <returns>the groups that Corrade is a member of</returns>
         private static IEnumerable<OpenMetaverse.Group> GetCurrentGroups(int millisecondsTimeout, int dataTimeout)
         {
-            wasAlarm CurrentGroupsReceivedAlarm = new wasAlarm();
+            wasAdaptiveAlarm CurrentGroupsReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
             Queue<OpenMetaverse.Group> groups = new Queue<OpenMetaverse.Group>();
             object LockObject = new object();
             EventHandler<CurrentGroupsEventArgs> CurrentGroupsEventHandler = (sender, args) =>
@@ -7781,7 +7781,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
-                        wasAlarm ProfileDataReceivedAlarm = new wasAlarm();
+                        wasAdaptiveAlarm ProfileDataReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
                         Avatar.AvatarProperties properties = new Avatar.AvatarProperties();
                         Avatar.Interests interests = new Avatar.Interests();
                         List<AvatarGroup> groups = new List<AvatarGroup>();
@@ -12260,7 +12260,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_LAND_RIGHTS));
                         }
                         List<UUID> estateList = new List<UUID>();
-                        wasAlarm EstateListReceivedAlarm = new wasAlarm();
+                        wasAdaptiveAlarm EstateListReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
                         switch (
                             wasGetEnumValueFromDescription<Type>(
                                 wasInput(wasKeyValueGet(
@@ -12397,7 +12397,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AVATAR_NOT_ON_CURRENT_REGION));
                         }
-                        wasAlarm ProfileDataReceivedAlarm = new wasAlarm();
+                        wasAdaptiveAlarm ProfileDataReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
                         object LockObject = new object();
                         EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
                         {
@@ -14504,7 +14504,8 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        wasAlarm DirectorySearchResultsAlarm = new wasAlarm();
+                        wasAdaptiveAlarm DirectorySearchResultsAlarm =
+                            new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
                         object LockObject = new object();
                         List<string> csv = new List<string>();
                         int handledEvents = 0;
@@ -15703,7 +15704,7 @@ namespace Corrade
             ref UUID groupUUID)
         {
             UUID localGroupUUID = UUID.Zero;
-            wasAlarm DirGroupsReceivedAlarm = new wasAlarm();
+            wasAdaptiveAlarm DirGroupsReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
             EventHandler<DirGroupsReplyEventArgs> DirGroupsReplyDelegate = (sender, args) =>
             {
                 DirGroupsReceivedAlarm.Alarm(dataTimeout);
@@ -15773,7 +15774,7 @@ namespace Corrade
             ref string groupName)
         {
             string localGroupName = groupName;
-            wasAlarm GroupProfileReceivedAlarm = new wasAlarm();
+            wasAdaptiveAlarm GroupProfileReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
             EventHandler<GroupProfileEventArgs> GroupProfileDelegate = (o, s) =>
             {
                 GroupProfileReceivedAlarm.Alarm(dataTimeout);
@@ -15845,7 +15846,7 @@ namespace Corrade
             ref UUID agentUUID)
         {
             UUID localAgentUUID = UUID.Zero;
-            wasAlarm DirPeopleReceivedAlarm = new wasAlarm();
+            wasAdaptiveAlarm DirPeopleReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
             EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyDelegate = (sender, args) =>
             {
                 DirPeopleReceivedAlarm.Alarm(dataTimeout);
@@ -16001,7 +16002,7 @@ namespace Corrade
             ref UUID roleUUID)
         {
             UUID localRoleUUID = UUID.Zero;
-            wasAlarm GroupRoleDataReceivedAlarm = new wasAlarm();
+            wasAdaptiveAlarm GroupRoleDataReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
             EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
             {
                 GroupRoleDataReceivedAlarm.Alarm(dataTimeout);
@@ -16040,7 +16041,7 @@ namespace Corrade
             if (RoleUUID.Equals(UUID.Zero) || GroupUUID.Equals(UUID.Zero))
                 return false;
             string localRoleName = string.Empty;
-            wasAlarm GroupRoleDataReceivedAlarm = new wasAlarm();
+            wasAdaptiveAlarm GroupRoleDataReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
             EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
             {
                 GroupRoleDataReceivedAlarm.Alarm(dataTimeout);
@@ -16574,6 +16575,7 @@ namespace Corrade
             public static bool USE_EXPECT100CONTINUE;
             public static int SERVICES_TIMEOUT;
             public static int DATA_TIMEOUT;
+            public static wasAdaptiveAlarm.DECAY_TYPE DATA_DECAY_TYPE;
             public static int REBAKE_DELAY;
             public static int MEMBERSHIP_SWEEP_INTERVAL;
             public static bool TOS_ACCEPTED;
@@ -16630,6 +16632,7 @@ namespace Corrade
                 USE_NAGGLE = false;
                 SERVICES_TIMEOUT = 60000;
                 DATA_TIMEOUT = 2500;
+                DATA_DECAY_TYPE = wasAdaptiveAlarm.DECAY_TYPE.HARMONIC;
                 REBAKE_DELAY = 1000;
                 ACTIVATE_DELAY = 5000;
                 MEMBERSHIP_SWEEP_INTERVAL = 1000;
@@ -17261,6 +17264,25 @@ namespace Corrade
                                                         throw new Exception("error in data limits section");
                                                     }
                                                     break;
+                                                case ConfigurationKeys.DECAY:
+                                                    if (!string.IsNullOrEmpty(dataLimitNode.InnerText))
+                                                    {
+                                                        switch (dataLimitNode.InnerText)
+                                                        {
+                                                            case ConfigurationKeys.ARITHMETIC:
+                                                                DATA_DECAY_TYPE = wasAdaptiveAlarm.DECAY_TYPE.ARITHMETIC;
+                                                                break;
+                                                            case ConfigurationKeys.GEOMETRIC:
+                                                                DATA_DECAY_TYPE = wasAdaptiveAlarm.DECAY_TYPE.GEOMETRIC;
+                                                                break;
+                                                            case ConfigurationKeys.HARMONIC:
+                                                                DATA_DECAY_TYPE = wasAdaptiveAlarm.DECAY_TYPE.HARMONIC;
+                                                                break;
+                                                            default:
+                                                                throw new Exception("error in data limits section");
+                                                        }
+                                                    }
+                                                    break;
                                             }
                                         }
                                         break;
@@ -17543,6 +17565,10 @@ namespace Corrade
             public const string VIGENERE = @"vigenere";
             public const string IM = @"im";
             public const string RANGE = @"range";
+            public const string DECAY = @"decay";
+            public const string ARITHMETIC = @"arithmetic";
+            public const string GEOMETRIC = @"geometric";
+            public const string HARMONIC = @"harmonic";
         }
 
         /// <summary>
@@ -18594,19 +18620,50 @@ namespace Corrade
         ///////////////////////////////////////////////////////////////////////////
         //  Copyright (C) Wizardry and Steamworks 2013 - License: GNU GPLv3      //
         ///////////////////////////////////////////////////////////////////////////
-        /// <summary>An alarm class similar to the UNIX alarm</summary>
-        public class wasAlarm
+        /// <summary>
+        ///     An alarm class similar to the UNIX alarm with the added benefit
+        ///     of a decaying timer that tracks the time between rescheduling.
+        /// </summary>
+        /// <remarks>
+        ///     (C) Wizardry and Steamworks 2013 - License: GNU GPLv3
+        /// </remarks>
+        public class wasAdaptiveAlarm
         {
+            [Flags]
+            public enum DECAY_TYPE
+            {
+                NONE = 0,
+                ARITHMETIC = 1,
+                GEOMETRIC = 2,
+                HARMONIC = 4
+            }
+
+            private readonly DECAY_TYPE decay = DECAY_TYPE.NONE;
+            private readonly Stopwatch elapsed = new Stopwatch();
+            private readonly HashSet<double> times = new HashSet<double>();
             private System.Timers.Timer alarm;
 
-            public wasAlarm()
+            /// <summary>
+            ///     The default constructor using no decay.
+            /// </summary>
+            public wasAdaptiveAlarm()
             {
                 Signal = new ManualResetEvent(false);
             }
 
+            /// <summary>
+            ///     The constructor for the wasAdaptiveAlarm class taking as parameter a decay type.
+            /// </summary>
+            /// <param name="decay">the type of decay: arithmetic, geometric, harmonic, heronian or quadratic</param>
+            public wasAdaptiveAlarm(DECAY_TYPE decay)
+            {
+                Signal = new ManualResetEvent(false);
+                this.decay = decay;
+            }
+
             public ManualResetEvent Signal { get; set; }
 
-            public void Alarm(int deadline)
+            public void Alarm(double deadline)
             {
                 if (alarm == null)
                 {
@@ -18614,12 +18671,32 @@ namespace Corrade
                     alarm.Elapsed += (o, p) =>
                     {
                         Signal.Set();
+                        times.Clear();
                         alarm.Dispose();
                     };
+                    elapsed.Start();
                     alarm.Start();
                     return;
                 }
-                alarm.Interval = deadline;
+                elapsed.Stop();
+                times.Add(elapsed.ElapsedMilliseconds);
+                elapsed.Reset();
+                elapsed.Start();
+                switch (decay)
+                {
+                    case DECAY_TYPE.ARITHMETIC:
+                        alarm.Interval = (deadline + times.Aggregate((a, b) => b + a))/2f;
+                        break;
+                    case DECAY_TYPE.GEOMETRIC:
+                        alarm.Interval = Math.Pow(deadline*times.Aggregate((a, b) => b*a), 1f/(1f + times.Count));
+                        break;
+                    case DECAY_TYPE.HARMONIC:
+                        alarm.Interval = 2f/(1f/deadline + times.Aggregate((a, b) => 1f/b + 1f/a));
+                        break;
+                    default:
+                        alarm.Interval = deadline;
+                        break;
+                }
             }
         }
 
