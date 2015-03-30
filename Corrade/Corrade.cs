@@ -2658,7 +2658,7 @@ namespace Corrade
             Environment.Exit(0);
         }
 
-        private void HandleLoadURL(object sender, LoadUrlEventArgs e)
+        private static void HandleLoadURL(object sender, LoadUrlEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                 () => SendNotification(Notifications.NOTIFICATION_LOAD_URL, e),
@@ -3813,11 +3813,7 @@ namespace Corrade
         private static void HandleSelfIM(object sender, InstantMessageEventArgs args)
         {
             // Ignore self.
-            if (args.IM.FromAgentName.Equals(string.Join(" ", new[] {Client.Self.FirstName, Client.Self.LastName}),
-                StringComparison.Ordinal))
-                return;
-            // Create a copy of the message.
-            string message = args.IM.Message;
+            if (args.IM.FromAgentID.Equals(Client.Self.AgentID)) return;
             // Process dialog messages.
             switch (args.IM.Dialog)
             {
@@ -3989,7 +3985,7 @@ namespace Corrade
                                                 logWriter.WriteLine("[{0}] {1} : {2}",
                                                     DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
                                                         DateTimeFormatInfo.InvariantInfo), args.IM.FromAgentName,
-                                                    message);
+                                                    args.IM.Message);
                                                 logWriter.Flush();
                                                 //logWriter.Close();
                                             }
@@ -14280,7 +14276,7 @@ namespace Corrade
                                     case true:
                                         foreach (DirItem dirItem in Client.Inventory.Store.GetContents(
                                             item.UUID).Select(
-                                                o => new DirItem().FromInventoryBase(o)))
+                                                o => DirItem.FromInventoryBase(o)))
                                         {
                                             csv.AddRange(new[]
                                             {wasGetStructureMemberDescription(dirItem, dirItem.Name), dirItem.Name});
@@ -14302,7 +14298,7 @@ namespace Corrade
                                         }
                                         break;
                                     case false:
-                                        DirItem dir = new DirItem().FromInventoryBase(item);
+                                        DirItem dir = DirItem.FromInventoryBase(item);
                                         csv.AddRange(new[] {wasGetStructureMemberDescription(dir, dir.Name), dir.Name});
                                         csv.AddRange(new[]
                                         {
@@ -14326,7 +14322,7 @@ namespace Corrade
                                 lock (GroupDirectoryTrackersLock)
                                 {
                                     DirItem dirItem =
-                                        new DirItem().FromInventoryBase(
+                                        DirItem.FromInventoryBase(
                                             GroupDirectoryTrackers[groupUUID] as InventoryBase);
                                     csv.AddRange(new[]
                                     {wasGetStructureMemberDescription(dirItem, dirItem.Name), dirItem.Name});
@@ -15230,13 +15226,11 @@ namespace Corrade
 
         private static void HandleTerseObjectUpdate(object sender, TerseObjectUpdateEventArgs e)
         {
-            if (e.Prim.LocalID.Equals(Client.Self.LocalID))
-            {
-                SetDefaultCamera();
-            }
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                 () => SendNotification(Notifications.NOTIFICATION_TERSE_UPDATES, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
+            if (!e.Prim.LocalID.Equals(Client.Self.LocalID)) return;
+            SetDefaultCamera();
         }
 
         private static void HandleAvatarUpdate(object sender, AvatarUpdateEventArgs e)
@@ -15247,10 +15241,10 @@ namespace Corrade
 
         private static void HandleSimChanged(object sender, SimChangedEventArgs e)
         {
-            Client.Self.Movement.SetFOVVerticalAngle(Utils.TWO_PI - 0.05f);
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                 () => SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
+            Client.Self.Movement.SetFOVVerticalAngle(Utils.TWO_PI - 0.05f);
         }
 
         private static void HandleMoneyBalance(object sender, MoneyBalanceReplyEventArgs e)
@@ -17767,26 +17761,25 @@ namespace Corrade
         /// </summary>
         public struct CorradeThread
         {
-            private static int Alive;
+            private static readonly HashSet<Thread> WorkSet = new HashSet<Thread>();
             private static readonly object Lock = new object();
 
-            public void Spawn(ThreadStart t, int m)
+            public void Spawn(ThreadStart s, int m)
             {
                 lock (Lock)
                 {
-                    if (Alive > m)
+                    WorkSet.RemoveWhere(o => !o.IsAlive);
+                    if (WorkSet.Count > m)
                     {
                         return;
                     }
-                    ++Alive;
                 }
-                t.BeginInvoke(p =>
+                lock (Lock)
                 {
-                    lock (Lock)
-                    {
-                        --Alive;
-                    }
-                }, null);
+                    Thread t = new Thread(s) {IsBackground = true};
+                    WorkSet.Add(t);
+                    t.Start();
+                }
             }
         }
 
@@ -17811,7 +17804,7 @@ namespace Corrade
             [Description("permissions")] public string Permissions;
             [Description("type")] public DirItemType Type;
 
-            public DirItem FromInventoryBase(InventoryBase inventoryBase)
+            public static DirItem FromInventoryBase(InventoryBase inventoryBase)
             {
                 DirItem item = new DirItem
                 {
@@ -18812,6 +18805,7 @@ namespace Corrade
                     alarm.Elapsed += (o, p) =>
                     {
                         Signal.Set();
+                        elapsed.Stop();
                         times.Clear();
                         alarm.Dispose();
                     };
@@ -18826,13 +18820,13 @@ namespace Corrade
                 switch (decay)
                 {
                     case DECAY_TYPE.ARITHMETIC:
-                        alarm.Interval = (deadline + times.Aggregate((a, b) => b + a))/2f;
+                        alarm.Interval = (deadline + times.Aggregate((a, b) => b + a))/(1f + times.Count);
                         break;
                     case DECAY_TYPE.GEOMETRIC:
                         alarm.Interval = Math.Pow(deadline*times.Aggregate((a, b) => b*a), 1f/(1f + times.Count));
                         break;
                     case DECAY_TYPE.HARMONIC:
-                        alarm.Interval = 2f/(1f/deadline + times.Aggregate((a, b) => 1f/b + 1f/a));
+                        alarm.Interval = (1f + times.Count)/(1f/deadline + times.Aggregate((a, b) => 1f/b + 1f/a));
                         break;
                     default:
                         alarm.Interval = deadline;
