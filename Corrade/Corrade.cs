@@ -360,19 +360,17 @@ namespace Corrade
                 FolderUpdatedEvent.Set();
             };
 
-            lock (ClientInstanceLock)
+            do
             {
-                do
-                {
-                    InventoryFolder folder = inventoryFolders.Dequeue();
-                    if (folder == null) continue;
-                    Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                    Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
-                        InventorySortOrder.ByDate);
-                    FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
-                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                } while (!inventoryFolders.Count.Equals(0));
-            }
+                InventoryFolder folder = inventoryFolders.Dequeue();
+                if (folder == null) continue;
+                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
+                    InventorySortOrder.ByDate);
+                FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+            } while (!inventoryFolders.Count.Equals(0));
+
         };
 
         /// <summary>
@@ -709,7 +707,7 @@ namespace Corrade
             }
 
             // Wait for threads to finish.
-            Thread.Sleep(Configuration.SERVICES_TIMEOUT);
+            Thread.Sleep(Timeout.Infinite);
             return true;
         }
 
@@ -3516,25 +3514,35 @@ namespace Corrade
                 InventoryOffers.Add(e, wait);
             }
 
-            UpdateInventoryRecursive.Invoke(
-                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as InventoryFolder);
+            lock (ClientInstanceLock)
+            {
+                UpdateInventoryRecursive.Invoke(
+                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                        InventoryFolder);
+            }
 
             // Find the item in the inventory.
-            InventoryBase inventoryBaseItem =
-                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, ((Func<string>) (() =>
+            InventoryBase inventoryBaseItem;
+            lock (ClientInstanceLock)
+            {
+                inventoryBaseItem = FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, ((Func<string>) (() =>
                 {
                     GroupCollection groups = CORRADE_CONSTANTS.InventoryOfferObjectName.Match(e.Offer.Message).Groups;
                     return groups.Count > 0 ? groups[1].Value : e.Offer.Message;
                 }))()
                     ).FirstOrDefault();
+            }
 
             if (inventoryBaseItem != null)
             {
                 // Assume we do not want the item.
-                Client.Inventory.Move(
-                    inventoryBaseItem,
-                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)].Data as
-                        InventoryFolder);
+                lock (ClientInstanceLock)
+                {
+                    Client.Inventory.Move(
+                        inventoryBaseItem,
+                        Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.TrashFolder)].Data as
+                            InventoryFolder);
+                }
             }
 
             // Wait for a reply.
@@ -3548,24 +3556,30 @@ namespace Corrade
                 switch (!e.FolderID.Equals(UUID.Zero))
                 {
                     case true:
-                        // Locate the folder and move.
-                        InventoryBase inventoryBaseFolder =
-                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, e.FolderID
-                                ).FirstOrDefault();
-                        if (inventoryBaseFolder != null)
+                        lock (ClientInstanceLock)
                         {
-                            Client.Inventory.Move(inventoryBaseItem, inventoryBaseFolder as InventoryFolder);
+                            // Locate the folder and move.
+                            InventoryBase inventoryBaseFolder =
+                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, e.FolderID
+                                    ).FirstOrDefault();
+                            if (inventoryBaseFolder != null)
+                            {
+                                Client.Inventory.Move(inventoryBaseItem, inventoryBaseFolder as InventoryFolder);
+                            }
+                            UpdateInventoryRecursive.Invoke(inventoryBaseFolder as InventoryFolder);
                         }
-                        UpdateInventoryRecursive.Invoke(inventoryBaseFolder as InventoryFolder);
                         break;
                     default:
-                        Client.Inventory.Move(
-                            inventoryBaseItem,
-                            Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                                InventoryFolder);
-                        UpdateInventoryRecursive.Invoke(
-                            Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                                InventoryFolder);
+                        lock (ClientInstanceLock)
+                        {
+                            Client.Inventory.Move(
+                                inventoryBaseItem,
+                                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                                    InventoryFolder);
+                            UpdateInventoryRecursive.Invoke(
+                                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                                    InventoryFolder);
+                        }
                         break;
                 }
             }
@@ -3729,17 +3743,13 @@ namespace Corrade
                     // Start inventory update thread.
                     new Thread(() =>
                     {
-                        // First load the caches.
                         lock (ClientInstanceLock)
                         {
+                            // First load the caches.
                             LoadInventoryCache.Invoke();
-                        }
-
-                        UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
-
-                        // Now save the caches.
-                        lock (ClientInstanceLock)
-                        {
+                            // Update the inventory.
+                            UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
+                            // Now save the caches.
                             SaveInventoryCache.Invoke();
                         }
                     }) {IsBackground = true}.Start();
@@ -3813,7 +3823,12 @@ namespace Corrade
         private static void HandleSelfIM(object sender, InstantMessageEventArgs args)
         {
             // Ignore self.
-            if (args.IM.FromAgentID.Equals(Client.Self.AgentID)) return;
+            List<string> fullName =
+                        new List<string>(
+                            GetAvatarNames(args.IM.FromAgentName));
+            if (args.IM.FromAgentID.Equals(Client.Self.AgentID) &&
+                fullName.First().Equals(Client.Self.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                fullName.Last().Equals(Client.Self.LastName, StringComparison.OrdinalIgnoreCase)) return;
             // Process dialog messages.
             switch (args.IM.Dialog)
             {
@@ -5078,10 +5093,13 @@ namespace Corrade
             string group =
                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)), message));
             // If an UUID was sent, try to resolve to a name and bail if not.
-            UUID groupUUID;
-            if (UUID.TryParse(group, out groupUUID) &&
-                !GroupUUIDToName(groupUUID, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref group))
-                return null;
+            lock (ClientInstanceLock)
+            {
+                UUID groupUUID;
+                if (UUID.TryParse(group, out groupUUID) &&
+                    !GroupUUIDToName(groupUUID, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref group))
+                    return null;
+            }
             // Bail if no group set.
             if (string.IsNullOrEmpty(group)) return null;
             // Get password.
@@ -5122,6 +5140,7 @@ namespace Corrade
                     }
                 }
             }
+
             // Log the command.
             Feedback(string.Format(CultureInfo.InvariantCulture, "{0} ({1}) : {2}", sender,
                 identifier,
@@ -16766,7 +16785,7 @@ namespace Corrade
                 USE_NAGGLE = false;
                 SERVICES_TIMEOUT = 60000;
                 DATA_TIMEOUT = 2500;
-                DATA_DECAY_TYPE = wasAdaptiveAlarm.DECAY_TYPE.HARMONIC;
+                DATA_DECAY_TYPE = wasAdaptiveAlarm.DECAY_TYPE.ARITHMETIC;
                 REBAKE_DELAY = 1000;
                 ACTIVATE_DELAY = 5000;
                 MEMBERSHIP_SWEEP_INTERVAL = 1000;
@@ -17399,23 +17418,9 @@ namespace Corrade
                                                     }
                                                     break;
                                                 case ConfigurationKeys.DECAY:
-                                                    if (!string.IsNullOrEmpty(dataLimitNode.InnerText))
-                                                    {
-                                                        switch (dataLimitNode.InnerText)
-                                                        {
-                                                            case ConfigurationKeys.ARITHMETIC:
-                                                                DATA_DECAY_TYPE = wasAdaptiveAlarm.DECAY_TYPE.ARITHMETIC;
-                                                                break;
-                                                            case ConfigurationKeys.GEOMETRIC:
-                                                                DATA_DECAY_TYPE = wasAdaptiveAlarm.DECAY_TYPE.GEOMETRIC;
-                                                                break;
-                                                            case ConfigurationKeys.HARMONIC:
-                                                                DATA_DECAY_TYPE = wasAdaptiveAlarm.DECAY_TYPE.HARMONIC;
-                                                                break;
-                                                            default:
-                                                                throw new Exception("error in data limits section");
-                                                        }
-                                                    }
+                                                    DATA_DECAY_TYPE =
+                                                        wasGetEnumValueFromDescription<wasAdaptiveAlarm.DECAY_TYPE>(
+                                                            dataLimitNode.InnerText);
                                                     break;
                                             }
                                         }
@@ -18766,10 +18771,10 @@ namespace Corrade
             [Flags]
             public enum DECAY_TYPE
             {
-                NONE = 0,
-                ARITHMETIC = 1,
-                GEOMETRIC = 2,
-                HARMONIC = 4
+                [Description("none")] NONE = 0,
+                [Description("arithmetic")] ARITHMETIC = 1,
+                [Description("geometric")] GEOMETRIC = 2,
+                [Description("harmonic")] HARMONIC = 4
             }
 
             private readonly DECAY_TYPE decay = DECAY_TYPE.NONE;
