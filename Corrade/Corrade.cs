@@ -3689,9 +3689,28 @@ namespace Corrade
                             ActivateCurrentLandGroupTimer.Change(Configuration.ACTIVATE_DELAY, 0);
                         }
                     }) {IsBackground = true}.Start();
+                    // Start inventory update thread.
+                    ManualResetEvent InventoryUpdatedEvent = new ManualResetEvent(false);
+                    new Thread(() =>
+                    {
+                        lock (ClientInstanceLock)
+                        {
+                            // First load the caches.
+                            LoadInventoryCache.Invoke();
+                            // Update the inventory.
+                            UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
+                            // Now save the caches.
+                            SaveInventoryCache.Invoke();
+                        }
+                        // Set the inventory updated event.
+                        InventoryUpdatedEvent.Set();
+                    }) { IsBackground = true }.Start();
                     // Get or create the outfit folder.
                     new Thread(() =>
                     {
+                        // Do not check for outfit folder until the inventory is updated.
+                        InventoryUpdatedEvent.WaitOne(Timeout.Infinite, false);
+
                         HashSet<InventoryBase> rootFolders = new HashSet<InventoryBase>();
                         ManualResetEvent FolderUpdatedEvent = new ManualResetEvent(false);
                         EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
@@ -3738,19 +3757,6 @@ namespace Corrade
                                 OutfitFolder =
                                     (InventoryFolder) Client.Inventory.Store.Items[currentOutfitFolderUUID].Data;
                             }
-                        }
-                    }) {IsBackground = true}.Start();
-                    // Start inventory update thread.
-                    new Thread(() =>
-                    {
-                        lock (ClientInstanceLock)
-                        {
-                            // First load the caches.
-                            LoadInventoryCache.Invoke();
-                            // Update the inventory.
-                            UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
-                            // Now save the caches.
-                            SaveInventoryCache.Invoke();
                         }
                     }) {IsBackground = true}.Start();
                     break;
