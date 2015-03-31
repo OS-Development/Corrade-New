@@ -148,8 +148,6 @@ namespace Corrade
 
         private static volatile bool EnableAIML;
 
-        private static InventoryFolder OutfitFolder;
-
         /// <summary>
         ///     The various types of threads used by Corrade.
         /// </summary>
@@ -370,7 +368,6 @@ namespace Corrade
                 FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
                 Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
             } while (!inventoryFolders.Count.Equals(0));
-
         };
 
         /// <summary>
@@ -549,13 +546,8 @@ namespace Corrade
 
             while (runGroupMembershipSweepThread)
             {
-                if (!Client.Network.Connected)
-                {
-                    Thread.Sleep(1000);
-                    continue;
-                }
-
                 Thread.Sleep(Configuration.MEMBERSHIP_SWEEP_INTERVAL);
+                if (!Client.Network.Connected) continue;
 
                 // Enqueue configured groups that are currently joined groups.
                 groupUUIDs.Clear();
@@ -707,7 +699,7 @@ namespace Corrade
             }
 
             // Wait for threads to finish.
-            Thread.Sleep(Timeout.Infinite);
+            Thread.Sleep(Configuration.SERVICES_TIMEOUT);
             return true;
         }
 
@@ -853,39 +845,49 @@ namespace Corrade
             return ret;
         }
 
-        private static void Attach(InventoryItem item, AttachmentPoint point, bool replace, InventoryFolder outfitFolder)
+        private static void Attach(InventoryItem item, AttachmentPoint point, bool replace)
         {
             InventoryItem realItem = ResolveItemLink(item);
             if (realItem == null) return;
             Client.Appearance.Attach(realItem, point, replace);
-            AddLink(realItem, outfitFolder);
+            AddLink(realItem,
+                Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
+                    InventoryFolder);
         }
 
-        private static void Detach(InventoryItem item, InventoryFolder outfitFolder)
+        private static void Detach(InventoryItem item)
         {
             InventoryItem realItem = ResolveItemLink(item);
             if (realItem == null) return;
-            RemoveLink(realItem, outfitFolder);
+            RemoveLink(realItem,
+                Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
+                    InventoryFolder);
             Client.Appearance.Detach(realItem);
         }
 
-        private static void Wear(InventoryItem item, bool replace, InventoryFolder outfitFolder)
+        private static void Wear(InventoryItem item, bool replace)
         {
             InventoryItem realItem = ResolveItemLink(item);
             if (realItem == null) return;
             Client.Appearance.AddToOutfit(realItem, replace);
-            AddLink(realItem, outfitFolder);
+            AddLink(realItem,
+                Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
+                    InventoryFolder);
         }
 
-        private static void UnWear(InventoryItem item, InventoryFolder outfitFolder)
+        private static void UnWear(InventoryItem item)
         {
             InventoryItem realItem = ResolveItemLink(item);
             if (realItem == null) return;
             Client.Appearance.RemoveFromOutfit(realItem);
-            InventoryItem link = GetCurrentOutfitFolderLinks(outfitFolder)
+            InventoryItem link = GetCurrentOutfitFolderLinks(
+                Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
+                    InventoryFolder)
                 .FirstOrDefault(o => o.AssetType.Equals(AssetType.Link) && o.Name.Equals(item.Name));
             if (link == null) return;
-            RemoveLink(link, outfitFolder);
+            RemoveLink(link,
+                Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
+                    InventoryFolder);
         }
 
         /// <summary>
@@ -922,7 +924,8 @@ namespace Corrade
             string description = (item.InventoryType.Equals(InventoryType.Wearable) && !IsBodyPart(item))
                 ? string.Format("@{0}{1:00}", (int) ((InventoryWearable) item).WearableType, 0)
                 : string.Empty;
-            Client.Inventory.CreateLink(OutfitFolder.UUID, item.UUID, item.Name, description, AssetType.Link,
+            Client.Inventory.CreateLink(Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder), item.UUID,
+                item.Name, description, AssetType.Link,
                 item.InventoryType, UUID.Random(), (success, newItem) =>
                 {
                     if (success)
@@ -2251,6 +2254,38 @@ namespace Corrade
                     BindSignalsThread.Start();
                     break;
             }
+            // Install global event handlers.
+            Client.Inventory.InventoryObjectOffered += HandleInventoryObjectOffered;
+            Client.Network.LoginProgress += HandleLoginProgress;
+            Client.Appearance.AppearanceSet += HandleAppearanceSet;
+            Client.Network.SimConnected += HandleSimulatorConnected;
+            Client.Network.Disconnected += HandleDisconnected;
+            Client.Network.SimDisconnected += HandleSimulatorDisconnected;
+            Client.Network.EventQueueRunning += HandleEventQueueRunning;
+            Client.Friends.FriendshipOffered += HandleFriendshipOffered;
+            Client.Friends.FriendshipResponse += HandleFriendShipResponse;
+            Client.Friends.FriendOnline += HandleFriendOnlineStatus;
+            Client.Friends.FriendOffline += HandleFriendOnlineStatus;
+            Client.Friends.FriendRightsUpdate += HandleFriendRightsUpdate;
+            Client.Self.TeleportProgress += HandleTeleportProgress;
+            Client.Self.ScriptQuestion += HandleScriptQuestion;
+            Client.Self.AlertMessage += HandleAlertMessage;
+            Client.Self.MoneyBalance += HandleMoneyBalance;
+            Client.Self.ChatFromSimulator += HandleChatFromSimulator;
+            Client.Self.ScriptDialog += HandleScriptDialog;
+            Client.Objects.TerseObjectUpdate += HandleTerseObjectUpdate;
+            Client.Avatars.ViewerEffect += HandleViewerEffect;
+            Client.Avatars.ViewerEffectPointAt += HandleViewerEffect;
+            Client.Avatars.ViewerEffectLookAt += HandleViewerEffect;
+            Client.Self.MeanCollision += HandleMeanCollision;
+            Client.Self.RegionCrossed += HandleRegionCrossed;
+            Client.Network.SimChanged += HandleSimChanged;
+            Client.Self.MoneyBalanceReply += HandleMoneyBalance;
+            Client.Self.LoadURL += HandleLoadURL;
+            // Each Instant Message is processed in its own thread.
+            Client.Self.IM += (sender, args) => CorradeThreadPool[CorradeThreadType.INSTANT_MESSAGE].Spawn(
+                () => HandleSelfIM(sender, args),
+                Configuration.MAXIMUM_INSTANT_MESSAGE_THREADS);
             // Set-up watcher for dynamically reading the configuration file.
             FileSystemWatcher configurationWatcher = new FileSystemWatcher
             {
@@ -2293,39 +2328,6 @@ namespace Corrade
             Client.Self.Movement.Camera.Far = Configuration.RANGE;
             Client.Settings.LOGIN_TIMEOUT = Configuration.SERVICES_TIMEOUT;
             Client.Settings.LOGOUT_TIMEOUT = Configuration.SERVICES_TIMEOUT;
-            // Install global event handlers.
-            Client.Inventory.InventoryObjectOffered += HandleInventoryObjectOffered;
-            Client.Network.LoginProgress += HandleLoginProgress;
-            Client.Appearance.AppearanceSet += HandleAppearanceSet;
-            Client.Network.SimConnected += HandleSimulatorConnected;
-            Client.Network.Disconnected += HandleDisconnected;
-            Client.Network.SimDisconnected += HandleSimulatorDisconnected;
-            Client.Network.EventQueueRunning += HandleEventQueueRunning;
-            Client.Friends.FriendshipOffered += HandleFriendshipOffered;
-            Client.Friends.FriendshipResponse += HandleFriendShipResponse;
-            Client.Friends.FriendOnline += HandleFriendOnlineStatus;
-            Client.Friends.FriendOffline += HandleFriendOnlineStatus;
-            Client.Friends.FriendRightsUpdate += HandleFriendRightsUpdate;
-            Client.Self.TeleportProgress += HandleTeleportProgress;
-            Client.Self.ScriptQuestion += HandleScriptQuestion;
-            Client.Self.AlertMessage += HandleAlertMessage;
-            Client.Self.MoneyBalance += HandleMoneyBalance;
-            Client.Self.ChatFromSimulator += HandleChatFromSimulator;
-            Client.Self.ScriptDialog += HandleScriptDialog;
-            Client.Objects.AvatarUpdate += HandleAvatarUpdate;
-            Client.Objects.TerseObjectUpdate += HandleTerseObjectUpdate;
-            Client.Avatars.ViewerEffect += HandleViewerEffect;
-            Client.Avatars.ViewerEffectPointAt += HandleViewerEffect;
-            Client.Avatars.ViewerEffectLookAt += HandleViewerEffect;
-            Client.Self.MeanCollision += HandleMeanCollision;
-            Client.Self.RegionCrossed += HandleRegionCrossed;
-            Client.Network.SimChanged += HandleSimChanged;
-            Client.Self.MoneyBalanceReply += HandleMoneyBalance;
-            Client.Self.LoadURL += HandleLoadURL;
-            // Each Instant Message is processed in its own thread.
-            Client.Self.IM += (sender, args) => CorradeThreadPool[CorradeThreadType.INSTANT_MESSAGE].Spawn(
-                () => HandleSelfIM(sender, args),
-                Configuration.MAXIMUM_INSTANT_MESSAGE_THREADS);
             // Check TOS
             if (!Configuration.TOS_ACCEPTED)
             {
@@ -2497,7 +2499,6 @@ namespace Corrade
             Client.Avatars.ViewerEffectPointAt -= HandleViewerEffect;
             Client.Avatars.ViewerEffect -= HandleViewerEffect;
             Client.Objects.TerseObjectUpdate -= HandleTerseObjectUpdate;
-            Client.Objects.AvatarUpdate -= HandleAvatarUpdate;
             Client.Self.ScriptDialog -= HandleScriptDialog;
             Client.Self.ChatFromSimulator -= HandleChatFromSimulator;
             Client.Self.MoneyBalance -= HandleMoneyBalance;
@@ -2622,7 +2623,7 @@ namespace Corrade
                 {
                     Client.Network.RequestLogout();
                 }
-                if (!LoggedOutEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                if (!LoggedOutEvent.WaitOne(Configuration.LOGOUT_GRACE, false))
                 {
                     Client.Network.LoggedOut -= LoggedOutEventHandler;
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TIMEOUT_LOGGING_OUT));
@@ -3690,7 +3691,6 @@ namespace Corrade
                         }
                     }) {IsBackground = true}.Start();
                     // Start inventory update thread.
-                    ManualResetEvent InventoryUpdatedEvent = new ManualResetEvent(false);
                     new Thread(() =>
                     {
                         lock (ClientInstanceLock)
@@ -3701,62 +3701,6 @@ namespace Corrade
                             UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
                             // Now save the caches.
                             SaveInventoryCache.Invoke();
-                        }
-                        // Set the inventory updated event.
-                        InventoryUpdatedEvent.Set();
-                    }) { IsBackground = true }.Start();
-                    // Get or create the outfit folder.
-                    new Thread(() =>
-                    {
-                        // Do not check for outfit folder until the inventory is updated.
-                        InventoryUpdatedEvent.WaitOne(Timeout.Infinite, false);
-
-                        HashSet<InventoryBase> rootFolders = new HashSet<InventoryBase>();
-                        ManualResetEvent FolderUpdatedEvent = new ManualResetEvent(false);
-                        EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
-                        {
-                            if (q.FolderID.Equals(Client.Inventory.Store.RootFolder.UUID) && q.Success)
-                            {
-                                rootFolders =
-                                    new HashSet<InventoryBase>(
-                                        Client.Inventory.Store.GetContents(Client.Inventory.Store.RootFolder.UUID));
-                            }
-                            FolderUpdatedEvent.Set();
-                        };
-                        lock (ClientInstanceLock)
-                        {
-                            Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                            Client.Inventory.RequestFolderContents(Client.Inventory.Store.RootFolder.UUID,
-                                Client.Self.AgentID,
-                                true, true, InventorySortOrder.ByDate);
-                            FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT);
-                            Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                        }
-                        if (!rootFolders.Count.Equals(0))
-                        {
-                            InventoryFolder inventoryFolder =
-                                rootFolders.FirstOrDefault(
-                                    o =>
-                                        o is InventoryFolder &&
-                                        ((InventoryFolder) o).PreferredType == AssetType.CurrentOutfitFolder) as
-                                    InventoryFolder;
-                            if (inventoryFolder != null)
-                            {
-                                OutfitFolder = inventoryFolder;
-                                return;
-                            }
-                        }
-                        lock (ClientInstanceLock)
-                        {
-                            UUID currentOutfitFolderUUID =
-                                Client.Inventory.CreateFolder(Client.Inventory.Store.RootFolder.UUID,
-                                    CORRADE_CONSTANTS.CURRENT_OUTFIT_FOLDER_NAME, AssetType.CurrentOutfitFolder);
-                            if (Client.Inventory.Store.Items.ContainsKey(currentOutfitFolderUUID) &&
-                                Client.Inventory.Store.Items[currentOutfitFolderUUID].Data is InventoryFolder)
-                            {
-                                OutfitFolder =
-                                    (InventoryFolder) Client.Inventory.Store.Items[currentOutfitFolderUUID].Data;
-                            }
                         }
                     }) {IsBackground = true}.Start();
                     break;
@@ -3794,14 +3738,6 @@ namespace Corrade
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                 () => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
-            // Accept friendships only from masters (for the time being)
-            if (
-                !Configuration.MASTERS.Select(
-                    o => string.Format(CultureInfo.InvariantCulture, "{0} {1}", o.FirstName, o.LastName))
-                    .Any(p => p.Equals(e.AgentName, StringComparison.CurrentCultureIgnoreCase)))
-                return;
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ACCEPTED_FRIENDSHIP), e.AgentName);
-            Client.Friends.AcceptFriendship(e.AgentID, e.SessionID);
         }
 
         private static void HandleTeleportProgress(object sender, TeleportEventArgs e)
@@ -3830,8 +3766,8 @@ namespace Corrade
         {
             // Ignore self.
             List<string> fullName =
-                        new List<string>(
-                            GetAvatarNames(args.IM.FromAgentName));
+                new List<string>(
+                    GetAvatarNames(args.IM.FromAgentName));
             if (args.IM.FromAgentID.Equals(Client.Self.AgentID) &&
                 fullName.First().Equals(Client.Self.FirstName, StringComparison.OrdinalIgnoreCase) &&
                 fullName.Last().Equals(Client.Self.LastName, StringComparison.OrdinalIgnoreCase)) return;
@@ -3845,6 +3781,16 @@ namespace Corrade
                         () => SendNotification(Notifications.NOTIFICATION_TYPING, args),
                         Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     return;
+                case InstantMessageDialog.FriendshipOffered:
+                    // Accept friendships only from masters (for the time being)
+                    if (
+                        !Configuration.MASTERS.Any(
+                            o =>
+                                o.FirstName.Equals(fullName.First(), StringComparison.OrdinalIgnoreCase) &&
+                                o.LastName.Equals(fullName.Last(), StringComparison.OrdinalIgnoreCase))) return;
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ACCEPTED_FRIENDSHIP), args.IM.FromAgentName);
+                    Client.Friends.AcceptFriendship(args.IM.FromAgentID, args.IM.IMSessionID);
+                    break;
                 case InstantMessageDialog.InventoryAccepted:
                 case InstantMessageDialog.InventoryDeclined:
                 case InstantMessageDialog.TaskInventoryOffered:
@@ -3975,12 +3921,16 @@ namespace Corrade
                     // such that the only way to determine if we have a group message is to check that the UUID
                     // of the session is actually the UUID of a current group. Furthermore, what's worse is that 
                     // group mesages can appear both through SessionSend and from MessageFromAgent. Hence the problem.
-                    OpenMetaverse.Group messageGroup;
-                    lock (ClientInstanceLock)
+                    OpenMetaverse.Group messageGroup = new OpenMetaverse.Group();
+                    if (Configuration.GROUPS.Any(o => o.UUID.Equals(args.IM.IMSessionID)))
                     {
-                        messageGroup = GetCurrentGroups(
-                            Configuration.SERVICES_TIMEOUT,
-                            Configuration.DATA_TIMEOUT).FirstOrDefault(o => o.ID.Equals(args.IM.IMSessionID));
+                        lock (ClientInstanceLock)
+                        {
+                            messageGroup = GetCurrentGroups(
+                                Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT).FirstOrDefault(
+                                    o => Configuration.GROUPS.Any(p => p.UUID.Equals(o.ID)));
+                        }
                     }
                     if (!messageGroup.Equals(default(OpenMetaverse.Group)))
                     {
@@ -4434,7 +4384,7 @@ namespace Corrade
                                         ((InventoryItem) p).AssetType.Equals(AssetType.Object));
                         if (inventoryBase is InventoryAttachment || inventoryBase is InventoryObject)
                         {
-                            Detach(inventoryBase as InventoryItem, OutfitFolder);
+                            Detach(inventoryBase as InventoryItem);
                         }
                         RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
@@ -4480,8 +4430,7 @@ namespace Corrade
                                                     if (inventoryBase is InventoryAttachment ||
                                                         inventoryBase is InventoryObject)
                                                     {
-                                                        Detach(inventoryBase as InventoryItem,
-                                                            OutfitFolder);
+                                                        Detach(inventoryBase as InventoryItem);
                                                     }
                                                 });
                                         break;
@@ -4504,16 +4453,14 @@ namespace Corrade
                                                                             {
                                                                                 if (p is InventoryWearable)
                                                                                 {
-                                                                                    UnWear(p as InventoryItem,
-                                                                                        OutfitFolder);
+                                                                                    UnWear(p as InventoryItem);
                                                                                     return;
                                                                                 }
                                                                                 if (p is InventoryAttachment ||
                                                                                     p is InventoryObject)
                                                                                 {
                                                                                     // Multiple attachment points not working in libOpenMetaverse, so just replace.
-                                                                                    Detach(p as InventoryItem,
-                                                                                        OutfitFolder);
+                                                                                    Detach(p as InventoryItem);
                                                                                 }
                                                                             });
                                                                 }
@@ -4535,7 +4482,7 @@ namespace Corrade
                                                         ((InventoryItem) p).AssetType.Equals(AssetType.Object));
                                             if (inventoryBase is InventoryAttachment || inventoryBase is InventoryObject)
                                             {
-                                                Detach(inventoryBase as InventoryItem, OutfitFolder);
+                                                Detach(inventoryBase as InventoryItem);
                                             }
                                         });
                                 break;
@@ -4577,7 +4524,7 @@ namespace Corrade
                                                             {
                                                                 if (p is InventoryWearable)
                                                                 {
-                                                                    Wear(p as InventoryItem, true, OutfitFolder);
+                                                                    Wear(p as InventoryItem, true);
                                                                     return;
                                                                 }
                                                                 if (p is InventoryObject || p is InventoryAttachment)
@@ -4585,8 +4532,7 @@ namespace Corrade
                                                                     // Multiple attachment points not working in libOpenMetaverse, so just replace.
                                                                     Attach(p as InventoryItem,
                                                                         AttachmentPoint.Default,
-                                                                        true,
-                                                                        OutfitFolder);
+                                                                        true);
                                                                 }
                                                             });
                                                 }
@@ -4623,7 +4569,7 @@ namespace Corrade
                                 {
                                     break;
                                 }
-                                UnWear(inventoryBase as InventoryItem, OutfitFolder);
+                                UnWear(inventoryBase as InventoryItem);
                                 break;
                             default:
                                 Parallel.ForEach(GetWearables(Client.Inventory.Store.RootNode)
@@ -4640,7 +4586,7 @@ namespace Corrade
                                         {
                                             return;
                                         }
-                                        UnWear(inventoryBase as InventoryItem, OutfitFolder);
+                                        UnWear(inventoryBase as InventoryItem);
                                     });
                                 break;
                         }
@@ -5098,16 +5044,31 @@ namespace Corrade
             // Get group and password.
             string group =
                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)), message));
-            // If an UUID was sent, try to resolve to a name and bail if not.
-            lock (ClientInstanceLock)
-            {
-                UUID groupUUID;
-                if (UUID.TryParse(group, out groupUUID) &&
-                    !GroupUUIDToName(groupUUID, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref group))
-                    return null;
-            }
             // Bail if no group set.
             if (string.IsNullOrEmpty(group)) return null;
+            // If an UUID was sent, try to resolve to a name and bail if not.
+            UUID groupUUID;
+            if (UUID.TryParse(group, out groupUUID))
+            {
+                // First, trust the user to have properly configured the UUID for the group.
+                Group configGroup = Configuration.GROUPS.FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                switch (!configGroup.Equals(default(Group)))
+                {
+                    case true:
+                        // If they have, then just grab the group name.
+                        group = configGroup.Name;
+                        break;
+                    default:
+                        lock (ClientInstanceLock)
+                        {
+                            // Otherwise, attempt to resolve the group name.
+                            if (
+                                !GroupUUIDToName(groupUUID, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref group)) return null;
+                        }
+                        break;
+                }
+            }
             // Get password.
             string password =
                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD)), message));
@@ -8452,7 +8413,7 @@ namespace Corrade
                                             ).FirstOrDefault(p => p is InventoryWearable);
                                     if (inventoryBaseItem == null)
                                         return;
-                                    Wear(inventoryBaseItem as InventoryItem, replace, OutfitFolder);
+                                    Wear(inventoryBaseItem as InventoryItem, replace);
                                 });
                         RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
@@ -8480,7 +8441,7 @@ namespace Corrade
                                             ).FirstOrDefault(p => p is InventoryWearable);
                                     if (inventoryBaseItem == null)
                                         return;
-                                    UnWear(inventoryBaseItem as InventoryItem, OutfitFolder);
+                                    UnWear(inventoryBaseItem as InventoryItem);
                                 });
                         RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
@@ -8553,7 +8514,7 @@ namespace Corrade
                                         if (inventoryBaseItem == null)
                                             return;
                                         Attach(inventoryBaseItem as InventoryItem, (AttachmentPoint) q.GetValue(null),
-                                            replace, OutfitFolder);
+                                            replace);
                                     }));
                         RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
@@ -8587,7 +8548,7 @@ namespace Corrade
                                                     p is InventoryObject || p is InventoryAttachment);
                                     if (inventoryBaseItem == null)
                                         return;
-                                    Detach(inventoryBaseItem as InventoryItem, OutfitFolder);
+                                    Detach(inventoryBaseItem as InventoryItem);
                                 });
                         RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
@@ -13656,7 +13617,7 @@ namespace Corrade
                         }
                         // Now remove the current outfit items.
                         Client.Inventory.Store.GetContents(
-                            OutfitFolder).FindAll(
+                            Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)).FindAll(
                                 o => CanBeWorn(o) && ((InventoryItem) o).AssetType.Equals(AssetType.Link))
                             .ForEach(p =>
                             {
@@ -13665,7 +13626,7 @@ namespace Corrade
                                 {
                                     if (!IsBodyPart(item))
                                     {
-                                        UnWear(item, OutfitFolder);
+                                        UnWear(item);
                                         return;
                                     }
                                     if (items.Any(q =>
@@ -13673,12 +13634,12 @@ namespace Corrade
                                         InventoryWearable i = q as InventoryWearable;
                                         return i != null &&
                                                ((InventoryWearable) item).WearableType.Equals(i.WearableType);
-                                    })) UnWear(item, OutfitFolder);
+                                    })) UnWear(item);
                                     return;
                                 }
                                 if (item is InventoryAttachment || item is InventoryObject)
                                 {
-                                    Detach(item, OutfitFolder);
+                                    Detach(item);
                                 }
                             });
                         // And equip the specified folder.
@@ -13687,12 +13648,12 @@ namespace Corrade
                             InventoryItem item = o as InventoryItem;
                             if (item is InventoryWearable)
                             {
-                                Wear(item, false, OutfitFolder);
+                                Wear(item, false);
                                 return;
                             }
                             if (item is InventoryAttachment || item is InventoryObject)
                             {
-                                Attach(item, AttachmentPoint.Default, false, OutfitFolder);
+                                Attach(item, AttachmentPoint.Default, false);
                             }
                         });
                         // And rebake.
@@ -15254,14 +15215,6 @@ namespace Corrade
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                 () => SendNotification(Notifications.NOTIFICATION_TERSE_UPDATES, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
-            if (!e.Prim.LocalID.Equals(Client.Self.LocalID)) return;
-            SetDefaultCamera();
-        }
-
-        private static void HandleAvatarUpdate(object sender, AvatarUpdateEventArgs e)
-        {
-            if (!e.Avatar.LocalID.Equals(Client.Self.LocalID)) return;
-            SetDefaultCamera();
         }
 
         private static void HandleSimChanged(object sender, SimChangedEventArgs e)
@@ -15277,15 +15230,6 @@ namespace Corrade
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                 () => SendNotification(Notifications.NOTIFICATION_ECONOMY, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
-        }
-
-        private static void SetDefaultCamera()
-        {
-            // SetCamera 5m behind the avatar
-            Client.Self.Movement.Camera.LookAt(
-                Client.Self.SimPosition + new Vector3(-5, 0, 0)*Client.Self.Movement.BodyRotation,
-                Client.Self.SimPosition
-                );
         }
 
         #region CRYPTOGRAPHY
@@ -16750,6 +16694,7 @@ namespace Corrade
             public static List<Filter> OUTPUT_FILTERS;
             public static string VIGENERE_SECRET;
             public static ENIGMA ENIGMA;
+            public static int LOGOUT_GRACE;
 
             public static string Read(string file)
             {
@@ -17452,6 +17397,27 @@ namespace Corrade
                                             }
                                         }
                                         break;
+                                    case ConfigurationKeys.LOGOUT:
+                                        XmlNodeList logoutLimitNodeList = limitsNode.SelectNodes("*");
+                                        if (logoutLimitNodeList == null)
+                                        {
+                                            throw new Exception("error in logout limits section");
+                                        }
+                                        foreach (XmlNode logoutLimitNode in logoutLimitNodeList)
+                                        {
+                                            switch (logoutLimitNode.Name.ToLowerInvariant())
+                                            {
+                                                case ConfigurationKeys.TIMEOUT:
+                                                    if (
+                                                        !int.TryParse(logoutLimitNode.InnerText,
+                                                            out LOGOUT_GRACE))
+                                                    {
+                                                        throw new Exception("error in logout limits section");
+                                                    }
+                                                    break;
+                                            }
+                                        }
+                                        break;
                                 }
                             }
                         }
@@ -17636,18 +17602,154 @@ namespace Corrade
                             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
                         }
                     }
-                    switch (GROUPS.Any(
-                        o => !(o.NotificationMask & (uint) Notifications.NOTIFICATION_GROUP_MEMBERSHIP).Equals(0)))
-                    {
-                        case true:
-                            // Start the group membership thread.
-                            StartGroupMembershipSweepThread.Invoke();
-                            break;
-                        case false:
-                            // Stop the group sweep thread.
-                            StopGroupMembershipSweepThread.Invoke();
-                            break;
-                    }
+                    // Dynamically disable or enable notifications.
+                    Parallel.ForEach(wasGetEnumDescriptions<Notifications>().Select(
+                        o => wasGetEnumValueFromDescription<Notifications>(o)), o =>
+                        {
+                            bool enabled = GROUPS.Any(
+                                p =>
+                                    !(p.NotificationMask & (uint) Notifications.NOTIFICATION_GROUP_MEMBERSHIP).Equals(0));
+                            switch (o)
+                            {
+                                case Notifications.NOTIFICATION_GROUP_MEMBERSHIP:
+                                    switch (enabled)
+                                    {
+                                        case true:
+                                            // Start the group membership thread.
+                                            StartGroupMembershipSweepThread.Invoke();
+                                            break;
+                                        default:
+                                            // Stop the group sweep thread.
+                                            StopGroupMembershipSweepThread.Invoke();
+                                            break;
+                                    }
+                                    break;
+                                case Notifications.NOTIFICATION_FRIENDSHIP:
+                                    switch (enabled)
+                                    {
+                                        case true:
+                                            Client.Friends.FriendshipOffered += HandleFriendshipOffered;
+                                            Client.Friends.FriendshipResponse += HandleFriendShipResponse;
+                                            Client.Friends.FriendOnline += HandleFriendOnlineStatus;
+                                            Client.Friends.FriendOffline += HandleFriendOnlineStatus;
+                                            Client.Friends.FriendRightsUpdate += HandleFriendRightsUpdate;
+                                            break;
+                                        default:
+                                            Client.Friends.FriendshipOffered -= HandleFriendshipOffered;
+                                            Client.Friends.FriendshipResponse -= HandleFriendShipResponse;
+                                            Client.Friends.FriendOnline -= HandleFriendOnlineStatus;
+                                            Client.Friends.FriendOffline -= HandleFriendOnlineStatus;
+                                            Client.Friends.FriendRightsUpdate -= HandleFriendRightsUpdate;
+                                            break;
+                                    }
+                                    break;
+                                case Notifications.NOTIFICATION_SCRIPT_PERMISSION:
+                                    switch (enabled)
+                                    {
+                                        case true:
+                                            Client.Self.ScriptQuestion += HandleScriptQuestion;
+                                            break;
+                                        default:
+                                            Client.Self.ScriptQuestion -= HandleScriptQuestion;
+                                            break;
+                                    }
+                                    break;
+                                case Notifications.NOTIFICATION_ALERT_MESSAGE:
+                                    switch (enabled)
+                                    {
+                                        case true:
+                                            Client.Self.AlertMessage += HandleAlertMessage;
+                                            break;
+                                        default:
+                                            Client.Self.AlertMessage -= HandleAlertMessage;
+                                            break;
+                                    }
+                                    break;
+                                case Notifications.NOTIFICATION_BALANCE:
+                                    switch (enabled)
+                                    {
+                                        case true:
+                                            Client.Self.MoneyBalance += HandleMoneyBalance;
+                                            break;
+                                        default:
+                                            Client.Self.MoneyBalance -= HandleMoneyBalance;
+                                            break;
+                                    }
+                                    break;
+                                case Notifications.NOTIFICATION_SCRIPT_DIALOG:
+                                    switch (enabled)
+                                    {
+                                        case true:
+                                            Client.Self.ScriptDialog += HandleScriptDialog;
+                                            break;
+                                        default:
+                                            Client.Self.ScriptDialog -= HandleScriptDialog;
+                                            break;
+                                    }
+                                    break;
+                                case Notifications.NOTIFICATION_TERSE_UPDATES:
+                                    switch (enabled)
+                                    {
+                                        case true:
+                                            Client.Objects.TerseObjectUpdate += HandleTerseObjectUpdate;
+                                            break;
+                                        default:
+                                            Client.Objects.TerseObjectUpdate -= HandleTerseObjectUpdate;
+                                            break;
+                                    }
+                                    break;
+                                case Notifications.NOTIFICATION_VIEWER_EFFECT:
+                                    switch (enabled)
+                                    {
+                                        case true:
+                                            Client.Avatars.ViewerEffect += HandleViewerEffect;
+                                            Client.Avatars.ViewerEffectPointAt += HandleViewerEffect;
+                                            Client.Avatars.ViewerEffectLookAt += HandleViewerEffect;
+                                            break;
+                                        default:
+                                            Client.Avatars.ViewerEffect -= HandleViewerEffect;
+                                            Client.Avatars.ViewerEffectPointAt -= HandleViewerEffect;
+                                            Client.Avatars.ViewerEffectLookAt -= HandleViewerEffect;
+                                            break;
+                                    }
+                                    break;
+                                case Notifications.NOTIFICATION_MEAN_COLLISION:
+                                    switch (enabled)
+                                    {
+                                        case true:
+                                            Client.Self.MeanCollision += HandleMeanCollision;
+                                            break;
+                                        default:
+                                            Client.Self.MeanCollision -= HandleMeanCollision;
+                                            break;
+                                    }
+                                    break;
+                                case Notifications.NOTIFICATION_REGION_CROSSED:
+                                    switch (enabled)
+                                    {
+                                        case true:
+                                            Client.Self.RegionCrossed += HandleRegionCrossed;
+                                            Client.Network.SimChanged += HandleSimChanged;
+                                            break;
+                                        default:
+                                            Client.Self.RegionCrossed -= HandleRegionCrossed;
+                                            Client.Network.SimChanged -= HandleSimChanged;
+                                            break;
+                                    }
+                                    break;
+                                case Notifications.NOTIFICATION_LOAD_URL:
+                                    switch (enabled)
+                                    {
+                                        case true:
+                                            Client.Self.LoadURL += HandleLoadURL;
+                                            break;
+                                        default:
+                                            Client.Self.LoadURL -= HandleLoadURL;
+                                            break;
+                                    }
+                                    break;
+                            }
+                        });
                 }
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
             }
@@ -17711,9 +17813,7 @@ namespace Corrade
             public const string IM = @"im";
             public const string RANGE = @"range";
             public const string DECAY = @"decay";
-            public const string ARITHMETIC = @"arithmetic";
-            public const string GEOMETRIC = @"geometric";
-            public const string HARMONIC = @"harmonic";
+            public const string LOGOUT = @"logout";
         }
 
         /// <summary>
@@ -17785,12 +17885,12 @@ namespace Corrade
                         return;
                     }
                 }
+                Thread t = new Thread(s) {IsBackground = true};
                 lock (Lock)
                 {
-                    Thread t = new Thread(s) {IsBackground = true};
                     WorkSet.Add(t);
-                    t.Start();
                 }
+                t.Start();
             }
         }
 
@@ -18034,7 +18134,7 @@ namespace Corrade
         /// </summary>
         private struct GroupInvite
         {
-            public Agent Agent;
+            [Description("agent")] public Agent Agent;
             [Description("fee")] public int Fee;
             [Description("group")] public string Group;
             [Description("session")] public UUID Session;
