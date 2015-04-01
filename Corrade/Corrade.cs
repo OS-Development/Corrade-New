@@ -334,9 +334,6 @@ namespace Corrade
                                 : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
                         });
 
-        /// <summary>
-        ///     Updates the inventory starting from a folder recursively.
-        /// </summary>
         /*private static readonly Action<InventoryFolder> UpdateInventoryRecursive = o =>
         {
             // Create the queue of folders.
@@ -369,7 +366,9 @@ namespace Corrade
                 Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
             } while (!inventoryFolders.Count.Equals(0)); 
         };*/
-
+        /// <summary>
+        ///     Updates the inventory starting from a folder recursively.
+        /// </summary>
         /// <summary>
         ///     Updates the inventory starting from a folder recursively.
         /// </summary>
@@ -745,7 +744,7 @@ namespace Corrade
                             GroupMembers[groupUUID].Add(member);
                         }
                     }
-                    groupMembers.Clear(); 
+                    groupMembers.Clear();
                 } while (!groupUUIDs.Count.Equals(0) && runGroupMembershipSweepThread);
             }
         }
@@ -3722,7 +3721,7 @@ namespace Corrade
                     {
                         LoadChatBotFiles.Invoke();
                     }
-                }){IsBackground = true}.Start();
+                }) {IsBackground = true}.Start();
         }
 
         private static void HandleDisconnected(object sender, DisconnectedEventArgs e)
@@ -6114,7 +6113,9 @@ namespace Corrade
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler =
                             (sender, args) =>
                             {
-                                foreach (KeyValuePair<UUID, UUID> pair in args.RolesMembers.Where(o => o.Key.Equals(roleUUID)))
+                                foreach (
+                                    KeyValuePair<UUID, UUID> pair in
+                                        args.RolesMembers.Where(o => o.Key.Equals(roleUUID)))
                                 {
                                     string agentName = string.Empty;
                                     if (
@@ -6171,7 +6172,8 @@ namespace Corrade
                             {
                                 // First resolve the all the role names to role UUIDs
                                 Hashtable roleUUIDNames = new Hashtable(args.RolesMembers.Count);
-                                foreach (UUID roleUUID in args.RolesMembers.GroupBy(o => o.Key).Select(o => o.First().Key))
+                                foreach (
+                                    UUID roleUUID in args.RolesMembers.GroupBy(o => o.Key).Select(o => o.First().Key))
                                 {
                                     string roleName = string.Empty;
                                     if (
