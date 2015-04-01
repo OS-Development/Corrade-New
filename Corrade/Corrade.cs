@@ -6170,8 +6170,8 @@ namespace Corrade
                             (sender, args) =>
                             {
                                 // First resolve the all the role names to role UUIDs
-                                Dictionary<UUID, string> roleUUIDNames = new Dictionary<UUID, string>();
-                                foreach (UUID roleUUID in args.RolesMembers.Select(o => o.Key))
+                                Hashtable roleUUIDNames = new Hashtable(args.RolesMembers.Count);
+                                foreach (UUID roleUUID in args.RolesMembers.GroupBy(o => o.Key).Select(o => o.First().Key))
                                 {
                                     string roleName = string.Empty;
                                     if (
@@ -6189,7 +6189,7 @@ namespace Corrade
                                     if (
                                         !AgentUUIDToName(pair.Value, Configuration.SERVICES_TIMEOUT, ref agentName))
                                         continue;
-                                    csv.Add(roleUUIDNames[pair.Key]);
+                                    csv.Add(roleUUIDNames[pair.Key] as string);
                                     csv.Add(agentName);
                                     csv.Add(pair.Value.ToString());
                                 }
@@ -6204,7 +6204,6 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS));
                         }
                         Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
-
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -6334,7 +6333,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.CANNOT_REMOVE_OWNER_ROLE));
                         }
-                        // remove member from role
+                        // remove members from role
                         ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                         {
@@ -6350,7 +6349,6 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_EJECTING_AGENT));
                         }
                         Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
-
                         Client.Groups.DeleteRole(groupUUID, roleUUID);
                     };
                     break;
