@@ -337,7 +337,7 @@ namespace Corrade
         /// <summary>
         ///     Updates the inventory starting from a folder recursively.
         /// </summary>
-        private static readonly Action<InventoryFolder> UpdateInventoryRecursive = o =>
+        /*private static readonly Action<InventoryFolder> UpdateInventoryRecursive = o =>
         {
             // Create the queue of folders.
             Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
@@ -367,7 +367,64 @@ namespace Corrade
                     InventorySortOrder.ByDate);
                 FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
                 Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-            } while (!inventoryFolders.Count.Equals(0));
+            } while (!inventoryFolders.Count.Equals(0)); 
+        };*/
+
+        /// <summary>
+        ///     Updates the inventory starting from a folder recursively.
+        /// </summary>
+        private static readonly Action<InventoryFolder> UpdateInventoryRecursive = o =>
+        {
+            // Create the queue of folders.
+            Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
+            // Enqueue the first folder (root).
+            inventoryFolders.Enqueue(o);
+
+            // Create a list of semaphores indexed by the folder UUID.
+            Dictionary<UUID, AutoResetEvent> FolderUpdatedEvents = new Dictionary<UUID, AutoResetEvent>();
+            object FolderUpdatedEventsLock = new object();
+            EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (sender, args) =>
+            {
+                // Enqueue all the new folders.
+                Client.Inventory.Store.GetContents(args.FolderID).ForEach(p =>
+                {
+                    if (p is InventoryFolder)
+                    {
+                        inventoryFolders.Enqueue(p as InventoryFolder);
+                    }
+                });
+                FolderUpdatedEvents[args.FolderID].Set();
+            };
+
+            while (!inventoryFolders.Count.Equals(0))
+            {
+                // Dequeue all the folders in the queue (can also limit to a number of folders).
+                HashSet<InventoryFolder> folders = new HashSet<InventoryFolder>();
+                while (!inventoryFolders.Count.Equals(0))
+                {
+                    folders.Add(inventoryFolders.Dequeue());
+                }
+                // Process all the dequeued elements in parallel.
+                Parallel.ForEach(folders, p =>
+                {
+                    // Add an semaphore to wait for the folder contents.
+                    lock (FolderUpdatedEventsLock)
+                    {
+                        FolderUpdatedEvents.Add(p.UUID, new AutoResetEvent(false));
+                    }
+                    Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                    Client.Inventory.RequestFolderContents(p.UUID, Client.Self.AgentID, true, true,
+                        InventorySortOrder.ByDate);
+                    // Wait on the semaphore.
+                    FolderUpdatedEvents[p.UUID].WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                    Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                    // Remove the semaphore for the folder.
+                    lock (FolderUpdatedEventsLock)
+                    {
+                        FolderUpdatedEvents.Remove(p.UUID);
+                    }
+                });
+            }
         };
 
         /// <summary>
@@ -584,12 +641,15 @@ namespace Corrade
 
                 do
                 {
+                    // Pause for one second between scans.
+                    Thread.Sleep(1000);
+                    // Dequeue the first group.
                     UUID groupUUID = groupUUIDs.Dequeue();
-                    // The total list of members.
+                    // Clear the total list of members.
                     groupMembers.Clear();
-                    // New members that have joined the group.
+                    // Clear the members that have joined the group.
                     joinedMembers.Clear();
-                    // Members that have parted the group.
+                    // Clear the members that have left the group.
                     partedMembers.Clear();
                     lock (ClientInstanceLock)
                     {
@@ -685,7 +745,7 @@ namespace Corrade
                             GroupMembers[groupUUID].Add(member);
                         }
                     }
-                    groupMembers.Clear();
+                    groupMembers.Clear(); 
                 } while (!groupUUIDs.Count.Equals(0) && runGroupMembershipSweepThread);
             }
         }
@@ -2302,7 +2362,15 @@ namespace Corrade
             AIMLBotConfigurationWatcher.Changed += HandleAIMLBotConfigurationChanged;
             if (EnableAIML)
             {
-                LoadChatBotFiles.BeginInvoke(o => { AIMLBotConfigurationWatcher.EnableRaisingEvents = true; }, null);
+                new Thread(
+                    () =>
+                    {
+                        lock (AIMLBotLock)
+                        {
+                            LoadChatBotFiles.Invoke();
+                            AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
+                        }
+                    }) {IsBackground = true}.Start();
             }
             // Network Tweaks
             ServicePointManager.DefaultConnectionLimit = Configuration.CONNECTION_LIMIT;
@@ -3647,7 +3715,14 @@ namespace Corrade
         private static void HandleAIMLBotConfigurationChanged(object sender, FileSystemEventArgs e)
         {
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AIML_CONFIGURATION_MODIFIED));
-            LoadChatBotFiles.Invoke();
+            new Thread(
+                () =>
+                {
+                    lock (AIMLBotLock)
+                    {
+                        LoadChatBotFiles.Invoke();
+                    }
+                }){IsBackground = true}.Start();
         }
 
         private static void HandleDisconnected(object sender, DisconnectedEventArgs e)
@@ -3669,8 +3744,7 @@ namespace Corrade
         private static void HandleSimulatorDisconnected(object sender, SimDisconnectedEventArgs e)
         {
             // if any simulators are still connected, we are not disconnected
-            if (Client.Network.Simulators.Any())
-                return;
+            if (Client.Network.Simulators.Any()) return;
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ALL_SIMULATORS_DISCONNECTED));
             ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('s')).Value.Set();
         }
@@ -6028,21 +6102,20 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ROLE_NAME_SPECIFIED));
                         }
+                        UUID roleUUID = UUID.Zero;
+                        if (
+                            !RoleNameToRoleUUID(role, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                Configuration.DATA_TIMEOUT, ref roleUUID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
+                        }
                         List<string> csv = new List<string>();
                         ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler =
                             (sender, args) =>
                             {
-                                foreach (KeyValuePair<UUID, UUID> pair in args.RolesMembers)
+                                foreach (KeyValuePair<UUID, UUID> pair in args.RolesMembers.Where(o => o.Key.Equals(roleUUID)))
                                 {
-                                    string roleName = string.Empty;
-                                    if (
-                                        !RoleUUIDToName(pair.Key, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                            Configuration.DATA_TIMEOUT,
-                                            ref roleName))
-                                        continue;
-                                    if (!roleName.Equals(role))
-                                        continue;
                                     string agentName = string.Empty;
                                     if (
                                         !AgentUUIDToName(pair.Value, Configuration.SERVICES_TIMEOUT, ref agentName))
@@ -6096,19 +6169,25 @@ namespace Corrade
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler =
                             (sender, args) =>
                             {
-                                foreach (KeyValuePair<UUID, UUID> pair in args.RolesMembers)
+                                Dictionary<UUID, string> roleUUIDNames = new Dictionary<UUID, string>();
+                                foreach (UUID roleUUID in args.RolesMembers.Select(o => o.Key))
                                 {
                                     string roleName = string.Empty;
                                     if (
-                                        !RoleUUIDToName(pair.Key, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                        !RoleUUIDToName(roleUUID, groupUUID, Configuration.SERVICES_TIMEOUT,
                                             Configuration.DATA_TIMEOUT,
                                             ref roleName))
                                         continue;
+                                    roleUUIDNames.Add(roleUUID, roleName);
+                                }
+                                foreach (KeyValuePair<UUID, UUID> pair in args.RolesMembers)
+                                {
+                                    if (!roleUUIDNames.ContainsKey(pair.Key)) continue;
                                     string agentName = string.Empty;
                                     if (
                                         !AgentUUIDToName(pair.Value, Configuration.SERVICES_TIMEOUT, ref agentName))
                                         continue;
-                                    csv.Add(roleName);
+                                    csv.Add(roleUUIDNames[pair.Key]);
                                     csv.Add(agentName);
                                     csv.Add(pair.Value.ToString());
                                 }
