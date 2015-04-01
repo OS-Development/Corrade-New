@@ -3703,6 +3703,11 @@ namespace Corrade
                             SaveInventoryCache.Invoke();
                         }
                     }) {IsBackground = true}.Start();
+                    // Set the camera on the avatar.
+                    Client.Self.Movement.Camera.LookAt(
+                        Client.Self.SimPosition,
+                        Client.Self.SimPosition
+                        );
                     break;
                 case LoginStatus.Failed:
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_FAILED), e.FailReason);
@@ -3755,6 +3760,11 @@ namespace Corrade
                             ActivateCurrentLandGroupTimer.Change(Configuration.ACTIVATE_DELAY, 0);
                         }
                     }) {IsBackground = true}.Start();
+                    // Set the camera on the avatar.
+                    Client.Self.Movement.Camera.LookAt(
+                        Client.Self.SimPosition,
+                        Client.Self.SimPosition
+                        );
                     break;
                 case TeleportStatus.Failed:
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_FAILED));
@@ -4197,7 +4207,8 @@ namespace Corrade
                         }
                         ManualResetEvent SitEvent = new ManualResetEvent(false);
                         EventHandler<AvatarSitResponseEventArgs> AvatarSitEventHandler =
-                            (sender, args) => SitEvent.Set();
+                            (sender, args) =>
+                                SitEvent.Set();
                         EventHandler<AlertMessageEventArgs> AlertMessageEventHandler = (sender, args) => SitEvent.Set();
                         if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
                         {
@@ -4211,6 +4222,11 @@ namespace Corrade
                         SitEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
                         Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                         Client.Self.AlertMessage -= AlertMessageEventHandler;
+                        // Set the camera on the avatar.
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
                     };
                     break;
                 case RLVBehaviour.UNSIT:
@@ -6864,6 +6880,11 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TELEPORT_FAILED));
                         }
+                        // Set the camera on the avatar.
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
                     };
                     break;
                 case ScriptKeys.LURE:
@@ -6901,7 +6922,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(group,
-                                (int) Permissions.PERMISSION_MOVEMENT))
+                                (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -6957,6 +6978,11 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_GO_HOME));
                         }
+                        // Set the camera on the avatar.
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
                     };
                     break;
                 case ScriptKeys.GETREGIONDATA:
@@ -7079,12 +7105,16 @@ namespace Corrade
                         }
                         Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                         Client.Self.AlertMessage -= AlertMessageEventHandler;
-
                         if (!succeeded)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_SIT));
                         }
                         Client.Self.Sit();
+                        // Set the camera on the avatar.
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
                     };
                     break;
                 case ScriptKeys.RELAX:
@@ -7101,6 +7131,11 @@ namespace Corrade
                         Client.Self.SignaledAnimations.ForEach(
                             animation => Client.Self.AnimationStop(animation.Key, true));
                         Client.Self.SitOnGround();
+                        // Set the camera on the avatar.
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
                     };
                     break;
                 case ScriptKeys.RUN:
@@ -7140,6 +7175,11 @@ namespace Corrade
                         }
                         Client.Self.SignaledAnimations.ForEach(
                             animation => Client.Self.AnimationStop(animation.Key, true));
+                        // Set the camera on the avatar.
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
                     };
                     break;
                 case ScriptKeys.GETPARCELLIST:
@@ -8005,6 +8045,11 @@ namespace Corrade
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FLY_ACTION_START_OR_STOP));
                         }
+                        // Set the camera on the avatar.
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
                     };
                     break;
                 case ScriptKeys.ADDPICK:
@@ -10608,6 +10653,11 @@ namespace Corrade
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_MOVE_ACTION));
                         }
+                        // Set the camera on the avatar.
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
                     };
                     break;
                 case ScriptKeys.TURNTO:
@@ -10630,6 +10680,11 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
                         }
                         Client.Self.Movement.TurnToward(position, true);
+                        // Set the camera on the avatar.
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
                     };
                     break;
                 case ScriptKeys.NUDGE:
@@ -10703,6 +10758,11 @@ namespace Corrade
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_DIRECTION));
                         }
+                        // Set the camera on the avatar.
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
                     };
                     break;
                 case ScriptKeys.SETVIEWEREFFECT:
@@ -13887,6 +13947,11 @@ namespace Corrade
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FLY_ACTION_START_OR_STOP));
                         }
+                        // Set the camera on the avatar.
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
                     };
                     break;
                 case ScriptKeys.JUMP:
@@ -13915,6 +13980,11 @@ namespace Corrade
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FLY_ACTION_START_OR_STOP));
                         }
+                        // Set the camera on the avatar.
+                        Client.Self.Movement.Camera.LookAt(
+                            Client.Self.SimPosition,
+                            Client.Self.SimPosition
+                            );
                     };
                     break;
                 case ScriptKeys.EXECUTE:
@@ -15222,7 +15292,6 @@ namespace Corrade
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                 () => SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
-            Client.Self.Movement.SetFOVVerticalAngle(Utils.TWO_PI - 0.05f);
         }
 
         private static void HandleMoneyBalance(object sender, MoneyBalanceReplyEventArgs e)
