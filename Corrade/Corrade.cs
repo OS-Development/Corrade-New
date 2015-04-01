@@ -6102,10 +6102,10 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ROLE_NAME_SPECIFIED));
                         }
-                        UUID roleUUID = UUID.Zero;
-                        if (
-                            !RoleNameToRoleUUID(role, groupUUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT, ref roleUUID))
+                        UUID roleUUID;
+                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToRoleUUID(role, groupUUID,
+                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                            ref roleUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
                         }
@@ -6169,6 +6169,7 @@ namespace Corrade
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler =
                             (sender, args) =>
                             {
+                                // First resolve the all the role names to role UUIDs
                                 Dictionary<UUID, string> roleUUIDNames = new Dictionary<UUID, string>();
                                 foreach (UUID roleUUID in args.RolesMembers.Select(o => o.Key))
                                 {
@@ -6180,6 +6181,7 @@ namespace Corrade
                                         continue;
                                     roleUUIDNames.Add(roleUUID, roleName);
                                 }
+                                // Next, associate role names with agent names and UUIDs.
                                 foreach (KeyValuePair<UUID, UUID> pair in args.RolesMembers)
                                 {
                                     if (!roleUUIDNames.ContainsKey(pair.Key)) continue;
