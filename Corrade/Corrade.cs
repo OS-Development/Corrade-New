@@ -148,6 +148,8 @@ namespace Corrade
 
         private static volatile bool EnableAIML;
 
+        private static volatile bool AIMLBotBrainCompiled;
+
         /// <summary>
         ///     The various types of threads used by Corrade.
         /// </summary>
@@ -200,16 +202,47 @@ namespace Corrade
         };
 
         /// <summary>
+        ///     Schedules a load of the configuration file.
+        /// </summary>
+        private static readonly Timer ConfigurationChangedTimer = new Timer(ConfigurationChanged =>
+        {
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
+            lock (ClientInstanceLock)
+            {
+                Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
+            }
+        });
+
+        /// <summary>
+        ///     Schedules a load of the AIML configuration file.
+        /// </summary>
+        private static readonly Timer AIMLConfigurationChangedTimer = new Timer(AIMLConfigurationChanged =>
+        {
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AIML_CONFIGURATION_MODIFIED));
+            new Thread(
+                () =>
+                {
+                    lock (AIMLBotLock)
+                    {
+                        LoadChatBotFiles.Invoke();
+                    }
+                }) {IsBackground = true}.Start();
+        });
+
+        /// <summary>
         ///     Global rebake timer.
         /// </summary>
         private static readonly Timer RebakeTimer = new Timer(Rebake =>
         {
             ManualResetEvent AppearanceSetEvent = new ManualResetEvent(false);
             EventHandler<AppearanceSetEventArgs> HandleAppearanceSet = (sender, args) => AppearanceSetEvent.Set();
-            Client.Appearance.AppearanceSet += HandleAppearanceSet;
-            Client.Appearance.RequestSetAppearance(true);
-            AppearanceSetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
-            Client.Appearance.AppearanceSet -= HandleAppearanceSet;
+            lock (ClientInstanceLock)
+            {
+                Client.Appearance.AppearanceSet += HandleAppearanceSet;
+                Client.Appearance.RequestSetAppearance(true);
+                AppearanceSetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                Client.Appearance.AppearanceSet -= HandleAppearanceSet;
+            }
         });
 
         /// <summary>
@@ -218,10 +251,16 @@ namespace Corrade
         private static readonly Timer ActivateCurrentLandGroupTimer = new Timer(ActivateCurrentLandGroup =>
         {
             Parcel parcel = null;
-            if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel)) return;
+            lock (ClientInstanceLock)
+            {
+                if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel)) return;
+            }
             UUID groupUUID = Configuration.GROUPS.FirstOrDefault(o => o.UUID.Equals(parcel.GroupID)).UUID;
             if (groupUUID.Equals(UUID.Zero)) return;
-            Client.Groups.ActivateGroup(groupUUID);
+            lock (ClientInstanceLock)
+            {
+                Client.Groups.ActivateGroup(groupUUID);
+            }
         });
 
         public static EventHandler ConsoleEventHandler;
@@ -334,41 +373,6 @@ namespace Corrade
                                 : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
                         });
 
-        /*private static readonly Action<InventoryFolder> UpdateInventoryRecursive = o =>
-        {
-            // Create the queue of folders.
-            Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
-            // Enqueue the first folder (root).
-            inventoryFolders.Enqueue(o);
-
-            AutoResetEvent FolderUpdatedEvent = new AutoResetEvent(false);
-            EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
-            {
-                // Enqueue all the new folders.
-                Client.Inventory.Store.GetContents(q.FolderID).ForEach(r =>
-                {
-                    if (r is InventoryFolder)
-                    {
-                        inventoryFolders.Enqueue(r as InventoryFolder);
-                    }
-                });
-                FolderUpdatedEvent.Set();
-            };
-
-            do
-            {
-                InventoryFolder folder = inventoryFolders.Dequeue();
-                if (folder == null) continue;
-                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
-                    InventorySortOrder.ByDate);
-                FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
-                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-            } while (!inventoryFolders.Count.Equals(0)); 
-        };*/
-        /// <summary>
-        ///     Updates the inventory starting from a folder recursively.
-        /// </summary>
         /// <summary>
         ///     Updates the inventory starting from a folder recursively.
         /// </summary>
@@ -524,6 +528,13 @@ namespace Corrade
             {
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_CONFIGURING_AIML_BOT), exception.Message);
                 return;
+            }
+            finally
+            {
+                lock (AIMLBotLock)
+                {
+                    AIMLBotBrainCompiled = true;
+                }
             }
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_AIML_BOT_CONFIGURATION));
         };
@@ -2352,25 +2363,17 @@ namespace Corrade
                 Filter = CORRADE_CONSTANTS.CONFIGURATION_FILE,
                 NotifyFilter = NotifyFilters.LastWrite
             };
+            FileSystemEventHandler HandleConfigurationFileChanged =
+                (sender, args) => ConfigurationChangedTimer.Change(1000, 0);
             configurationWatcher.Changed += HandleConfigurationFileChanged;
             configurationWatcher.EnableRaisingEvents = true;
             // Set-up the AIML bot in case it has been enabled.
             AIMLBotConfigurationWatcher.Path = wasPathCombine(Directory.GetCurrentDirectory(),
                 AIML_BOT_CONSTANTS.DIRECTORY);
             AIMLBotConfigurationWatcher.NotifyFilter = NotifyFilters.LastWrite;
+            FileSystemEventHandler HandleAIMLBotConfigurationChanged =
+                (sender, args) => AIMLConfigurationChangedTimer.Change(1000, 0);
             AIMLBotConfigurationWatcher.Changed += HandleAIMLBotConfigurationChanged;
-            if (EnableAIML)
-            {
-                new Thread(
-                    () =>
-                    {
-                        lock (AIMLBotLock)
-                        {
-                            LoadChatBotFiles.Invoke();
-                            AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
-                        }
-                    }) {IsBackground = true}.Start();
-            }
             // Network Tweaks
             ServicePointManager.DefaultConnectionLimit = Configuration.CONNECTION_LIMIT;
             ServicePointManager.UseNagleAlgorithm = Configuration.USE_NAGGLE;
@@ -3700,28 +3703,6 @@ namespace Corrade
                     Client.Self.ScriptQuestionReply(Client.Network.CurrentSim, e.ItemID, e.TaskID, e.Questions);
                 }
             }
-        }
-
-        private static void HandleConfigurationFileChanged(object sender, FileSystemEventArgs e)
-        {
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
-            lock (ClientInstanceLock)
-            {
-                Configuration.Load(e.Name);
-            }
-        }
-
-        private static void HandleAIMLBotConfigurationChanged(object sender, FileSystemEventArgs e)
-        {
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AIML_CONFIGURATION_MODIFIED));
-            new Thread(
-                () =>
-                {
-                    lock (AIMLBotLock)
-                    {
-                        LoadChatBotFiles.Invoke();
-                    }
-                }) {IsBackground = true}.Start();
         }
 
         private static void HandleDisconnected(object sender, DisconnectedEventArgs e)
@@ -6667,8 +6648,24 @@ namespace Corrade
                             case Action.ENABLE:
                                 lock (AIMLBotLock)
                                 {
-                                    AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
-                                    AIMLBot.isAcceptingUserInput = true;
+                                    switch (!AIMLBotBrainCompiled)
+                                    {
+                                        case true:
+                                            new Thread(
+                                                () =>
+                                                {
+                                                    lock (AIMLBotLock)
+                                                    {
+                                                        LoadChatBotFiles.Invoke();
+                                                        AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
+                                                    }
+                                                }) {IsBackground = true}.Start();
+                                            break;
+                                        default:
+                                            AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
+                                            AIMLBot.isAcceptingUserInput = true;
+                                            break;
+                                    }
                                 }
                                 break;
                             case Action.DISABLE:
@@ -14140,21 +14137,104 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        switch (wasGetEnumValueFromDescription<Action>(wasInput(
+                        Action action = wasGetEnumValueFromDescription<Action>(wasInput(
                             wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
-                            .ToLowerInvariant()))
+                            .ToLowerInvariant());
+                        switch (action)
                         {
                             case Action.READ:
-                                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                    Convert.ToBase64String(
-                                        Encoding.ASCII.GetBytes(Configuration.Read(CORRADE_CONSTANTS.CONFIGURATION_FILE))));
+                                try
+                                {
+                                    result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                        Configuration.Read(CORRADE_CONSTANTS.CONFIGURATION_FILE));
+                                }
+                                catch (Exception)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_LOAD_CONFIGURATION));
+                                }
                                 break;
                             case Action.WRITE:
-                                Configuration.Write(CORRADE_CONSTANTS.CONFIGURATION_FILE,
-                                    Encoding.ASCII.GetString(
-                                        Convert.FromBase64String(
-                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                                message))));
+                                try
+                                {
+                                    Configuration.Write(CORRADE_CONSTANTS.CONFIGURATION_FILE, wasKeyValueGet(
+                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                        message));
+                                }
+                                catch (Exception)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_SAVE_CONFIGURATION));
+                                }
+                                break;
+                            case Action.SET:
+                            case Action.GET:
+                                string path =
+                                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATH)),
+                                        message));
+                                if (string.IsNullOrEmpty(path))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_PATH_PROVIDED));
+                                }
+                                XmlDocument conf = new XmlDocument();
+                                try
+                                {
+                                    conf.LoadXml(Configuration.Read(CORRADE_CONSTANTS.CONFIGURATION_FILE));
+                                }
+                                catch (Exception)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_LOAD_CONFIGURATION));
+                                }
+                                string data;
+                                switch (action)
+                                {
+                                    case Action.GET:
+                                        try
+                                        {
+                                            data = conf.SelectSingleNode(path).InnerXml;
+                                        }
+                                        catch (Exception)
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.INVALID_XML_PATH));
+                                        }
+                                        if (!string.IsNullOrEmpty(data))
+                                        {
+                                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), data);
+                                        }
+                                        break;
+                                    case Action.SET:
+                                        data =
+                                            wasInput(
+                                                wasKeyValueGet(
+                                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                                    message));
+                                        if (string.IsNullOrEmpty(data))
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.NO_DATA_PROVIDED));
+                                        }
+                                        try
+                                        {
+                                            conf.SelectSingleNode(path).InnerXml = data;
+                                        }
+                                        catch (Exception)
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.INVALID_XML_PATH));
+                                        }
+                                        try
+                                        {
+                                            Configuration.Write(CORRADE_CONSTANTS.CONFIGURATION_FILE, conf);
+                                        }
+                                        catch (Exception)
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_SAVE_CONFIGURATION));
+                                        }
+                                        break;
+                                }
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
@@ -16706,6 +16786,11 @@ namespace Corrade
 
             public static readonly Regex InventoryOfferObjectName = new Regex(@"^[']{0,1}(.+?)(('\s)|$)",
                 RegexOptions.Compiled);
+
+            public struct PERMISSIONS
+            {
+                public const string NONE = @"------------------------------";
+            }
         }
 
         /// <summary>
@@ -16859,6 +16944,14 @@ namespace Corrade
                 lock (ConfigurationFileLock)
                 {
                     File.WriteAllText(file, data);
+                }
+            }
+
+            public static void Write(string file, XmlDocument document)
+            {
+                lock (ConfigurationFileLock)
+                {
+                    document.Save(file);
                 }
             }
 
@@ -17752,6 +17845,34 @@ namespace Corrade
                             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
                         }
                     }
+                    // Enable AIML in case it was enabled in the configuration file.
+                    switch (EnableAIML)
+                    {
+                        case true:
+                            switch (!AIMLBotBrainCompiled)
+                            {
+                                case true:
+                                    new Thread(
+                                        () =>
+                                        {
+                                            lock (AIMLBotLock)
+                                            {
+                                                LoadChatBotFiles.Invoke();
+                                                AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
+                                            }
+                                        }) {IsBackground = true}.Start();
+                                    break;
+                                default:
+                                    AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
+                                    AIMLBot.isAcceptingUserInput = true;
+                                    break;
+                            }
+                            break;
+                        default:
+                            AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
+                            AIMLBot.isAcceptingUserInput = false;
+                            break;
+                    }
                     // Dynamically disable or enable notifications.
                     Parallel.ForEach(wasGetEnumDescriptions<Notifications>().Select(
                         o => wasGetEnumValueFromDescription<Notifications>(o)), o =>
@@ -18071,7 +18192,7 @@ namespace Corrade
                 {
                     Name = inventoryBase.Name,
                     Item = inventoryBase.UUID,
-                    Permissions = "------------------------------"
+                    Permissions = CORRADE_CONSTANTS.PERMISSIONS.NONE
                 };
 
                 if (inventoryBase is InventoryFolder)
@@ -18694,7 +18815,11 @@ namespace Corrade
             [Description("setting permissions failed")] SETTING_PERMISSIONS_FAILED,
             [Description("timeout retrieving item")] TIMEOUT_RETRIEVING_ITEM,
             [Description("expected item as source")] EXPECTED_ITEM_AS_SOURCE,
-            [Description("expected folder as target")] EXPECTED_FOLDER_AS_TARGET
+            [Description("expected folder as target")] EXPECTED_FOLDER_AS_TARGET,
+            [Description("unable to load configuration")] UNABLE_TO_LOAD_CONFIGURATION,
+            [Description("unable to save configuration")] UNABLE_TO_SAVE_CONFIGURATION,
+            [Description("invalid xml path")] INVALID_XML_PATH,
+            [Description("no data provided")] NO_DATA_PROVIDED
         }
 
         /// <summary>
