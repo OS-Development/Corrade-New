@@ -74,7 +74,13 @@ namespace Corrade
 
         private static readonly object ConfigurationFileLock = new object();
 
-        private static readonly object LogFileLock = new object();
+        private static readonly object ClientLogFileLock = new object();
+
+        private static readonly object GroupLogFileLock = new object();
+
+        private static readonly object LocalLogFileLock = new object();
+
+        private static readonly object InstantMessageLogFileLock = new object();
 
         private static readonly object DatabaseFileLock = new object();
 
@@ -524,9 +530,9 @@ namespace Corrade
                     AIMLBot.isAcceptingUserInput = true;
                 }
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_CONFIGURING_AIML_BOT), exception.Message);
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_CONFIGURING_AIML_BOT), ex.Message);
                 return;
             }
             finally
@@ -2134,25 +2140,29 @@ namespace Corrade
             output.AddRange(messages.Select(message => message));
 
             // Attempt to write to log file,
-            try
+            if (Configuration.CLIENT_LOG_ENABLED)
             {
-                lock (LogFileLock)
+                try
                 {
-                    using (
-                        StreamWriter logWriter =
-                            File.AppendText(Configuration.LOG_FILE))
+                    lock (ClientLogFileLock)
                     {
-                        logWriter.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
-                        logWriter.Flush();
+                        using (
+                            StreamWriter logWriter =
+                                File.AppendText(Configuration.CLIENT_LOG_FILE))
+                        {
+                            logWriter.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
+                            logWriter.Flush();
+                        }
                     }
                 }
-            }
-            catch (Exception e)
-            {
-                // or fail and append the fail message.
-                output.Add(string.Format(CultureInfo.InvariantCulture,
-                    "The request could not be logged to {0} and returned the error message {1}.",
-                    Configuration.LOG_FILE, e.Message));
+                catch (Exception ex)
+                {
+                    // or fail and append the fail message.
+                    output.Add(string.Format(CultureInfo.InvariantCulture, "{0} {1}",
+                        wasGetDescriptionFromEnumValue(
+                            ConsoleError.COULD_NOT_WRITE_TO_CLIENT_LOGFILE),
+                        ex.Message));
+                }
             }
 
             if (!Environment.UserInteractive)
@@ -2225,15 +2235,15 @@ namespace Corrade
                 // install the service with the Windows Service Control Manager (SCM)
                 ManagedInstallerClass.InstallHelper(new[] {Assembly.GetExecutingAssembly().Location});
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                if (e.InnerException != null && e.InnerException.GetType() == typeof (Win32Exception))
+                if (ex.InnerException != null && ex.InnerException.GetType() == typeof (Win32Exception))
                 {
-                    Win32Exception we = (Win32Exception) e.InnerException;
+                    Win32Exception we = (Win32Exception) ex.InnerException;
                     Console.WriteLine("Error(0x{0:X}): Service already installed!", we.ErrorCode);
                     return we.ErrorCode;
                 }
-                Console.WriteLine(e.ToString());
+                Console.WriteLine(ex.ToString());
                 return -1;
             }
 
@@ -2247,15 +2257,15 @@ namespace Corrade
                 // uninstall the service from the Windows Service Control Manager (SCM)
                 ManagedInstallerClass.InstallHelper(new[] {"/u", Assembly.GetExecutingAssembly().Location});
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                if (e.InnerException.GetType() == typeof (Win32Exception))
+                if (ex.InnerException.GetType() == typeof (Win32Exception))
                 {
-                    Win32Exception we = (Win32Exception) e.InnerException;
+                    Win32Exception we = (Win32Exception) ex.InnerException;
                     Console.WriteLine("Error(0x{0:X}): Service not installed!", we.ErrorCode);
                     return we.ErrorCode;
                 }
-                Console.WriteLine(e.ToString());
+                Console.WriteLine(ex.ToString());
                 return -1;
             }
 
@@ -2454,9 +2464,9 @@ namespace Corrade
                             }
                         }
                     }
-                    catch (Exception e)
+                    catch (Exception ex)
                     {
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR), e.Message);
+                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR), ex.Message);
                     }
                 }) {IsBackground = true};
                 HTTPListenerThread.Start();
@@ -2481,11 +2491,11 @@ namespace Corrade
                                     Configuration.CALLBACK_TIMEOUT);
                             }
                         }
-                        catch (Exception e)
+                        catch (Exception ex)
                         {
                             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CALLBACK_ERROR),
                                 callbackQueueElement.URL,
-                                e.Message);
+                                ex.Message);
                         }
                     }
                     Thread.Sleep(Configuration.CALLBACK_THROTTLE);
@@ -2511,11 +2521,11 @@ namespace Corrade
                                     Configuration.NOTIFICATION_TIMEOUT);
                             }
                         }
-                        catch (Exception e)
+                        catch (Exception ex)
                         {
                             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_ERROR),
                                 notificationQueueElement.URL,
-                                e.Message);
+                                ex.Message);
                         }
                     }
                     Thread.Sleep(Configuration.NOTIFICATION_THROTTLE);
@@ -3454,6 +3464,17 @@ namespace Corrade
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                     wasRLVToCSV(RLVEventArgs.Message).ToArray()));
                             break;
+                        case Notifications.NOTIFICATION_DEBUG_MESSAGE:
+                            ChatEventArgs DebugEventArgs = (ChatEventArgs)args;
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                DebugEventArgs.SourceID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                DebugEventArgs.FromName);
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                DebugEventArgs.Position.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                DebugEventArgs.Message);
+                            break;
                     }
                     if (NotificationQueue.Count < Configuration.NOTIFICATION_QUEUE_LENGTH)
                     {
@@ -3521,6 +3542,11 @@ namespace Corrade
                         Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     break;
                 case ChatType.Debug:
+                    // Send debug notifications.
+                    CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                        () => SendNotification(Notifications.NOTIFICATION_DEBUG_MESSAGE, e),
+                        Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                    break;
                 case ChatType.Normal:
                 case ChatType.Shout:
                 case ChatType.Whisper:
@@ -3528,6 +3554,36 @@ namespace Corrade
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                         () => SendNotification(Notifications.NOTIFICATION_LOCAL_CHAT, e),
                         Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                    // Log local chat,
+                    if (Configuration.LOCAL_LOG_ENABLED)
+                    {
+                        try
+                        {
+                            lock (LocalLogFileLock)
+                            {
+                                using (
+                                    StreamWriter logWriter =
+                                        File.AppendText(
+                                            wasPathCombine(new[] { Configuration.LOCAL_LOG_DIRECTORY, Client.Network.CurrentSim.Name })))
+                                {
+                                    logWriter.WriteLine("[{0}] {1} ({2}) : {3}",
+                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                            DateTimeFormatInfo.InvariantInfo), e.FromName, Enum.GetName(typeof(ChatType), e.Type),
+                                        e.Message);
+                                    logWriter.Flush();
+                                    //logWriter.Close();
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // or fail and append the fail message.
+                            Feedback(
+                                wasGetDescriptionFromEnumValue(
+                                    ConsoleError.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOGFILE),
+                                ex.Message);
+                        }
+                    }
                     break;
                 case (ChatType) 9:
                     // Send llRegionSayTo notification in case we do not have a command.
@@ -4007,13 +4063,13 @@ namespace Corrade
                         {
                             Parallel.ForEach(
                                 Configuration.GROUPS.Where(
-                                    o => o.Name.Equals(messageGroup.Name, StringComparison.Ordinal)),
+                                    o => o.Name.Equals(messageGroup.Name, StringComparison.Ordinal) && o.ChatLogEnabled),
                                 o =>
                                 {
                                     // Attempt to write to log file,
                                     try
                                     {
-                                        lock (LogFileLock)
+                                        lock (GroupLogFileLock)
                                         {
                                             using (StreamWriter logWriter = File.AppendText(o.ChatLog))
                                             {
@@ -4026,13 +4082,13 @@ namespace Corrade
                                             }
                                         }
                                     }
-                                    catch (Exception e)
+                                    catch (Exception ex)
                                     {
                                         // or fail and append the fail message.
                                         Feedback(
                                             wasGetDescriptionFromEnumValue(
                                                 ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOGFILE),
-                                            e.Message);
+                                            ex.Message);
                                     }
                                 });
                         }
@@ -4044,6 +4100,37 @@ namespace Corrade
                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                             () => SendNotification(Notifications.NOTIFICATION_INSTANT_MESSAGE, args),
                             Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                        // Log instant messages,
+                        if (Configuration.INSTANT_MESSAGE_LOG_ENABLED)
+                        {
+                            try
+                            {
+                                lock (InstantMessageLogFileLock)
+                                {
+                                    using (
+                                        StreamWriter logWriter =
+                                            File.AppendText(
+                                                wasPathCombine(new[]
+                                                {Configuration.INSTANT_MESSAGE_LOG_DIRECTORY, args.IM.FromAgentName})))
+                                    {
+                                        logWriter.WriteLine("[{0}] {1} : {2}",
+                                            DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                DateTimeFormatInfo.InvariantInfo), args.IM.FromAgentName,
+                                            args.IM.Message);
+                                        logWriter.Flush();
+                                        //logWriter.Close();
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                // or fail and append the fail message.
+                                Feedback(
+                                    wasGetDescriptionFromEnumValue(
+                                        ConsoleError.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOGFILE),
+                                    ex.Message);
+                            }
+                        }
                         return;
                     }
                     // Check if this is a region message.
@@ -5099,9 +5186,9 @@ namespace Corrade
                     execute.Invoke();
                 }
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.FAILED_TO_MANIFEST_RLV_BEHAVIOUR), e.Message);
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.FAILED_TO_MANIFEST_RLV_BEHAVIOUR), ex.Message);
             }
 
             CONTINUE:
@@ -15291,9 +15378,9 @@ namespace Corrade
                 sift.Invoke();
                 success = true;
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.ERROR), e.Message);
+                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.ERROR), ex.Message);
             }
 
             // add the final success status
@@ -16852,9 +16939,9 @@ namespace Corrade
                         return (T) serializer.Deserialize(stream);
                     }
                 }
-                catch (Exception e)
+                catch (Exception ex)
                 {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CACHE), e.Message);
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CACHE), ex.Message);
                 }
                 return o;
             }
@@ -16894,6 +16981,10 @@ namespace Corrade
             public static string LAST_NAME;
             public static string PASSWORD;
             public static string LOGIN_URL;
+            public static string INSTANT_MESSAGE_LOG_DIRECTORY;
+            public static bool INSTANT_MESSAGE_LOG_ENABLED;
+            public static string LOCAL_LOG_DIRECTORY;
+            public static bool LOCAL_LOG_ENABLED;
             public static bool ENABLE_HTTP_SERVER;
             public static string HTTP_SERVER_PREFIX;
             public static int HTTP_SERVER_TIMEOUT;
@@ -16919,7 +17010,8 @@ namespace Corrade
             public static bool TOS_ACCEPTED;
             public static string START_LOCATION;
             public static string NETWORK_CARD_MAC;
-            public static string LOG_FILE;
+            public static string CLIENT_LOG_FILE;
+            public static bool CLIENT_LOG_ENABLED;
             public static bool AUTO_ACTIVATE_GROUP;
             public static int ACTIVATE_DELAY;
             public static int GROUP_CREATE_FEE;
@@ -16960,9 +17052,15 @@ namespace Corrade
                 FIRST_NAME = string.Empty;
                 LAST_NAME = string.Empty;
                 PASSWORD = string.Empty;
-                LOGIN_URL = string.Empty;
+                LOGIN_URL = @"https://login.agni.lindenlab.com/cgi-bin/login.cgi";
+                CLIENT_LOG_FILE = "logs/Corrade.log";
+                CLIENT_LOG_ENABLED = true;
+                INSTANT_MESSAGE_LOG_DIRECTORY = @"logs/im";
+                INSTANT_MESSAGE_LOG_ENABLED = false;
+                LOCAL_LOG_DIRECTORY = @"logs/local";
+                LOCAL_LOG_ENABLED = false;
                 ENABLE_HTTP_SERVER = false;
-                HTTP_SERVER_PREFIX = "http://+:8080/";
+                HTTP_SERVER_PREFIX = @"http://+:8080/";
                 HTTP_SERVER_TIMEOUT = 5000;
                 CALLBACK_TIMEOUT = 5000;
                 CALLBACK_THROTTLE = 1000;
@@ -16986,7 +17084,6 @@ namespace Corrade
                 TOS_ACCEPTED = false;
                 START_LOCATION = "last";
                 NETWORK_CARD_MAC = string.Empty;
-                LOG_FILE = "Corrade.log";
                 AUTO_ACTIVATE_GROUP = false;
                 GROUP_CREATE_FEE = 100;
                 GROUPS = new HashSet<Group>();
@@ -17010,9 +17107,9 @@ namespace Corrade
                         file = File.ReadAllText(file);
                     }
                 }
-                catch (Exception e)
+                catch (Exception ex)
                 {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
                     Environment.Exit(1);
                 }
 
@@ -17021,9 +17118,9 @@ namespace Corrade
                 {
                     conf.LoadXml(file);
                 }
-                catch (XmlException e)
+                catch (XmlException ex)
                 {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
                     Environment.Exit(1);
                 }
 
@@ -17097,18 +17194,115 @@ namespace Corrade
                                     }
                                     START_LOCATION = client.InnerText;
                                     break;
-                                case ConfigurationKeys.LOG:
-                                    if (string.IsNullOrEmpty(client.InnerText))
-                                    {
-                                        throw new Exception("error in client section");
-                                    }
-                                    LOG_FILE = client.InnerText;
-                                    break;
                             }
                     }
-                    catch (Exception e)
+                    catch (Exception ex)
                     {
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
+                    }
+
+                    // Process logs.
+                    nodeList = root.SelectNodes("/config/logs/*");
+                    if (nodeList != null)
+                    {
+                        try
+                        {
+                            foreach (XmlNode LogNode in nodeList)
+                            {
+                                switch (LogNode.Name.ToLowerInvariant())
+                                {
+
+                                    case ConfigurationKeys.IM:
+                                        XmlNodeList imLogNodeList = LogNode.SelectNodes("*");
+                                        if (imLogNodeList == null)
+                                        {
+                                            throw new Exception("error in logs section");
+                                        }
+                                        foreach (XmlNode imLogNode in imLogNodeList)
+                                        {
+                                            switch (imLogNode.Name.ToLowerInvariant())
+                                            {
+                                                case ConfigurationKeys.ENABLE:
+                                                    bool enable;
+                                                    if (!bool.TryParse(imLogNode.InnerText, out enable))
+                                                    {
+                                                        throw new Exception("error in im logs section");
+                                                    }
+                                                    INSTANT_MESSAGE_LOG_ENABLED = enable;
+                                                    break;
+                                                case ConfigurationKeys.DIRECTORY:
+                                                    if (string.IsNullOrEmpty(imLogNode.InnerText))
+                                                    {
+                                                        throw new Exception("error in im logs section");
+                                                    }
+                                                    INSTANT_MESSAGE_LOG_DIRECTORY = imLogNode.InnerText;
+                                                    break;
+                                            }
+                                        }
+                                        break;
+                                    case ConfigurationKeys.CLIENT:
+                                        XmlNodeList clientLogNodeList = LogNode.SelectNodes("*");
+                                        if (clientLogNodeList == null)
+                                        {
+                                            throw new Exception("error in logs section");
+                                        }
+                                        foreach (XmlNode clientLogNode in clientLogNodeList)
+                                        {
+                                            switch (clientLogNode.Name.ToLowerInvariant())
+                                            {
+                                                case ConfigurationKeys.ENABLE:
+                                                    bool enable;
+                                                    if (!bool.TryParse(clientLogNode.InnerText, out enable))
+                                                    {
+                                                        throw new Exception("error in client logs section");
+                                                    }
+                                                    CLIENT_LOG_ENABLED = enable;
+                                                    break;
+                                                case ConfigurationKeys.FILE:
+                                                    if (string.IsNullOrEmpty(clientLogNode.InnerText))
+                                                    {
+                                                        throw new Exception("error in client logs section");
+                                                    }
+                                                    CLIENT_LOG_FILE = clientLogNode.InnerText;
+                                                    break;
+                                            }
+                                        }
+                                        break;
+                                    case ConfigurationKeys.LOCAL:
+                                        XmlNodeList localLogNodeList = LogNode.SelectNodes("*");
+                                        if (localLogNodeList == null)
+                                        {
+                                            throw new Exception("error in logs section");
+                                        }
+                                        foreach (XmlNode localLogNode in localLogNodeList)
+                                        {
+                                            switch (localLogNode.Name.ToLowerInvariant())
+                                            {
+                                                case ConfigurationKeys.ENABLE:
+                                                    bool enable;
+                                                    if (!bool.TryParse(localLogNode.InnerText, out enable))
+                                                    {
+                                                        throw new Exception("error in local logs section");
+                                                    }
+                                                    LOCAL_LOG_ENABLED = enable;
+                                                    break;
+                                                case ConfigurationKeys.DIRECTORY:
+                                                    if (string.IsNullOrEmpty(localLogNode.InnerText))
+                                                    {
+                                                        throw new Exception("error in local logs section");
+                                                    }
+                                                    LOCAL_LOG_DIRECTORY = localLogNode.InnerText;
+                                                    break;
+                                            }
+                                        }
+                                        break;
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
+                        }
                     }
 
                     // Process filters.
@@ -17170,9 +17364,9 @@ namespace Corrade
                                 }
                             }
                         }
-                        catch (Exception e)
+                        catch (Exception ex)
                         {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
                         }
                     }
 
@@ -17227,9 +17421,9 @@ namespace Corrade
                                 }
                             }
                         }
-                        catch (Exception e)
+                        catch (Exception ex)
                         {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
                         }
                     }
 
@@ -17254,9 +17448,9 @@ namespace Corrade
                                 }
                             }
                         }
-                        catch (Exception e)
+                        catch (Exception ex)
                         {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
                         }
                     }
 
@@ -17281,9 +17475,9 @@ namespace Corrade
                                 }
                             }
                         }
-                        catch (Exception e)
+                        catch (Exception ex)
                         {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
                         }
                     }
 
@@ -17313,9 +17507,9 @@ namespace Corrade
                                 }
                             }
                         }
-                        catch (Exception e)
+                        catch (Exception ex)
                         {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
                         }
                     }
 
@@ -17350,9 +17544,9 @@ namespace Corrade
                                 }
                             }
                         }
-                        catch (Exception e)
+                        catch (Exception ex)
                         {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
                         }
                     }
 
@@ -17664,9 +17858,9 @@ namespace Corrade
                                 }
                             }
                         }
-                        catch (Exception e)
+                        catch (Exception ex)
                         {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
                         }
                     }
 
@@ -17702,9 +17896,9 @@ namespace Corrade
                                 MASTERS.Add(configMaster);
                             }
                         }
-                        catch (Exception e)
+                        catch (Exception ex)
                         {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
                         }
                     }
 
@@ -17719,6 +17913,7 @@ namespace Corrade
                                 Group configGroup = new Group
                                 {
                                     ChatLog = string.Empty,
+                                    ChatLogEnabled = false,
                                     DatabaseFile = string.Empty,
                                     Name = string.Empty,
                                     NotificationMask = 0,
@@ -17758,11 +17953,32 @@ namespace Corrade
                                             }
                                             break;
                                         case ConfigurationKeys.CHATLOG:
-                                            if (string.IsNullOrEmpty(groupNode.InnerText))
+                                            XmlNodeList groupChatLogNodeList = groupNode.SelectNodes("*");
+                                            if (groupChatLogNodeList == null)
                                             {
                                                 throw new Exception("error in group section");
                                             }
-                                            configGroup.ChatLog = groupNode.InnerText;
+                                            foreach (XmlNode groupChatLogNode in groupChatLogNodeList)
+                                            {
+                                                switch (groupChatLogNode.Name.ToLowerInvariant())
+                                                {
+                                                    case ConfigurationKeys.ENABLE:
+                                                        bool enable;
+                                                        if (!bool.TryParse(groupChatLogNode.InnerText, out enable))
+                                                        {
+                                                            throw new Exception("error in group chat logs section");
+                                                        }
+                                                        configGroup.ChatLogEnabled = enable;
+                                                        break;
+                                                    case ConfigurationKeys.FILE:
+                                                        if (string.IsNullOrEmpty(groupChatLogNode.InnerText))
+                                                        {
+                                                            throw new Exception("error in group chat logs section");
+                                                        }
+                                                        configGroup.ChatLog = groupChatLogNode.InnerText;
+                                                        break;
+                                                }
+                                            }
                                             break;
                                         case ConfigurationKeys.DATABASE:
                                             if (string.IsNullOrEmpty(groupNode.InnerText))
@@ -17840,9 +18056,9 @@ namespace Corrade
                                 GROUPS.Add(configGroup);
                             }
                         }
-                        catch (Exception e)
+                        catch (Exception ex)
                         {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), e.Message);
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
                         }
                     }
                     // Enable AIML in case it was enabled in the configuration file.
@@ -18085,6 +18301,9 @@ namespace Corrade
             public const string RANGE = @"range";
             public const string DECAY = @"decay";
             public const string LOGOUT = @"logout";
+            public const string FILE = @"file";
+            public const string DIRECTORY = @"directory";
+            public const string LOCAL = @"local";
         }
 
         /// <summary>
@@ -18112,7 +18331,6 @@ namespace Corrade
             [Description("disconnected")] DISCONNECTED,
             [Description("logging out")] LOGGING_OUT,
             [Description("logging in")] LOGGING_IN,
-            [Description("could not write to group chat logfile")] COULD_NOT_WRITE_TO_GROUP_CHAT_LOGFILE,
             [Description("agent not found")] AGENT_NOT_FOUND,
             [Description("reading Corrade configuration")] READING_CORRADE_CONFIGURATION,
             [Description("read Corrade configuration")] READ_CORRADE_CONFIGURATION,
@@ -18135,7 +18353,11 @@ namespace Corrade
             [Description("error configuring AIML bot")] ERROR_CONFIGURING_AIML_BOT,
             [Description("AIML bot configuration modified")] AIML_CONFIGURATION_MODIFIED,
             [Description("read AIML bot configuration")] READ_AIML_BOT_CONFIGURATION,
-            [Description("reading AIML bot configuration")] READING_AIML_BOT_CONFIGURATION
+            [Description("reading AIML bot configuration")] READING_AIML_BOT_CONFIGURATION,
+            [Description("could not write to client log file")] COULD_NOT_WRITE_TO_CLIENT_LOGFILE,
+            [Description("could not write to group chat log file")] COULD_NOT_WRITE_TO_GROUP_CHAT_LOGFILE,
+            [Description("could not write to instant message log file")] COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOGFILE,
+            [Description("could not write to local message log file")] COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOGFILE
         }
 
         /// <summary>
@@ -18391,6 +18613,7 @@ namespace Corrade
         private struct Group
         {
             public string ChatLog;
+            public bool ChatLogEnabled;
             public string DatabaseFile;
             public string Name;
             public uint NotificationMask;
@@ -18580,7 +18803,8 @@ namespace Corrade
             [Description("ownersay")] NOTIFICATION_OWNER_SAY = 2097152,
             [Description("regionsayto")] NOTIFICATION_REGION_SAY_TO = 4194304,
             [Description("objectim")] NOTIFICATION_OBJECT_INSTANT_MESSAGE = 8388608,
-            [Description("rlv")] NOTIFICATION_RLV_MESSAGE = 16777216
+            [Description("rlv")] NOTIFICATION_RLV_MESSAGE = 16777216,
+            [Description("debug")] NOTIFICATION_DEBUG_MESSAGE = 33554432
         }
 
         /// <summary>

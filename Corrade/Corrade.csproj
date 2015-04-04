@@ -559,6 +559,9 @@
       <Link>AIMLBot\config\Substitutions.xml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="Corrade.exe.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="Corrade.exe.manifest">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -568,7 +571,10 @@
     <Folder Include="AIMLBot\logs\" />
     <Folder Include="cache\" />
     <Folder Include="databases\" />
-    <Folder Include="groupchat\" />
+    <Folder Include="libs\" />
+    <Folder Include="logs\groupchat\" />
+    <Folder Include="logs\im\" />
+    <Folder Include="logs\local\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
