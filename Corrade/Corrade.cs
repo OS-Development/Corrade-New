@@ -6676,7 +6676,7 @@ namespace Corrade
                                                 logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                     DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
                                                         DateTimeFormatInfo.InvariantInfo), myName.First(), myName.Last(),
-                                                    message);
+                                                    data);
                                                 logWriter.Flush();
                                                 //logWriter.Close();
                                             }
