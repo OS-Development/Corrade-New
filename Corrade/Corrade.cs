@@ -80,6 +80,8 @@ namespace Corrade
 
         private static readonly object LocalLogFileLock = new object();
 
+        private static readonly object RegionLogFileLock = new object();
+
         private static readonly object InstantMessageLogFileLock = new object();
 
         private static readonly object DatabaseFileLock = new object();
@@ -2160,7 +2162,7 @@ namespace Corrade
                     // or fail and append the fail message.
                     output.Add(string.Format(CultureInfo.InvariantCulture, "{0} {1}",
                         wasGetDescriptionFromEnumValue(
-                            ConsoleError.COULD_NOT_WRITE_TO_CLIENT_LOGFILE),
+                            ConsoleError.COULD_NOT_WRITE_TO_CLIENT_LOG_FILE),
                         ex.Message));
                 }
             }
@@ -3465,7 +3467,7 @@ namespace Corrade
                                     wasRLVToCSV(RLVEventArgs.Message).ToArray()));
                             break;
                         case Notifications.NOTIFICATION_DEBUG_MESSAGE:
-                            ChatEventArgs DebugEventArgs = (ChatEventArgs)args;
+                            ChatEventArgs DebugEventArgs = (ChatEventArgs) args;
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
                                 DebugEventArgs.SourceID.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
@@ -3555,8 +3557,11 @@ namespace Corrade
                         () => SendNotification(Notifications.NOTIFICATION_LOCAL_CHAT, e),
                         Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     // Log local chat,
-                    if (Configuration.LOCAL_LOG_ENABLED)
+                    if (Configuration.LOCAL_MESSAGE_LOG_ENABLED)
                     {
+                        List<string> fullName =
+                            new List<string>(
+                                GetAvatarNames(e.FromName));
                         try
                         {
                             lock (LocalLogFileLock)
@@ -3564,11 +3569,15 @@ namespace Corrade
                                 using (
                                     StreamWriter logWriter =
                                         File.AppendText(
-                                            wasPathCombine(new[] { Configuration.LOCAL_LOG_DIRECTORY, Client.Network.CurrentSim.Name })))
+                                            wasPathCombine(new[]
+                                            {Configuration.LOCAL_MESSAGE_LOG_DIRECTORY, Client.Network.CurrentSim.Name}) +
+                                            "." +
+                                            CORRADE_CONSTANTS.LOG_FILE_EXTENSION))
                                 {
-                                    logWriter.WriteLine("[{0}] {1} ({2}) : {3}",
+                                    logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
                                         DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                            DateTimeFormatInfo.InvariantInfo), e.FromName, Enum.GetName(typeof(ChatType), e.Type),
+                                            DateTimeFormatInfo.InvariantInfo), fullName.First(), fullName.Last(),
+                                        Enum.GetName(typeof (ChatType), e.Type),
                                         e.Message);
                                     logWriter.Flush();
                                     //logWriter.Close();
@@ -3580,7 +3589,7 @@ namespace Corrade
                             // or fail and append the fail message.
                             Feedback(
                                 wasGetDescriptionFromEnumValue(
-                                    ConsoleError.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOGFILE),
+                                    ConsoleError.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
                                 ex.Message);
                         }
                     }
@@ -4041,56 +4050,55 @@ namespace Corrade
                     // such that the only way to determine if we have a group message is to check that the UUID
                     // of the session is actually the UUID of a current group. Furthermore, what's worse is that 
                     // group mesages can appear both through SessionSend and from MessageFromAgent. Hence the problem.
-                    OpenMetaverse.Group messageGroup = new OpenMetaverse.Group();
-                    if (Configuration.GROUPS.Any(o => o.UUID.Equals(args.IM.IMSessionID)))
+                    HashSet<OpenMetaverse.Group> currentGroups = new HashSet<OpenMetaverse.Group>(GetCurrentGroups(
+                        Configuration.SERVICES_TIMEOUT,
+                        Configuration.DATA_TIMEOUT));
+                    if (currentGroups.Any(o => o.ID.Equals(args.IM.IMSessionID)))
                     {
-                        lock (ClientInstanceLock)
+                        Group messageGroup = Configuration.GROUPS.FirstOrDefault(p => p.UUID.Equals(args.IM.IMSessionID));
+                        if (!messageGroup.Equals(default(Group)))
                         {
-                            messageGroup = GetCurrentGroups(
-                                Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT).FirstOrDefault(
-                                    o => Configuration.GROUPS.Any(p => p.UUID.Equals(o.ID)));
-                        }
-                    }
-                    if (!messageGroup.Equals(default(OpenMetaverse.Group)))
-                    {
-                        // Send group notice notifications.
-                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                            () => SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, args),
-                            Configuration.MAXIMUM_NOTIFICATION_THREADS);
-                        // Log group messages
-                        lock (ClientInstanceLock)
-                        {
-                            Parallel.ForEach(
-                                Configuration.GROUPS.Where(
-                                    o => o.Name.Equals(messageGroup.Name, StringComparison.Ordinal) && o.ChatLogEnabled),
-                                o =>
-                                {
-                                    // Attempt to write to log file,
-                                    try
+                            // Send group notice notifications.
+                            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                                () => SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, args),
+                                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                            // Log group messages
+                            lock (ClientInstanceLock)
+                            {
+                                Parallel.ForEach(
+                                    Configuration.GROUPS.Where(
+                                        o =>
+                                            o.Name.Equals(messageGroup.Name, StringComparison.Ordinal) &&
+                                            o.ChatLogEnabled),
+                                    o =>
                                     {
-                                        lock (GroupLogFileLock)
+                                        // Attempt to write to log file,
+                                        try
                                         {
-                                            using (StreamWriter logWriter = File.AppendText(o.ChatLog))
+                                            lock (GroupLogFileLock)
                                             {
-                                                logWriter.WriteLine("[{0}] {1} : {2}",
-                                                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                        DateTimeFormatInfo.InvariantInfo), args.IM.FromAgentName,
-                                                    args.IM.Message);
-                                                logWriter.Flush();
-                                                //logWriter.Close();
+                                                using (StreamWriter logWriter = File.AppendText(o.ChatLog))
+                                                {
+                                                    logWriter.WriteLine("[{0}] {1} {2} : {3}",
+                                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                            DateTimeFormatInfo.InvariantInfo), fullName.First(),
+                                                        fullName.Last(),
+                                                        args.IM.Message);
+                                                    logWriter.Flush();
+                                                    //logWriter.Close();
+                                                }
                                             }
                                         }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        // or fail and append the fail message.
-                                        Feedback(
-                                            wasGetDescriptionFromEnumValue(
-                                                ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOGFILE),
-                                            ex.Message);
-                                    }
-                                });
+                                        catch (Exception ex)
+                                        {
+                                            // or fail and append the fail message.
+                                            Feedback(
+                                                wasGetDescriptionFromEnumValue(
+                                                    ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
+                                                ex.Message);
+                                        }
+                                    });
+                            }
                         }
                         return;
                     }
@@ -4111,11 +4119,12 @@ namespace Corrade
                                         StreamWriter logWriter =
                                             File.AppendText(
                                                 wasPathCombine(new[]
-                                                {Configuration.INSTANT_MESSAGE_LOG_DIRECTORY, args.IM.FromAgentName})))
+                                                {Configuration.INSTANT_MESSAGE_LOG_DIRECTORY, args.IM.FromAgentName}) +
+                                                "." + CORRADE_CONSTANTS.LOG_FILE_EXTENSION))
                                     {
-                                        logWriter.WriteLine("[{0}] {1} : {2}",
+                                        logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                             DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                DateTimeFormatInfo.InvariantInfo), args.IM.FromAgentName,
+                                                DateTimeFormatInfo.InvariantInfo), fullName.First(), fullName.Last(),
                                             args.IM.Message);
                                         logWriter.Flush();
                                         //logWriter.Close();
@@ -4127,7 +4136,7 @@ namespace Corrade
                                 // or fail and append the fail message.
                                 Feedback(
                                     wasGetDescriptionFromEnumValue(
-                                        ConsoleError.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOGFILE),
+                                        ConsoleError.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
                                     ex.Message);
                             }
                         }
@@ -4139,6 +4148,41 @@ namespace Corrade
                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                             () => SendNotification(Notifications.NOTIFICATION_REGION_MESSAGE, args),
                             Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                        // Log region messages,
+                        if (Configuration.REGION_MESSAGE_LOG_ENABLED)
+                        {
+                            try
+                            {
+                                lock (RegionLogFileLock)
+                                {
+                                    using (
+                                        StreamWriter logWriter =
+                                            File.AppendText(
+                                                wasPathCombine(new[]
+                                                {
+                                                    Configuration.REGION_MESSAGE_LOG_DIRECTORY,
+                                                    Client.Network.CurrentSim.Name
+                                                }) + "." +
+                                                CORRADE_CONSTANTS.LOG_FILE_EXTENSION))
+                                    {
+                                        logWriter.WriteLine("[{0}] {1} {2} : {3}",
+                                            DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                DateTimeFormatInfo.InvariantInfo), fullName.First(), fullName.Last(),
+                                            args.IM.Message);
+                                        logWriter.Flush();
+                                        //logWriter.Close();
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                // or fail and append the fail message.
+                                Feedback(
+                                    wasGetDescriptionFromEnumValue(
+                                        ConsoleError.COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE),
+                                    ex.Message);
+                            }
+                        }
                         return;
                     }
                     break;
@@ -6566,6 +6610,12 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
+                        string data = wasInput(
+                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
+                                message));
+                        List<string> myName =
+                            new List<string>(
+                                GetAvatarNames(string.Join(" ", new[] {Client.Self.FirstName, Client.Self.LastName})));
                         switch (
                             wasGetEnumValueFromDescription<Entity>(
                                 wasInput(
@@ -6593,10 +6643,54 @@ namespace Corrade
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
-                                Client.Self.InstantMessage(agentUUID,
-                                    wasInput(
-                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
-                                            message)));
+                                Client.Self.InstantMessage(agentUUID, data);
+                                // Log instant messages,
+                                if (Configuration.INSTANT_MESSAGE_LOG_ENABLED)
+                                {
+                                    string agentName = "";
+                                    if (!AgentUUIDToName(
+                                        agentUUID,
+                                        Configuration.SERVICES_TIMEOUT,
+                                        ref agentName))
+                                    {
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
+                                    }
+                                    List<string> fullName =
+                                        new List<string>(
+                                            GetAvatarNames(agentName));
+                                    try
+                                    {
+                                        lock (InstantMessageLogFileLock)
+                                        {
+                                            using (
+                                                StreamWriter logWriter =
+                                                    File.AppendText(
+                                                        wasPathCombine(new[]
+                                                        {
+                                                            Configuration.INSTANT_MESSAGE_LOG_DIRECTORY,
+                                                            string.Join(" ", new[] {fullName.First(), fullName.Last()})
+                                                        }) +
+                                                        "." +
+                                                        CORRADE_CONSTANTS.LOG_FILE_EXTENSION))
+                                            {
+                                                logWriter.WriteLine("[{0}] {1} {2} : {3}",
+                                                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                        DateTimeFormatInfo.InvariantInfo), myName.First(), myName.Last(),
+                                                    message);
+                                                logWriter.Flush();
+                                                //logWriter.Close();
+                                            }
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        // or fail and append the fail message.
+                                        Feedback(
+                                            wasGetDescriptionFromEnumValue(
+                                                ConsoleError.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
+                                            ex.Message);
+                                    }
+                                }
                                 break;
                             case Entity.GROUP:
                                 UUID groupUUID =
@@ -6647,10 +6741,38 @@ namespace Corrade
                                             wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_JOIN_GROUP_CHAT));
                                     }
                                 }
-                                Client.Self.InstantMessageGroup(groupUUID,
-                                    wasInput(
-                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
-                                            message)));
+                                Client.Self.InstantMessageGroup(groupUUID, data);
+                                Parallel.ForEach(
+                                    Configuration.GROUPS.Where(
+                                        o => o.UUID.Equals(groupUUID) && o.ChatLogEnabled),
+                                    o =>
+                                    {
+                                        // Attempt to write to log file,
+                                        try
+                                        {
+                                            lock (GroupLogFileLock)
+                                            {
+                                                using (StreamWriter logWriter = File.AppendText(o.ChatLog))
+                                                {
+                                                    logWriter.WriteLine("[{0}] {1} {2} : {3}",
+                                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                            DateTimeFormatInfo.InvariantInfo), myName.First(),
+                                                        myName.Last(),
+                                                        data);
+                                                    logWriter.Flush();
+                                                    //logWriter.Close();
+                                                }
+                                            }
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            // or fail and append the fail message.
+                                            Feedback(
+                                                wasGetDescriptionFromEnumValue(
+                                                    ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
+                                                ex.Message);
+                                        }
+                                    });
                                 break;
                             case Entity.LOCAL:
                                 int chatChannel;
@@ -6674,28 +6796,61 @@ namespace Corrade
                                                         wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
                                                         message)),
                                                 StringComparison.Ordinal));
+                                ChatType chatType = chatTypeInfo != null
+                                    ? (ChatType)
+                                        chatTypeInfo
+                                            .GetValue(null)
+                                    : ChatType.Normal;
                                 Client.Self.Chat(
-                                    wasInput(
-                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
-                                            message)),
+                                    data,
                                     chatChannel,
-                                    chatTypeInfo != null
-                                        ? (ChatType)
-                                            chatTypeInfo
-                                                .GetValue(null)
-                                        : ChatType.Normal);
+                                    chatType);
+                                // Log local chat,
+                                if (Configuration.LOCAL_MESSAGE_LOG_ENABLED)
+                                {
+                                    List<string> fullName =
+                                        new List<string>(
+                                            GetAvatarNames(string.Join(" ",
+                                                new[] {Client.Self.FirstName, Client.Self.LastName})));
+                                    try
+                                    {
+                                        lock (LocalLogFileLock)
+                                        {
+                                            using (
+                                                StreamWriter logWriter =
+                                                    File.AppendText(
+                                                        wasPathCombine(new[]
+                                                        {
+                                                            Configuration.LOCAL_MESSAGE_LOG_DIRECTORY,
+                                                            Client.Network.CurrentSim.Name
+                                                        }) + "." +
+                                                        CORRADE_CONSTANTS.LOG_FILE_EXTENSION))
+                                            {
+                                                logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
+                                                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                        DateTimeFormatInfo.InvariantInfo), fullName.First(),
+                                                    fullName.Last(), Enum.GetName(typeof (ChatType), chatType),
+                                                    data);
+                                                logWriter.Flush();
+                                                //logWriter.Close();
+                                            }
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        // or fail and append the fail message.
+                                        Feedback(
+                                            wasGetDescriptionFromEnumValue(
+                                                ConsoleError.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
+                                            ex.Message);
+                                    }
+                                }
                                 break;
                             case Entity.ESTATE:
-                                Client.Estate.EstateMessage(
-                                    wasInput(
-                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
-                                            message)));
+                                Client.Estate.EstateMessage(data);
                                 break;
                             case Entity.REGION:
-                                Client.Estate.SimulatorMessage(
-                                    wasInput(
-                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
-                                            message)));
+                                Client.Estate.SimulatorMessage(data);
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
@@ -16829,6 +16984,7 @@ namespace Corrade
             public const string PATH_SEPARATOR = @"/";
             public const string ERROR_SEPARATOR = @" : ";
             public const string CACHE_DIRECTORY = @"cache";
+            public const string LOG_FILE_EXTENSION = @"log";
 
             /// <summary>
             ///     Corrade version.
@@ -16983,8 +17139,10 @@ namespace Corrade
             public static string LOGIN_URL;
             public static string INSTANT_MESSAGE_LOG_DIRECTORY;
             public static bool INSTANT_MESSAGE_LOG_ENABLED;
-            public static string LOCAL_LOG_DIRECTORY;
-            public static bool LOCAL_LOG_ENABLED;
+            public static string LOCAL_MESSAGE_LOG_DIRECTORY;
+            public static bool LOCAL_MESSAGE_LOG_ENABLED;
+            public static string REGION_MESSAGE_LOG_DIRECTORY;
+            public static bool REGION_MESSAGE_LOG_ENABLED;
             public static bool ENABLE_HTTP_SERVER;
             public static string HTTP_SERVER_PREFIX;
             public static int HTTP_SERVER_TIMEOUT;
@@ -17057,8 +17215,10 @@ namespace Corrade
                 CLIENT_LOG_ENABLED = true;
                 INSTANT_MESSAGE_LOG_DIRECTORY = @"logs/im";
                 INSTANT_MESSAGE_LOG_ENABLED = false;
-                LOCAL_LOG_DIRECTORY = @"logs/local";
-                LOCAL_LOG_ENABLED = false;
+                LOCAL_MESSAGE_LOG_DIRECTORY = @"logs/local";
+                LOCAL_MESSAGE_LOG_ENABLED = false;
+                REGION_MESSAGE_LOG_DIRECTORY = @"logs/region";
+                REGION_MESSAGE_LOG_ENABLED = false;
                 ENABLE_HTTP_SERVER = false;
                 HTTP_SERVER_PREFIX = @"http://+:8080/";
                 HTTP_SERVER_TIMEOUT = 5000;
@@ -17211,7 +17371,6 @@ namespace Corrade
                             {
                                 switch (LogNode.Name.ToLowerInvariant())
                                 {
-
                                     case ConfigurationKeys.IM:
                                         XmlNodeList imLogNodeList = LogNode.SelectNodes("*");
                                         if (imLogNodeList == null)
@@ -17284,14 +17443,42 @@ namespace Corrade
                                                     {
                                                         throw new Exception("error in local logs section");
                                                     }
-                                                    LOCAL_LOG_ENABLED = enable;
+                                                    LOCAL_MESSAGE_LOG_ENABLED = enable;
                                                     break;
                                                 case ConfigurationKeys.DIRECTORY:
                                                     if (string.IsNullOrEmpty(localLogNode.InnerText))
                                                     {
                                                         throw new Exception("error in local logs section");
                                                     }
-                                                    LOCAL_LOG_DIRECTORY = localLogNode.InnerText;
+                                                    LOCAL_MESSAGE_LOG_DIRECTORY = localLogNode.InnerText;
+                                                    break;
+                                            }
+                                        }
+                                        break;
+                                    case ConfigurationKeys.REGION:
+                                        XmlNodeList regionLogNodeList = LogNode.SelectNodes("*");
+                                        if (regionLogNodeList == null)
+                                        {
+                                            throw new Exception("error in logs section");
+                                        }
+                                        foreach (XmlNode regionLogNode in regionLogNodeList)
+                                        {
+                                            switch (regionLogNode.Name.ToLowerInvariant())
+                                            {
+                                                case ConfigurationKeys.ENABLE:
+                                                    bool enable;
+                                                    if (!bool.TryParse(regionLogNode.InnerText, out enable))
+                                                    {
+                                                        throw new Exception("error in local logs section");
+                                                    }
+                                                    REGION_MESSAGE_LOG_ENABLED = enable;
+                                                    break;
+                                                case ConfigurationKeys.DIRECTORY:
+                                                    if (string.IsNullOrEmpty(regionLogNode.InnerText))
+                                                    {
+                                                        throw new Exception("error in local logs section");
+                                                    }
+                                                    REGION_MESSAGE_LOG_DIRECTORY = regionLogNode.InnerText;
                                                     break;
                                             }
                                         }
@@ -18304,6 +18491,7 @@ namespace Corrade
             public const string FILE = @"file";
             public const string DIRECTORY = @"directory";
             public const string LOCAL = @"local";
+            public const string REGION = @"region";
         }
 
         /// <summary>
@@ -18354,10 +18542,11 @@ namespace Corrade
             [Description("AIML bot configuration modified")] AIML_CONFIGURATION_MODIFIED,
             [Description("read AIML bot configuration")] READ_AIML_BOT_CONFIGURATION,
             [Description("reading AIML bot configuration")] READING_AIML_BOT_CONFIGURATION,
-            [Description("could not write to client log file")] COULD_NOT_WRITE_TO_CLIENT_LOGFILE,
-            [Description("could not write to group chat log file")] COULD_NOT_WRITE_TO_GROUP_CHAT_LOGFILE,
-            [Description("could not write to instant message log file")] COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOGFILE,
-            [Description("could not write to local message log file")] COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOGFILE
+            [Description("could not write to client log file")] COULD_NOT_WRITE_TO_CLIENT_LOG_FILE,
+            [Description("could not write to group chat log file")] COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE,
+            [Description("could not write to instant message log file")] COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE,
+            [Description("could not write to local message log file")] COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE,
+            [Description("could not write to region message log file")] COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE
         }
 
         /// <summary>
