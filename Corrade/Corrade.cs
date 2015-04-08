@@ -960,8 +960,7 @@ namespace Corrade
             Client.Appearance.RemoveFromOutfit(realItem);
             InventoryItem link = GetCurrentOutfitFolderLinks(
                 Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
-                    InventoryFolder)
-                .FirstOrDefault(o => o.AssetType.Equals(AssetType.Link) && o.Name.Equals(item.Name));
+                    InventoryFolder).FirstOrDefault(o => o.AssetType.Equals(AssetType.Link) && o.Name.Equals(item.Name));
             if (link == null) return;
             RemoveLink(link,
                 Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
@@ -14902,11 +14901,9 @@ namespace Corrade
                                     EventHandler<ItemReceivedEventArgs> ItemReceivedEventHandler =
                                         (sender, args) =>
                                         {
-                                            if (args.Item.UUID.Equals(o.UUID))
-                                            {
-                                                succeeded = args.Item.Permissions.Equals(permissions);
-                                                ItemReceivedEvent.Set();
-                                            }
+                                            if (!args.Item.UUID.Equals(o.UUID)) return;
+                                            succeeded = args.Item.Permissions.Equals(permissions);
+                                            ItemReceivedEvent.Set();
                                         };
                                     Client.Inventory.ItemReceived += ItemReceivedEventHandler;
                                     Client.Inventory.RequestFetchInventory(o.UUID, o.OwnerID);
