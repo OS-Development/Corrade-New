@@ -611,19 +611,24 @@ namespace Corrade
                 Thread.Sleep(Configuration.MEMBERSHIP_SWEEP_INTERVAL);
                 if (!Client.Network.Connected) continue;
 
+                object LockObject = new object();
+                HashSet<OpenMetaverse.Group> currentGroups = new HashSet<OpenMetaverse.Group>(GetCurrentGroups(
+                    Configuration.SERVICES_TIMEOUT,
+                    Configuration.DATA_TIMEOUT));
+
                 // Enqueue configured groups that are currently joined groups.
                 groupUUIDs.Clear();
                 lock (ClientInstanceLock)
                 {
-                    foreach (Group group in
-                        Configuration.GROUPS.Select(o => new {group = o, groupUUID = o.UUID})
-                            .Where(p => GetCurrentGroups(
-                                Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT).Any(o => o.ID.Equals(p.groupUUID)))
-                            .Select(o => o.group))
-                    {
-                        groupUUIDs.Enqueue(group.UUID);
-                    }
+                    Parallel.ForEach(Configuration.GROUPS.Select(o => new {group = o, groupUUID = o.UUID})
+                        .Where(p => currentGroups.Any(o => o.ID.Equals(p.groupUUID)))
+                        .Select(o => o.group), o =>
+                        {
+                            lock (LockObject)
+                            {
+                                groupUUIDs.Enqueue(o.UUID);
+                            }
+                        });
                 }
 
                 // Bail if no configured groups are also joined.
@@ -633,15 +638,17 @@ namespace Corrade
                 memberCount.Clear();
                 lock (GroupMembersLock)
                 {
-                    foreach (KeyValuePair<UUID, HashSet<UUID>> members in
-                        GroupMembers.SelectMany(
-                            members => groupUUIDs,
-                            (members, groupUUID) => new {members, groupUUID})
-                            .Where(o => o.groupUUID.Equals(o.members.Key))
-                            .Select(p => p.members))
-                    {
-                        memberCount.Enqueue(members.Value.Count);
-                    }
+                    Parallel.ForEach(GroupMembers.SelectMany(
+                        members => groupUUIDs,
+                        (members, groupUUID) => new {members, groupUUID})
+                        .Where(o => o.groupUUID.Equals(o.members.Key))
+                        .Select(p => p.members), o =>
+                        {
+                            lock (LockObject)
+                            {
+                                memberCount.Enqueue(o.Value.Count);
+                            }
+                        });
                 }
 
                 do
@@ -1735,10 +1742,14 @@ namespace Corrade
             EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedDelegate =
                 (sender, args) => RequestAllSimParcelsEvent.Set();
             Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedDelegate;
-            Client.Parcels.RequestAllSimParcels(simulator);
-            if (Client.Network.CurrentSim.IsParcelMapFull())
+            switch (!simulator.IsParcelMapFull())
             {
-                RequestAllSimParcelsEvent.Set();
+                case true:
+                    Client.Parcels.RequestAllSimParcels(simulator);
+                    break;
+                default:
+                    RequestAllSimParcelsEvent.Set();
+                    break;
             }
             if (!RequestAllSimParcelsEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
             {
@@ -2680,13 +2691,11 @@ namespace Corrade
             // Logout
             if (Client.Network.Connected)
             {
+                // Full speed ahead; do not even attempt to grab a lock.
                 ManualResetEvent LoggedOutEvent = new ManualResetEvent(false);
                 EventHandler<LoggedOutEventArgs> LoggedOutEventHandler = (sender, args) => LoggedOutEvent.Set();
                 Client.Network.LoggedOut += LoggedOutEventHandler;
-                lock (ClientInstanceLock)
-                {
-                    Client.Network.RequestLogout();
-                }
+                Client.Network.RequestLogout();
                 if (!LoggedOutEvent.WaitOne(Configuration.LOGOUT_GRACE, false))
                 {
                     Client.Network.LoggedOut -= LoggedOutEventHandler;
@@ -5313,14 +5322,17 @@ namespace Corrade
             }
 
             // Check if the workers have not been exceeded.
-            if ((uint) GroupWorkers[group] >
-                Configuration.GROUPS.FirstOrDefault(
-                    o => o.Name.Equals(group, StringComparison.InvariantCultureIgnoreCase)).Workers)
+            lock (ClientInstanceLock)
             {
-                // And refuse to proceed if they have.
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WORKERS_EXCEEDED),
-                    group);
-                return null;
+                if ((uint) GroupWorkers[group] >
+                    Configuration.GROUPS.FirstOrDefault(
+                        o => o.Name.Equals(group, StringComparison.InvariantCultureIgnoreCase)).Workers)
+                {
+                    // And refuse to proceed if they have.
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WORKERS_EXCEEDED),
+                        group);
+                    return null;
+                }
             }
 
             // Increment the group workers.
@@ -18529,7 +18541,7 @@ namespace Corrade
                         {
                             bool enabled = GROUPS.Any(
                                 p =>
-                                    !(p.NotificationMask & (uint) Notifications.NOTIFICATION_GROUP_MEMBERSHIP).Equals(0));
+                                    !(p.NotificationMask & (uint) o).Equals(0));
                             switch (o)
                             {
                                 case Notifications.NOTIFICATION_GROUP_MEMBERSHIP:
@@ -18802,11 +18814,11 @@ namespace Corrade
         public struct CorradeThread
         {
             private static readonly HashSet<Thread> WorkSet = new HashSet<Thread>();
-            private static readonly object Lock = new object();
+            private static readonly object LockObject = new object();
 
             public void Spawn(ThreadStart s, int m)
             {
-                lock (Lock)
+                lock (LockObject)
                 {
                     WorkSet.RemoveWhere(o => !o.IsAlive);
                     if (WorkSet.Count > m)
@@ -18815,7 +18827,7 @@ namespace Corrade
                     }
                 }
                 Thread t = new Thread(s) {IsBackground = true};
-                lock (Lock)
+                lock (LockObject)
                 {
                     WorkSet.Add(t);
                 }
