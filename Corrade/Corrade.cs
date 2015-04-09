@@ -2396,11 +2396,23 @@ namespace Corrade
             Client.Settings.AVATAR_TRACKING = true;
             Client.Settings.OBJECT_TRACKING = true;
             Client.Settings.PARCEL_TRACKING = true;
+            Client.Settings.ALWAYS_REQUEST_PARCEL_DWELL = true;
+            Client.Settings.ALWAYS_REQUEST_PARCEL_ACL = true;
             Client.Settings.SEND_AGENT_UPDATES = true;
+            // Smoother movement for autopilot.
+            Client.Settings.DISABLE_AGENT_UPDATE_DUPLICATE_CHECK = true;
             Client.Settings.ENABLE_CAPS = true;
             Client.Settings.USE_ASSET_CACHE = true;
+            // More precision for object and avatar tracking updates.
             Client.Settings.USE_INTERPOLATION_TIMER = true;
             Client.Settings.FETCH_MISSING_INVENTORY = true;
+            Client.Settings.HTTP_INVENTORY = true;
+            // Transfer textures over HTTP if possible.
+            Client.Settings.USE_HTTP_TEXTURES = true;
+            // Needed for commands dealing with terrain height.
+            Client.Settings.STORE_LAND_PATCHES = true;
+            // Decode simulator statistics.
+            Client.Settings.ENABLE_SIMSTATS = true;
             // Enable multiple simulators
             Client.Settings.MULTIPLE_SIMS = true;
             // Set the maximum draw-distance possible.
@@ -2430,6 +2442,24 @@ namespace Corrade
                     string.Format("{0}/{1} ({2})", CORRADE_CONSTANTS.CORRADE, CORRADE_CONSTANTS.CORRADE_VERSION,
                         CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS_WEBSITE)
             };
+            // Set the outgoing IP address if specified in the configuration file.
+            if (!string.IsNullOrEmpty(Configuration.BIND_IP_ADDRESS))
+            {
+                try
+                {
+                    Settings.BIND_ADDR = IPAddress.Parse(Configuration.BIND_IP_ADDRESS);
+                }
+                catch (Exception)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNKNOWN_IP_ADDRESS));
+                    Environment.Exit(0);
+                }
+            }
+            // Set the ID0 if specified in the configuration file.
+            if (!string.IsNullOrEmpty(Configuration.DRIVE_IDENTIFIER_HASH))
+            {
+                login.ID0 = Utils.MD5String(Configuration.DRIVE_IDENTIFIER_HASH);
+            }
             // Set the MAC if specified in the configuration file.
             if (!string.IsNullOrEmpty(Configuration.NETWORK_CARD_MAC))
             {
@@ -17426,7 +17456,9 @@ namespace Corrade
             public static int MEMBERSHIP_SWEEP_INTERVAL;
             public static bool TOS_ACCEPTED;
             public static string START_LOCATION;
+            public static string BIND_IP_ADDRESS;
             public static string NETWORK_CARD_MAC;
+            public static string DRIVE_IDENTIFIER_HASH;
             public static string CLIENT_LOG_FILE;
             public static bool CLIENT_LOG_ENABLED;
             public static bool AUTO_ACTIVATE_GROUP;
@@ -17502,7 +17534,9 @@ namespace Corrade
                 MEMBERSHIP_SWEEP_INTERVAL = 1000;
                 TOS_ACCEPTED = false;
                 START_LOCATION = "last";
+                BIND_IP_ADDRESS = string.Empty;
                 NETWORK_CARD_MAC = string.Empty;
+                DRIVE_IDENTIFIER_HASH = string.Empty;
                 AUTO_ACTIVATE_GROUP = false;
                 GROUP_CREATE_FEE = 100;
                 GROUPS = new HashSet<Group>();
@@ -17969,10 +18003,22 @@ namespace Corrade
                             {
                                 switch (networkNode.Name.ToLowerInvariant())
                                 {
+                                    case ConfigurationKeys.BIND:
+                                        if (!string.IsNullOrEmpty(networkNode.InnerText))
+                                        {
+                                            BIND_IP_ADDRESS = networkNode.InnerText;
+                                        }
+                                        break;
                                     case ConfigurationKeys.MAC:
                                         if (!string.IsNullOrEmpty(networkNode.InnerText))
                                         {
                                             NETWORK_CARD_MAC = networkNode.InnerText;
+                                        }
+                                        break;
+                                    case ConfigurationKeys.ID0:
+                                        if (!string.IsNullOrEmpty(networkNode.InnerText))
+                                        {
+                                            DRIVE_IDENTIFIER_HASH = networkNode.InnerText;
                                         }
                                         break;
                                     case ConfigurationKeys.NAGGLE:
@@ -18720,6 +18766,7 @@ namespace Corrade
             public const string CONNECTIONS = @"connections";
             public const string EXPECT100CONTINUE = @"expect100continue";
             public const string MAC = @"MAC";
+            public const string ID0 = @"ID0";
             public const string SERVER = @"server";
             public const string MEMBERSHIP = @"membership";
             public const string SWEEP = @"sweep";
@@ -18751,6 +18798,7 @@ namespace Corrade
             public const string DIRECTORY = @"directory";
             public const string LOCAL = @"local";
             public const string REGION = @"region";
+            public const string BIND = @"bind";
         }
 
         /// <summary>
@@ -18805,7 +18853,8 @@ namespace Corrade
             [Description("could not write to group chat log file")] COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE,
             [Description("could not write to instant message log file")] COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE,
             [Description("could not write to local message log file")] COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE,
-            [Description("could not write to region message log file")] COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE
+            [Description("could not write to region message log file")] COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE,
+            [Description("unknown IP address")] UNKNOWN_IP_ADDRESS
         }
 
         /// <summary>
