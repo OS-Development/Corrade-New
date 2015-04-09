@@ -14510,7 +14510,7 @@ namespace Corrade
                         Parallel.ForEach(Enumerable.Range(x1, sx), x => Parallel.ForEach(Enumerable.Range(y1, sy), y =>
                         {
                             float height;
-                            csv[2*(x2 - x) + (y2 - y)] = Client.Network.CurrentSim.TerrainHeightAtPoint(x, y, out height)
+                            csv[sx * x + y] = Client.Network.CurrentSim.TerrainHeightAtPoint(x, y, out height)
                                 ? height
                                 : -1;
                         }));
