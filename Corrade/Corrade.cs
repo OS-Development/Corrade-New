@@ -7520,6 +7520,8 @@ namespace Corrade
                         GridRegion gridRegion = new GridRegion();
                         EventHandler<GridRegionEventArgs> GridRegionEventHandler = (sender, args) =>
                         {
+                            if (!args.Region.Name.Equals(region, StringComparison.InvariantCultureIgnoreCase))
+                                return;
                             gridRegion = args.Region;
                             GridRegionEvent.Set();
                         };
@@ -13362,6 +13364,8 @@ namespace Corrade
                         ulong regionHandle = 0;
                         EventHandler<GridRegionEventArgs> GridRegionEventHandler = (sender, args) =>
                         {
+                            if (!args.Region.Name.Equals(region, StringComparison.InvariantCultureIgnoreCase))
+                                return;
                             regionHandle = args.Region.RegionHandle;
                             GridRegionEvent.Set();
                         };
