@@ -821,7 +821,8 @@ namespace Corrade
         {
             if (paths.Length.Equals(0)) return string.Empty;
             return paths.Length < 2
-                ? paths[0] : Path.Combine(Path.Combine(paths[0], paths[1]), wasPathCombine(paths.Skip(2).ToArray()));
+                ? paths[0]
+                : Path.Combine(Path.Combine(paths[0], paths[1]), wasPathCombine(paths.Skip(2).ToArray()));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -898,7 +899,8 @@ namespace Corrade
         {
             return item.IsLink() && Client.Inventory.Store.Contains(item.AssetUUID) &&
                    Client.Inventory.Store[item.AssetUUID] is InventoryItem
-                ? Client.Inventory.Store[item.AssetUUID] as InventoryItem : item;
+                ? Client.Inventory.Store[item.AssetUUID] as InventoryItem
+                : item;
         }
 
         /// <summary>
@@ -5569,29 +5571,37 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ALREADY_IN_GROUP));
                         }
-                        // role is optional
-                        string role =
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
-                                message));
-                        UUID roleUUID = UUID.Zero;
-                        if (!string.IsNullOrEmpty(role) && !UUID.TryParse(role, out roleUUID) &&
-                            !RoleNameToRoleUUID(role, groupUUID,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref roleUUID))
+                        HashSet<UUID> roleUUIDs = new HashSet<UUID>();
+                        foreach (
+                            string role in
+                                CORRADE_CONSTANTS.CSVRegEx.Split(
+                                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
+                                        message))))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
-                        }
-                        // If the role is not everybody, then check for powers to assign to the specified role.
-                        if (!roleUUID.Equals(UUID.Zero))
-                        {
-                            if (
-                                !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
-                                    Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT))
+                            if (string.IsNullOrEmpty(role))
                             {
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_ROLE_PROVIDED));
+                            }
+                            UUID roleUUID = UUID.Zero;
+                            if (!UUID.TryParse(role, out roleUUID) &&
+                                !RoleNameToRoleUUID(role, groupUUID,
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref roleUUID))
+                            {
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
+                            }
+                            if (!roleUUIDs.Contains(roleUUID))
+                            {
+                                roleUUIDs.Add(roleUUID);
                             }
                         }
-                        Client.Groups.Invite(groupUUID, new List<UUID> {roleUUID}, agentUUID);
+                        if (!roleUUIDs.Count.Equals(0) &&
+                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                        }
+                        Client.Groups.Invite(groupUUID, roleUUIDs.ToList(), agentUUID);
                     };
                     break;
                 case ScriptKeys.REPLYTOGROUPINVITE:
@@ -5738,7 +5748,7 @@ namespace Corrade
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.Eject,
                                 Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT) ||
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RemoveMember,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
@@ -5866,7 +5876,6 @@ namespace Corrade
                                 summary = args.Summary;
                                 RequestGroupAccountSummaryEvent.Set();
                             };
-
                         Client.Groups.GroupAccountSummaryReply += RequestGroupAccountSummaryEventHandler;
                         Client.Groups.RequestGroupAccountSummary(groupUUID, days, interval);
                         if (!RequestGroupAccountSummaryEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
@@ -8399,12 +8408,12 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        InventoryBase inventoryBaseItem =
+                        InventoryBase item =
                             FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                 wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))
                                 ).FirstOrDefault();
-                        if (inventoryBaseItem == null)
+                        if (item == null)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                         }
@@ -8435,10 +8444,10 @@ namespace Corrade
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
-                                InventoryItem inventoryItem = inventoryBaseItem as InventoryItem;
+                                InventoryItem inventoryItem = item as InventoryItem;
                                 if (inventoryItem != null)
                                 {
-                                    Client.Inventory.GiveItem(inventoryBaseItem.UUID, inventoryBaseItem.Name,
+                                    Client.Inventory.GiveItem(item.UUID, item.Name,
                                         inventoryItem.AssetType, agentUUID, true);
                                 }
                                 break;
@@ -8466,7 +8475,7 @@ namespace Corrade
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                                 }
                                 Client.Inventory.UpdateTaskInventory(primitive.LocalID,
-                                    inventoryBaseItem as InventoryItem);
+                                    item as InventoryItem);
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
@@ -8581,10 +8590,10 @@ namespace Corrade
                         }
                         ManualResetEvent AvatarPicksReplyEvent = new ManualResetEvent(false);
                         UUID pickUUID = UUID.Zero;
-                        string pickName =
+                        string name =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                 message));
-                        if (string.IsNullOrEmpty(pickName))
+                        if (string.IsNullOrEmpty(name))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_PICK_NAME));
                         }
@@ -8592,7 +8601,7 @@ namespace Corrade
                         {
                             pickUUID =
                                 args.Picks.FirstOrDefault(
-                                    o => o.Value.Equals(pickName, StringComparison.Ordinal)).Key;
+                                    o => o.Value.Equals(name, StringComparison.Ordinal)).Key;
                             AvatarPicksReplyEvent.Set();
                         };
                         Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
@@ -8608,7 +8617,7 @@ namespace Corrade
                         {
                             pickUUID = UUID.Random();
                         }
-                        Client.Self.PickInfoUpdate(pickUUID, false, UUID.Zero, pickName,
+                        Client.Self.PickInfoUpdate(pickUUID, false, UUID.Zero, name,
                             Client.Self.GlobalPosition, textureUUID,
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
@@ -8625,10 +8634,10 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         ManualResetEvent AvatarPicksReplyEvent = new ManualResetEvent(false);
-                        string pickName =
+                        string input =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                 message));
-                        if (string.IsNullOrEmpty(pickName))
+                        if (string.IsNullOrEmpty(input))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_PICK_NAME));
                         }
@@ -8637,7 +8646,7 @@ namespace Corrade
                         {
                             pickUUID =
                                 args.Picks.FirstOrDefault(
-                                    o => o.Value.Equals(pickName, StringComparison.Ordinal)).Key;
+                                    o => o.Value.Equals(input, StringComparison.Ordinal)).Key;
                             AvatarPicksReplyEvent.Set();
                         };
                         Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
@@ -8678,10 +8687,10 @@ namespace Corrade
                             }
                             textureUUID = inventoryBaseItem.UUID;
                         }
-                        string classifiedName =
+                        string name =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                 message));
-                        if (string.IsNullOrEmpty(classifiedName))
+                        if (string.IsNullOrEmpty(name))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_CLASSIFIED_NAME));
                         }
@@ -8696,7 +8705,7 @@ namespace Corrade
                             classifiedUUID =
                                 args.Classifieds.FirstOrDefault(
                                     o =>
-                                        o.Value.Equals(classifiedName, StringComparison.Ordinal)).Key;
+                                        o.Value.Equals(name, StringComparison.Ordinal)).Key;
                             AvatarClassifiedReplyEvent.Set();
                         };
                         Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
@@ -8748,7 +8757,7 @@ namespace Corrade
                             ? (DirectoryManager.ClassifiedCategories)
                                 classifiedCategoriesField.GetValue(null)
                             : DirectoryManager.ClassifiedCategories.Any, textureUUID, price,
-                            classifiedName, classifiedDescription, renew);
+                            name, classifiedDescription, renew);
                     };
                     break;
                 case ScriptKeys.DELETECLASSIFIED:
@@ -8758,10 +8767,10 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        string classifiedName =
+                        string name =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                 message));
-                        if (string.IsNullOrEmpty(classifiedName))
+                        if (string.IsNullOrEmpty(name))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_CLASSIFIED_NAME));
                         }
@@ -8772,7 +8781,7 @@ namespace Corrade
                             classifiedUUID =
                                 args.Classifieds.FirstOrDefault(
                                     o =>
-                                        o.Value.Equals(classifiedName, StringComparison.Ordinal)).Key;
+                                        o.Value.Equals(name, StringComparison.Ordinal)).Key;
                             AvatarClassifiedReplyEvent.Set();
                         };
                         Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
@@ -9051,9 +9060,12 @@ namespace Corrade
                         {
                             replace = true;
                         }
-                        Parallel.ForEach(CORRADE_CONSTANTS.CSVRegex.Matches(attachments)
-                            .Cast<Match>()
-                            .ToDictionary(o => o.Groups["key"].Value, o => o.Groups["value"].Value),
+                        Parallel.ForEach(
+                            CORRADE_CONSTANTS.CSVRegEx.Split(attachments).Select((o, p) => new {o = o, p = p})
+                                .GroupBy(q => q.p/2, q => q.o)
+                                .Select(o => o.ToList())
+                                .TakeWhile(o => o.Count%2 == 0)
+                                .ToDictionary(o => o.First(), p => p.Last()),
                             o =>
                                 Parallel.ForEach(
                                     typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -14510,7 +14522,7 @@ namespace Corrade
                         Parallel.ForEach(Enumerable.Range(x1, sx), x => Parallel.ForEach(Enumerable.Range(y1, sy), y =>
                         {
                             float height;
-                            csv[sx * x + y] = Client.Network.CurrentSim.TerrainHeightAtPoint(x, y, out height)
+                            csv[sx*x + y] = Client.Network.CurrentSim.TerrainHeightAtPoint(x, y, out height)
                                 ? height
                                 : -1;
                         }));
@@ -14842,9 +14854,13 @@ namespace Corrade
                                         message));
                                 if (!string.IsNullOrEmpty(input))
                                 {
-                                    foreach (KeyValuePair<string, string> i in CORRADE_CONSTANTS.CSVRegex.Matches(input)
-                                        .Cast<Match>()
-                                        .ToDictionary(o => o.Groups["key"].Value, o => o.Groups["value"].Value))
+                                    foreach (
+                                        KeyValuePair<string, string> i in
+                                            CORRADE_CONSTANTS.CSVRegEx.Split(input).Select((o, p) => new {o = o, p = p})
+                                                .GroupBy(q => q.p/2, q => q.o)
+                                                .Select(o => o.ToList())
+                                                .TakeWhile(o => o.Count%2 == 0)
+                                                .ToDictionary(o => o.First(), p => p.Last()))
                                     {
                                         inputFilters.Add(wasGetEnumValueFromDescription<Filter>(i.Key));
                                         inputFilters.Add(wasGetEnumValueFromDescription<Filter>(i.Value));
@@ -14862,9 +14878,13 @@ namespace Corrade
                                 if (!string.IsNullOrEmpty(output))
                                 {
                                     foreach (
-                                        KeyValuePair<string, string> i in CORRADE_CONSTANTS.CSVRegex.Matches(output)
-                                            .Cast<Match>()
-                                            .ToDictionary(o => o.Groups["key"].Value, o => o.Groups["value"].Value))
+                                        KeyValuePair<string, string> i in
+                                            CORRADE_CONSTANTS.CSVRegEx.Split(output)
+                                                .Select((o, p) => new {o = o, p = p})
+                                                .GroupBy(q => q.p/2, q => q.o)
+                                                .Select(o => o.ToList())
+                                                .TakeWhile(o => o.Count%2 == 0)
+                                                .ToDictionary(o => o.First(), p => p.Last()))
                                     {
                                         outputFilters.Add(wasGetEnumValueFromDescription<Filter>(i.Key));
                                         outputFilters.Add(wasGetEnumValueFromDescription<Filter>(i.Value));
@@ -15914,9 +15934,11 @@ namespace Corrade
         {
             foreach (
                 KeyValuePair<string, string> match in
-                    CORRADE_CONSTANTS.CSVRegex.Matches(data).
-                        Cast<Match>().
-                        ToDictionary(m => m.Groups["key"].Value, m => m.Groups["value"].Value))
+                    CORRADE_CONSTANTS.CSVRegEx.Split(data).Select((o, p) => new {o = o, p = p})
+                        .GroupBy(q => q.p/2, q => q.o)
+                        .Select(o => o.ToList())
+                        .TakeWhile(o => o.Count%2 == 0)
+                        .ToDictionary(o => o.First(), p => p.Last()))
             {
                 KeyValuePair<string, string> localMatch = match;
                 KeyValuePair<FieldInfo, object> fi =
@@ -17308,7 +17330,7 @@ namespace Corrade
                 string.Format(CultureInfo.InvariantCulture, "Copyright: {0}", COPYRIGHT)
             };
 
-            public static readonly Regex CSVRegex = new Regex(@"\s*(?<key>.+?)\s*,\s*(?<value>.+?)\s*(,|$)",
+            public static readonly Regex CSVRegEx = new Regex(@"\s*,\s*(?=(?:[^\""]*\""[^\""]*\"")*(?![^\""]*\""))",
                 RegexOptions.Compiled);
 
             public static readonly Regex AvatarFullNameRegex = new Regex(@"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$",
@@ -19540,7 +19562,8 @@ namespace Corrade
             [Description("unable to load configuration")] UNABLE_TO_LOAD_CONFIGURATION,
             [Description("unable to save configuration")] UNABLE_TO_SAVE_CONFIGURATION,
             [Description("invalid xml path")] INVALID_XML_PATH,
-            [Description("no data provided")] NO_DATA_PROVIDED
+            [Description("no data provided")] NO_DATA_PROVIDED,
+            [Description("empty role provided")] EMPTY_ROLE_PROVIDED
         }
 
         /// <summary>
