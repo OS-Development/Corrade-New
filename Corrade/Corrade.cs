@@ -5585,7 +5585,7 @@ namespace Corrade
                                                 : o.Substring(1, o.Length - 2).Replace("\"\"", "\""))
                                     .Where(o => !string.IsNullOrEmpty(o)))
                         {
-                            UUID roleUUID = UUID.Zero;
+                            UUID roleUUID;
                             if (!UUID.TryParse(role, out roleUUID) &&
                                 !RoleNameToRoleUUID(role, groupUUID,
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref roleUUID))
@@ -5719,7 +5719,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -5897,7 +5898,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.ToArray()));
+                                    data.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -6160,7 +6161,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -6215,7 +6217,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -6303,7 +6306,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -6374,7 +6378,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -6452,7 +6457,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -6528,7 +6534,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -7491,7 +7498,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.ToArray()));
+                                    data.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -7531,7 +7538,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.ToArray()));
+                                    data.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -7800,7 +7807,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.ToArray()));
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -8398,7 +8405,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -8944,7 +8952,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.ToArray()));
+                                    data.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -9032,7 +9040,8 @@ namespace Corrade
                         if (!attachments.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, attachments.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    attachments.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -9073,7 +9082,7 @@ namespace Corrade
                                             ? o
                                             : o.Substring(1, o.Length - 2).Replace("\"\"", "\""))
                                 .Where(o => !string.IsNullOrEmpty(o))
-                                .Select((o, p) => new {o = o, p = p})
+                                .Select((o, p) => new {o, p})
                                 .GroupBy(q => q.p/2, q => q.o)
                                 .Select(o => o.ToList())
                                 .TakeWhile(o => o.Count%2 == 0)
@@ -9442,7 +9451,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.ToArray()
+                                    data.Select(o => wasCSVEscape(o)).ToArray()
                                     ));
                         }
                     };
@@ -9483,7 +9492,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.ToArray()));
+                                    data.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -9523,7 +9532,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.ToArray()));
+                                    data.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -9557,7 +9566,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.ToArray()));
+                                    data.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -9649,7 +9658,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => o.ToString()).ToArray()));
+                                    csv.Select(o => o.ToString()).Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -10459,7 +10468,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.ToArray()));
+                                    data.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -10520,7 +10529,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.ToArray()));
+                                    data.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -10653,7 +10662,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.ToArray()));
+                                    data.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -10712,7 +10721,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.ToArray()));
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -10758,7 +10767,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.ToArray()));
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -11205,7 +11214,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.ToArray()));
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -11746,7 +11755,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.ToArray()));
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -11961,7 +11970,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.ToArray()));
+                                    data.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -12227,7 +12236,7 @@ namespace Corrade
                                 {
                                     result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                         string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                            csv.ToArray()));
+                                            csv.Select(o => wasCSVEscape(o)).ToArray()));
                                 }
                                 break;
                             case Action.CLEAR:
@@ -12311,7 +12320,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -12393,7 +12403,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -12479,7 +12490,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -12578,7 +12590,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -12748,7 +12761,8 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, data.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    data.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -13048,7 +13062,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.ToArray()));
+                                    data.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -13135,7 +13149,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.ToArray()));
+                                    data.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -13256,7 +13270,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -13324,7 +13339,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -13379,7 +13395,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.ToArray()));
+                                    data.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -13397,7 +13413,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.ToArray()));
+                                    data.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -13506,7 +13522,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -13609,7 +13626,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -13636,7 +13654,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -13727,7 +13746,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.ToArray()));
+                                    data.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -13915,7 +13934,8 @@ namespace Corrade
                         Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
 
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, new[] {regionName, position.ToString()}));
+                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                new[] {regionName, position.ToString()}.Select(o => wasCSVEscape(o)).ToArray()));
                     };
                     break;
                 case ScriptKeys.SETOBJECTPERMISSIONS:
@@ -14540,7 +14560,9 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => o.ToString(CultureInfo.InvariantCulture)).ToArray()));
+                                    csv.Select(o => o.ToString(CultureInfo.InvariantCulture))
+                                        .Select(o => wasCSVEscape(o))
+                                        .ToArray()));
                         }
                     };
                     break;
@@ -14874,7 +14896,7 @@ namespace Corrade
                                                             ? o
                                                             : o.Substring(1, o.Length - 2).Replace("\"\"", "\""))
                                                 .Where(o => !string.IsNullOrEmpty(o))
-                                                .Select((o, p) => new {o = o, p = p})
+                                                .Select((o, p) => new {o, p})
                                                 .GroupBy(q => q.p/2, q => q.o)
                                                 .Select(o => o.ToList())
                                                 .TakeWhile(o => o.Count%2 == 0)
@@ -14906,7 +14928,7 @@ namespace Corrade
                                                             ? o
                                                             : o.Substring(1, o.Length - 2).Replace("\"\"", "\""))
                                                 .Where(o => !string.IsNullOrEmpty(o))
-                                                .Select((o, p) => new {o = o, p = p})
+                                                .Select((o, p) => new {o, p})
                                                 .GroupBy(q => q.p/2, q => q.o)
                                                 .Select(o => o.ToList())
                                                 .TakeWhile(o => o.Count%2 == 0)
@@ -14935,7 +14957,9 @@ namespace Corrade
                                                 result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                                     string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                                         Configuration.INPUT_FILTERS.Select(
-                                                            o => wasGetDescriptionFromEnumValue(o)).ToArray()));
+                                                            o => wasGetDescriptionFromEnumValue(o))
+                                                            .Select(o => wasCSVEscape(o))
+                                                            .ToArray()));
                                             }
                                         }
                                         break;
@@ -14947,7 +14971,9 @@ namespace Corrade
                                                 result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                                     string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
                                                         Configuration.OUTPUT_FILTERS.Select(
-                                                            o => wasGetDescriptionFromEnumValue(o)).ToArray()));
+                                                            o => wasGetDescriptionFromEnumValue(o))
+                                                            .Select(o => wasCSVEscape(o))
+                                                            .ToArray()));
                                             }
                                         }
                                         break;
@@ -15413,7 +15439,7 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.ToArray()));
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -15822,7 +15848,8 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER, csv.ToArray()));
+                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
+                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
                         }
                     };
                     break;
@@ -15969,7 +15996,7 @@ namespace Corrade
                                     ? o
                                     : o.Substring(1, o.Length - 2).Replace("\"\"", "\""))
                         .Where(o => !string.IsNullOrEmpty(o))
-                        .Select((o, p) => new {o = o, p = p})
+                        .Select((o, p) => new {o, p})
                         .GroupBy(q => q.p/2, q => q.o)
                         .Select(o => o.ToList())
                         .TakeWhile(o => o.Count%2 == 0)
@@ -16980,6 +17007,67 @@ namespace Corrade
 
         #endregion
 
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>URI unescapes an RFC3986 URI escaped string</summary>
+        /// <param name="data">a string to unescape</param>
+        /// <returns>the resulting string</returns>
+        private static string wasUriUnescapeDataString(string data)
+        {
+            return
+                Regex.Matches(data, @"%([0-9A-Fa-f]+?){2}")
+                    .Cast<Match>()
+                    .Select(m => m.Value)
+                    .Distinct()
+                    .Aggregate(data,
+                        (current, match) =>
+                            current.Replace(match,
+                                ((char)
+                                    int.Parse(match.Substring(1), NumberStyles.AllowHexSpecifier,
+                                        CultureInfo.InvariantCulture)).ToString(
+                                            CultureInfo.InvariantCulture)));
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>RFC3986 URI Escapes a string</summary>
+        /// <param name="data">a string to escape</param>
+        /// <returns>an RFC3986 escaped string</returns>
+        private static string wasUriEscapeDataString(string data)
+        {
+            StringBuilder result = new StringBuilder();
+            foreach (char c in data.Select(o => o))
+            {
+                if (char.IsLetter(c) || char.IsDigit(c))
+                {
+                    result.Append(c);
+                    continue;
+                }
+                result.AppendFormat("%{0:X2}", (int) c);
+            }
+            return result.ToString();
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Escapes a string to be used in a comma-separated list of values.
+        /// </summary>
+        /// <param name="input">the string to escape</param>
+        /// <returns>the escaped string</returns>
+        private static string wasCSVEscape(string input)
+        {
+            input = new string(
+                input.ToCharArray()
+                    .SelectMany(o => !o.Equals('"') ? new[] {o} : new[] {'"', '"'}).ToArray());
+            return input.ToCharArray().Any(o => o.Equals('"') || o.Equals(',') || o.Equals('\r') || o.Equals('\n'))
+                ? "\"" + input + "\""
+                : input;
+        }
+
         #region KEY-VALUE DATA
 
         ///////////////////////////////////////////////////////////////////////////
@@ -17116,49 +17204,6 @@ namespace Corrade
                 output.Add(string.Join("=", new[] {tuple.Key, tuple.Value}));
             }
             return string.Join("&", output.ToArray());
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>URI unescapes an RFC3986 URI escaped string</summary>
-        /// <param name="data">a string to unescape</param>
-        /// <returns>the resulting string</returns>
-        private static string wasUriUnescapeDataString(string data)
-        {
-            return
-                Regex.Matches(data, @"%([0-9A-Fa-f]+?){2}")
-                    .Cast<Match>()
-                    .Select(m => m.Value)
-                    .Distinct()
-                    .Aggregate(data,
-                        (current, match) =>
-                            current.Replace(match,
-                                ((char)
-                                    int.Parse(match.Substring(1), NumberStyles.AllowHexSpecifier,
-                                        CultureInfo.InvariantCulture)).ToString(
-                                            CultureInfo.InvariantCulture)));
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>RFC3986 URI Escapes a string</summary>
-        /// <param name="data">a string to escape</param>
-        /// <returns>an RFC3986 escaped string</returns>
-        private static string wasUriEscapeDataString(string data)
-        {
-            StringBuilder result = new StringBuilder();
-            foreach (char c in data.Select(o => o))
-            {
-                if (char.IsLetter(c) || char.IsDigit(c))
-                {
-                    result.Append(c);
-                    continue;
-                }
-                result.AppendFormat("%{0:X2}", (int) c);
-            }
-            return result.ToString();
         }
 
         ///////////////////////////////////////////////////////////////////////////
