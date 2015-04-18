@@ -5574,14 +5574,17 @@ namespace Corrade
                         HashSet<UUID> roleUUIDs = new HashSet<UUID>();
                         foreach (
                             string role in
-                                CORRADE_CONSTANTS.CSVRegEx.Split(
+                                CORRADE_CONSTANTS.CSVRegEx.Matches(
                                     wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
-                                        message))))
+                                        message))).Cast<Match>()
+                                    .Select(o => o.Groups[1].Value)
+                                    .Select(
+                                        o =>
+                                            !(o.StartsWith("\"") && o.EndsWith("\""))
+                                                ? o
+                                                : o.Substring(1, o.Length - 2).Replace("\"\"", "\""))
+                                    .Where(o => !string.IsNullOrEmpty(o)))
                         {
-                            if (string.IsNullOrEmpty(role))
-                            {
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_ROLE_PROVIDED));
-                            }
                             UUID roleUUID = UUID.Zero;
                             if (!UUID.TryParse(role, out roleUUID) &&
                                 !RoleNameToRoleUUID(role, groupUUID,
@@ -9061,7 +9064,16 @@ namespace Corrade
                             replace = true;
                         }
                         Parallel.ForEach(
-                            CORRADE_CONSTANTS.CSVRegEx.Split(attachments).Select((o, p) => new {o = o, p = p})
+                            CORRADE_CONSTANTS.CSVRegEx.Matches(attachments)
+                                .Cast<Match>()
+                                .Select(o => o.Groups[1].Value)
+                                .Select(
+                                    o =>
+                                        !(o.StartsWith("\"") && o.EndsWith("\""))
+                                            ? o
+                                            : o.Substring(1, o.Length - 2).Replace("\"\"", "\""))
+                                .Where(o => !string.IsNullOrEmpty(o))
+                                .Select((o, p) => new {o = o, p = p})
                                 .GroupBy(q => q.p/2, q => q.o)
                                 .Select(o => o.ToList())
                                 .TakeWhile(o => o.Count%2 == 0)
@@ -13187,7 +13199,6 @@ namespace Corrade
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
                         }
                         List<string> csv = new List<string>();
-                        object LockObject = new object();
                         HashSet<Primitive> primitives =
                             new HashSet<Primitive>(
                                 Client.Network.CurrentSim.ObjectsPrimitives.FindAll(o => !o.ID.Equals(UUID.Zero)));
@@ -13208,6 +13219,7 @@ namespace Corrade
                             Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
 
                             if (p.Properties == null) continue;
+
                             switch (entity)
                             {
                                 case Entity.REGION:
@@ -13238,11 +13250,8 @@ namespace Corrade
                                     if (!primitiveParcel.LocalID.Equals(parcel.LocalID)) continue;
                                     break;
                             }
-                            lock (LockObject)
-                            {
-                                csv.Add(p.Properties.Name);
-                                csv.Add(p.ID.ToString());
-                            }
+                            csv.Add(p.Properties.Name);
+                            csv.Add(p.ID.ToString());
                         }
                         if (!csv.Count.Equals(0))
                         {
@@ -14856,7 +14865,16 @@ namespace Corrade
                                 {
                                     foreach (
                                         KeyValuePair<string, string> i in
-                                            CORRADE_CONSTANTS.CSVRegEx.Split(input).Select((o, p) => new {o = o, p = p})
+                                            CORRADE_CONSTANTS.CSVRegEx.Matches(input)
+                                                .Cast<Match>()
+                                                .Select(o => o.Groups[1].Value)
+                                                .Select(
+                                                    o =>
+                                                        !(o.StartsWith("\"") && o.EndsWith("\""))
+                                                            ? o
+                                                            : o.Substring(1, o.Length - 2).Replace("\"\"", "\""))
+                                                .Where(o => !string.IsNullOrEmpty(o))
+                                                .Select((o, p) => new {o = o, p = p})
                                                 .GroupBy(q => q.p/2, q => q.o)
                                                 .Select(o => o.ToList())
                                                 .TakeWhile(o => o.Count%2 == 0)
@@ -14879,7 +14897,15 @@ namespace Corrade
                                 {
                                     foreach (
                                         KeyValuePair<string, string> i in
-                                            CORRADE_CONSTANTS.CSVRegEx.Split(output)
+                                            CORRADE_CONSTANTS.CSVRegEx.Matches(output)
+                                                .Cast<Match>()
+                                                .Select(o => o.Groups[1].Value)
+                                                .Select(
+                                                    o =>
+                                                        !(o.StartsWith("\"") && o.EndsWith("\""))
+                                                            ? o
+                                                            : o.Substring(1, o.Length - 2).Replace("\"\"", "\""))
+                                                .Where(o => !string.IsNullOrEmpty(o))
                                                 .Select((o, p) => new {o = o, p = p})
                                                 .GroupBy(q => q.p/2, q => q.o)
                                                 .Select(o => o.ToList())
@@ -15934,7 +15960,16 @@ namespace Corrade
         {
             foreach (
                 KeyValuePair<string, string> match in
-                    CORRADE_CONSTANTS.CSVRegEx.Split(data).Select((o, p) => new {o = o, p = p})
+                    CORRADE_CONSTANTS.CSVRegEx.Matches(data)
+                        .Cast<Match>()
+                        .Select(o => o.Groups[1].Value)
+                        .Select(
+                            o =>
+                                !(o.StartsWith("\"") && o.EndsWith("\""))
+                                    ? o
+                                    : o.Substring(1, o.Length - 2).Replace("\"\"", "\""))
+                        .Where(o => !string.IsNullOrEmpty(o))
+                        .Select((o, p) => new {o = o, p = p})
                         .GroupBy(q => q.p/2, q => q.o)
                         .Select(o => o.ToList())
                         .TakeWhile(o => o.Count%2 == 0)
@@ -17330,7 +17365,7 @@ namespace Corrade
                 string.Format(CultureInfo.InvariantCulture, "Copyright: {0}", COPYRIGHT)
             };
 
-            public static readonly Regex CSVRegEx = new Regex(@"\s*,\s*(?=(?:[^\""]*\""[^\""]*\"")*(?![^\""]*\""))",
+            public static readonly Regex CSVRegEx = new Regex("\\s*((?:\"(?:(?:\"\")|[^\"])*\")|[^\"]*?)\\s*(?:,|$)",
                 RegexOptions.Compiled);
 
             public static readonly Regex AvatarFullNameRegex = new Regex(@"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$",
@@ -19562,8 +19597,7 @@ namespace Corrade
             [Description("unable to load configuration")] UNABLE_TO_LOAD_CONFIGURATION,
             [Description("unable to save configuration")] UNABLE_TO_SAVE_CONFIGURATION,
             [Description("invalid xml path")] INVALID_XML_PATH,
-            [Description("no data provided")] NO_DATA_PROVIDED,
-            [Description("empty role provided")] EMPTY_ROLE_PROVIDED
+            [Description("no data provided")] NO_DATA_PROVIDED
         }
 
         /// <summary>
