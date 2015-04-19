@@ -17067,7 +17067,7 @@ namespace Corrade
             input = new string(
                 input.ToCharArray()
                     .SelectMany(o => !o.Equals('"') ? new[] {o} : new[] {'"', '"'}).ToArray());
-            return input.ToCharArray().Any(o => o.Equals('"') || o.Equals(',') || o.Equals('\r') || o.Equals('\n'))
+            return input.ToCharArray().Any(o => o.Equals(' ') || o.Equals(',') || o.Equals('\r') || o.Equals('\n'))
                 ? "\"" + input + "\""
                 : input;
         }
