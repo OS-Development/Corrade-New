@@ -787,7 +787,7 @@ namespace Corrade
             if (string.IsNullOrEmpty(message)) yield break;
 
             // Split all commands.
-            string[] unpack = message.Split(',');
+            string[] unpack = message.Split(RLV_CONSTANTS.CSV_DELIMITER[0]);
             // Pop first command to process.
             string first = unpack.First();
             // Remove command.
@@ -2878,8 +2878,7 @@ namespace Corrade
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
                                 scriptDialogEventArgs.OwnerID.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BUTTON),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    scriptDialogEventArgs.ButtonLabels.ToArray()));
+                                wasEnumerableToCSV(scriptDialogEventArgs.ButtonLabels));
                             break;
                         case Notifications.NOTIFICATION_LOCAL_CHAT:
                             ChatEventArgs localChatEventArgs = (ChatEventArgs) args;
@@ -3058,14 +3057,13 @@ namespace Corrade
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TASK),
                                 scriptQuestionEventArgs.TaskID.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    typeof (ScriptPermission).GetFields(BindingFlags.Public |
-                                                                        BindingFlags.Static)
-                                        .Where(
-                                            p =>
-                                                !(((int) p.GetValue(null) &
-                                                   (int) scriptQuestionEventArgs.Questions)).Equals(0))
-                                        .Select(p => p.Name).ToArray()));
+                                wasEnumerableToCSV(typeof (ScriptPermission).GetFields(BindingFlags.Public |
+                                                                                       BindingFlags.Static)
+                                    .Where(
+                                        p =>
+                                            !(((int) p.GetValue(null) &
+                                               (int) scriptQuestionEventArgs.Questions)).Equals(0))
+                                    .Select(p => p.Name)));
                             break;
                         case Notifications.NOTIFICATION_FRIENDSHIP:
                             System.Type friendshipNotificationType = args.GetType();
@@ -3084,17 +3082,15 @@ namespace Corrade
                                         : wasGetDescriptionFromEnumValue(Action.OFFLINE));
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.RIGHTS),
                                     // Return the friend rights as a nice CSV string.
-                                    string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                        typeof (FriendRights).GetFields(BindingFlags.Public |
-                                                                        BindingFlags.Static)
-                                            .Where(
-                                                p =>
-                                                    !(((int) p.GetValue(null) &
-                                                       (int) friendInfoEventArgs.Friend.MyFriendRights))
-                                                        .Equals(
-                                                            0))
-                                            .Select(p => p.Name)
-                                            .ToArray()));
+                                    wasEnumerableToCSV(typeof (FriendRights).GetFields(BindingFlags.Public |
+                                                                                       BindingFlags.Static)
+                                        .Where(
+                                            p =>
+                                                !(((int) p.GetValue(null) &
+                                                   (int) friendInfoEventArgs.Friend.MyFriendRights))
+                                                    .Equals(
+                                                        0))
+                                        .Select(p => p.Name)));
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                     wasGetDescriptionFromEnumValue(Action.UPDATE));
                                 break;
@@ -3493,8 +3489,7 @@ namespace Corrade
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
                                 RLVEventArgs.Position.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.RLV),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    wasRLVToCSV(RLVEventArgs.Message).ToArray()));
+                                wasEnumerableToCSV(wasRLVToCSV(RLVEventArgs.Message)));
                             break;
                         case Notifications.NOTIFICATION_DEBUG_MESSAGE:
                             ChatEventArgs DebugEventArgs = (ChatEventArgs) args;
@@ -3564,7 +3559,7 @@ namespace Corrade
                             () => SendNotification(Notifications.NOTIFICATION_RLV_MESSAGE, e),
                             Configuration.MAXIMUM_NOTIFICATION_THREADS);
                         CorradeThreadPool[CorradeThreadType.RLV].Spawn(
-                            () => HandleRLVCommand(e.Message.Substring(1, e.Message.Length - 1), e.SourceID),
+                            () => HandleRLVBehaviour(e.Message.Substring(1, e.Message.Length - 1), e.SourceID),
                             Configuration.MAXIMUM_RLV_THREADS);
                         break;
                     }
@@ -4234,7 +4229,12 @@ namespace Corrade
                 Configuration.MAXIMUM_COMMAND_THREADS);
         }
 
-        private static void HandleRLVCommand(string message, UUID senderUUID)
+        /// <summary>
+        ///     Processes a RLV behaviour.
+        /// </summary>
+        /// <param name="message">the RLV message to process</param>
+        /// <param name="senderUUID">the UUID of the sender</param>
+        private static void HandleRLVBehaviour(string message, UUID senderUUID)
         {
             if (string.IsNullOrEmpty(message)) return;
 
@@ -5266,7 +5266,7 @@ namespace Corrade
             }
 
             CONTINUE:
-            HandleRLVCommand(message, senderUUID);
+            HandleRLVBehaviour(message, senderUUID);
         }
 
         private static Dictionary<string, string> HandleCorradeCommand(string message, string sender, string identifier)
@@ -5574,15 +5574,9 @@ namespace Corrade
                         HashSet<UUID> roleUUIDs = new HashSet<UUID>();
                         foreach (
                             string role in
-                                CORRADE_CONSTANTS.CSVRegEx.Matches(
+                                wasCSVToEnumerable(
                                     wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
-                                        message))).Cast<Match>()
-                                    .Select(o => o.Groups[1].Value)
-                                    .Select(
-                                        o =>
-                                            !(o.StartsWith("\"") && o.EndsWith("\""))
-                                                ? o
-                                                : o.Substring(1, o.Length - 2).Replace("\"\"", "\""))
+                                        message)))
                                     .Where(o => !string.IsNullOrEmpty(o)))
                         {
                             UUID roleUUID;
@@ -5719,8 +5713,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -5897,8 +5890,7 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -6068,10 +6060,9 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ROLE_NAME_SPECIFIED));
                         }
                         ulong powers = 0;
-                        Parallel.ForEach(
+                        Parallel.ForEach(wasCSVToEnumerable(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POWERS)),
-                                message))
-                                .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
+                                message))),
                             o =>
                                 Parallel.ForEach(
                                     typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -6161,8 +6152,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -6217,8 +6207,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -6306,8 +6295,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -6378,8 +6366,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -6457,8 +6444,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -6534,8 +6520,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -7497,8 +7482,7 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -7539,8 +7523,7 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -7808,8 +7791,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -8407,8 +8389,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -8953,8 +8934,7 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -8982,17 +8962,16 @@ namespace Corrade
                         {
                             replace = true;
                         }
-                        Parallel.ForEach(
-                            wearables.Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER},
-                                StringSplitOptions.RemoveEmptyEntries), o =>
-                                {
-                                    InventoryBase inventoryBaseItem =
-                                        FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
-                                            ).FirstOrDefault(p => p is InventoryWearable);
-                                    if (inventoryBaseItem == null)
-                                        return;
-                                    Wear(inventoryBaseItem as InventoryItem, replace);
-                                });
+                        Parallel.ForEach(wasCSVToEnumerable(
+                            wearables), o =>
+                            {
+                                InventoryBase inventoryBaseItem =
+                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
+                                        ).FirstOrDefault(p => p is InventoryWearable);
+                                if (inventoryBaseItem == null)
+                                    return;
+                                Wear(inventoryBaseItem as InventoryItem, replace);
+                            });
                         RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
                     break;
@@ -9010,17 +8989,16 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_WEARABLES));
                         }
-                        Parallel.ForEach(
-                            wearables.Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER},
-                                StringSplitOptions.RemoveEmptyEntries), o =>
-                                {
-                                    InventoryBase inventoryBaseItem =
-                                        FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
-                                            ).FirstOrDefault(p => p is InventoryWearable);
-                                    if (inventoryBaseItem == null)
-                                        return;
-                                    UnWear(inventoryBaseItem as InventoryItem);
-                                });
+                        Parallel.ForEach(wasCSVToEnumerable(
+                            wearables), o =>
+                            {
+                                InventoryBase inventoryBaseItem =
+                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
+                                        ).FirstOrDefault(p => p is InventoryWearable);
+                                if (inventoryBaseItem == null)
+                                    return;
+                                UnWear(inventoryBaseItem as InventoryItem);
+                            });
                         RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
                     break;
@@ -9042,8 +9020,7 @@ namespace Corrade
                         if (!attachments.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    attachments.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(attachments));
                         }
                     };
                     break;
@@ -9075,16 +9052,7 @@ namespace Corrade
                             replace = true;
                         }
                         Parallel.ForEach(
-                            CORRADE_CONSTANTS.CSVRegEx.Matches(attachments)
-                                .Cast<Match>()
-                                .Select(o => o.Groups[1].Value)
-                                .Select(
-                                    o =>
-                                        !(o.StartsWith("\"") && o.EndsWith("\""))
-                                            ? o
-                                            : o.Substring(1, o.Length - 2).Replace("\"\"", "\""))
-                                .Where(o => !string.IsNullOrEmpty(o))
-                                .Select((o, p) => new {o, p})
+                            wasCSVToEnumerable(attachments).Select((o, p) => new {o, p})
                                 .GroupBy(q => q.p/2, q => q.o)
                                 .Select(o => o.ToList())
                                 .TakeWhile(o => o.Count%2 == 0)
@@ -9127,20 +9095,19 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_ATTACHMENTS));
                         }
-                        Parallel.ForEach(
-                            attachments.Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER},
-                                StringSplitOptions.RemoveEmptyEntries), o =>
-                                {
-                                    InventoryBase inventoryBaseItem =
-                                        FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
-                                            )
-                                            .FirstOrDefault(
-                                                p =>
-                                                    p is InventoryObject || p is InventoryAttachment);
-                                    if (inventoryBaseItem == null)
-                                        return;
-                                    Detach(inventoryBaseItem as InventoryItem);
-                                });
+                        Parallel.ForEach(wasCSVToEnumerable(
+                            attachments), o =>
+                            {
+                                InventoryBase inventoryBaseItem =
+                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
+                                        )
+                                        .FirstOrDefault(
+                                            p =>
+                                                p is InventoryObject || p is InventoryAttachment);
+                                if (inventoryBaseItem == null)
+                                    return;
+                                Detach(inventoryBaseItem as InventoryItem);
+                            });
                         RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
                     break;
@@ -9446,15 +9413,11 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_LAND_USERS));
                         }
                         List<string> data = new List<string>(primitives.Select(
-                            p =>
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    new[] {p.Key, p.Value.ToString(CultureInfo.InvariantCulture)})));
+                            p => wasEnumerableToCSV(new[] {p.Key, p.Value.ToString(CultureInfo.InvariantCulture)})));
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()
-                                    ));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -9493,8 +9456,7 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -9533,8 +9495,7 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -9567,8 +9528,7 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -9659,8 +9619,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => o.ToString()).Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv.Select(o => o.ToString())));
                         }
                     };
                     break;
@@ -9825,11 +9784,10 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_NAME_PROVIDED));
                         }
                         uint permissions = 0;
-                        Parallel.ForEach(
+                        Parallel.ForEach(wasCSVToEnumerable(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS)),
-                                    message))
-                                .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
+                                    message))),
                             o =>
                                 Parallel.ForEach(
                                     typeof (PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -10469,8 +10427,7 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -10530,8 +10487,7 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -10663,8 +10619,7 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -10677,10 +10632,9 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         HashSet<AssetType> assetTypes = new HashSet<AssetType>();
-                        Parallel.ForEach(
+                        Parallel.ForEach(wasCSVToEnumerable(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                                message))
-                                .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
+                                message))),
                             o => Parallel.ForEach(
                                 typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
@@ -10722,8 +10676,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -10736,10 +10689,9 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         HashSet<AssetType> assetTypes = new HashSet<AssetType>();
-                        Parallel.ForEach(
+                        Parallel.ForEach(wasCSVToEnumerable(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                                message))
-                                .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
+                                message))),
                             o => Parallel.ForEach(
                                 typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
@@ -10768,8 +10720,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -10834,7 +10785,7 @@ namespace Corrade
                             !((long) primitive.ParticleSys.PartDataFlags &
                               (long) Primitive.ParticleSystem.ParticleDataFlags.Emissive).Equals(0))
                             particleSystem.Append(" | PSYS_PART_EMISSIVE_MASK");
-                        particleSystem.Append(LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                        particleSystem.Append(",");
                         particleSystem.Append("PSYS_SRC_PATTERN, 0");
                         if (
                             !((long) primitive.ParticleSys.Pattern & (long) Primitive.ParticleSystem.SourcePattern.Drop)
@@ -10853,20 +10804,20 @@ namespace Corrade
                         if (!((long) primitive.ParticleSys.Pattern &
                               (long) Primitive.ParticleSystem.SourcePattern.AngleConeEmpty).Equals(0))
                             particleSystem.Append(" | PSYS_SRC_PATTERN_ANGLE_CONE_EMPTY");
-                        particleSystem.Append(LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                        particleSystem.Append(",");
                         particleSystem.Append("PSYS_PART_START_ALPHA, " +
                                               string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.PartStartColor.A) +
-                                              LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                                              ",");
                         particleSystem.Append("PSYS_PART_END_ALPHA, " +
                                               string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.PartEndColor.A) +
-                                              LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                                              ",");
                         particleSystem.Append("PSYS_PART_START_COLOR, " +
                                               primitive.ParticleSys.PartStartColor.ToRGBString() +
-                                              LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                                              ",");
                         particleSystem.Append("PSYS_PART_END_COLOR, " + primitive.ParticleSys.PartEndColor.ToRGBString() +
-                                              LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                                              ",");
                         particleSystem.Append("PSYS_PART_START_SCALE, <" +
                                               string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.PartStartScaleX) + ", " +
@@ -10882,45 +10833,45 @@ namespace Corrade
                         particleSystem.Append("PSYS_PART_MAX_AGE, " +
                                               string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.PartMaxAge) +
-                                              LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                                              ",");
                         particleSystem.Append("PSYS_SRC_MAX_AGE, " +
                                               string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.MaxAge) +
-                                              LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                                              ",");
                         particleSystem.Append("PSYS_SRC_ACCEL, " + primitive.ParticleSys.PartAcceleration +
-                                              LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                                              ",");
                         particleSystem.Append("PSYS_SRC_BURST_PART_COUNT, " +
                                               string.Format(CultureInfo.InvariantCulture, "{0:0}",
                                                   primitive.ParticleSys.BurstPartCount) +
-                                              LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                                              ",");
                         particleSystem.Append("PSYS_SRC_BURST_RADIUS, " +
                                               string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.BurstRadius) +
-                                              LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                                              ",");
                         particleSystem.Append("PSYS_SRC_BURST_RATE, " +
                                               string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.BurstRate) +
-                                              LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                                              ",");
                         particleSystem.Append("PSYS_SRC_BURST_SPEED_MIN, " +
                                               string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.BurstSpeedMin) +
-                                              LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                                              ",");
                         particleSystem.Append("PSYS_SRC_BURST_SPEED_MAX, " +
                                               string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.BurstSpeedMax) +
-                                              LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                                              ",");
                         particleSystem.Append("PSYS_SRC_INNERANGLE, " +
                                               string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.InnerAngle) +
-                                              LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                                              ",");
                         particleSystem.Append("PSYS_SRC_OUTERANGLE, " +
                                               string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.OuterAngle) +
-                                              LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                                              ",");
                         particleSystem.Append("PSYS_SRC_OMEGA, " + primitive.ParticleSys.AngularVelocity +
-                                              LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                                              ",");
                         particleSystem.Append("PSYS_SRC_TEXTURE, (key)\"" + primitive.ParticleSys.Texture + "\"" +
-                                              LINDEN_CONSTANTS.LSL.CSV_DELIMITER);
+                                              ",");
                         particleSystem.Append("PSYS_SRC_TARGET_KEY, (key)\"" + primitive.ParticleSys.Target + "\"");
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), particleSystem.ToString());
                     };
@@ -11215,8 +11166,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -11756,8 +11706,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -11971,8 +11920,7 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -12174,9 +12122,8 @@ namespace Corrade
                                         NotificationDestination = new Hashtable()
                                     };
                                 }
-                                Parallel.ForEach(
-                                    notificationTypes.Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER},
-                                        StringSplitOptions.RemoveEmptyEntries),
+                                Parallel.ForEach(wasCSVToEnumerable(
+                                    notificationTypes),
                                     o =>
                                     {
                                         uint notificationValue = (uint) wasGetEnumValueFromDescription<Notifications>(o);
@@ -12237,8 +12184,7 @@ namespace Corrade
                                 if (!csv.Count.Equals(0))
                                 {
                                     result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                        string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                            csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                        wasEnumerableToCSV(csv));
                                 }
                                 break;
                             case Action.CLEAR:
@@ -12322,8 +12268,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -12353,11 +12298,10 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_TASK_SPECIFIED));
                         }
                         int permissionMask = 0;
-                        Parallel.ForEach(
+                        Parallel.ForEach(wasCSVToEnumerable(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS)),
-                                    message))
-                                .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
+                                    message))),
                             o =>
                                 Parallel.ForEach(
                                     typeof (ScriptPermission).GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -12405,8 +12349,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -12492,8 +12435,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -12592,8 +12534,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -12763,8 +12704,7 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -13063,8 +13003,7 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -13150,8 +13089,7 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -13272,8 +13210,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -13341,8 +13278,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -13398,8 +13334,7 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -13416,8 +13351,7 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -13526,8 +13460,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -13630,8 +13563,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -13658,8 +13590,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -13749,8 +13680,7 @@ namespace Corrade
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    data.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -13847,10 +13777,9 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FRIEND_NOT_FOUND));
                         }
                         int rights = 0;
-                        Parallel.ForEach(
+                        Parallel.ForEach(wasCSVToEnumerable(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RIGHTS)),
-                                message))
-                                .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
+                                message))),
                             o =>
                                 Parallel.ForEach(
                                     typeof (FriendRights).GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -13938,8 +13867,7 @@ namespace Corrade
                         Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
 
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                new[] {regionName, position.ToString()}.Select(o => wasCSVEscape(o)).ToArray()));
+                            wasEnumerableToCSV(new[] {regionName, position.ToString()}));
                     };
                     break;
                 case ScriptKeys.SETOBJECTPERMISSIONS:
@@ -13972,21 +13900,19 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         byte who = 0;
-                        Parallel.ForEach(
+                        Parallel.ForEach(wasCSVToEnumerable(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.WHO)),
-                                message))
-                                .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
+                                message))),
                             o =>
                                 Parallel.ForEach(
                                     typeof (PermissionWho).GetFields(BindingFlags.Public | BindingFlags.Static)
                                         .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                     q => { who |= ((byte) q.GetValue(null)); }));
                         uint permissions = 0;
-                        Parallel.ForEach(
+                        Parallel.ForEach(wasCSVToEnumerable(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS)),
-                                    message))
-                                .Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER}, StringSplitOptions.RemoveEmptyEntries),
+                                    message))),
                             o =>
                                 Parallel.ForEach(
                                     typeof (PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -14563,10 +14489,7 @@ namespace Corrade
                         if (!csv.Length.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => o.ToString(CultureInfo.InvariantCulture))
-                                        .Select(o => wasCSVEscape(o))
-                                        .ToArray()));
+                                wasEnumerableToCSV(csv.Select(o => o.ToString(CultureInfo.InvariantCulture))));
                         }
                     };
                     break;
@@ -14891,16 +14814,7 @@ namespace Corrade
                                 {
                                     foreach (
                                         KeyValuePair<string, string> i in
-                                            CORRADE_CONSTANTS.CSVRegEx.Matches(input)
-                                                .Cast<Match>()
-                                                .Select(o => o.Groups[1].Value)
-                                                .Select(
-                                                    o =>
-                                                        !(o.StartsWith("\"") && o.EndsWith("\""))
-                                                            ? o
-                                                            : o.Substring(1, o.Length - 2).Replace("\"\"", "\""))
-                                                .Where(o => !string.IsNullOrEmpty(o))
-                                                .Select((o, p) => new {o, p})
+                                            wasCSVToEnumerable(input).Select((o, p) => new {o, p})
                                                 .GroupBy(q => q.p/2, q => q.o)
                                                 .Select(o => o.ToList())
                                                 .TakeWhile(o => o.Count%2 == 0)
@@ -14923,16 +14837,7 @@ namespace Corrade
                                 {
                                     foreach (
                                         KeyValuePair<string, string> i in
-                                            CORRADE_CONSTANTS.CSVRegEx.Matches(output)
-                                                .Cast<Match>()
-                                                .Select(o => o.Groups[1].Value)
-                                                .Select(
-                                                    o =>
-                                                        !(o.StartsWith("\"") && o.EndsWith("\""))
-                                                            ? o
-                                                            : o.Substring(1, o.Length - 2).Replace("\"\"", "\""))
-                                                .Where(o => !string.IsNullOrEmpty(o))
-                                                .Select((o, p) => new {o, p})
+                                            wasCSVToEnumerable(output).Select((o, p) => new {o, p})
                                                 .GroupBy(q => q.p/2, q => q.o)
                                                 .Select(o => o.ToList())
                                                 .TakeWhile(o => o.Count%2 == 0)
@@ -14959,11 +14864,8 @@ namespace Corrade
                                             if (!Configuration.INPUT_FILTERS.Count.Equals(0))
                                             {
                                                 result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                                    string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                                        Configuration.INPUT_FILTERS.Select(
-                                                            o => wasGetDescriptionFromEnumValue(o))
-                                                            .Select(o => wasCSVEscape(o))
-                                                            .ToArray()));
+                                                    wasEnumerableToCSV(Configuration.INPUT_FILTERS.Select(
+                                                        o => wasGetDescriptionFromEnumValue(o))));
                                             }
                                         }
                                         break;
@@ -14973,11 +14875,8 @@ namespace Corrade
                                             if (!Configuration.OUTPUT_FILTERS.Count.Equals(0))
                                             {
                                                 result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                                    string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                                        Configuration.OUTPUT_FILTERS.Select(
-                                                            o => wasGetDescriptionFromEnumValue(o))
-                                                            .Select(o => wasCSVEscape(o))
-                                                            .ToArray()));
+                                                    wasEnumerableToCSV(Configuration.OUTPUT_FILTERS.Select(
+                                                        o => wasGetDescriptionFromEnumValue(o))));
                                             }
                                         }
                                         break;
@@ -15442,8 +15341,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -15852,8 +15750,7 @@ namespace Corrade
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                string.Join(LINDEN_CONSTANTS.LSL.CSV_DELIMITER,
-                                    csv.Select(o => wasCSVEscape(o)).ToArray()));
+                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -15871,14 +15768,13 @@ namespace Corrade
                 if (string.IsNullOrEmpty(pattern)) return;
                 string data;
                 if (!result.TryGetValue(wasGetDescriptionFromEnumValue(ResultKeys.DATA), out data)) return;
-                data = string.Join(
-                    LINDEN_CONSTANTS.LSL.CSV_DELIMITER, (((new Regex(pattern, RegexOptions.Compiled)).Matches(data)
-                        .Cast<Match>()
-                        .Select(m => m.Groups)).SelectMany(
-                            matchGroups => Enumerable.Range(0, matchGroups.Count).Skip(1),
-                            (matchGroups, i) => new {matchGroups, i})
-                        .SelectMany(@t => Enumerable.Range(0, @t.matchGroups[@t.i].Captures.Count),
-                            (@t, j) => @t.matchGroups[@t.i].Captures[j].Value)).ToArray());
+                data = wasEnumerableToCSV((((new Regex(pattern, RegexOptions.Compiled)).Matches(data)
+                    .Cast<Match>()
+                    .Select(m => m.Groups)).SelectMany(
+                        matchGroups => Enumerable.Range(0, matchGroups.Count).Skip(1),
+                        (matchGroups, i) => new {matchGroups, i})
+                    .SelectMany(@t => Enumerable.Range(0, @t.matchGroups[@t.i].Captures.Count),
+                        (@t, j) => @t.matchGroups[@t.i].Captures[j].Value)));
                 if (string.IsNullOrEmpty(data))
                 {
                     result.Remove(wasGetDescriptionFromEnumValue(ResultKeys.DATA));
@@ -15943,37 +15839,36 @@ namespace Corrade
             HashSet<string[]> result = new HashSet<string[]>();
             if (structure.Equals(default(T))) return result.SelectMany(data => data);
             object LockObject = new object();
-            Parallel.ForEach(query.Split(new[] {LINDEN_CONSTANTS.LSL.CSV_DELIMITER},
-                StringSplitOptions.RemoveEmptyEntries), name =>
+            Parallel.ForEach(wasCSVToEnumerable(query), name =>
+            {
+                KeyValuePair<FieldInfo, object> fi = wasGetFields(structure,
+                    structure.GetType().Name)
+                    .FirstOrDefault(o => o.Key.Name.Equals(name, StringComparison.Ordinal));
+
+                lock (LockObject)
                 {
-                    KeyValuePair<FieldInfo, object> fi = wasGetFields(structure,
-                        structure.GetType().Name)
-                        .FirstOrDefault(o => o.Key.Name.Equals(name, StringComparison.Ordinal));
-
-                    lock (LockObject)
+                    List<string> data = new List<string> {name};
+                    data.AddRange(wasGetInfo(fi.Key, fi.Value));
+                    if (data.Count >= 2)
                     {
-                        List<string> data = new List<string> {name};
-                        data.AddRange(wasGetInfo(fi.Key, fi.Value));
-                        if (data.Count >= 2)
-                        {
-                            result.Add(data.ToArray());
-                        }
+                        result.Add(data.ToArray());
                     }
+                }
 
-                    KeyValuePair<PropertyInfo, object> pi =
-                        wasGetProperties(structure, structure.GetType().Name)
-                            .FirstOrDefault(
-                                o => o.Key.Name.Equals(name, StringComparison.Ordinal));
-                    lock (LockObject)
+                KeyValuePair<PropertyInfo, object> pi =
+                    wasGetProperties(structure, structure.GetType().Name)
+                        .FirstOrDefault(
+                            o => o.Key.Name.Equals(name, StringComparison.Ordinal));
+                lock (LockObject)
+                {
+                    List<string> data = new List<string> {name};
+                    data.AddRange(wasGetInfo(pi.Key, pi.Value));
+                    if (data.Count >= 2)
                     {
-                        List<string> data = new List<string> {name};
-                        data.AddRange(wasGetInfo(pi.Key, pi.Value));
-                        if (data.Count >= 2)
-                        {
-                            result.Add(data.ToArray());
-                        }
+                        result.Add(data.ToArray());
                     }
-                });
+                }
+            });
             return result.SelectMany(data => data);
         }
 
@@ -15991,16 +15886,7 @@ namespace Corrade
         {
             foreach (
                 KeyValuePair<string, string> match in
-                    CORRADE_CONSTANTS.CSVRegEx.Matches(data)
-                        .Cast<Match>()
-                        .Select(o => o.Groups[1].Value)
-                        .Select(
-                            o =>
-                                !(o.StartsWith("\"") && o.EndsWith("\""))
-                                    ? o
-                                    : o.Substring(1, o.Length - 2).Replace("\"\"", "\""))
-                        .Where(o => !string.IsNullOrEmpty(o))
-                        .Select((o, p) => new {o, p})
+                    wasCSVToEnumerable(data).Select((o, p) => new {o, p})
                         .GroupBy(q => q.p/2, q => q.o)
                         .Select(o => o.ToList())
                         .TakeWhile(o => o.Count%2 == 0)
@@ -16080,6 +15966,292 @@ namespace Corrade
                 () => SendNotification(Notifications.NOTIFICATION_ECONOMY, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>URI unescapes an RFC3986 URI escaped string</summary>
+        /// <param name="data">a string to unescape</param>
+        /// <returns>the resulting string</returns>
+        private static string wasUriUnescapeDataString(string data)
+        {
+            return
+                Regex.Matches(data, @"%([0-9A-Fa-f]+?){2}")
+                    .Cast<Match>()
+                    .Select(m => m.Value)
+                    .Distinct()
+                    .Aggregate(data,
+                        (current, match) =>
+                            current.Replace(match,
+                                ((char)
+                                    int.Parse(match.Substring(1), NumberStyles.AllowHexSpecifier,
+                                        CultureInfo.InvariantCulture)).ToString(
+                                            CultureInfo.InvariantCulture)));
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>RFC3986 URI Escapes a string</summary>
+        /// <param name="data">a string to escape</param>
+        /// <returns>an RFC3986 escaped string</returns>
+        private static string wasUriEscapeDataString(string data)
+        {
+            StringBuilder result = new StringBuilder();
+            foreach (char c in data.Select(o => o))
+            {
+                if (char.IsLetter(c) || char.IsDigit(c))
+                {
+                    result.Append(c);
+                    continue;
+                }
+                result.AppendFormat("%{0:X2}", (int) c);
+            }
+            return result.ToString();
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Converts a list of string to a comma-separated values string.
+        /// </summary>
+        /// <param name="l">a list of strings</param>
+        /// <returns>a commma-separated list of values</returns>
+        /// <remarks>compliant with RFC 4180</remarks>
+        public static string wasEnumerableToCSV(IEnumerable<string> l)
+        {
+            List<string> csv = new List<string>();
+            foreach (string s in l)
+            {
+                List<char> cell = new List<char>();
+                foreach (char i in s)
+                {
+                    cell.Add(i);
+                    switch (!i.Equals('"'))
+                    {
+                        case false:
+                            cell.Add(i);
+                            break;
+                    }
+                }
+                switch (cell.Contains(' ') || cell.Contains(',') || cell.Contains('\r') || cell.Contains('\n'))
+                {
+                    case true:
+                        cell.Insert(0, '"');
+                        cell.Add('"');
+                        break;
+                }
+                csv.Add(new string(cell.ToArray()));
+            }
+            return string.Join(",", csv.ToArray());
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Converts a comma-separated list of values to a list of strings.
+        /// </summary>
+        /// <param name="csv">a comma-separated list of values</param>
+        /// <returns>a list of strings</returns>
+        /// <remarks>compliant with RFC 4180</remarks>
+        public static IEnumerable<string> wasCSVToEnumerable(string csv)
+        {
+            List<string> l = new List<string>();
+            Stack<char> s = new Stack<char>();
+            StringBuilder m = new StringBuilder();
+            int i = 0;
+            do
+            {
+                switch (csv[i])
+                {
+                    case ',':
+                        if (s.Count.Equals(0) || !s.Peek().Equals('"'))
+                        {
+                            l.Add(m.ToString());
+                            m = new StringBuilder();
+                            continue;
+                        }
+                        m.Append(csv[i]);
+                        continue;
+                    case '"':
+                        if (csv[i] == csv[i + 1])
+                        {
+                            m.Append(csv[i]);
+                            ++i;
+                            continue;
+                        }
+                        if (s.Count.Equals(0) || !s.Peek().Equals(csv[i]))
+                        {
+                            s.Push(csv[i]);
+                            continue;
+                        }
+                        s.Pop();
+                        continue;
+                }
+                m.Append(csv[i]);
+            } while (++i < csv.Length);
+
+            l.Add(m.ToString());
+
+            return l;
+        }
+
+        #region KEY-VALUE DATA
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Returns the value of a key from a key-value data string.
+        /// </summary>
+        /// <param name="key">the key of the value</param>
+        /// <param name="data">the key-value data segment</param>
+        /// <returns>true if the key was found in data</returns>
+        private static string wasKeyValueGet(string key, string data)
+        {
+            foreach (string tuples in data.Split('&'))
+            {
+                string[] tuple = tuples.Split('=');
+                if (!tuple.Length.Equals(2))
+                {
+                    continue;
+                }
+                if (tuple[0].Equals(key, StringComparison.Ordinal))
+                {
+                    return tuple[1];
+                }
+            }
+            return string.Empty;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Returns a key-value data string with a key set to a given value.
+        /// </summary>
+        /// <param name="key">the key of the value</param>
+        /// <param name="value">the value to set the key to</param>
+        /// <param name="data">the key-value data segment</param>
+        /// <returns>
+        ///     a key-value data string or the empty string if either key or
+        ///     value are empty
+        /// </returns>
+        private static string wasKeyValueSet(string key, string value, string data)
+        {
+            List<string> output = new List<string>();
+            foreach (string tuples in data.Split('&'))
+            {
+                string[] tuple = tuples.Split('=');
+                if (!tuple.Length.Equals(2))
+                {
+                    continue;
+                }
+                if (tuple[0].Equals(key, StringComparison.Ordinal))
+                {
+                    tuple[1] = value;
+                }
+                output.Add(string.Join("=", tuple));
+            }
+            string add = string.Join("=", new[] {key, value});
+            if (!output.Contains(add))
+            {
+                output.Add(add);
+            }
+            return string.Join("&", output.ToArray());
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Deletes a key-value pair from a string referenced by a key.
+        /// </summary>
+        /// <param name="key">the key to search for</param>
+        /// <param name="data">the key-value data segment</param>
+        /// <returns>a key-value pair string</returns>
+        private static string wasKeyValueDelete(string key, string data)
+        {
+            List<string> output = new List<string>();
+            foreach (string tuples in data.Split('&'))
+            {
+                string[] tuple = tuples.Split('=');
+                if (!tuple.Length.Equals(2))
+                {
+                    continue;
+                }
+                if (tuple[0].Equals(key, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+                output.Add(string.Join("=", tuple));
+            }
+            return string.Join("&", output.ToArray());
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Decodes key-value pair data to a dictionary.
+        /// </summary>
+        /// <param name="data">the key-value pair data</param>
+        /// <returns>a dictionary containing the keys and values</returns>
+        private static Dictionary<string, string> wasKeyValueDecode(string data)
+        {
+            Dictionary<string, string> output = new Dictionary<string, string>();
+            foreach (string tuples in data.Split('&'))
+            {
+                string[] tuple = tuples.Split('=');
+                if (!tuple.Length.Equals(2))
+                {
+                    continue;
+                }
+                if (output.ContainsKey(tuple[0]))
+                {
+                    continue;
+                }
+                output.Add(tuple[0], tuple[1]);
+            }
+            return output;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Serialises a dictionary to key-value data.
+        /// </summary>
+        /// <param name="data">a dictionary</param>
+        /// <returns>a key-value data encoded string</returns>
+        private static string wasKeyValueEncode(Dictionary<string, string> data)
+        {
+            List<string> output = new List<string>();
+            foreach (KeyValuePair<string, string> tuple in data)
+            {
+                output.Add(string.Join("=", new[] {tuple.Key, tuple.Value}));
+            }
+            return string.Join("&", output.ToArray());
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>Escapes a dictionary's keys and values for sending as POST data.</summary>
+        /// <param name="data">A dictionary containing keys and values to be escaped</param>
+        private static Dictionary<string, string> wasKeyValueEscape(Dictionary<string, string> data)
+        {
+            Dictionary<string, string> output = new Dictionary<string, string>();
+            foreach (KeyValuePair<string, string> tuple in data)
+            {
+                output.Add(wasOutput(tuple.Key), wasOutput(tuple.Value));
+            }
+            return output;
+        }
+
+        #endregion
 
         #region CRYPTOGRAPHY
 
@@ -17011,222 +17183,6 @@ namespace Corrade
 
         #endregion
 
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>URI unescapes an RFC3986 URI escaped string</summary>
-        /// <param name="data">a string to unescape</param>
-        /// <returns>the resulting string</returns>
-        private static string wasUriUnescapeDataString(string data)
-        {
-            return
-                Regex.Matches(data, @"%([0-9A-Fa-f]+?){2}")
-                    .Cast<Match>()
-                    .Select(m => m.Value)
-                    .Distinct()
-                    .Aggregate(data,
-                        (current, match) =>
-                            current.Replace(match,
-                                ((char)
-                                    int.Parse(match.Substring(1), NumberStyles.AllowHexSpecifier,
-                                        CultureInfo.InvariantCulture)).ToString(
-                                            CultureInfo.InvariantCulture)));
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>RFC3986 URI Escapes a string</summary>
-        /// <param name="data">a string to escape</param>
-        /// <returns>an RFC3986 escaped string</returns>
-        private static string wasUriEscapeDataString(string data)
-        {
-            StringBuilder result = new StringBuilder();
-            foreach (char c in data.Select(o => o))
-            {
-                if (char.IsLetter(c) || char.IsDigit(c))
-                {
-                    result.Append(c);
-                    continue;
-                }
-                result.AppendFormat("%{0:X2}", (int) c);
-            }
-            return result.ToString();
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Escapes a string to be used in a comma-separated list of values.
-        /// </summary>
-        /// <param name="input">the string to escape</param>
-        /// <returns>the escaped string</returns>
-        private static string wasCSVEscape(string input)
-        {
-            input = new string(
-                input.ToCharArray()
-                    .SelectMany(o => !o.Equals('"') ? new[] {o} : new[] {'"', '"'}).ToArray());
-            return input.ToCharArray().Any(o => o.Equals(' ') || o.Equals(',') || o.Equals('\r') || o.Equals('\n'))
-                ? "\"" + input + "\""
-                : input;
-        }
-
-        #region KEY-VALUE DATA
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Returns the value of a key from a key-value data string.
-        /// </summary>
-        /// <param name="key">the key of the value</param>
-        /// <param name="data">the key-value data segment</param>
-        /// <returns>true if the key was found in data</returns>
-        private static string wasKeyValueGet(string key, string data)
-        {
-            foreach (string tuples in data.Split('&'))
-            {
-                string[] tuple = tuples.Split('=');
-                if (!tuple.Length.Equals(2))
-                {
-                    continue;
-                }
-                if (tuple[0].Equals(key, StringComparison.Ordinal))
-                {
-                    return tuple[1];
-                }
-            }
-            return string.Empty;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Returns a key-value data string with a key set to a given value.
-        /// </summary>
-        /// <param name="key">the key of the value</param>
-        /// <param name="value">the value to set the key to</param>
-        /// <param name="data">the key-value data segment</param>
-        /// <returns>
-        ///     a key-value data string or the empty string if either key or
-        ///     value are empty
-        /// </returns>
-        private static string wasKeyValueSet(string key, string value, string data)
-        {
-            List<string> output = new List<string>();
-            foreach (string tuples in data.Split('&'))
-            {
-                string[] tuple = tuples.Split('=');
-                if (!tuple.Length.Equals(2))
-                {
-                    continue;
-                }
-                if (tuple[0].Equals(key, StringComparison.Ordinal))
-                {
-                    tuple[1] = value;
-                }
-                output.Add(string.Join("=", tuple));
-            }
-            string add = string.Join("=", new[] {key, value});
-            if (!output.Contains(add))
-            {
-                output.Add(add);
-            }
-            return string.Join("&", output.ToArray());
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Deletes a key-value pair from a string referenced by a key.
-        /// </summary>
-        /// <param name="key">the key to search for</param>
-        /// <param name="data">the key-value data segment</param>
-        /// <returns>a key-value pair string</returns>
-        private static string wasKeyValueDelete(string key, string data)
-        {
-            List<string> output = new List<string>();
-            foreach (string tuples in data.Split('&'))
-            {
-                string[] tuple = tuples.Split('=');
-                if (!tuple.Length.Equals(2))
-                {
-                    continue;
-                }
-                if (tuple[0].Equals(key, StringComparison.Ordinal))
-                {
-                    continue;
-                }
-                output.Add(string.Join("=", tuple));
-            }
-            return string.Join("&", output.ToArray());
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Decodes key-value pair data to a dictionary.
-        /// </summary>
-        /// <param name="data">the key-value pair data</param>
-        /// <returns>a dictionary containing the keys and values</returns>
-        private static Dictionary<string, string> wasKeyValueDecode(string data)
-        {
-            Dictionary<string, string> output = new Dictionary<string, string>();
-            foreach (string tuples in data.Split('&'))
-            {
-                string[] tuple = tuples.Split('=');
-                if (!tuple.Length.Equals(2))
-                {
-                    continue;
-                }
-                if (output.ContainsKey(tuple[0]))
-                {
-                    continue;
-                }
-                output.Add(tuple[0], tuple[1]);
-            }
-            return output;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Serialises a dictionary to key-value data.
-        /// </summary>
-        /// <param name="data">a dictionary</param>
-        /// <returns>a key-value data encoded string</returns>
-        private static string wasKeyValueEncode(Dictionary<string, string> data)
-        {
-            List<string> output = new List<string>();
-            foreach (KeyValuePair<string, string> tuple in data)
-            {
-                output.Add(string.Join("=", new[] {tuple.Key, tuple.Value}));
-            }
-            return string.Join("&", output.ToArray());
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>Escapes a dictionary's keys and values for sending as POST data.</summary>
-        /// <param name="data">A dictionary containing keys and values to be escaped</param>
-        private static Dictionary<string, string> wasKeyValueEscape(Dictionary<string, string> data)
-        {
-            Dictionary<string, string> output = new Dictionary<string, string>();
-            foreach (KeyValuePair<string, string> tuple in data)
-            {
-                output.Add(wasOutput(tuple.Key), wasOutput(tuple.Value));
-            }
-            return output;
-        }
-
-        #endregion
-
         /// <summary>
         ///     Constants for Corrade's integrated chat bot.
         /// </summary>
@@ -17413,9 +17369,6 @@ namespace Corrade
                     CORRADE_COMPILE_DATE),
                 string.Format(CultureInfo.InvariantCulture, "Copyright: {0}", COPYRIGHT)
             };
-
-            public static readonly Regex CSVRegEx = new Regex("\\s*((?:\"(?:(?:\"\")|[^\"])*\")|[^\"]*?)\\s*(?:,|$)",
-                RegexOptions.Compiled);
 
             public static readonly Regex AvatarFullNameRegex = new Regex(@"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$",
                 RegexOptions.Compiled);
