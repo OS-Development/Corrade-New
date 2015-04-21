@@ -16077,7 +16077,7 @@ namespace Corrade
                         m.Append(csv[i]);
                         continue;
                     case '"':
-                        if (csv[i] == csv[i + 1])
+                        if (i + 1 < csv.Length && csv[i] == csv[i + 1])
                         {
                             m.Append(csv[i]);
                             ++i;
