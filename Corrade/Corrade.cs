@@ -23,6 +23,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Xml;
+using System.Xml.Linq;
+using System.Xml.Schema;
 using System.Xml.Serialization;
 using AIMLbot;
 using Mono.Unix;
@@ -38,6 +40,40 @@ namespace Corrade
     public partial class Corrade : ServiceBase
     {
         public delegate bool EventHandler(NativeMethods.CtrlType ctrlType);
+
+        /// <summary>
+        ///     Corrade notification types.
+        /// </summary>
+        [Flags]
+        public enum Notifications : uint
+        {
+            [Description("alert")] NOTIFICATION_ALERT_MESSAGE = 1,
+            [Description("region")] NOTIFICATION_REGION_MESSAGE = 2,
+            [Description("group")] NOTIFICATION_GROUP_MESSAGE = 4,
+            [Description("balance")] NOTIFICATION_BALANCE = 8,
+            [Description("message")] NOTIFICATION_INSTANT_MESSAGE = 16,
+            [Description("notice")] NOTIFICATION_GROUP_NOTICE = 32,
+            [Description("local")] NOTIFICATION_LOCAL_CHAT = 64,
+            [Description("dialog")] NOTIFICATION_SCRIPT_DIALOG = 128,
+            [Description("friendship")] NOTIFICATION_FRIENDSHIP = 256,
+            [Description("inventory")] NOTIFICATION_INVENTORY = 512,
+            [Description("permission")] NOTIFICATION_SCRIPT_PERMISSION = 1024,
+            [Description("lure")] NOTIFICATION_TELEPORT_LURE = 2048,
+            [Description("effect")] NOTIFICATION_VIEWER_EFFECT = 4096,
+            [Description("collision")] NOTIFICATION_MEAN_COLLISION = 8192,
+            [Description("crossing")] NOTIFICATION_REGION_CROSSED = 16384,
+            [Description("terse")] NOTIFICATION_TERSE_UPDATES = 32768,
+            [Description("typing")] NOTIFICATION_TYPING = 65536,
+            [Description("invite")] NOTIFICATION_GROUP_INVITE = 131072,
+            [Description("economy")] NOTIFICATION_ECONOMY = 262144,
+            [Description("membership")] NOTIFICATION_GROUP_MEMBERSHIP = 524288,
+            [Description("url")] NOTIFICATION_LOAD_URL = 1048576,
+            [Description("ownersay")] NOTIFICATION_OWNER_SAY = 2097152,
+            [Description("regionsayto")] NOTIFICATION_REGION_SAY_TO = 4194304,
+            [Description("objectim")] NOTIFICATION_OBJECT_INSTANT_MESSAGE = 8388608,
+            [Description("rlv")] NOTIFICATION_RLV_MESSAGE = 16777216,
+            [Description("debug")] NOTIFICATION_DEBUG_MESSAGE = 33554432
+        }
 
         /// <summary>
         ///     Semaphores that sense the state of the connection. When any of these semaphores fail,
@@ -90,7 +126,7 @@ namespace Corrade
 
         private static readonly object GroupNotificationsLock = new object();
 
-        private static readonly HashSet<Notification> GroupNotifications = new HashSet<Notification>();
+        public static HashSet<Notification> GroupNotifications = new HashSet<Notification>();
 
         private static readonly Dictionary<InventoryObjectOfferedEventArgs, ManualResetEvent> InventoryOffers =
             new Dictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>();
@@ -489,6 +525,71 @@ namespace Corrade
         };
 
         /// <summary>
+        ///     Saves Corrade's states.
+        /// </summary>
+        private static readonly System.Action SaveCorradeState = () =>
+        {
+            lock (GroupNotificationsLock)
+            {
+                try
+                {
+                    using (
+                        StreamWriter writer =
+                            new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                                CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE)))
+                    {
+                        XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
+                        serializer.Serialize(writer, GroupNotifications);
+                        writer.Flush();
+                    }
+                }
+                catch (Exception e)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE),
+                        e.Message);
+                }
+            }
+        };
+
+        /// <summary>
+        ///     Loads Corrade's states.
+        /// </summary>
+        private static readonly System.Action LoadCorradeState = () =>
+        {
+            lock (GroupNotificationsLock)
+            {
+                string groupNotificationsStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                    CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE);
+                if (File.Exists(groupNotificationsStateFile))
+                {
+                    HashSet<Notification> groupNotifications = new HashSet<Notification>();
+                    try
+                    {
+                        using (FileStream stream = File.OpenRead(groupNotificationsStateFile))
+                        {
+                            XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
+                            groupNotifications =
+                                (HashSet<Notification>) serializer.Deserialize(stream);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Feedback(
+                            wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE),
+                            ex.Message);
+                    }
+
+                    // Only add notifications for existing configured groups.
+                    Parallel.ForEach(groupNotifications, o =>
+                    {
+                        if (!Configuration.GROUPS.Any(p => p.Name.Equals(o.GroupName))) return;
+                        GroupNotifications.Add(o);
+                    });
+                }
+            }
+        };
+
+        /// <summary>
         ///     Loads the chatbot configuration and AIML files.
         /// </summary>
         private static readonly System.Action LoadChatBotFiles = () =>
@@ -611,25 +712,26 @@ namespace Corrade
                 Thread.Sleep(Configuration.MEMBERSHIP_SWEEP_INTERVAL);
                 if (!Client.Network.Connected) continue;
 
-                object LockObject = new object();
-                HashSet<OpenMetaverse.Group> currentGroups = new HashSet<OpenMetaverse.Group>(GetCurrentGroups(
-                    Configuration.SERVICES_TIMEOUT,
-                    Configuration.DATA_TIMEOUT));
+                HashSet<UUID> currentGroups = new HashSet<UUID>();
+                lock (ClientInstanceLock)
+                {
+                    if (!GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref currentGroups))
+                        continue;
+                }
 
                 // Enqueue configured groups that are currently joined groups.
                 groupUUIDs.Clear();
-                lock (ClientInstanceLock)
-                {
-                    Parallel.ForEach(Configuration.GROUPS.Select(o => new {group = o, groupUUID = o.UUID})
-                        .Where(p => currentGroups.Any(o => o.ID.Equals(p.groupUUID)))
-                        .Select(o => o.group), o =>
+                object LockObject = new object();
+                Parallel.ForEach(Configuration.GROUPS.Select(o => new {group = o, groupUUID = o.UUID})
+                    .Where(p => currentGroups.Any(o => o.Equals(p.groupUUID)))
+                    .Select(o => o.group), o =>
+                    {
+                        lock (LockObject)
                         {
-                            lock (LockObject)
-                            {
-                                groupUUIDs.Enqueue(o.UUID);
-                            }
-                        });
-                }
+                            groupUUIDs.Enqueue(o.UUID);
+                        }
+                    });
+
 
                 // Bail if no configured groups are also joined.
                 if (groupUUIDs.Count.Equals(0)) continue;
@@ -795,7 +897,7 @@ namespace Corrade
             // Keep rest of message.
             message = string.Join(RLV_CONSTANTS.CSV_DELIMITER, unpack);
 
-            Match match = RLV_CONSTANTS.RLVRegex.Match(first);
+            Match match = RLV_CONSTANTS.RLVRegEx.Match(first);
             if (!match.Success) goto CONTINUE;
 
             yield return match.Groups["behaviour"].ToString().ToLowerInvariant();
@@ -1123,21 +1225,21 @@ namespace Corrade
         /// <param name="info">either a FieldInfo or PropertyInfo</param>
         /// <param name="object">the object to set the value on</param>
         /// <param name="value">the value to set</param>
-        private static void wasSetInfoValue<I, T>(I info, ref T @object, object value)
+        private static void wasSetInfoValue<TK, TV>(TK info, ref TV @object, object value)
         {
             object o = @object;
             FieldInfo fi = (object) info as FieldInfo;
             if (fi != null)
             {
                 fi.SetValue(o, value);
-                @object = (T) o;
+                @object = (TV) o;
                 return;
             }
             PropertyInfo pi = (object) info as PropertyInfo;
             if (pi != null)
             {
                 pi.SetValue(o, value, null);
-                @object = (T) o;
+                @object = (TV) o;
             }
         }
 
@@ -1609,6 +1711,36 @@ namespace Corrade
         }
 
         ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Attempts to join the group chat for a given group.
+        /// </summary>
+        /// <param name="groupUUID">the UUID of the group to join the group chat for</param>
+        /// <param name="millisecondsTimeout">timeout for joining the group chat</param>
+        /// <returns>true if the group chat was joined</returns>
+        private static bool JoinGroupChat(UUID groupUUID, int millisecondsTimeout)
+        {
+            bool succeeded = false;
+            ManualResetEvent GroupChatJoinedEvent = new ManualResetEvent(false);
+            EventHandler<GroupChatJoinedEventArgs> GroupChatJoinedEventHandler =
+                (sender, args) =>
+                {
+                    succeeded = args.Success;
+                    GroupChatJoinedEvent.Set();
+                };
+            Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
+            Client.Self.RequestJoinGroupChat(groupUUID);
+            if (!GroupChatJoinedEvent.WaitOne(millisecondsTimeout, false))
+            {
+                Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
+                return false;
+            }
+            Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
+            return succeeded;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
@@ -1887,47 +2019,73 @@ namespace Corrade
         }
 
         ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
-        ///     Requests the groups that Corrade is a member of.
+        ///     Requests the UUIDs of all the current groups.
         /// </summary>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <returns>the groups that Corrade is a member of</returns>
-        private static IEnumerable<OpenMetaverse.Group> GetCurrentGroups(int millisecondsTimeout, int dataTimeout)
+        /// <param name="groups">a hashset where to store the UUIDs</param>
+        /// <returns>true if the current groups could be fetched</returns>
+        private static bool directGetCurrentGroups(int millisecondsTimeout, int dataTimeout, ref HashSet<UUID> groups)
         {
             wasAdaptiveAlarm CurrentGroupsReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
-            Queue<OpenMetaverse.Group> groups = new Queue<OpenMetaverse.Group>();
+            HashSet<UUID> currentGroups = new HashSet<UUID>();
             object LockObject = new object();
             EventHandler<CurrentGroupsEventArgs> CurrentGroupsEventHandler = (sender, args) =>
             {
                 CurrentGroupsReceivedAlarm.Alarm(dataTimeout);
-                foreach (OpenMetaverse.Group group in args.Groups.Select(o => o.Value))
+                foreach (UUID groupUUID in args.Groups.Select(o => o.Value.ID))
                 {
                     lock (LockObject)
                     {
-                        groups.Enqueue(group);
+                        currentGroups.Add(groupUUID);
                     }
                 }
             };
             Client.Groups.CurrentGroups += CurrentGroupsEventHandler;
             Client.Groups.RequestCurrentGroups();
-            CurrentGroupsReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false);
-            Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
-            int groupCount;
-            do
+            if (!CurrentGroupsReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
             {
-                lock (LockObject)
+                Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
+                return false;
+            }
+            Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
+            lock (LockObject)
+            {
+                if (currentGroups.Count.Equals(0)) return false;
+                groups = new HashSet<UUID>(currentGroups);
+            }
+            return true;
+        }
+
+        /// <summary>
+        ///     A wrapper for retrieveing all the current groups that implements caching.
+        /// </summary>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
+        /// <param name="groups">a hashset where to store the UUIDs</param>
+        /// <returns>true if the current groups could be fetched</returns>
+        private static bool GetCurrentGroups(int millisecondsTimeout, int dataTimeout, ref HashSet<UUID> groups)
+        {
+            lock (Cache.Locks.CurrentGroupsCacheLock)
+            {
+                if (!Cache.CurrentGroupsCache.Count.Equals(0))
                 {
-                    groupCount = groups.Count;
+                    groups = Cache.CurrentGroupsCache;
+                    return true;
                 }
-                if (groupCount.Equals(0)) continue;
-                lock (LockObject)
+            }
+            bool succeeded = directGetCurrentGroups(millisecondsTimeout, dataTimeout, ref groups);
+            if (succeeded)
+            {
+                lock (Cache.Locks.GroupCacheLock)
                 {
-                    yield return groups.Dequeue();
+                    Cache.CurrentGroupsCache = groups;
                 }
-            } while (!groupCount.Equals(0));
+            }
+            return succeeded;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -2363,6 +2521,8 @@ namespace Corrade
             Client.Network.SimChanged += HandleSimChanged;
             Client.Self.MoneyBalanceReply += HandleMoneyBalance;
             Client.Self.LoadURL += HandleLoadURL;
+            Client.Groups.GroupJoinedReply += HandleGroupJoined;
+            Client.Groups.GroupLeaveReply += HandleGroupLeave;
             // Each Instant Message is processed in its own thread.
             Client.Self.IM += (sender, args) => CorradeThreadPool[CorradeThreadType.INSTANT_MESSAGE].Spawn(
                 () => HandleSelfIM(sender, args),
@@ -2467,6 +2627,11 @@ namespace Corrade
             {
                 login.MAC = Utils.MD5String(Configuration.NETWORK_CARD_MAC);
             }
+            // Load Corrade caches.
+            LoadCorradeCache.Invoke();
+            // Load Corrade states.
+            LoadCorradeState.Invoke();
+            // Log-in to the grid.
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGGING_IN));
             Client.Network.Login(login);
             // Start the HTTP Server if it is supported
@@ -2582,8 +2747,6 @@ namespace Corrade
                 } while (runEffectsExpirationThread);
             }) {IsBackground = true};
             EffectsExpirationThread.Start();
-            // Load Corrade Caches
-            LoadCorradeCache.Invoke();
             /*
              * The main thread spins around waiting for the semaphores to become invalidated,
              * at which point Corrade will consider its connection to the grid severed and
@@ -2591,8 +2754,10 @@ namespace Corrade
              *
              */
             WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => (WaitHandle) o).ToArray());
-            // Save Corrade Caches
+            // Save Corrade caches.
             SaveCorradeCache.Invoke();
+            // Save Corrade states.
+            SaveCorradeState.Invoke();
             // Now log-out.
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGGING_OUT));
             // Uninstall all installed handlers
@@ -2762,6 +2927,40 @@ namespace Corrade
             Environment.Exit(0);
         }
 
+        private static void HandleGroupJoined(object sender, GroupOperationEventArgs e)
+        {
+            // Add the group to the cache.
+            lock (Cache.Locks.CurrentGroupsCacheLock)
+            {
+                if (!Cache.CurrentGroupsCache.Contains(e.GroupID))
+                {
+                    Cache.CurrentGroupsCache.Add(e.GroupID);
+                }
+            }
+            // Join group chat if possible.
+            lock (ClientInstanceLock)
+            {
+                if (!Client.Self.GroupChatSessions.ContainsKey(e.GroupID) &&
+                    HasGroupPowers(Client.Self.AgentID, e.GroupID, GroupPowers.JoinChat,
+                        Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                {
+                    JoinGroupChat(e.GroupID, Configuration.SERVICES_TIMEOUT);
+                }
+            }
+        }
+
+        private static void HandleGroupLeave(object sender, GroupOperationEventArgs e)
+        {
+            // Remove the group from the cache.
+            lock (Cache.Locks.CurrentGroupsCacheLock)
+            {
+                if (Cache.CurrentGroupsCache.Contains(e.GroupID))
+                {
+                    Cache.CurrentGroupsCache.Remove(e.GroupID);
+                }
+            }
+        }
+
         private static void HandleLoadURL(object sender, LoadUrlEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
@@ -2894,6 +3093,12 @@ namespace Corrade
                                 localChatEventArgs.SourceID.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
                                 localChatEventArgs.Position.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                Enum.GetName(typeof (ChatSourceType), localChatEventArgs.SourceType));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AUDIBLE),
+                                Enum.GetName(typeof (ChatAudibleLevel), localChatEventArgs.AudibleLevel));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.VOLUME),
+                                Enum.GetName(typeof (ChatType), localChatEventArgs.Type));
                             break;
                         case Notifications.NOTIFICATION_BALANCE:
                             BalanceEventArgs balanceEventArgs = (BalanceEventArgs) args;
@@ -2982,7 +3187,7 @@ namespace Corrade
                                                 }
                                             }
                                             GroupCollection groups =
-                                                CORRADE_CONSTANTS.InventoryOfferObjectName.Match(
+                                                CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
                                                     inventoryObjectOfferedEventArgs.Key.Offer.Message).Groups;
                                             if (groups.Count > 0)
                                             {
@@ -3037,7 +3242,7 @@ namespace Corrade
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ASSET),
                                     inventoryObjectOfferedEventArgs.AssetType.ToString());
                                 GroupCollection groups =
-                                    CORRADE_CONSTANTS.InventoryOfferObjectName.Match(
+                                    CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
                                         inventoryObjectOfferedEventArgs.Offer.Message).Groups;
                                 if (groups.Count > 0)
                                 {
@@ -3509,7 +3714,7 @@ namespace Corrade
                         {
                             NotificationQueue.Enqueue(new NotificationQueueElement
                             {
-                                URL = (string) o.NotificationDestination[notification],
+                                URL = o.NotificationDestination[notification],
                                 message = wasKeyValueEscape(notificationData)
                             });
                         }
@@ -3688,7 +3893,8 @@ namespace Corrade
             {
                 inventoryBaseItem = FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, ((Func<string>) (() =>
                 {
-                    GroupCollection groups = CORRADE_CONSTANTS.InventoryOfferObjectName.Match(e.Offer.Message).Groups;
+                    GroupCollection groups =
+                        CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(e.Offer.Message).Groups;
                     return groups.Count > 0 ? groups[1].Value : e.Offer.Message;
                 }))()
                     ).FirstOrDefault();
@@ -3825,16 +4031,8 @@ namespace Corrade
             {
                 case LoginStatus.Success:
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_SUCCEEDED));
-                    // Set current group to land group.
-                    new Thread(() =>
-                    {
-                        if (!Configuration.AUTO_ACTIVATE_GROUP) return;
-                        lock (ClientInstanceLock)
-                        {
-                            ActivateCurrentLandGroupTimer.Change(Configuration.ACTIVATE_DELAY, 0);
-                        }
-                    }) {IsBackground = true}.Start();
                     // Start inventory update thread.
+                    ManualResetEvent InventoryLoadedEvent = new ManualResetEvent(false);
                     new Thread(() =>
                     {
                         lock (ClientInstanceLock)
@@ -3845,6 +4043,28 @@ namespace Corrade
                             UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
                             // Now save the caches.
                             SaveInventoryCache.Invoke();
+                            // Signal completion.
+                            InventoryLoadedEvent.Set();
+                        }
+                    }) {IsBackground = true}.Start();
+                    // Set current group to land group.
+                    new Thread(() =>
+                    {
+                        if (!Configuration.AUTO_ACTIVATE_GROUP) return;
+                        lock (ClientInstanceLock)
+                        {
+                            ActivateCurrentLandGroupTimer.Change(Configuration.ACTIVATE_DELAY, 0);
+                        }
+                    }) {IsBackground = true}.Start();
+                    // Retrieve instant messages.
+                    new Thread(() =>
+                    {
+                        // Wait till the inventory has loaded to retrieve messages since 
+                        // instant messages may contain commands that must be replayed.
+                        InventoryLoadedEvent.WaitOne(Timeout.Infinite, false);
+                        lock (ClientInstanceLock)
+                        {
+                            Client.Self.RetrieveInstantMessages();
                         }
                     }) {IsBackground = true}.Start();
                     // Set the camera on the avatar.
@@ -4075,10 +4295,15 @@ namespace Corrade
                     // such that the only way to determine if we have a group message is to check that the UUID
                     // of the session is actually the UUID of a current group. Furthermore, what's worse is that 
                     // group mesages can appear both through SessionSend and from MessageFromAgent. Hence the problem.
-                    HashSet<OpenMetaverse.Group> currentGroups = new HashSet<OpenMetaverse.Group>(GetCurrentGroups(
-                        Configuration.SERVICES_TIMEOUT,
-                        Configuration.DATA_TIMEOUT));
-                    if (currentGroups.Any(o => o.ID.Equals(args.IM.IMSessionID)))
+                    HashSet<UUID> currentGroups = new HashSet<UUID>();
+                    lock (ClientInstanceLock)
+                    {
+                        if (
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
+                            return;
+                    }
+                    if (currentGroups.Any(o => o.Equals(args.IM.IMSessionID)))
                     {
                         Group messageGroup = Configuration.GROUPS.FirstOrDefault(p => p.UUID.Equals(args.IM.IMSessionID));
                         if (!messageGroup.Equals(default(Group)))
@@ -4133,6 +4358,25 @@ namespace Corrade
                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                             () => SendNotification(Notifications.NOTIFICATION_INSTANT_MESSAGE, args),
                             Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                        // Check if we were ejected.
+                        lock (ClientInstanceLock)
+                        {
+                            UUID groupUUID = UUID.Zero;
+                            if (
+                                GroupNameToUUID(
+                                    CORRADE_CONSTANTS.EjectedFromGroupRegEx.Match(args.IM.Message).Groups[1].Value,
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref groupUUID))
+                            {
+                                // Remove the group from the cache.
+                                lock (Cache.Locks.CurrentGroupsCacheLock)
+                                {
+                                    if (Cache.CurrentGroupsCache.Contains(groupUUID))
+                                    {
+                                        Cache.CurrentGroupsCache.Remove(groupUUID);
+                                    }
+                                }
+                            }
+                        }
                         // Log instant messages,
                         if (Configuration.INSTANT_MESSAGE_LOG_ENABLED)
                         {
@@ -4247,7 +4491,7 @@ namespace Corrade
             // Keep rest of message.
             message = string.Join(RLV_CONSTANTS.CSV_DELIMITER, unpack);
 
-            Match match = RLV_CONSTANTS.RLVRegex.Match(first);
+            Match match = RLV_CONSTANTS.RLVRegEx.Match(first);
             if (!match.Success) goto CONTINUE;
 
             RLVRule RLVrule = new RLVRule
@@ -4342,15 +4586,24 @@ namespace Corrade
                             return;
                         }
                         UUID groupUUID = Client.Self.ActiveGroup;
-                        HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>(GetCurrentGroups(
-                            Configuration.SERVICES_TIMEOUT,
-                            Configuration.DATA_TIMEOUT));
-                        if (!groups.Any(o => o.ID.Equals(groupUUID)))
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
+                        if (
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
+                            return;
+                        if (!currentGroups.Any(o => o.Equals(groupUUID)))
+                        {
+                            return;
+                        }
+                        string groupName = string.Empty;
+                        if (
+                            !GroupUUIDToName(currentGroups.FirstOrDefault(o => o.Equals(groupUUID)),
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref groupName))
                         {
                             return;
                         }
                         Client.Self.Chat(
-                            groups.FirstOrDefault(o => o.ID.Equals(groupUUID)).Name,
+                            groupName,
                             channel,
                             ChatType.Normal);
                     };
@@ -4362,19 +4615,21 @@ namespace Corrade
                         {
                             return;
                         }
-                        HashSet<OpenMetaverse.Group> groups = new HashSet<OpenMetaverse.Group>(GetCurrentGroups(
-                            Configuration.SERVICES_TIMEOUT,
-                            Configuration.DATA_TIMEOUT));
                         UUID groupUUID;
                         if (!UUID.TryParse(RLVrule.Option, out groupUUID))
                         {
                             return;
                         }
-                        if (!groups.Any(o => o.ID.Equals(groupUUID)))
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
+                        if (
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
+                            return;
+                        if (!currentGroups.Any(o => o.Equals(groupUUID)))
                         {
                             return;
                         }
-                        Client.Groups.ActivateGroup(groups.FirstOrDefault(o => o.ID.Equals(groupUUID)).ID);
+                        Client.Groups.ActivateGroup(currentGroups.FirstOrDefault(o => o.Equals(groupUUID)));
                     };
                     break;
                 case RLVBehaviour.GETSITID:
@@ -5743,7 +5998,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.Eject,
-                                Configuration.DATA_TIMEOUT, Configuration.DATA_TIMEOUT) ||
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT) ||
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RemoveMember,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
@@ -5987,7 +6242,6 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_LEAVING_GROUP));
                         }
                         Client.Groups.GroupLeaveReply -= GroupOperationEventHandler;
-
                         if (!succeeded)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_LEAVE_GROUP));
@@ -6872,25 +7126,8 @@ namespace Corrade
                                         throw new Exception(
                                             wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                     }
-                                    bool succeeded = false;
-                                    ManualResetEvent GroupChatJoinedEvent = new ManualResetEvent(false);
-                                    EventHandler<GroupChatJoinedEventArgs> GroupChatJoinedEventHandler =
-                                        (sender, args) =>
-                                        {
-                                            succeeded = args.Success;
-                                            GroupChatJoinedEvent.Set();
-                                        };
-                                    Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
-                                    Client.Self.RequestJoinGroupChat(groupUUID);
-                                    if (!GroupChatJoinedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                                    {
-                                        Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
-                                        throw new Exception(
-                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_JOINING_GROUP_CHAT));
-                                    }
-                                    Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
 
-                                    if (!succeeded)
+                                    if (!JoinGroupChat(groupUUID, Configuration.SERVICES_TIMEOUT))
                                     {
                                         throw new Exception(
                                             wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_JOIN_GROUP_CHAT));
@@ -12119,7 +12356,7 @@ namespace Corrade
                                     {
                                         GroupName = group,
                                         NotificationMask = 0,
-                                        NotificationDestination = new Hashtable()
+                                        NotificationDestination = new SerializableDictionary<Notifications, string>()
                                     };
                                 }
                                 Parallel.ForEach(wasCSVToEnumerable(
@@ -12174,9 +12411,8 @@ namespace Corrade
                                             lock (LockObject)
                                             {
                                                 csv.Add(o);
-                                                csv.Add(
-                                                    (string) groupNotification.NotificationDestination[
-                                                        wasGetEnumValueFromDescription<Notifications>(o)]);
+                                                csv.Add(groupNotification.NotificationDestination[
+                                                    wasGetEnumValueFromDescription<Notifications>(o)]);
                                             }
                                         });
                                     }
@@ -16036,7 +16272,7 @@ namespace Corrade
                     }
                 }
                 switch (!cell.Contains('"') && !cell.Contains(' ') && !cell.Contains(',') && !cell.Contains('\r') &&
-                    !cell.Contains('\n'))
+                        !cell.Contains('\n'))
                 {
                     case false:
                         cell.Insert(0, '"');
@@ -16829,7 +17065,10 @@ namespace Corrade
             EventHandler<DirGroupsReplyEventArgs> DirGroupsReplyDelegate = (sender, args) =>
             {
                 DirGroupsReceivedAlarm.Alarm(dataTimeout);
-                localGroupUUID = args.MatchedGroups.FirstOrDefault(o => o.GroupName.Equals(groupName)).GroupID;
+                DirectoryManager.GroupSearchData groupSearchData =
+                    args.MatchedGroups.FirstOrDefault(o => o.GroupName.Equals(groupName));
+                if (groupSearchData.Equals(default(DirectoryManager.GroupSearchData))) return;
+                localGroupUUID = groupSearchData.GroupID;
             };
             Client.Directory.DirGroupsReply += DirGroupsReplyDelegate;
             Client.Directory.StartGroupSearch(groupName, 0);
@@ -16857,11 +17096,11 @@ namespace Corrade
         {
             lock (Cache.Locks.GroupCacheLock)
             {
-                Cache.Groups group = Cache.GroupCache.FirstOrDefault(o => o.Name.Equals(groupName));
+                Cache.Groups @group = Cache.GroupCache.FirstOrDefault(o => o.Name.Equals(groupName));
 
-                if (!group.Equals(default(Cache.Groups)))
+                if (!@group.Equals(default(Cache.Groups)))
                 {
-                    groupUUID = group.UUID;
+                    groupUUID = @group.UUID;
                     return true;
                 }
             }
@@ -16926,11 +17165,11 @@ namespace Corrade
         {
             lock (Cache.Locks.GroupCacheLock)
             {
-                Cache.Groups group = Cache.GroupCache.FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                Cache.Groups @group = Cache.GroupCache.FirstOrDefault(o => o.UUID.Equals(groupUUID));
 
-                if (!group.Equals(default(Cache.Groups)))
+                if (!@group.Equals(default(Cache.Groups)))
                 {
-                    groupName = group.Name;
+                    groupName = @group.Name;
                     return true;
                 }
             }
@@ -17337,6 +17576,8 @@ namespace Corrade
             public const string ERROR_SEPARATOR = @" : ";
             public const string CACHE_DIRECTORY = @"cache";
             public const string LOG_FILE_EXTENSION = @"log";
+            public const string STATE_DIRECTORY = @"state";
+            public const string NOTIFICATIONS_STATE_FILE = @"Notifications.state";
 
             /// <summary>
             ///     Corrade version.
@@ -17376,8 +17617,11 @@ namespace Corrade
 
             public static readonly Regex OneOrMoRegex = new Regex(@".+?", RegexOptions.Compiled);
 
-            public static readonly Regex InventoryOfferObjectName = new Regex(@"^[']{0,1}(.+?)(('\s)|$)",
+            public static readonly Regex InventoryOfferObjectNameRegEx = new Regex(@"^[']{0,1}(.+?)(('\s)|$)",
                 RegexOptions.Compiled);
+
+            public static readonly Regex EjectedFromGroupRegEx =
+                new Regex(@"You have been ejected from '(.+?)' by .+?\.$", RegexOptions.Compiled);
 
             public struct PERMISSIONS
             {
@@ -17392,6 +17636,7 @@ namespace Corrade
         {
             public static HashSet<Agents> AgentCache = new HashSet<Agents>();
             public static HashSet<Groups> GroupCache = new HashSet<Groups>();
+            public static HashSet<UUID> CurrentGroupsCache = new HashSet<UUID>();
 
             internal static void Purge()
             {
@@ -17402,6 +17647,10 @@ namespace Corrade
                 lock (Locks.GroupCacheLock)
                 {
                     GroupCache.Clear();
+                }
+                lock (Locks.CurrentGroupsCacheLock)
+                {
+                    CurrentGroupsCache.Clear();
                 }
             }
 
@@ -17468,6 +17717,7 @@ namespace Corrade
             {
                 public static readonly object AgentCacheLock = new object();
                 public static readonly object GroupCacheLock = new object();
+                public static readonly object CurrentGroupsCacheLock = new object();
             }
         }
 
@@ -18914,7 +19164,9 @@ namespace Corrade
             [Description("could not write to instant message log file")] COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE,
             [Description("could not write to local message log file")] COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE,
             [Description("could not write to region message log file")] COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE,
-            [Description("unknown IP address")] UNKNOWN_IP_ADDRESS
+            [Description("unknown IP address")] UNKNOWN_IP_ADDRESS,
+            [Description("unable to save Corrade notifications state")] UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE,
+            [Description("unable to load Corrade notifications state")] UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE
         }
 
         /// <summary>
@@ -19314,10 +19566,10 @@ namespace Corrade
         /// <summary>
         ///     A Corrade notification.
         /// </summary>
-        private struct Notification
+        public struct Notification
         {
             public string GroupName;
-            public Hashtable NotificationDestination;
+            public SerializableDictionary<Notifications, string> NotificationDestination;
             public uint NotificationMask;
         }
 
@@ -19328,40 +19580,6 @@ namespace Corrade
         {
             public string URL;
             public Dictionary<string, string> message;
-        }
-
-        /// <summary>
-        ///     Corrade notification types.
-        /// </summary>
-        [Flags]
-        private enum Notifications : uint
-        {
-            [Description("alert")] NOTIFICATION_ALERT_MESSAGE = 1,
-            [Description("region")] NOTIFICATION_REGION_MESSAGE = 2,
-            [Description("group")] NOTIFICATION_GROUP_MESSAGE = 4,
-            [Description("balance")] NOTIFICATION_BALANCE = 8,
-            [Description("message")] NOTIFICATION_INSTANT_MESSAGE = 16,
-            [Description("notice")] NOTIFICATION_GROUP_NOTICE = 32,
-            [Description("local")] NOTIFICATION_LOCAL_CHAT = 64,
-            [Description("dialog")] NOTIFICATION_SCRIPT_DIALOG = 128,
-            [Description("friendship")] NOTIFICATION_FRIENDSHIP = 256,
-            [Description("inventory")] NOTIFICATION_INVENTORY = 512,
-            [Description("permission")] NOTIFICATION_SCRIPT_PERMISSION = 1024,
-            [Description("lure")] NOTIFICATION_TELEPORT_LURE = 2048,
-            [Description("effect")] NOTIFICATION_VIEWER_EFFECT = 4096,
-            [Description("collision")] NOTIFICATION_MEAN_COLLISION = 8192,
-            [Description("crossing")] NOTIFICATION_REGION_CROSSED = 16384,
-            [Description("terse")] NOTIFICATION_TERSE_UPDATES = 32768,
-            [Description("typing")] NOTIFICATION_TYPING = 65536,
-            [Description("invite")] NOTIFICATION_GROUP_INVITE = 131072,
-            [Description("economy")] NOTIFICATION_ECONOMY = 262144,
-            [Description("membership")] NOTIFICATION_GROUP_MEMBERSHIP = 524288,
-            [Description("url")] NOTIFICATION_LOAD_URL = 1048576,
-            [Description("ownersay")] NOTIFICATION_OWNER_SAY = 2097152,
-            [Description("regionsayto")] NOTIFICATION_REGION_SAY_TO = 4194304,
-            [Description("objectim")] NOTIFICATION_OBJECT_INSTANT_MESSAGE = 8388608,
-            [Description("rlv")] NOTIFICATION_RLV_MESSAGE = 16777216,
-            [Description("debug")] NOTIFICATION_DEBUG_MESSAGE = 33554432
         }
 
         /// <summary>
@@ -19609,6 +19827,8 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+            [Description("volume")] VOLUME,
+            [Description("audible")] AUDIBLE,
             [Description("path")] PATH,
             [Description("inventory")] INVENTORY,
             [Description("offset")] OFFSET,
@@ -19859,6 +20079,75 @@ namespace Corrade
             [Description("name")] public string Name;
             [Description("permission")] public ScriptPermission Permission;
             [Description("task")] public UUID Task;
+        }
+
+        [XmlRoot("Dictionary")]
+        public class SerializableDictionary<TKey, TValue>
+            : Dictionary<TKey, TValue>, IXmlSerializable
+        {
+            #region IXmlSerializable Members
+
+            public XmlSchema GetSchema()
+            {
+                return null;
+            }
+
+            public void ReadXml(XmlReader reader)
+            {
+                XDocument doc;
+                using (XmlReader subtreeReader = reader.ReadSubtree())
+                {
+                    doc = XDocument.Load(subtreeReader);
+                }
+                XmlSerializer serializer = new XmlSerializer(typeof (SerializableKeyValuePair<TKey, TValue>));
+                foreach (XElement item in doc.Descendants(XName.Get("Item")))
+                {
+                    using (XmlReader itemReader = item.CreateReader())
+                    {
+                        SerializableKeyValuePair<TKey, TValue> kvp =
+                            serializer.Deserialize(itemReader) as SerializableKeyValuePair<TKey, TValue>;
+                        if (kvp == null || kvp.Equals(default(SerializableKeyValuePair<TKey, TValue>))) continue;
+                        Add(kvp.Key, kvp.Value);
+                    }
+                }
+                reader.ReadEndElement();
+            }
+
+            public void WriteXml(XmlWriter writer)
+            {
+                XmlSerializer serializer = new XmlSerializer(typeof (SerializableKeyValuePair<TKey, TValue>));
+                XmlSerializerNamespaces ns = new XmlSerializerNamespaces();
+                ns.Add("", "");
+                foreach (SerializableKeyValuePair<TKey, TValue> kvp in
+                    Keys.Select(key => new {key, value = this[key]})
+                        .Select(@t => new SerializableKeyValuePair<TKey, TValue>(@t.key, @t.value)))
+                {
+                    serializer.Serialize(writer, kvp, ns);
+                }
+            }
+
+            #endregion
+
+            [XmlRoot("Item")]
+            public class SerializableKeyValuePair<TK, TV>
+            {
+                [XmlAttribute("Key")] public TK Key;
+
+                [XmlAttribute("Value")] public TV Value;
+
+                /// <summary>
+                ///     Default constructor
+                /// </summary>
+                public SerializableKeyValuePair()
+                {
+                }
+
+                public SerializableKeyValuePair(TK key, TV value)
+                {
+                    Key = key;
+                    Value = value;
+                }
+            }
         }
 
         /// <summary>
@@ -20176,7 +20465,7 @@ namespace Corrade
             /// <summary>
             ///     Regex used to match RLV commands.
             /// </summary>
-            public static readonly Regex RLVRegex = new Regex(@"(?<behaviour>[^:=]+)(:(?<option>[^=]*))?=(?<param>\w+)",
+            public static readonly Regex RLVRegEx = new Regex(@"(?<behaviour>[^:=]+)(:(?<option>[^=]*))?=(?<param>\w+)",
                 RegexOptions.Compiled);
         }
 
