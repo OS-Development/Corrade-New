@@ -16035,9 +16035,10 @@ namespace Corrade
                             break;
                     }
                 }
-                switch (cell.Contains(' ') || cell.Contains(',') || cell.Contains('\r') || cell.Contains('\n'))
+                switch (!cell.Contains('"') && !cell.Contains(' ') && !cell.Contains(',') && !cell.Contains('\r') &&
+                    !cell.Contains('\n'))
                 {
-                    case true:
+                    case false:
                         cell.Insert(0, '"');
                         cell.Add('"');
                         break;
