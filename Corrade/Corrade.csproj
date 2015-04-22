@@ -158,16 +158,32 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\AIMLBot-data\AIML\Adverbs.aiml">
+      <Link>AIMLBot\AIML\Adverbs.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="..\AIMLBot-data\AIML\AI.aiml">
       <Link>AIMLBot\AIML\AI.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Astrology.aiml">
+      <Link>AIMLBot\AIML\Astrology.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\AIMLBot-data\AIML\Atomic.aiml">
       <Link>AIMLBot\AIML\Atomic.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="..\AIMLBot-data\AIML\Badanswer.aiml">
+      <Link>AIMLBot\AIML\Badanswer.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="..\AIMLBot-data\AIML\Biography.aiml">
       <Link>AIMLBot\AIML\Biography.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Blackjack.aiml">
+      <Link>AIMLBot\AIML\Blackjack.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\AIMLBot-data\AIML\Bot.aiml">
@@ -186,8 +202,20 @@
       <Link>AIMLBot\AIML\Computers.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="..\AIMLBot-data\AIML\Date.aiml">
+      <Link>AIMLBot\AIML\Date.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="..\AIMLBot-data\AIML\Default.aiml">
       <Link>AIMLBot\AIML\Default.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Dialog.aiml">
+      <Link>AIMLBot\AIML\Dialog.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Drugs.aiml">
+      <Link>AIMLBot\AIML\Drugs.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\AIMLBot-data\AIML\Emotion.aiml">
@@ -202,12 +230,32 @@
       <Link>AIMLBot\AIML\Geography.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="..\AIMLBot-data\AIML\Gossip.aiml">
+      <Link>AIMLBot\AIML\Gossip.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Happy.aiml">
+      <Link>AIMLBot\AIML\Happy.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="..\AIMLBot-data\AIML\History.aiml">
       <Link>AIMLBot\AIML\History.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="..\AIMLBot-data\AIML\Human.aiml">
+      <Link>AIMLBot\AIML\Human.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Humor.aiml">
+      <Link>AIMLBot\AIML\Humor.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="..\AIMLBot-data\AIML\Inquiry.aiml">
       <Link>AIMLBot\AIML\Inquiry.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Integer.aiml">
+      <Link>AIMLBot\AIML\Integer.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\AIMLBot-data\AIML\Interjection.aiml">
@@ -234,8 +282,20 @@
       <Link>AIMLBot\AIML\Movies.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="..\AIMLBot-data\AIML\Multiple.aiml">
+      <Link>AIMLBot\AIML\Multiple.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="..\AIMLBot-data\AIML\Music.aiml">
       <Link>AIMLBot\AIML\Music.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Parts.aiml">
+      <Link>AIMLBot\AIML\Parts.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Personality.aiml">
+      <Link>AIMLBot\AIML\Personality.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\AIMLBot-data\AIML\Philosophy.aiml">
@@ -246,16 +306,32 @@
       <Link>AIMLBot\AIML\Pickup.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="..\AIMLBot-data\AIML\Politics.aiml">
+      <Link>AIMLBot\AIML\Politics.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="..\AIMLBot-data\AIML\Predicates.aiml">
       <Link>AIMLBot\AIML\Predicates.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Psychology.aiml">
+      <Link>AIMLBot\AIML\Psychology.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\AIMLBot-data\AIML\Reduce.aiml">
       <Link>AIMLBot\AIML\Reduce.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="..\AIMLBot-data\AIML\Reducer.aiml">
+      <Link>AIMLBot\AIML\Reducer.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="..\AIMLBot-data\AIML\Reductions.aiml">
       <Link>AIMLBot\AIML\Reductions.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Religion.aiml">
+      <Link>AIMLBot\AIML\Religion.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\AIMLBot-data\AIML\Salutations.aiml">
@@ -264,6 +340,14 @@
     </None>
     <None Include="..\AIMLBot-data\AIML\Science.aiml">
       <Link>AIMLBot\AIML\Science.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Sex.aiml">
+      <Link>AIMLBot\AIML\Sex.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\Sports.aiml">
+      <Link>AIMLBot\AIML\Sports.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\AIMLBot-data\AIML\Stack.aiml">
@@ -276,6 +360,10 @@
     </None>
     <None Include="..\AIMLBot-data\AIML\That.aiml">
       <Link>AIMLBot\AIML\That.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\AIMLBot-data\AIML\update.aiml">
+      <Link>AIMLBot\AIML\update.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\AIMLBot-data\brain\AIMLBot.brain">
