@@ -194,6 +194,10 @@
       <Link>AIMLBot\AIML\Botmaster.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="..\AIMLBot-data\AIML\Chomsky_jokes.aiml">
+      <Link>AIMLBot\AIML\Chomsky_jokes.aiml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="..\AIMLBot-data\AIML\Client.aiml">
       <Link>AIMLBot\AIML\Client.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

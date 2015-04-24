@@ -16299,7 +16299,7 @@ namespace Corrade
             Stack<char> s = new Stack<char>();
             StringBuilder m = new StringBuilder();
             int i = 0;
-            do
+            while (i < csv.Length)
             {
                 switch (csv[i])
                 {
@@ -16328,7 +16328,8 @@ namespace Corrade
                         continue;
                 }
                 m.Append(csv[i]);
-            } while (++i < csv.Length);
+                ++i;
+            }
 
             l.Add(m.ToString());
 
@@ -17378,7 +17379,6 @@ namespace Corrade
                 return false;
             }
             Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
-            if (localRoleUUID.Equals(UUID.Zero)) return false;
             roleUUID = localRoleUUID;
             return true;
         }
