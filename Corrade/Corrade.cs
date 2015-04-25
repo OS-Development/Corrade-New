@@ -5846,8 +5846,12 @@ namespace Corrade
                                 roleUUIDs.Add(roleUUID);
                             }
                         }
-                        if (!roleUUIDs.Count.Equals(0) &&
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
+                        // No roles specified, so assume everyone role.
+                        if (roleUUIDs.Count.Equals(0))
+                        {
+                            roleUUIDs.Add(UUID.Zero);
+                        }
+                        if (!roleUUIDs.All(o => o.Equals(UUID.Zero)) && !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(
