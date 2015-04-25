@@ -14,6 +14,7 @@ using System.Configuration.Install;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Reflection;
@@ -411,9 +412,9 @@ namespace Corrade
                     p =>
                         new[]
                         {
-                            p.Key[0],
+                            p.Key[0].Trim(),
                             !string.IsNullOrEmpty(p.Key[1])
-                                ? p.Key[1]
+                                ? p.Key[1].Trim()
                                 : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
                         });
 
@@ -2549,6 +2550,7 @@ namespace Corrade
             ServicePointManager.DefaultConnectionLimit = Configuration.CONNECTION_LIMIT;
             ServicePointManager.UseNagleAlgorithm = Configuration.USE_NAGGLE;
             ServicePointManager.Expect100Continue = Configuration.USE_EXPECT100CONTINUE;
+            ServicePointManager.MaxServicePointIdleTime = Configuration.CONNECTION_IDLE_TIME;
             // Suppress standard OpenMetaverse logs, we have better ones.
             Settings.LOG_LEVEL = Helpers.LogLevel.None;
             Client.Settings.ALWAYS_REQUEST_PARCEL_ACL = true;
@@ -3011,22 +3013,60 @@ namespace Corrade
                 // only accept POST requests
                 if (!httpRequest.HttpMethod.Equals(WebRequestMethods.Http.Post, StringComparison.OrdinalIgnoreCase))
                     return;
-                Stream body = httpRequest.InputStream;
-                Encoding encoding = httpRequest.ContentEncoding;
-                StreamReader reader = new StreamReader(body, encoding);
-                Dictionary<string, string> result = HandleCorradeCommand(reader.ReadToEnd(),
-                    CORRADE_CONSTANTS.WEB_REQUEST,
-                    httpRequest.RemoteEndPoint.ToString());
-                if (result == null || result.Count.Equals(0)) return;
-                HttpListenerResponse response = httpContext.Response;
-                response.ContentType = CORRADE_CONSTANTS.TEXT_HTML;
-                byte[] data = Encoding.UTF8.GetBytes(wasKeyValueEncode(wasKeyValueEscape(result)));
-                response.ContentLength64 = data.Length;
-                response.StatusCode = (int) HttpStatusCode.OK;
-                Stream responseStream = response.OutputStream;
-                if (responseStream == null) return;
-                responseStream.Write(data, 0, data.Length);
-                responseStream.Close();
+                using (Stream body = httpRequest.InputStream)
+                {
+                    using (StreamReader reader = new StreamReader(body, httpRequest.ContentEncoding))
+                    {
+                        Dictionary<string, string> result = HandleCorradeCommand(reader.ReadToEnd(),
+                            CORRADE_CONSTANTS.WEB_REQUEST,
+                            httpRequest.RemoteEndPoint.ToString());
+                        using (HttpListenerResponse response = httpContext.Response)
+                        {
+                            response.ContentType = CORRADE_CONSTANTS.TEXT_HTML;
+                            byte[] data = !result.Count.Equals(0)
+                                ? Encoding.UTF8.GetBytes(wasKeyValueEncode(wasKeyValueEscape(result)))
+                                : new byte[0];
+                            response.StatusCode = (int) HttpStatusCode.OK;
+                            using (MemoryStream outputStream = new MemoryStream())
+                            {
+                                switch (Configuration.HTTP_SERVER_COMPRESSION)
+                                {
+                                    case HTTPCompressionMethod.GZIP:
+                                        using (GZipStream dataGZipStream = new GZipStream(outputStream,
+                                            CompressionMode.Compress, false))
+                                        {
+                                            dataGZipStream.Write(data, 0, data.Length);
+                                            dataGZipStream.Flush();
+                                        }
+                                        response.AddHeader("Content-Encoding", "gzip");
+                                        data = outputStream.ToArray();
+                                        break;
+                                    case HTTPCompressionMethod.DEFLATE:
+                                        using (
+                                            DeflateStream dataDeflateStream = new DeflateStream(outputStream,
+                                                CompressionMode.Compress, false))
+                                        {
+                                            dataDeflateStream.Write(data, 0, data.Length);
+                                            dataDeflateStream.Flush();
+                                        }
+                                        response.AddHeader("Content-Encoding", "deflate");
+                                        data = outputStream.ToArray();
+                                        break;
+                                }
+                            }
+                            response.ContentLength64 = data.Length;
+                            using (Stream responseStream = response.OutputStream)
+                            {
+                                if (responseStream != null)
+                                {
+                                    responseStream.Write(data, 0, data.Length);
+                                    responseStream.Flush();
+                                    responseStream.Close();
+                                }
+                            }
+                        }
+                    }
+                }
             }
             catch (Exception)
             {
@@ -16111,7 +16151,7 @@ namespace Corrade
                     }
                 }
             });
-            return result.SelectMany(data => data);
+            return result.SelectMany(o => o);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -16171,6 +16211,8 @@ namespace Corrade
             request.AllowAutoRedirect = true;
             request.AllowWriteStreamBuffering = true;
             request.Pipelined = true;
+            request.KeepAlive = true;
+            request.ProtocolVersion = HttpVersion.Version11;
             request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             request.Method = WebRequestMethods.Http.Post;
             request.ContentType = "application/x-www-form-urlencoded";
@@ -17746,6 +17788,7 @@ namespace Corrade
             public static bool ENABLE_HTTP_SERVER;
             public static string HTTP_SERVER_PREFIX;
             public static int HTTP_SERVER_TIMEOUT;
+            public static HTTPCompressionMethod HTTP_SERVER_COMPRESSION;
             public static int CALLBACK_TIMEOUT;
             public static int CALLBACK_THROTTLE;
             public static int CALLBACK_QUEUE_LENGTH;
@@ -17753,6 +17796,7 @@ namespace Corrade
             public static int NOTIFICATION_THROTTLE;
             public static int NOTIFICATION_QUEUE_LENGTH;
             public static int CONNECTION_LIMIT;
+            public static int CONNECTION_IDLE_TIME;
             public static float RANGE;
             public static int MAXIMUM_NOTIFICATION_THREADS;
             public static int MAXIMUM_COMMAND_THREADS;
@@ -17824,6 +17868,7 @@ namespace Corrade
                 ENABLE_HTTP_SERVER = false;
                 HTTP_SERVER_PREFIX = @"http://+:8080/";
                 HTTP_SERVER_TIMEOUT = 5000;
+                HTTP_SERVER_COMPRESSION = HTTPCompressionMethod.NONE;
                 CALLBACK_TIMEOUT = 5000;
                 CALLBACK_THROTTLE = 1000;
                 CALLBACK_QUEUE_LENGTH = 100;
@@ -17831,6 +17876,7 @@ namespace Corrade
                 NOTIFICATION_THROTTLE = 1000;
                 NOTIFICATION_QUEUE_LENGTH = 100;
                 CONNECTION_LIMIT = 100;
+                CONNECTION_IDLE_TIME = 900000;
                 RANGE = 64;
                 MAXIMUM_NOTIFICATION_THREADS = 10;
                 MAXIMUM_COMMAND_THREADS = 10;
@@ -18295,6 +18341,10 @@ namespace Corrade
                                         }
                                         HTTP_SERVER_PREFIX = serverNode.InnerText;
                                         break;
+                                    case ConfigurationKeys.COMPRESSION:
+                                        HTTP_SERVER_COMPRESSION = wasGetEnumValueFromDescription<HTTPCompressionMethod>(
+                                            serverNode.InnerText);
+                                        break;
                                 }
                             }
                         }
@@ -18447,6 +18497,14 @@ namespace Corrade
                                                     if (
                                                         !int.TryParse(clientLimitNode.InnerText,
                                                             out CONNECTION_LIMIT))
+                                                    {
+                                                        throw new Exception("error in client limits section");
+                                                    }
+                                                    break;
+                                                case ConfigurationKeys.IDLE:
+                                                    if (
+                                                        !int.TryParse(clientLimitNode.InnerText,
+                                                            out CONNECTION_IDLE_TIME))
                                                     {
                                                         throw new Exception("error in client limits section");
                                                     }
@@ -19110,6 +19168,8 @@ namespace Corrade
             public const string LOCAL = @"local";
             public const string REGION = @"region";
             public const string BIND = @"bind";
+            public const string IDLE = @"idle";
+            public const string COMPRESSION = @"compression";
         }
 
         /// <summary>
@@ -19452,6 +19512,17 @@ namespace Corrade
             public Action Action;
             public string AgentName;
             public UUID AgentUUID;
+        }
+
+        /// <summary>
+        ///     An enumeration of various compression methods
+        ///     supproted by Corrade's internal HTTP server.
+        /// </summary>
+        private enum HTTPCompressionMethod : uint
+        {
+            [Description("none")] NONE,
+            [Description("deflate")] DEFLATE,
+            [Description("gzip")] GZIP
         }
 
         /// <summary>
