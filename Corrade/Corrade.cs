@@ -2310,7 +2310,7 @@ namespace Corrade
                                 File.AppendText(Configuration.CLIENT_LOG_FILE))
                         {
                             logWriter.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
-                            logWriter.Flush();
+                            //logWriter.Flush();
                         }
                     }
                 }
@@ -3809,7 +3809,7 @@ namespace Corrade
                                             DateTimeFormatInfo.InvariantInfo), fullName.First(), fullName.Last(),
                                         Enum.GetName(typeof (ChatType), e.Type),
                                         e.Message);
-                                    logWriter.Flush();
+                                    //logWriter.Flush();
                                     //logWriter.Close();
                                 }
                             }
@@ -4334,7 +4334,7 @@ namespace Corrade
                                                             DateTimeFormatInfo.InvariantInfo), fullName.First(),
                                                         fullName.Last(),
                                                         args.IM.Message);
-                                                    logWriter.Flush();
+                                                    //logWriter.Flush();
                                                     //logWriter.Close();
                                                 }
                                             }
@@ -4395,7 +4395,7 @@ namespace Corrade
                                             DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
                                                 DateTimeFormatInfo.InvariantInfo), fullName.First(), fullName.Last(),
                                             args.IM.Message);
-                                        logWriter.Flush();
+                                        //logWriter.Flush();
                                         //logWriter.Close();
                                     }
                                 }
@@ -4438,7 +4438,7 @@ namespace Corrade
                                             DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
                                                 DateTimeFormatInfo.InvariantInfo), fullName.First(), fullName.Last(),
                                             args.IM.Message);
-                                        logWriter.Flush();
+                                        //logWriter.Flush();
                                         //logWriter.Close();
                                     }
                                 }
@@ -5851,7 +5851,8 @@ namespace Corrade
                         {
                             roleUUIDs.Add(UUID.Zero);
                         }
-                        if (!roleUUIDs.All(o => o.Equals(UUID.Zero)) && !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
+                        if (!roleUUIDs.All(o => o.Equals(UUID.Zero)) &&
+                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(
@@ -7090,7 +7091,7 @@ namespace Corrade
                                                     DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
                                                         DateTimeFormatInfo.InvariantInfo), myName.First(), myName.Last(),
                                                     data);
-                                                logWriter.Flush();
+                                                //logWriter.Flush();
                                                 //logWriter.Close();
                                             }
                                         }
@@ -7155,7 +7156,7 @@ namespace Corrade
                                                             DateTimeFormatInfo.InvariantInfo), myName.First(),
                                                         myName.Last(),
                                                         data);
-                                                    logWriter.Flush();
+                                                    //logWriter.Flush();
                                                     //logWriter.Close();
                                                 }
                                             }
@@ -7227,7 +7228,7 @@ namespace Corrade
                                                         DateTimeFormatInfo.InvariantInfo), fullName.First(),
                                                     fullName.Last(), Enum.GetName(typeof (ChatType), chatType),
                                                     data);
-                                                logWriter.Flush();
+                                                //logWriter.Flush();
                                                 //logWriter.Close();
                                             }
                                         }
@@ -16077,7 +16078,8 @@ namespace Corrade
         private static IEnumerable<string> GetStructuredData<T>(T structure, string query)
         {
             HashSet<string[]> result = new HashSet<string[]>();
-            if (structure.Equals(default(T))) return result.SelectMany(data => data);
+            if (structure.Equals(default(T)))
+                return result.SelectMany(o => o);
             object LockObject = new object();
             Parallel.ForEach(wasCSVToEnumerable(query), name =>
             {
@@ -16299,18 +16301,16 @@ namespace Corrade
         /// <remarks>compliant with RFC 4180</remarks>
         public static IEnumerable<string> wasCSVToEnumerable(string csv)
         {
-            List<string> l = new List<string>();
             Stack<char> s = new Stack<char>();
             StringBuilder m = new StringBuilder();
-            int i = 0;
-            while (i < csv.Length)
+            for (int i = 0; i < csv.Length; ++i)
             {
                 switch (csv[i])
                 {
                     case ',':
                         if (s.Count.Equals(0) || !s.Peek().Equals('"'))
                         {
-                            l.Add(m.ToString());
+                            yield return m.ToString();
                             m = new StringBuilder();
                             continue;
                         }
@@ -16332,12 +16332,9 @@ namespace Corrade
                         continue;
                 }
                 m.Append(csv[i]);
-                ++i;
             }
 
-            l.Add(m.ToString());
-
-            return l;
+            yield return m.ToString();
         }
 
         #region KEY-VALUE DATA
