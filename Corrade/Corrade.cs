@@ -598,42 +598,66 @@ namespace Corrade
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READING_AIML_BOT_CONFIGURATION));
             try
             {
-                lock (AIMLBotLock)
-                {
-                    AIMLBot.isAcceptingUserInput = false;
-                    AIMLBot.loadSettings(wasPathCombine(
+                AIMLBot.isAcceptingUserInput = false;
+                AIMLBot.loadSettings(wasPathCombine(
+                    Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
+                    AIML_BOT_CONSTANTS.CONFIG.DIRECTORY, AIML_BOT_CONSTANTS.CONFIG.SETTINGS_FILE));
+                string AIMLBotBrain =
+                    wasPathCombine(
                         Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
-                        AIML_BOT_CONSTANTS.CONFIG.DIRECTORY, AIML_BOT_CONSTANTS.CONFIG.SETTINGS_FILE));
-                    string AIMLBotBrain =
-                        wasPathCombine(
-                            Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
-                            AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_FILE);
-                    switch (File.Exists(AIMLBotBrain))
-                    {
-                        case true:
-                            AIMLBot.loadFromBinaryFile(AIMLBotBrain);
-                            break;
-                        default:
-                            AIMLBot.loadAIMLFromFiles();
-                            AIMLBot.saveToBinaryFile(AIMLBotBrain);
-                            break;
-                    }
-                    AIMLBot.isAcceptingUserInput = true;
+                        AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_FILE);
+                switch (File.Exists(AIMLBotBrain))
+                {
+                    case true:
+                        AIMLBot.loadFromBinaryFile(AIMLBotBrain);
+                        break;
+                    default:
+                        AIMLBot.loadAIMLFromFiles();
+                        AIMLBot.saveToBinaryFile(AIMLBotBrain);
+                        break;
                 }
+                string AIMLBotUserBrain =
+                    wasPathCombine(
+                        Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
+                        AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_SESSION_FILE);
+                if (File.Exists(AIMLBotUserBrain))
+                {
+                    AIMLBotUser.Predicates.loadSettings(AIMLBotUserBrain);
+                }
+                AIMLBot.isAcceptingUserInput = true;
             }
             catch (Exception ex)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_CONFIGURING_AIML_BOT), ex.Message);
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_LOADING_AIML_BOT_FILES), ex.Message);
                 return;
             }
             finally
             {
-                lock (AIMLBotLock)
-                {
-                    AIMLBotBrainCompiled = true;
-                }
+                AIMLBotBrainCompiled = true;
             }
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_AIML_BOT_CONFIGURATION));
+        };
+
+        /// <summary>
+        ///     Saves the chatbot configuration and AIML files.
+        /// </summary>
+        private static readonly System.Action SaveChatBotFiles = () =>
+        {
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WRITING_AIML_BOT_CONFIGURATION));
+            try
+            {
+                AIMLBot.isAcceptingUserInput = false;
+                AIMLBotUser.Predicates.DictionaryAsXML.Save(wasPathCombine(
+                    Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
+                    AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_SESSION_FILE));
+                AIMLBot.isAcceptingUserInput = true;
+            }
+            catch (Exception ex)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SAVING_AIML_BOT_FILES), ex.Message);
+                return;
+            }
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WROTE_AIML_BOT_CONFIGURATION));
         };
 
         private static volatile bool runCallbackThread = true;
@@ -2887,6 +2911,14 @@ namespace Corrade
             // Disable the AIML bot configuration watcher.
             AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
             AIMLBotConfigurationWatcher.Changed -= HandleAIMLBotConfigurationChanged;
+            // Save the AIML user session.
+            lock (AIMLBotLock)
+            {
+                if (AIMLBotBrainCompiled)
+                {
+                    SaveChatBotFiles.Invoke();
+                }
+            }
             // Logout
             if (Client.Network.Connected)
             {
@@ -2926,7 +2958,6 @@ namespace Corrade
                     }
                 }
             }
-            Environment.Exit(0);
         }
 
         private static void HandleGroupJoined(object sender, GroupOperationEventArgs e)
@@ -3789,8 +3820,6 @@ namespace Corrade
 
         private static void HandleChatFromSimulator(object sender, ChatEventArgs e)
         {
-            // Ignore self
-            if (e.SourceID.Equals(Client.Self.AgentID)) return;
             // Ignore chat with no message (ie: start / stop typing)
             if (string.IsNullOrEmpty(e.Message)) return;
             switch (e.Type)
@@ -4178,13 +4207,9 @@ namespace Corrade
 
         private static void HandleSelfIM(object sender, InstantMessageEventArgs args)
         {
-            // Ignore self.
             List<string> fullName =
                 new List<string>(
                     GetAvatarNames(args.IM.FromAgentName));
-            if (args.IM.FromAgentID.Equals(Client.Self.AgentID) &&
-                fullName.First().Equals(Client.Self.FirstName, StringComparison.OrdinalIgnoreCase) &&
-                fullName.Last().Equals(Client.Self.LastName, StringComparison.OrdinalIgnoreCase)) return;
             // Process dialog messages.
             switch (args.IM.Dialog)
             {
@@ -17473,6 +17498,7 @@ namespace Corrade
         {
             public const string DIRECTORY = @"AIMLBot";
             public const string BRAIN_FILE = @"AIMLBot.brain";
+            public const string BRAIN_SESSION_FILE = @"AIMLbot.session";
 
             public struct AIML
             {
@@ -19216,10 +19242,13 @@ namespace Corrade
             [Description("failed to manifest RLV behaviour")] FAILED_TO_MANIFEST_RLV_BEHAVIOUR,
             [Description("behaviour not implemented")] BEHAVIOUR_NOT_IMPLEMENTED,
             [Description("workers exceeded")] WORKERS_EXCEEDED,
-            [Description("error configuring AIML bot")] ERROR_CONFIGURING_AIML_BOT,
             [Description("AIML bot configuration modified")] AIML_CONFIGURATION_MODIFIED,
             [Description("read AIML bot configuration")] READ_AIML_BOT_CONFIGURATION,
             [Description("reading AIML bot configuration")] READING_AIML_BOT_CONFIGURATION,
+            [Description("wrote AIML bot configuration")] WROTE_AIML_BOT_CONFIGURATION,
+            [Description("writing AIML bot configuration")] WRITING_AIML_BOT_CONFIGURATION,
+            [Description("error loading AIML bot files")] ERROR_LOADING_AIML_BOT_FILES,
+            [Description("error saving AIML bot files")] ERROR_SAVING_AIML_BOT_FILES,
             [Description("could not write to client log file")] COULD_NOT_WRITE_TO_CLIENT_LOG_FILE,
             [Description("could not write to group chat log file")] COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE,
             [Description("could not write to instant message log file")] COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE,
