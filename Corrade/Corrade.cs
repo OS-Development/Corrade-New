@@ -2603,10 +2603,6 @@ namespace Corrade
             Client.Settings.ENABLE_SIMSTATS = true;
             // Enable multiple simulators
             Client.Settings.MULTIPLE_SIMS = true;
-            // Set the maximum draw-distance possible.
-            Client.Self.Movement.Camera.Far = Configuration.RANGE;
-            Client.Settings.LOGIN_TIMEOUT = Configuration.SERVICES_TIMEOUT;
-            Client.Settings.LOGOUT_TIMEOUT = Configuration.SERVICES_TIMEOUT;
             // Check TOS
             if (!Configuration.TOS_ACCEPTED)
             {
@@ -12504,6 +12500,8 @@ namespace Corrade
                                 throw new Exception(
                                     wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
                         }
+                        // Now the Corrade state.
+                        SaveCorradeState.Invoke();
                     };
                     break;
                 case ScriptKeys.REPLYTOTELEPORTLURE:
@@ -19124,6 +19122,10 @@ namespace Corrade
                                     break;
                             }
                         });
+                    // Apply settings to the instance.
+                    Client.Self.Movement.Camera.Far = RANGE;
+                    Client.Settings.LOGIN_TIMEOUT = SERVICES_TIMEOUT;
+                    Client.Settings.LOGOUT_TIMEOUT = SERVICES_TIMEOUT;
                 }
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
             }
