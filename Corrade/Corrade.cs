@@ -74,7 +74,8 @@ namespace Corrade
             [Description("objectim")] NOTIFICATION_OBJECT_INSTANT_MESSAGE = 8388608,
             [Description("rlv")] NOTIFICATION_RLV_MESSAGE = 16777216,
             [Description("debug")] NOTIFICATION_DEBUG_MESSAGE = 33554432,
-            [Description("radar")] NOTIFICATION_RADAR = 67108864
+            [Description("avatars")] NOTIFICATION_RADAR_AVATARS = 67108864,
+            [Description("primitives")] NOTIFICATION_RADAR_PRIMITIVES = 134217728
         }
 
         /// <summary>
@@ -2964,22 +2965,37 @@ namespace Corrade
         private static void HandleAvatarUpdate(object sender, AvatarUpdateEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_RADAR, e),
+                () => SendNotification(Notifications.NOTIFICATION_RADAR_AVATARS, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleObjectUpdate(object sender, PrimEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_RADAR, e),
+                () => SendNotification(Notifications.NOTIFICATION_RADAR_PRIMITIVES, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleKillObject(object sender, KillObjectEventArgs e)
         {
-            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_RADAR, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+            KeyValuePair<UUID, Primitive> tracked =
+                RadarObjects.FirstOrDefault(o => o.Value.LocalID.Equals(e.ObjectLocalID));
+            if (!tracked.Equals(default(KeyValuePair<UUID, Primitive>)))
+            {
+                switch (tracked.Value is Avatar)
+                {
+                    case true:
+                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                            () => SendNotification(Notifications.NOTIFICATION_RADAR_AVATARS, e),
+                            Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                        break;
+                    default:
+                        CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                            () => SendNotification(Notifications.NOTIFICATION_RADAR_PRIMITIVES, e),
+                            Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                        break;
+                }
+            }
         }
 
         private static void HandleGroupJoined(object sender, GroupOperationEventArgs e)
@@ -3800,9 +3816,9 @@ namespace Corrade
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
                                 DebugEventArgs.Message);
                             break;
-                        case Notifications.NOTIFICATION_RADAR:
-                            System.Type radarType = args.GetType();
-                            if (radarType == typeof (AvatarUpdateEventArgs))
+                        case Notifications.NOTIFICATION_RADAR_AVATARS:
+                            System.Type radarAvatarsType = args.GetType();
+                            if (radarAvatarsType == typeof (AvatarUpdateEventArgs))
                             {
                                 AvatarUpdateEventArgs avatarUpdateEventArgs =
                                     (AvatarUpdateEventArgs) args;
@@ -3818,8 +3834,37 @@ namespace Corrade
                                     avatarUpdateEventArgs.Avatar.PrimData.PCode.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                     wasGetDescriptionFromEnumValue(Action.APPEAR));
+                                break;
                             }
-                            if (radarType == typeof (PrimEventArgs))
+                            if (radarAvatarsType == typeof (KillObjectEventArgs))
+                            {
+                                KillObjectEventArgs killObjectEventArgs =
+                                    (KillObjectEventArgs) args;
+                                Primitive prim;
+                                lock (RadarObjectsLock)
+                                {
+                                    KeyValuePair<UUID, Primitive> tracked =
+                                        RadarObjects.FirstOrDefault(
+                                            p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
+                                    if (tracked.Equals(default(KeyValuePair<UUID, Primitive>))) return;
+                                    prim = tracked.Value;
+                                    RadarObjects.Remove(tracked.Key);
+                                }
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                    prim.ID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                    prim.Position.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                    prim.Rotation.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                    prim.PrimData.PCode.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                    wasGetDescriptionFromEnumValue(Action.VANISH));
+                            }
+                            break;
+                        case Notifications.NOTIFICATION_RADAR_PRIMITIVES:
+                            System.Type radarPrimitivesType = args.GetType();
+                            if (radarPrimitivesType == typeof (PrimEventArgs))
                             {
                                 PrimEventArgs primEventArgs =
                                     (PrimEventArgs) args;
@@ -3841,7 +3886,7 @@ namespace Corrade
                                 }
                                 break;
                             }
-                            if (radarType == typeof (KillObjectEventArgs))
+                            if (radarPrimitivesType == typeof (KillObjectEventArgs))
                             {
                                 KillObjectEventArgs killObjectEventArgs =
                                     (KillObjectEventArgs) args;
@@ -19226,25 +19271,28 @@ namespace Corrade
                                             break;
                                     }
                                     break;
-                                case Notifications.NOTIFICATION_RADAR:
-                                    switch (enabled)
-                                    {
-                                        case true:
-                                            Client.Network.SimChanged += HandleRadarObjects;
-                                            Client.Objects.AvatarUpdate += HandleAvatarUpdate;
-                                            Client.Objects.ObjectUpdate += HandleObjectUpdate;
-                                            Client.Objects.KillObject += HandleKillObject;
-                                            break;
-                                        default:
-                                            Client.Network.SimChanged -= HandleRadarObjects;
-                                            Client.Objects.AvatarUpdate -= HandleAvatarUpdate;
-                                            Client.Objects.ObjectUpdate -= HandleObjectUpdate;
-                                            Client.Objects.KillObject -= HandleKillObject;
-                                            break;
-                                    }
-                                    break;
                             }
                         });
+                    // If any group has either the avatar radar notification or the primitive radar notification then install the listeners.
+                    switch (
+                        GROUPS.Any(
+                            o => !(o.NotificationMask & (uint) Notifications.NOTIFICATION_RADAR_AVATARS).Equals(0)) ||
+                        GROUPS.Any(
+                            o => !(o.NotificationMask & (uint) Notifications.NOTIFICATION_RADAR_PRIMITIVES).Equals(0)))
+                    {
+                        case true:
+                            Client.Network.SimChanged += HandleRadarObjects;
+                            Client.Objects.AvatarUpdate += HandleAvatarUpdate;
+                            Client.Objects.ObjectUpdate += HandleObjectUpdate;
+                            Client.Objects.KillObject += HandleKillObject;
+                            break;
+                        default:
+                            Client.Network.SimChanged -= HandleRadarObjects;
+                            Client.Objects.AvatarUpdate -= HandleAvatarUpdate;
+                            Client.Objects.ObjectUpdate -= HandleObjectUpdate;
+                            Client.Objects.KillObject -= HandleKillObject;
+                            break;
+                    }
                     // Apply settings to the instance.
                     Client.Self.Movement.Camera.Far = RANGE;
                     Client.Settings.LOGIN_TIMEOUT = SERVICES_TIMEOUT;
