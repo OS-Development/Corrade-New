@@ -73,7 +73,8 @@ namespace Corrade
             [Description("regionsayto")] NOTIFICATION_REGION_SAY_TO = 4194304,
             [Description("objectim")] NOTIFICATION_OBJECT_INSTANT_MESSAGE = 8388608,
             [Description("rlv")] NOTIFICATION_RLV_MESSAGE = 16777216,
-            [Description("debug")] NOTIFICATION_DEBUG_MESSAGE = 33554432
+            [Description("debug")] NOTIFICATION_DEBUG_MESSAGE = 33554432,
+            [Description("radar")] NOTIFICATION_RADAR = 67108864
         }
 
         /// <summary>
@@ -182,6 +183,10 @@ namespace Corrade
         private static readonly object SphereEffectsLock = new object();
 
         private static readonly HashSet<BeamEffect> BeamEffects = new HashSet<BeamEffect>();
+
+        private static readonly Dictionary<UUID, Primitive> RadarObjects = new Dictionary<UUID, Primitive>();
+
+        private static readonly object RadarObjectsLock = new object();
 
         private static readonly object BeamEffectsLock = new object();
 
@@ -2829,7 +2834,7 @@ namespace Corrade
                     }
                 }
             }
-            // Stop the group sweep thread.
+            // Stop the group member sweep thread.
             StopGroupMembershipSweepThread.Invoke();
             // Stop the notification thread.
             runNotificationThread = false;
@@ -2954,6 +2959,27 @@ namespace Corrade
                     }
                 }
             }
+        }
+
+        private static void HandleAvatarUpdate(object sender, AvatarUpdateEventArgs e)
+        {
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_RADAR, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+        }
+
+        private static void HandleObjectUpdate(object sender, PrimEventArgs e)
+        {
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_RADAR, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+        }
+
+        private static void HandleKillObject(object sender, KillObjectEventArgs e)
+        {
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_RADAR, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleGroupJoined(object sender, GroupOperationEventArgs e)
@@ -3195,9 +3221,9 @@ namespace Corrade
                                             p =>
                                                 new[]
                                                 {
-                                                    p.Key[0],
+                                                    p.Key[0].Trim(),
                                                     !string.IsNullOrEmpty(p.Key[1])
-                                                        ? p.Key[1]
+                                                        ? p.Key[1].Trim()
                                                         : string.Empty
                                                 }));
                                 switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
@@ -3773,6 +3799,73 @@ namespace Corrade
                                 DebugEventArgs.Position.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
                                 DebugEventArgs.Message);
+                            break;
+                        case Notifications.NOTIFICATION_RADAR:
+                            System.Type radarType = args.GetType();
+                            if (radarType == typeof (AvatarUpdateEventArgs))
+                            {
+                                AvatarUpdateEventArgs avatarUpdateEventArgs =
+                                    (AvatarUpdateEventArgs) args;
+                                if (RadarObjects.ContainsKey(avatarUpdateEventArgs.Avatar.ID)) return;
+                                RadarObjects.Add(avatarUpdateEventArgs.Avatar.ID, avatarUpdateEventArgs.Avatar);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                    avatarUpdateEventArgs.Avatar.ID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                    avatarUpdateEventArgs.Avatar.Position.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                    avatarUpdateEventArgs.Avatar.Rotation.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                    avatarUpdateEventArgs.Avatar.PrimData.PCode.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                    wasGetDescriptionFromEnumValue(Action.APPEAR));
+                            }
+                            if (radarType == typeof (PrimEventArgs))
+                            {
+                                PrimEventArgs primEventArgs =
+                                    (PrimEventArgs) args;
+                                lock (RadarObjectsLock)
+                                {
+                                    if (RadarObjects.ContainsKey(primEventArgs.Prim.ID)) return;
+
+                                    RadarObjects.Add(primEventArgs.Prim.ID, primEventArgs.Prim);
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                        primEventArgs.Prim.ID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                        primEventArgs.Prim.Position.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                        primEventArgs.Prim.Rotation.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                        primEventArgs.Prim.PrimData.PCode.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                        wasGetDescriptionFromEnumValue(Action.APPEAR));
+                                }
+                                break;
+                            }
+                            if (radarType == typeof (KillObjectEventArgs))
+                            {
+                                KillObjectEventArgs killObjectEventArgs =
+                                    (KillObjectEventArgs) args;
+                                Primitive prim;
+                                lock (RadarObjectsLock)
+                                {
+                                    KeyValuePair<UUID, Primitive> tracked =
+                                        RadarObjects.FirstOrDefault(
+                                            p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
+                                    if (tracked.Equals(default(KeyValuePair<UUID, Primitive>))) return;
+                                    prim = tracked.Value;
+                                    RadarObjects.Remove(tracked.Key);
+                                }
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                    prim.ID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                    prim.Position.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                    prim.Rotation.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                    prim.PrimData.PCode.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                    wasGetDescriptionFromEnumValue(Action.VANISH));
+                            }
                             break;
                     }
                     lock (NotificationQueueLock)
@@ -16260,6 +16353,17 @@ namespace Corrade
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
+        private static void HandleRadarObjects(object sender, SimChangedEventArgs e)
+        {
+            lock (RadarObjectsLock)
+            {
+                if (!RadarObjects.Count.Equals(0))
+                {
+                    RadarObjects.Clear();
+                }
+            }
+        }
+
         private static void HandleSimChanged(object sender, SimChangedEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
@@ -17577,7 +17681,9 @@ namespace Corrade
             [Description("rm")] RM,
             [Description("ln")] LN,
             [Description("mv")] MV,
-            [Description("cp")] CP
+            [Description("cp")] CP,
+            [Description("appear")] APPEAR,
+            [Description("vanish")] VANISH
         }
 
         /// <summary>
@@ -19120,6 +19226,23 @@ namespace Corrade
                                             break;
                                     }
                                     break;
+                                case Notifications.NOTIFICATION_RADAR:
+                                    switch (enabled)
+                                    {
+                                        case true:
+                                            Client.Network.SimChanged += HandleRadarObjects;
+                                            Client.Objects.AvatarUpdate += HandleAvatarUpdate;
+                                            Client.Objects.ObjectUpdate += HandleObjectUpdate;
+                                            Client.Objects.KillObject += HandleKillObject;
+                                            break;
+                                        default:
+                                            Client.Network.SimChanged -= HandleRadarObjects;
+                                            Client.Objects.AvatarUpdate -= HandleAvatarUpdate;
+                                            Client.Objects.ObjectUpdate -= HandleObjectUpdate;
+                                            Client.Objects.KillObject -= HandleKillObject;
+                                            break;
+                                    }
+                                    break;
                             }
                         });
                     // Apply settings to the instance.
@@ -20331,11 +20454,12 @@ namespace Corrade
                 [Description("harmonic")] HARMONIC = 4
             }
 
+            private readonly object LockObject = new object();
+
             private readonly DECAY_TYPE decay = DECAY_TYPE.NONE;
             private readonly Stopwatch elapsed = new Stopwatch();
             private readonly HashSet<double> times = new HashSet<double>();
             private System.Timers.Timer alarm;
-            private readonly object LockObject = new object();
 
             /// <summary>
             ///     The default constructor using no decay.
