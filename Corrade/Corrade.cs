@@ -20335,6 +20335,7 @@ namespace Corrade
             private readonly Stopwatch elapsed = new Stopwatch();
             private readonly HashSet<double> times = new HashSet<double>();
             private System.Timers.Timer alarm;
+            private readonly object LockObject = new object();
 
             /// <summary>
             ///     The default constructor using no decay.
@@ -20358,38 +20359,51 @@ namespace Corrade
 
             public void Alarm(double deadline)
             {
-                if (alarm == null)
+                lock (LockObject)
                 {
-                    alarm = new System.Timers.Timer(deadline);
-                    alarm.Elapsed += (o, p) =>
+                    if (alarm == null)
                     {
-                        Signal.Set();
-                        elapsed.Stop();
-                        times.Clear();
-                        alarm.Dispose();
-                    };
-                    elapsed.Start();
-                    alarm.Start();
-                    return;
+                        alarm = new System.Timers.Timer(deadline);
+                        alarm.Elapsed += (o, p) =>
+                        {
+                            Signal.Set();
+                            elapsed.Stop();
+                            times.Clear();
+                            lock (LockObject)
+                            {
+                                alarm.Dispose();
+                            }
+                        };
+                        elapsed.Start();
+                        alarm.Start();
+                        return;
+                    }
                 }
                 elapsed.Stop();
                 times.Add(elapsed.ElapsedMilliseconds);
                 elapsed.Reset();
                 elapsed.Start();
-                switch (decay)
+                lock (LockObject)
                 {
-                    case DECAY_TYPE.ARITHMETIC:
-                        alarm.Interval = (deadline + times.Aggregate((a, b) => b + a))/(1f + times.Count);
-                        break;
-                    case DECAY_TYPE.GEOMETRIC:
-                        alarm.Interval = Math.Pow(deadline*times.Aggregate((a, b) => b*a), 1f/(1f + times.Count));
-                        break;
-                    case DECAY_TYPE.HARMONIC:
-                        alarm.Interval = (1f + times.Count)/(1f/deadline + times.Aggregate((a, b) => 1f/b + 1f/a));
-                        break;
-                    default:
-                        alarm.Interval = deadline;
-                        break;
+                    if (alarm != null)
+                    {
+                        switch (decay)
+                        {
+                            case DECAY_TYPE.ARITHMETIC:
+                                alarm.Interval = (deadline + times.Aggregate((a, b) => b + a))/(1f + times.Count);
+                                break;
+                            case DECAY_TYPE.GEOMETRIC:
+                                alarm.Interval = Math.Pow(deadline*times.Aggregate((a, b) => b*a), 1f/(1f + times.Count));
+                                break;
+                            case DECAY_TYPE.HARMONIC:
+                                alarm.Interval = (1f + times.Count)/
+                                                 (1f/deadline + times.Aggregate((a, b) => 1f/b + 1f/a));
+                                break;
+                            default:
+                                alarm.Interval = deadline;
+                                break;
+                        }
+                    }
                 }
             }
         }
