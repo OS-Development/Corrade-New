@@ -2513,51 +2513,15 @@ namespace Corrade
                 case PlatformID.Unix:
                     BindSignalsThread = new Thread(() =>
                     {
-                        UnixSignal[] signals =
-                        {
+                        UnixSignal.WaitAny(new [] {
                             new UnixSignal(Signum.SIGTERM),
-                            new UnixSignal(Signum.SIGINT)
-                        };
-                        UnixSignal.WaitAny(signals, -1);
+                            new UnixSignal(Signum.SIGINT), 
+                        }, Timeout.Infinite);
                         ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
                     }) {IsBackground = true};
                     BindSignalsThread.Start();
                     break;
             }
-            // Install global event handlers.
-            Client.Inventory.InventoryObjectOffered += HandleInventoryObjectOffered;
-            Client.Network.LoginProgress += HandleLoginProgress;
-            Client.Appearance.AppearanceSet += HandleAppearanceSet;
-            Client.Network.SimConnected += HandleSimulatorConnected;
-            Client.Network.Disconnected += HandleDisconnected;
-            Client.Network.SimDisconnected += HandleSimulatorDisconnected;
-            Client.Network.EventQueueRunning += HandleEventQueueRunning;
-            Client.Friends.FriendshipOffered += HandleFriendshipOffered;
-            Client.Friends.FriendshipResponse += HandleFriendShipResponse;
-            Client.Friends.FriendOnline += HandleFriendOnlineStatus;
-            Client.Friends.FriendOffline += HandleFriendOnlineStatus;
-            Client.Friends.FriendRightsUpdate += HandleFriendRightsUpdate;
-            Client.Self.TeleportProgress += HandleTeleportProgress;
-            Client.Self.ScriptQuestion += HandleScriptQuestion;
-            Client.Self.AlertMessage += HandleAlertMessage;
-            Client.Self.MoneyBalance += HandleMoneyBalance;
-            Client.Self.ChatFromSimulator += HandleChatFromSimulator;
-            Client.Self.ScriptDialog += HandleScriptDialog;
-            Client.Objects.TerseObjectUpdate += HandleTerseObjectUpdate;
-            Client.Avatars.ViewerEffect += HandleViewerEffect;
-            Client.Avatars.ViewerEffectPointAt += HandleViewerEffect;
-            Client.Avatars.ViewerEffectLookAt += HandleViewerEffect;
-            Client.Self.MeanCollision += HandleMeanCollision;
-            Client.Self.RegionCrossed += HandleRegionCrossed;
-            Client.Network.SimChanged += HandleSimChanged;
-            Client.Self.MoneyBalanceReply += HandleMoneyBalance;
-            Client.Self.LoadURL += HandleLoadURL;
-            Client.Groups.GroupJoinedReply += HandleGroupJoined;
-            Client.Groups.GroupLeaveReply += HandleGroupLeave;
-            // Each Instant Message is processed in its own thread.
-            Client.Self.IM += (sender, args) => CorradeThreadPool[CorradeThreadType.INSTANT_MESSAGE].Spawn(
-                () => HandleSelfIM(sender, args),
-                Configuration.MAXIMUM_INSTANT_MESSAGE_THREADS);
             // Set-up watcher for dynamically reading the configuration file.
             FileSystemWatcher configurationWatcher = new FileSystemWatcher
             {
@@ -2659,9 +2623,6 @@ namespace Corrade
             LoadCorradeCache.Invoke();
             // Load Corrade states.
             LoadCorradeState.Invoke();
-            // Log-in to the grid.
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGGING_IN));
-            Client.Network.Login(login);
             // Start the HTTP Server if it is supported
             Thread HTTPListenerThread = null;
             HttpListener HTTPListener = null;
@@ -2775,6 +2736,25 @@ namespace Corrade
                 } while (runEffectsExpirationThread);
             }) {IsBackground = true};
             EffectsExpirationThread.Start();
+            // Install non-dynamic global event handlers.
+            Client.Inventory.InventoryObjectOffered += HandleInventoryObjectOffered;
+            Client.Network.LoginProgress += HandleLoginProgress;
+            Client.Appearance.AppearanceSet += HandleAppearanceSet;
+            Client.Network.SimConnected += HandleSimulatorConnected;
+            Client.Network.Disconnected += HandleDisconnected;
+            Client.Network.SimDisconnected += HandleSimulatorDisconnected;
+            Client.Network.EventQueueRunning += HandleEventQueueRunning;
+            Client.Self.TeleportProgress += HandleTeleportProgress;
+            Client.Self.ChatFromSimulator += HandleChatFromSimulator;
+            Client.Groups.GroupJoinedReply += HandleGroupJoined;
+            Client.Groups.GroupLeaveReply += HandleGroupLeave;
+            // Each Instant Message is processed in its own thread.
+            Client.Self.IM += (sender, args) => CorradeThreadPool[CorradeThreadType.INSTANT_MESSAGE].Spawn(
+                () => HandleSelfIM(sender, args),
+                Configuration.MAXIMUM_INSTANT_MESSAGE_THREADS);
+            // Log-in to the grid.
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGGING_IN));
+            Client.Network.Login(login);
             /*
              * The main thread spins around waiting for the semaphores to become invalidated,
              * at which point Corrade will consider its connection to the grid severed and
@@ -2782,14 +2762,14 @@ namespace Corrade
              *
              */
             WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => (WaitHandle) o).ToArray());
-            // Save Corrade caches.
-            SaveCorradeCache.Invoke();
-            // Save Corrade states.
-            SaveCorradeState.Invoke();
             // Now log-out.
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGGING_OUT));
             // Uninstall all installed handlers
             Client.Self.IM -= HandleSelfIM;
+            Client.Network.SimChanged -= HandleRadarObjects;
+            Client.Objects.AvatarUpdate -= HandleAvatarUpdate;
+            Client.Objects.ObjectUpdate -= HandleObjectUpdate;
+            Client.Objects.KillObject -= HandleKillObject;
             Client.Self.LoadURL -= HandleLoadURL;
             Client.Self.MoneyBalanceReply -= HandleMoneyBalance;
             Client.Network.SimChanged -= HandleSimChanged;
@@ -2817,6 +2797,10 @@ namespace Corrade
             Client.Appearance.AppearanceSet -= HandleAppearanceSet;
             Client.Network.LoginProgress -= HandleLoginProgress;
             Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
+            // Save Corrade states.
+            SaveCorradeState.Invoke();
+            // Save Corrade caches.
+            SaveCorradeCache.Invoke();
             // Stop the sphere effects expiration thread.
             runEffectsExpirationThread = false;
             if (
@@ -4042,13 +4026,6 @@ namespace Corrade
                         Configuration.MAXIMUM_COMMAND_THREADS);
                     break;
             }
-        }
-
-        private static void HandleMoneyBalance(object sender, BalanceEventArgs e)
-        {
-            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_BALANCE, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleAlertMessage(object sender, AlertMessageEventArgs e)
@@ -16416,6 +16393,13 @@ namespace Corrade
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
+        private static void HandleMoneyBalance(object sender, BalanceEventArgs e)
+        {
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_BALANCE, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+        }
+
         private static void HandleMoneyBalance(object sender, MoneyBalanceReplyEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
@@ -19196,6 +19180,17 @@ namespace Corrade
                                             break;
                                         default:
                                             Client.Self.MoneyBalance -= HandleMoneyBalance;
+                                            break;
+                                    }
+                                    break;
+                                case Notifications.NOTIFICATION_ECONOMY:
+                                    switch (enabled)
+                                    {
+                                        case true:
+                                            Client.Self.MoneyBalanceReply += HandleMoneyBalance;
+                                            break;
+                                        default:
+                                            Client.Self.MoneyBalanceReply -= HandleMoneyBalance;
                                             break;
                                     }
                                     break;
