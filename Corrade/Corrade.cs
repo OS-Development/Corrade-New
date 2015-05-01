@@ -28,8 +28,6 @@ using System.Xml.Linq;
 using System.Xml.Schema;
 using System.Xml.Serialization;
 using AIMLbot;
-using Mono.Unix;
-using Mono.Unix.Native;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using Parallel = System.Threading.Tasks.Parallel;
@@ -1775,10 +1773,6 @@ namespace Corrade
                         CorradeLog.WriteEntry(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()),
                             EventLogEntryType.Information);
                         break;
-                    case PlatformID.Unix:
-                        Syscall.syslog(SyslogFacility.LOG_DAEMON, SyslogLevel.LOG_INFO,
-                            string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
-                        break;
                 }
                 return;
             }
@@ -1903,8 +1897,6 @@ namespace Corrade
             {
                 Feedback(line);
             }
-            // Create a thread for signals.
-            Thread BindSignalsThread = null;
             // Branch on platform and set-up termination handlers.
             switch (Environment.OSVersion.Platform)
             {
@@ -1921,17 +1913,6 @@ namespace Corrade
                                     ConnectionSemaphores.AsParallel().FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
                         }
                     }
-                    break;
-                case PlatformID.Unix:
-                    BindSignalsThread = new Thread(() =>
-                    {
-                        UnixSignal.WaitAny(new[]
-                        {
-                            new UnixSignal(Signum.SIGTERM)
-                        }, Timeout.Infinite);
-                        ConnectionSemaphores.AsParallel().FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
-                    }) {IsBackground = true};
-                    BindSignalsThread.Start();
                     break;
             }
             // Set-up watcher for dynamically reading the configuration file.
@@ -2335,26 +2316,6 @@ namespace Corrade
             if (Client.Network.Connected)
             {
                 Client.Network.Shutdown(NetworkManager.DisconnectType.ClientInitiated);
-            }
-            // Close signals
-            if (Environment.OSVersion.Platform.Equals(PlatformID.Unix) && BindSignalsThread != null)
-            {
-                if (
-                    (BindSignalsThread.ThreadState.Equals(ThreadState.Running) ||
-                     BindSignalsThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
-                {
-                    if (!CallbackThread.Join(1000))
-                    {
-                        try
-                        {
-                            BindSignalsThread.Abort();
-                            BindSignalsThread.Join();
-                        }
-                        catch (ThreadStateException)
-                        {
-                        }
-                    }
-                }
             }
         }
 
@@ -18887,12 +18848,12 @@ namespace Corrade
                         alarm = new System.Timers.Timer(deadline);
                         alarm.Elapsed += (o, p) =>
                         {
-                            Signal.Set();
-                            elapsed.Stop();
-                            times.Clear();
                             lock (LockObject)
                             {
-                                alarm.Dispose();
+                                Signal.Set();
+                                elapsed.Stop();
+                                times.Clear();
+                                alarm = null;
                             }
                         };
                         elapsed.Start();
@@ -19095,10 +19056,10 @@ namespace Corrade
         /// </summary>
         private static readonly Timer RebakeTimer = new Timer(Rebake =>
         {
-            ManualResetEvent AppearanceSetEvent = new ManualResetEvent(false);
-            EventHandler<AppearanceSetEventArgs> HandleAppearanceSet = (sender, args) => AppearanceSetEvent.Set();
             lock (ClientInstanceLock)
             {
+                ManualResetEvent AppearanceSetEvent = new ManualResetEvent(false);
+                EventHandler<AppearanceSetEventArgs> HandleAppearanceSet = (sender, args) => AppearanceSetEvent.Set();
                 Client.Appearance.AppearanceSet += HandleAppearanceSet;
                 Client.Appearance.RequestSetAppearance(true);
                 AppearanceSetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
