@@ -32,6 +32,7 @@ using Mono.Unix;
 using Mono.Unix.Native;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
+using Parallel = System.Threading.Tasks.Parallel;
 using ThreadState = System.Threading.ThreadState;
 
 #endregion
@@ -77,599 +78,6 @@ namespace Corrade
             [Description("avatars")] NOTIFICATION_RADAR_AVATARS = 67108864,
             [Description("primitives")] NOTIFICATION_RADAR_PRIMITIVES = 134217728
         }
-
-        /// <summary>
-        ///     Semaphores that sense the state of the connection. When any of these semaphores fail,
-        ///     Corrade does not consider itself connected anymore and terminates.
-        /// </summary>
-        private static readonly Dictionary<char, ManualResetEvent> ConnectionSemaphores = new Dictionary
-            <char, ManualResetEvent>
-        {
-            {'l', new ManualResetEvent(false)},
-            {'s', new ManualResetEvent(false)},
-            {'u', new ManualResetEvent(false)}
-        };
-
-        public static string CorradeServiceName;
-
-        private static Thread programThread;
-
-        private static readonly EventLog CorradeLog = new EventLog();
-
-        private static readonly GridClient Client = new GridClient();
-
-        private static readonly Bot AIMLBot = new Bot
-        {
-            TrustAIML = false
-        };
-
-        private static readonly User AIMLBotUser = new User(CORRADE_CONSTANTS.CORRADE, AIMLBot);
-
-        private static readonly FileSystemWatcher AIMLBotConfigurationWatcher = new FileSystemWatcher();
-
-        private static readonly object AIMLBotLock = new object();
-
-        private static readonly object ClientInstanceLock = new object();
-
-        private static readonly object ConfigurationFileLock = new object();
-
-        private static readonly object ClientLogFileLock = new object();
-
-        private static readonly object GroupLogFileLock = new object();
-
-        private static readonly object LocalLogFileLock = new object();
-
-        private static readonly object RegionLogFileLock = new object();
-
-        private static readonly object InstantMessageLogFileLock = new object();
-
-        private static readonly object DatabaseFileLock = new object();
-
-        private static readonly Dictionary<string, object> DatabaseLocks = new Dictionary<string, object>();
-
-        private static readonly object GroupNotificationsLock = new object();
-
-        public static HashSet<Notification> GroupNotifications = new HashSet<Notification>();
-
-        private static readonly Dictionary<InventoryObjectOfferedEventArgs, ManualResetEvent> InventoryOffers =
-            new Dictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>();
-
-        private static readonly object InventoryOffersLock = new object();
-
-        private static readonly Queue<CallbackQueueElement> CallbackQueue = new Queue<CallbackQueueElement>();
-
-        private static readonly object CallbackQueueLock = new object();
-
-        private static readonly Queue<NotificationQueueElement> NotificationQueue =
-            new Queue<NotificationQueueElement>();
-
-        private static readonly object NotificationQueueLock = new object();
-
-        private static readonly HashSet<GroupInvite> GroupInvites = new HashSet<GroupInvite>();
-
-        private static readonly object GroupInviteLock = new object();
-
-        private static readonly HashSet<TeleportLure> TeleportLures = new HashSet<TeleportLure>();
-
-        private static readonly object TeleportLureLock = new object();
-
-        private static readonly HashSet<ScriptPermissionRequest> ScriptPermissionRequests =
-            new HashSet<ScriptPermissionRequest>();
-
-        private static readonly object ScriptPermissionRequestLock = new object();
-
-        private static readonly HashSet<ScriptDialog> ScriptDialogs = new HashSet<ScriptDialog>();
-
-        private static readonly object ScriptDialogLock = new object();
-
-        private static readonly Dictionary<UUID, HashSet<UUID>> GroupMembers =
-            new Dictionary<UUID, HashSet<UUID>>();
-
-        private static readonly object GroupMembersLock = new object();
-
-        private static readonly Hashtable GroupWorkers = new Hashtable();
-
-        private static readonly object GroupWorkersLock = new object();
-
-        private static readonly Hashtable GroupDirectoryTrackers = new Hashtable();
-
-        private static readonly object GroupDirectoryTrackersLock = new object();
-
-        private static readonly HashSet<LookAtEffect> LookAtEffects = new HashSet<LookAtEffect>();
-
-        private static readonly HashSet<PointAtEffect> PointAtEffects = new HashSet<PointAtEffect>();
-
-        private static readonly HashSet<SphereEffect> SphereEffects = new HashSet<SphereEffect>();
-
-        private static readonly object SphereEffectsLock = new object();
-
-        private static readonly HashSet<BeamEffect> BeamEffects = new HashSet<BeamEffect>();
-
-        private static readonly Dictionary<UUID, Primitive> RadarObjects = new Dictionary<UUID, Primitive>();
-
-        private static readonly object RadarObjectsLock = new object();
-
-        private static readonly object BeamEffectsLock = new object();
-
-        private static readonly object InputFiltersLock = new object();
-
-        private static readonly object OutputFiltersLock = new object();
-
-        private static volatile bool EnableRLV;
-
-        private static volatile bool EnableAIML;
-
-        private static volatile bool AIMLBotBrainCompiled;
-
-        /// <summary>
-        ///     The various types of threads used by Corrade.
-        /// </summary>
-        private static readonly Dictionary<CorradeThreadType, CorradeThread> CorradeThreadPool =
-            new Dictionary<CorradeThreadType, CorradeThread>
-            {
-                {CorradeThreadType.COMMAND, new CorradeThread()},
-                {CorradeThreadType.RLV, new CorradeThread()},
-                {CorradeThreadType.NOTIFICATION, new CorradeThread()},
-                {CorradeThreadType.INSTANT_MESSAGE, new CorradeThread()}
-            };
-
-        /// <summary>
-        ///     Group membership sweep thread.
-        /// </summary>
-        private static Thread GroupMembershipSweepThread;
-
-        /// <summary>
-        ///     Group membership sweep thread starter.
-        /// </summary>
-        private static readonly System.Action StartGroupMembershipSweepThread = () =>
-        {
-            if (GroupMembershipSweepThread != null &&
-                (GroupMembershipSweepThread.ThreadState.Equals(ThreadState.Running) ||
-                 GroupMembershipSweepThread.ThreadState.Equals(ThreadState.WaitSleepJoin))) return;
-            runGroupMembershipSweepThread = true;
-            GroupMembershipSweepThread = new Thread(GroupMembershipSweep) {IsBackground = true};
-            GroupMembershipSweepThread.Start();
-        };
-
-        /// <summary>
-        ///     Group membership sweep thread stopper.
-        /// </summary>
-        private static readonly System.Action StopGroupMembershipSweepThread = () =>
-        {
-            // Stop the notification thread.
-            runGroupMembershipSweepThread = false;
-            if (GroupMembershipSweepThread == null ||
-                (!GroupMembershipSweepThread.ThreadState.Equals(ThreadState.Running) &&
-                 !GroupMembershipSweepThread.ThreadState.Equals(ThreadState.WaitSleepJoin))) return;
-            if (GroupMembershipSweepThread.Join(1000)) return;
-            try
-            {
-                GroupMembershipSweepThread.Abort();
-                GroupMembershipSweepThread.Join();
-            }
-            catch (ThreadStateException)
-            {
-            }
-        };
-
-        /// <summary>
-        ///     Schedules a load of the configuration file.
-        /// </summary>
-        private static readonly Timer ConfigurationChangedTimer = new Timer(ConfigurationChanged =>
-        {
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
-            lock (ClientInstanceLock)
-            {
-                Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
-            }
-        });
-
-        /// <summary>
-        ///     Schedules a load of the AIML configuration file.
-        /// </summary>
-        private static readonly Timer AIMLConfigurationChangedTimer = new Timer(AIMLConfigurationChanged =>
-        {
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AIML_CONFIGURATION_MODIFIED));
-            new Thread(
-                () =>
-                {
-                    lock (AIMLBotLock)
-                    {
-                        LoadChatBotFiles.Invoke();
-                    }
-                }) {IsBackground = true}.Start();
-        });
-
-        /// <summary>
-        ///     Global rebake timer.
-        /// </summary>
-        private static readonly Timer RebakeTimer = new Timer(Rebake =>
-        {
-            ManualResetEvent AppearanceSetEvent = new ManualResetEvent(false);
-            EventHandler<AppearanceSetEventArgs> HandleAppearanceSet = (sender, args) => AppearanceSetEvent.Set();
-            lock (ClientInstanceLock)
-            {
-                Client.Appearance.AppearanceSet += HandleAppearanceSet;
-                Client.Appearance.RequestSetAppearance(true);
-                AppearanceSetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
-                Client.Appearance.AppearanceSet -= HandleAppearanceSet;
-            }
-        });
-
-        /// <summary>
-        ///     Current land group activation timer.
-        /// </summary>
-        private static readonly Timer ActivateCurrentLandGroupTimer = new Timer(ActivateCurrentLandGroup =>
-        {
-            Parcel parcel = null;
-            lock (ClientInstanceLock)
-            {
-                if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel)) return;
-            }
-            UUID groupUUID = Configuration.GROUPS.FirstOrDefault(o => o.UUID.Equals(parcel.GroupID)).UUID;
-            if (groupUUID.Equals(UUID.Zero)) return;
-            lock (ClientInstanceLock)
-            {
-                Client.Groups.ActivateGroup(groupUUID);
-            }
-        });
-
-        public static EventHandler ConsoleEventHandler;
-
-        /// <summary>
-        ///     Corrade's input filter function.
-        /// </summary>
-        private static readonly Func<string, string> wasInput = o =>
-        {
-            if (string.IsNullOrEmpty(o)) return string.Empty;
-
-            List<Filter> safeFilters;
-            lock (InputFiltersLock)
-            {
-                safeFilters = Configuration.INPUT_FILTERS;
-            }
-            foreach (Filter filter in safeFilters)
-            {
-                switch (filter)
-                {
-                    case Filter.RFC3986:
-                        o = wasUriUnescapeDataString(o);
-                        break;
-                    case Filter.ENIGMA:
-                        o = wasEnigma(o, Configuration.ENIGMA.rotors.ToArray(), Configuration.ENIGMA.plugs.ToArray(),
-                            Configuration.ENIGMA.reflector);
-                        break;
-                    case Filter.VIGENERE:
-                        o = wasDecryptVIGENERE(o, Configuration.VIGENERE_SECRET);
-                        break;
-                    case Filter.ATBASH:
-                        o = wasATBASH(o);
-                        break;
-                    case Filter.BASE64:
-                        o = Encoding.UTF8.GetString(Convert.FromBase64String(o));
-                        break;
-                }
-            }
-            return o;
-        };
-
-        /// <summary>
-        ///     Corrade's output filter function.
-        /// </summary>
-        private static readonly Func<string, string> wasOutput = o =>
-        {
-            if (string.IsNullOrEmpty(o)) return string.Empty;
-
-            List<Filter> safeFilters;
-            lock (OutputFiltersLock)
-            {
-                safeFilters = Configuration.OUTPUT_FILTERS;
-            }
-            foreach (Filter filter in safeFilters)
-            {
-                switch (filter)
-                {
-                    case Filter.RFC3986:
-                        o = wasUriEscapeDataString(o);
-                        break;
-                    case Filter.ENIGMA:
-                        o = wasEnigma(o, Configuration.ENIGMA.rotors.ToArray(), Configuration.ENIGMA.plugs.ToArray(),
-                            Configuration.ENIGMA.reflector);
-                        break;
-                    case Filter.VIGENERE:
-                        o = wasEncryptVIGENERE(o, Configuration.VIGENERE_SECRET);
-                        break;
-                    case Filter.ATBASH:
-                        o = wasATBASH(o);
-                        break;
-                    case Filter.BASE64:
-                        o = Convert.ToBase64String(Encoding.UTF8.GetBytes(o));
-                        break;
-                }
-            }
-            return o;
-        };
-
-        /// <summary>
-        ///     Determines whether a string is a Corrade command.
-        /// </summary>
-        /// <returns>true if the string is a Corrade command</returns>
-        private static readonly Func<string, bool> IsCorradeCommand = o =>
-        {
-            Dictionary<string, string> data = wasKeyValueDecode(o);
-            return !data.Count.Equals(0) && data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND)) &&
-                   data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)) &&
-                   data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD));
-        };
-
-        /// <summary>
-        ///     Gets the first name and last name from an avatar name.
-        /// </summary>
-        /// <returns>the firstname and the lastname or Resident</returns>
-        private static readonly Func<string, IEnumerable<string>> GetAvatarNames =
-            o => CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(o)
-                .Cast<Match>()
-                .ToDictionary(p => new[]
-                {
-                    p.Groups["first"].Value,
-                    p.Groups["last"].Value
-                })
-                .SelectMany(
-                    p =>
-                        new[]
-                        {
-                            p.Key[0].Trim(),
-                            !string.IsNullOrEmpty(p.Key[1])
-                                ? p.Key[1].Trim()
-                                : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                        });
-
-        /// <summary>
-        ///     Updates the inventory starting from a folder recursively.
-        /// </summary>
-        private static readonly Action<InventoryFolder> UpdateInventoryRecursive = o =>
-        {
-            // Create the queue of folders.
-            Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
-            object LockObject = new object();
-            // Enqueue the first folder (root).
-            inventoryFolders.Enqueue(o);
-
-            AutoResetEvent FolderUpdatedEvent = new AutoResetEvent(false);
-            EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
-            {
-                // Enqueue all the new folders.
-                Client.Inventory.Store.GetContents(q.FolderID).ForEach(r =>
-                {
-                    if (r is InventoryFolder)
-                    {
-                        lock (LockObject)
-                        {
-                            inventoryFolders.Enqueue(r as InventoryFolder);
-                        }
-                    }
-                });
-                FolderUpdatedEvent.Set();
-            };
-
-            do
-            {
-                InventoryFolder folder;
-                lock (LockObject)
-                {
-                    folder = inventoryFolders.Dequeue();
-                }
-                if (folder == null) continue;
-                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
-                    InventorySortOrder.ByDate);
-                FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
-                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-            } while (!inventoryFolders.Count.Equals(0));
-        };
-
-        /// <summary>
-        ///     Loads the OpenMetaverse inventory cache.
-        /// </summary>
-        private static readonly System.Action LoadInventoryCache = () =>
-        {
-            int itemsLoaded =
-                Client.Inventory.Store.RestoreFromDisk(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
-                    CORRADE_CONSTANTS.INVENTORY_CACHE_FILE));
-
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_LOADED),
-                itemsLoaded < 0 ? "0" : itemsLoaded.ToString(CultureInfo.InvariantCulture));
-        };
-
-        /// <summary>
-        ///     Saves the OpenMetaverse inventory cache.
-        /// </summary>
-        private static readonly System.Action SaveInventoryCache = () =>
-        {
-            string path = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
-                CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
-            int itemsSaved = Client.Inventory.Store.Items.Count;
-            Client.Inventory.Store.SaveToDisk(path);
-
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_SAVED),
-                itemsSaved.ToString(CultureInfo.InvariantCulture));
-        };
-
-        /// <summary>
-        ///     Loads Corrade's caches.
-        /// </summary>
-        private static readonly System.Action LoadCorradeCache = () =>
-        {
-            lock (Cache.Locks.AgentCacheLock)
-            {
-                Cache.AgentCache =
-                    Cache.Load(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
-                        Cache.AgentCache);
-            }
-            lock (Cache.Locks.GroupCacheLock)
-            {
-                Cache.GroupCache =
-                    Cache.Load(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
-                        Cache.GroupCache);
-            }
-        };
-
-        /// <summary>
-        ///     Saves Corrade's caches.
-        /// </summary>
-        private static readonly System.Action SaveCorradeCache = () =>
-        {
-            lock (Cache.Locks.AgentCacheLock)
-            {
-                Cache.Save(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
-                    Cache.AgentCache);
-            }
-            lock (Cache.Locks.GroupCacheLock)
-            {
-                Cache.Save(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
-                    Cache.GroupCache);
-            }
-        };
-
-        /// <summary>
-        ///     Saves Corrade's states.
-        /// </summary>
-        private static readonly System.Action SaveCorradeState = () =>
-        {
-            lock (GroupNotificationsLock)
-            {
-                try
-                {
-                    using (
-                        StreamWriter writer =
-                            new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                                CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE)))
-                    {
-                        XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
-                        serializer.Serialize(writer, GroupNotifications);
-                        writer.Flush();
-                    }
-                }
-                catch (Exception e)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE),
-                        e.Message);
-                }
-            }
-        };
-
-        /// <summary>
-        ///     Loads Corrade's states.
-        /// </summary>
-        private static readonly System.Action LoadCorradeState = () =>
-        {
-            lock (GroupNotificationsLock)
-            {
-                string groupNotificationsStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                    CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE);
-                if (File.Exists(groupNotificationsStateFile))
-                {
-                    HashSet<Notification> groupNotifications = new HashSet<Notification>();
-                    try
-                    {
-                        using (FileStream stream = File.OpenRead(groupNotificationsStateFile))
-                        {
-                            XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
-                            groupNotifications =
-                                (HashSet<Notification>) serializer.Deserialize(stream);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE),
-                            ex.Message);
-                    }
-
-                    // Only add notifications for existing configured groups.
-                    Parallel.ForEach(groupNotifications, o =>
-                    {
-                        if (!Configuration.GROUPS.Any(p => p.Name.Equals(o.GroupName))) return;
-                        GroupNotifications.Add(o);
-                    });
-                }
-            }
-        };
-
-        /// <summary>
-        ///     Loads the chatbot configuration and AIML files.
-        /// </summary>
-        private static readonly System.Action LoadChatBotFiles = () =>
-        {
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READING_AIML_BOT_CONFIGURATION));
-            try
-            {
-                AIMLBot.isAcceptingUserInput = false;
-                AIMLBot.loadSettings(wasPathCombine(
-                    Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
-                    AIML_BOT_CONSTANTS.CONFIG.DIRECTORY, AIML_BOT_CONSTANTS.CONFIG.SETTINGS_FILE));
-                string AIMLBotBrain =
-                    wasPathCombine(
-                        Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
-                        AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_FILE);
-                switch (File.Exists(AIMLBotBrain))
-                {
-                    case true:
-                        AIMLBot.loadFromBinaryFile(AIMLBotBrain);
-                        break;
-                    default:
-                        AIMLBot.loadAIMLFromFiles();
-                        AIMLBot.saveToBinaryFile(AIMLBotBrain);
-                        break;
-                }
-                string AIMLBotUserBrain =
-                    wasPathCombine(
-                        Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
-                        AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_SESSION_FILE);
-                if (File.Exists(AIMLBotUserBrain))
-                {
-                    AIMLBotUser.Predicates.loadSettings(AIMLBotUserBrain);
-                }
-                AIMLBot.isAcceptingUserInput = true;
-            }
-            catch (Exception ex)
-            {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_LOADING_AIML_BOT_FILES), ex.Message);
-                return;
-            }
-            finally
-            {
-                AIMLBotBrainCompiled = true;
-            }
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_AIML_BOT_CONFIGURATION));
-        };
-
-        /// <summary>
-        ///     Saves the chatbot configuration and AIML files.
-        /// </summary>
-        private static readonly System.Action SaveChatBotFiles = () =>
-        {
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WRITING_AIML_BOT_CONFIGURATION));
-            try
-            {
-                AIMLBot.isAcceptingUserInput = false;
-                AIMLBotUser.Predicates.DictionaryAsXML.Save(wasPathCombine(
-                    Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
-                    AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_SESSION_FILE));
-                AIMLBot.isAcceptingUserInput = true;
-            }
-            catch (Exception ex)
-            {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SAVING_AIML_BOT_FILES), ex.Message);
-                return;
-            }
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WROTE_AIML_BOT_CONFIGURATION));
-        };
-
-        private static volatile bool runCallbackThread = true;
-        private static volatile bool runGroupMembershipSweepThread = true;
-        private static volatile bool runNotificationThread = true;
-        private static volatile bool runEffectsExpirationThread = true;
 
         public Corrade()
         {
@@ -726,7 +134,7 @@ namespace Corrade
                             GroupMembers[args.GroupID],
                             o =>
                             {
-                                if (args.Members.Values.Any(p => p.ID.Equals(o))) return;
+                                if (args.Members.Values.AsParallel().Any(p => p.ID.Equals(o))) return;
                                 lock (LockObject)
                                 {
                                     partedMembers.Add(o);
@@ -753,7 +161,7 @@ namespace Corrade
                 // Enqueue configured groups that are currently joined groups.
                 groupUUIDs.Clear();
                 object LockObject = new object();
-                Parallel.ForEach(Configuration.GROUPS.Select(o => new {group = o, groupUUID = o.UUID})
+                Parallel.ForEach(Configuration.GROUPS.AsParallel().Select(o => new {group = o, groupUUID = o.UUID})
                     .Where(p => currentGroups.Any(o => o.Equals(p.groupUUID)))
                     .Select(o => o.group), o =>
                     {
@@ -771,7 +179,7 @@ namespace Corrade
                 memberCount.Clear();
                 lock (GroupMembersLock)
                 {
-                    Parallel.ForEach(GroupMembers.SelectMany(
+                    Parallel.ForEach(GroupMembers.AsParallel().SelectMany(
                         members => groupUUIDs,
                         (members, groupUUID) => new {members, groupUUID})
                         .Where(o => o.groupUUID.Equals(o.members.Key))
@@ -897,7 +305,8 @@ namespace Corrade
 
         private static bool ConsoleCtrlCheck(NativeMethods.CtrlType ctrlType)
         {
-            KeyValuePair<char, ManualResetEvent> semaphore = ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('u'));
+            KeyValuePair<char, ManualResetEvent> semaphore =
+                ConnectionSemaphores.AsParallel().FirstOrDefault(o => o.Key.Equals('u'));
             if (semaphore.Value != null)
             {
                 semaphore.Value.Set();
@@ -924,7 +333,7 @@ namespace Corrade
             // Pop first command to process.
             string first = unpack.First();
             // Remove command.
-            unpack = unpack.Where(o => !o.Equals(first)).ToArray();
+            unpack = unpack.AsParallel().Where(o => !o.Equals(first)).ToArray();
             // Keep rest of message.
             message = string.Join(RLV_CONSTANTS.CSV_DELIMITER, unpack);
 
@@ -1089,7 +498,9 @@ namespace Corrade
             Client.Appearance.RemoveFromOutfit(realItem);
             InventoryItem link = GetCurrentOutfitFolderLinks(
                 Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
-                    InventoryFolder).FirstOrDefault(o => o.AssetType.Equals(AssetType.Link) && o.Name.Equals(item.Name));
+                    InventoryFolder)
+                .AsParallel()
+                .FirstOrDefault(o => o.AssetType.Equals(AssetType.Link) && o.Name.Equals(item.Name));
             if (link == null) return;
             RemoveLink(link,
                 Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
@@ -1185,7 +596,7 @@ namespace Corrade
         private static IEnumerable<string> wasGetEnumDescriptions<T>()
         {
             return typeof (T).GetFields(BindingFlags.Static | BindingFlags.Public)
-                .Select(o => wasGetDescriptionFromEnumValue((Enum) o.GetValue(null)));
+                .AsParallel().Select(o => wasGetDescriptionFromEnumValue((Enum) o.GetValue(null)));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1204,7 +615,7 @@ namespace Corrade
 
             foreach (FieldInfo fi in @object.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public))
             {
-                if (fi.FieldType.FullName.Split(new[] {'.', '+'})
+                if (fi.FieldType.FullName.Split('.', '+')
                     .Contains(@namespace, StringComparer.InvariantCultureIgnoreCase))
                 {
                     foreach (KeyValuePair<FieldInfo, object> sf in wasGetFields(fi.GetValue(@object), @namespace))
@@ -1233,7 +644,7 @@ namespace Corrade
 
             foreach (PropertyInfo pi in @object.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
             {
-                if (pi.PropertyType.FullName.Split(new[] {'.', '+'})
+                if (pi.PropertyType.FullName.Split('.', '+')
                     .Contains(@namespace, StringComparer.InvariantCultureIgnoreCase))
                 {
                     foreach (
@@ -1505,7 +916,7 @@ namespace Corrade
                 if (!UUID.TryParse(setting, out UUIDData))
                 {
                     InventoryItem item = FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                        setting).FirstOrDefault() as InventoryItem;
+                        setting).AsParallel().FirstOrDefault() as InventoryItem;
                     if (item == null)
                     {
                         throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
@@ -1727,7 +1138,7 @@ namespace Corrade
             {
                 AvatarGroupsReceivedAlarm.Alarm(dataTimeout);
                 hasPowers =
-                    args.Groups.Any(
+                    args.Groups.AsParallel().Any(
                         o => o.GroupID.Equals(groupUUID) && !(o.GroupPowers & powers).Equals(GroupPowers.None));
             };
             Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
@@ -1790,7 +1201,7 @@ namespace Corrade
             EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
             {
                 GroupMembersReceivedAlarm.Alarm(dataTimeout);
-                agentInGroup = args.Members.Any(o => o.Value.ID.Equals(agentUUID));
+                agentInGroup = args.Members.AsParallel().Any(o => o.Value.ID.Equals(agentUUID));
             };
             Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
             Client.Groups.RequestGroupMembers(groupUUID);
@@ -1813,11 +1224,11 @@ namespace Corrade
         {
             UUID groupUUID;
             return UUID.TryParse(group, out groupUUID)
-                ? Configuration.GROUPS.Any(
+                ? Configuration.GROUPS.AsParallel().Any(
                     o =>
                         groupUUID.Equals(o.UUID) &&
                         password.Equals(o.Password, StringComparison.Ordinal))
-                : Configuration.GROUPS.Any(
+                : Configuration.GROUPS.AsParallel().Any(
                     o =>
                         o.Name.Equals(group, StringComparison.Ordinal) &&
                         password.Equals(o.Password, StringComparison.Ordinal));
@@ -1833,8 +1244,9 @@ namespace Corrade
         {
             UUID groupUUID;
             return !permission.Equals(0) && UUID.TryParse(group, out groupUUID)
-                ? Configuration.GROUPS.Any(o => groupUUID.Equals(o.UUID) && !(o.PermissionMask & permission).Equals(0))
-                : Configuration.GROUPS.Any(
+                ? Configuration.GROUPS.AsParallel()
+                    .Any(o => groupUUID.Equals(o.UUID) && !(o.PermissionMask & permission).Equals(0))
+                : Configuration.GROUPS.AsParallel().Any(
                     o =>
                         o.Name.Equals(group, StringComparison.Ordinal) &&
                         !(o.PermissionMask & permission).Equals(0));
@@ -1850,10 +1262,10 @@ namespace Corrade
         {
             UUID groupUUID;
             return !notification.Equals(0) && UUID.TryParse(group, out groupUUID)
-                ? Configuration.GROUPS.Any(
+                ? Configuration.GROUPS.AsParallel().Any(
                     o => groupUUID.Equals(o.UUID) &&
                          !(o.NotificationMask & notification).Equals(0))
-                : Configuration.GROUPS.Any(
+                : Configuration.GROUPS.AsParallel().Any(
                     o => o.Name.Equals(group, StringComparison.Ordinal) &&
                          !(o.NotificationMask & notification).Equals(0));
         }
@@ -1954,7 +1366,7 @@ namespace Corrade
             {
                 switch (o.ParentID)
                 {
-                        // primitive is a parent and it is in range
+                    // primitive is a parent and it is in range
                     case 0:
                         if (Vector3.Distance(o.Position, Client.Self.SimPosition) < range)
                         {
@@ -1969,7 +1381,7 @@ namespace Corrade
                             }
                         }
                         break;
-                        // primitive is a child
+                    // primitive is a child
                     default:
                         // find the parent of the primitive
                         Primitive parent = o;
@@ -2067,13 +1479,13 @@ namespace Corrade
             EventHandler<CurrentGroupsEventArgs> CurrentGroupsEventHandler = (sender, args) =>
             {
                 CurrentGroupsReceivedAlarm.Alarm(dataTimeout);
-                foreach (UUID groupUUID in args.Groups.Select(o => o.Value.ID))
+                Parallel.ForEach(args.Groups.AsParallel().Select(o => o.Value.ID), o =>
                 {
                     lock (LockObject)
                     {
-                        currentGroups.Add(groupUUID);
+                        currentGroups.Add(o);
                     }
-                }
+                });
             };
             Client.Groups.CurrentGroups += CurrentGroupsEventHandler;
             Client.Groups.RequestCurrentGroups();
@@ -2180,7 +1592,7 @@ namespace Corrade
                         foreach (
                             KeyValuePair<WearableType, AppearanceManager.WearableData> wearable in
                                 Client.Appearance.GetWearables()
-                                    .Where(o => o.Value.ItemID.Equals(inventoryItem.UUID)))
+                                    .AsParallel().Where(o => o.Value.ItemID.Equals(inventoryItem.UUID)))
                         {
                             yield return
                                 new KeyValuePair<AppearanceManager.WearableData, WearableType>(wearable.Value,
@@ -2281,7 +1693,6 @@ namespace Corrade
             }
         }
 
-
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -2296,7 +1707,8 @@ namespace Corrade
         {
             foreach (
                 InventoryNode node in
-                    rootFolder.Nodes.Values.Where(node => node.Data is InventoryFolder && node.Data.Name.Equals(folder))
+                    rootFolder.Nodes.Values.AsParallel()
+                        .Where(node => node.Data is InventoryFolder && node.Data.Name.Equals(folder))
                 )
             {
                 foreach (InventoryNode item in node.Nodes.Values)
@@ -2324,7 +1736,7 @@ namespace Corrade
             {
                 CORRADE_CONSTANTS.CORRADE,
                 string.Format(CultureInfo.InvariantCulture, "[{0}]",
-                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP, DateTimeFormatInfo.InvariantInfo)),
+                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP, DateTimeFormatInfo.InvariantInfo))
             };
 
             output.AddRange(messages.Select(message => message));
@@ -2465,7 +1877,7 @@ namespace Corrade
         protected override void OnStop()
         {
             base.OnStop();
-            ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
+            ConnectionSemaphores.AsParallel().FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
         }
 
         protected override void OnStart(string[] args)
@@ -2506,18 +1918,18 @@ namespace Corrade
                         {
                             Console.CancelKeyPress +=
                                 (sender, args) =>
-                                    ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
+                                    ConnectionSemaphores.AsParallel().FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
                         }
                     }
                     break;
                 case PlatformID.Unix:
                     BindSignalsThread = new Thread(() =>
                     {
-                        UnixSignal.WaitAny(new [] {
-                            new UnixSignal(Signum.SIGTERM),
-                            new UnixSignal(Signum.SIGINT), 
+                        UnixSignal.WaitAny(new[]
+                        {
+                            new UnixSignal(Signum.SIGTERM)
                         }, Timeout.Infinite);
-                        ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
+                        ConnectionSemaphores.AsParallel().FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
                     }) {IsBackground = true};
                     BindSignalsThread.Start();
                     break;
@@ -2963,7 +2375,7 @@ namespace Corrade
         private static void HandleKillObject(object sender, KillObjectEventArgs e)
         {
             KeyValuePair<UUID, Primitive> tracked =
-                RadarObjects.FirstOrDefault(o => o.Value.LocalID.Equals(e.ObjectLocalID));
+                RadarObjects.AsParallel().FirstOrDefault(o => o.Value.LocalID.Equals(e.ObjectLocalID));
             if (!tracked.Equals(default(KeyValuePair<UUID, Primitive>)))
             {
                 switch (tracked.Value is Avatar)
@@ -3139,7 +2551,7 @@ namespace Corrade
             {
                 Parallel.ForEach(GroupNotifications, o =>
                 {
-                    if ((o.NotificationMask & (uint) notification).Equals(0) || !Configuration.GROUPS.Any(
+                    if ((o.NotificationMask & (uint) notification).Equals(0) || !Configuration.GROUPS.AsParallel().Any(
                         p => p.Name.Equals(o.GroupName, StringComparison.Ordinal) &&
                              !(p.NotificationMask & (uint) notification).Equals(0))) return;
                     // Set the notification type
@@ -3257,7 +2669,7 @@ namespace Corrade
                                         {
                                             KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>
                                                 inventoryObjectOfferedEventArgs =
-                                                    InventoryOffers.FirstOrDefault(p =>
+                                                    InventoryOffers.AsParallel().FirstOrDefault(p =>
                                                         p.Key.Offer.IMSessionID.Equals(
                                                             inventoryOfferEventArgs.IM.IMSessionID));
                                             if (
@@ -3357,7 +2769,7 @@ namespace Corrade
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS),
                                 wasEnumerableToCSV(typeof (ScriptPermission).GetFields(BindingFlags.Public |
                                                                                        BindingFlags.Static)
-                                    .Where(
+                                    .AsParallel().Where(
                                         p =>
                                             !(((int) p.GetValue(null) &
                                                (int) scriptQuestionEventArgs.Questions)).Equals(0))
@@ -3382,7 +2794,7 @@ namespace Corrade
                                     // Return the friend rights as a nice CSV string.
                                     wasEnumerableToCSV(typeof (FriendRights).GetFields(BindingFlags.Public |
                                                                                        BindingFlags.Static)
-                                        .Where(
+                                        .AsParallel().Where(
                                             p =>
                                                 !(((int) p.GetValue(null) &
                                                    (int) friendInfoEventArgs.Friend.MyFriendRights))
@@ -3670,7 +3082,7 @@ namespace Corrade
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                                 notificationGroupInviteEventArgs.IM.FromAgentID.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
-                                GroupInvites.FirstOrDefault(
+                                GroupInvites.AsParallel().FirstOrDefault(
                                     p => p.Session.Equals(notificationGroupInviteEventArgs.IM.IMSessionID))
                                     .Group);
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
@@ -3828,7 +3240,7 @@ namespace Corrade
                                 lock (RadarObjectsLock)
                                 {
                                     KeyValuePair<UUID, Primitive> tracked =
-                                        RadarObjects.FirstOrDefault(
+                                        RadarObjects.AsParallel().FirstOrDefault(
                                             p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
                                     if (tracked.Equals(default(KeyValuePair<UUID, Primitive>))) return;
                                     prim = tracked.Value;
@@ -3878,7 +3290,7 @@ namespace Corrade
                                 lock (RadarObjectsLock)
                                 {
                                     KeyValuePair<UUID, Primitive> tracked =
-                                        RadarObjects.FirstOrDefault(
+                                        RadarObjects.AsParallel().FirstOrDefault(
                                             p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
                                     if (tracked.Equals(default(KeyValuePair<UUID, Primitive>))) return;
                                     prim = tracked.Value;
@@ -3986,8 +3398,8 @@ namespace Corrade
                                 using (
                                     StreamWriter logWriter =
                                         File.AppendText(
-                                            wasPathCombine(new[]
-                                            {Configuration.LOCAL_MESSAGE_LOG_DIRECTORY, Client.Network.CurrentSim.Name}) +
+                                            wasPathCombine(Configuration.LOCAL_MESSAGE_LOG_DIRECTORY,
+                                                Client.Network.CurrentSim.Name) +
                                             "." +
                                             CORRADE_CONSTANTS.LOG_FILE_EXTENSION))
                                 {
@@ -4044,7 +3456,7 @@ namespace Corrade
 
             // Accept anything from master avatars.
             if (
-                Configuration.MASTERS.Select(
+                Configuration.MASTERS.AsParallel().Select(
                     o => string.Format(CultureInfo.InvariantCulture, "{0} {1}", o.FirstName, o.LastName))
                     .Any(p => p.Equals(e.Offer.FromAgentName, StringComparison.OrdinalIgnoreCase)))
             {
@@ -4172,7 +3584,8 @@ namespace Corrade
             lock (RLVRulesLock)
             {
                 if (
-                    !RLVRules.Any(o => o.Behaviour.Equals(wasGetDescriptionFromEnumValue(RLVBehaviour.ACCEPTPERMISSION))))
+                    !RLVRules.AsParallel()
+                        .Any(o => o.Behaviour.Equals(wasGetDescriptionFromEnumValue(RLVBehaviour.ACCEPTPERMISSION))))
                     return;
                 lock (ClientInstanceLock)
                 {
@@ -4184,7 +3597,7 @@ namespace Corrade
         private static void HandleDisconnected(object sender, DisconnectedEventArgs e)
         {
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.DISCONNECTED));
-            ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('l')).Value.Set();
+            ConnectionSemaphores.AsParallel().FirstOrDefault(o => o.Key.Equals('l')).Value.Set();
         }
 
         private static void HandleEventQueueRunning(object sender, EventQueueRunningEventArgs e)
@@ -4200,9 +3613,9 @@ namespace Corrade
         private static void HandleSimulatorDisconnected(object sender, SimDisconnectedEventArgs e)
         {
             // if any simulators are still connected, we are not disconnected
-            if (Client.Network.Simulators.Any()) return;
+            if (Client.Network.Simulators.AsParallel().Any()) return;
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ALL_SIMULATORS_DISCONNECTED));
-            ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('s')).Value.Set();
+            ConnectionSemaphores.AsParallel().FirstOrDefault(o => o.Key.Equals('s')).Value.Set();
         }
 
         private static void HandleLoginProgress(object sender, LoginProgressEventArgs e)
@@ -4255,7 +3668,7 @@ namespace Corrade
                     break;
                 case LoginStatus.Failed:
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_FAILED), e.FailReason);
-                    ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('l')).Value.Set();
+                    ConnectionSemaphores.AsParallel().FirstOrDefault(o => o.Key.Equals('l')).Value.Set();
                     break;
             }
         }
@@ -4324,7 +3737,7 @@ namespace Corrade
             // Process dialog messages.
             switch (args.IM.Dialog)
             {
-                    // Send typing notification.
+                // Send typing notification.
                 case InstantMessageDialog.StartTyping:
                 case InstantMessageDialog.StopTyping:
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
@@ -4334,7 +3747,7 @@ namespace Corrade
                 case InstantMessageDialog.FriendshipOffered:
                     // Accept friendships only from masters (for the time being)
                     if (
-                        !Configuration.MASTERS.Any(
+                        !Configuration.MASTERS.AsParallel().Any(
                             o =>
                                 o.FirstName.Equals(fullName.First(), StringComparison.OrdinalIgnoreCase) &&
                                 o.LastName.Equals(fullName.Last(), StringComparison.OrdinalIgnoreCase))) return;
@@ -4356,7 +3769,9 @@ namespace Corrade
                     // Handle RLV: acccepttp
                     lock (RLVRulesLock)
                     {
-                        if (RLVRules.Any(o => o.Behaviour.Equals(wasGetDescriptionFromEnumValue(RLVBehaviour.ACCEPTTP))))
+                        if (
+                            RLVRules.AsParallel()
+                                .Any(o => o.Behaviour.Equals(wasGetDescriptionFromEnumValue(RLVBehaviour.ACCEPTTP))))
                         {
                             lock (ClientInstanceLock)
                             {
@@ -4378,7 +3793,7 @@ namespace Corrade
                             {
                                 FirstName = teleportLureName.First(),
                                 LastName = teleportLureName.Last(),
-                                UUID = args.IM.FromAgentID,
+                                UUID = args.IM.FromAgentID
                             },
                             Session = args.IM.IMSessionID
                         });
@@ -4390,7 +3805,7 @@ namespace Corrade
                     // If we got a teleport request from a master, then accept it (for the moment).
                     lock (ClientInstanceLock)
                     {
-                        if (!Configuration.MASTERS.Select(
+                        if (!Configuration.MASTERS.AsParallel().Select(
                             o =>
                                 string.Format(CultureInfo.InvariantCulture, "{0} {1}", o.FirstName, o.LastName))
                             .
@@ -4404,7 +3819,7 @@ namespace Corrade
                         Client.Self.TeleportLureRespond(args.IM.FromAgentID, args.IM.IMSessionID, true);
                     }
                     return;
-                    // Group invitations received
+                // Group invitations received
                 case InstantMessageDialog.GroupInvitation:
                     OpenMetaverse.Group inviteGroup = new OpenMetaverse.Group();
                     lock (ClientInstanceLock)
@@ -4447,7 +3862,7 @@ namespace Corrade
                     lock (ClientInstanceLock)
                     {
                         if (
-                            !Configuration.MASTERS.Select(
+                            !Configuration.MASTERS.AsParallel().Select(
                                 o =>
                                     string.Format(CultureInfo.InvariantCulture, "{0}.{1}", o.FirstName, o.LastName))
                                 .
@@ -4456,7 +3871,7 @@ namespace Corrade
                     }
                     Client.Self.GroupInviteRespond(inviteGroup.ID, args.IM.IMSessionID, true);
                     return;
-                    // Group notice inventory accepted, declined or notice received.
+                // Group notice inventory accepted, declined or notice received.
                 case InstantMessageDialog.GroupNoticeInventoryAccepted:
                 case InstantMessageDialog.GroupNoticeInventoryDeclined:
                 case InstantMessageDialog.GroupNotice:
@@ -4479,9 +3894,10 @@ namespace Corrade
                                 ref currentGroups))
                             return;
                     }
-                    if (currentGroups.Any(o => o.Equals(args.IM.IMSessionID)))
+                    if (currentGroups.AsParallel().Any(o => o.Equals(args.IM.IMSessionID)))
                     {
-                        Group messageGroup = Configuration.GROUPS.FirstOrDefault(p => p.UUID.Equals(args.IM.IMSessionID));
+                        Group messageGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(p => p.UUID.Equals(args.IM.IMSessionID));
                         if (!messageGroup.Equals(default(Group)))
                         {
                             // Send group notice notifications.
@@ -4492,7 +3908,7 @@ namespace Corrade
                             lock (ClientInstanceLock)
                             {
                                 Parallel.ForEach(
-                                    Configuration.GROUPS.Where(
+                                    Configuration.GROUPS.AsParallel().Where(
                                         o =>
                                             o.Name.Equals(messageGroup.Name, StringComparison.Ordinal) &&
                                             o.ChatLogEnabled),
@@ -4563,8 +3979,8 @@ namespace Corrade
                                     using (
                                         StreamWriter logWriter =
                                             File.AppendText(
-                                                wasPathCombine(new[]
-                                                {Configuration.INSTANT_MESSAGE_LOG_DIRECTORY, args.IM.FromAgentName}) +
+                                                wasPathCombine(Configuration.INSTANT_MESSAGE_LOG_DIRECTORY,
+                                                    args.IM.FromAgentName) +
                                                 "." + CORRADE_CONSTANTS.LOG_FILE_EXTENSION))
                                     {
                                         logWriter.WriteLine("[{0}] {1} {2} : {3}",
@@ -4603,11 +4019,8 @@ namespace Corrade
                                     using (
                                         StreamWriter logWriter =
                                             File.AppendText(
-                                                wasPathCombine(new[]
-                                                {
-                                                    Configuration.REGION_MESSAGE_LOG_DIRECTORY,
-                                                    Client.Network.CurrentSim.Name
-                                                }) + "." +
+                                                wasPathCombine(Configuration.REGION_MESSAGE_LOG_DIRECTORY,
+                                                    Client.Network.CurrentSim.Name) + "." +
                                                 CORRADE_CONSTANTS.LOG_FILE_EXTENSION))
                                     {
                                         logWriter.WriteLine("[{0}] {1} {2} : {3}",
@@ -4663,7 +4076,7 @@ namespace Corrade
             // Pop first command to process.
             string first = unpack.First();
             // Remove command.
-            unpack = unpack.Where(o => !o.Equals(first)).ToArray();
+            unpack = unpack.AsParallel().Where(o => !o.Equals(first)).ToArray();
             // Keep rest of message.
             message = string.Join(RLV_CONSTANTS.CSV_DELIMITER, unpack);
 
@@ -4767,13 +4180,13 @@ namespace Corrade
                             !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                 ref currentGroups))
                             return;
-                        if (!currentGroups.Any(o => o.Equals(groupUUID)))
+                        if (!currentGroups.AsParallel().Any(o => o.Equals(groupUUID)))
                         {
                             return;
                         }
                         string groupName = string.Empty;
                         if (
-                            !GroupUUIDToName(currentGroups.FirstOrDefault(o => o.Equals(groupUUID)),
+                            !GroupUUIDToName(currentGroups.AsParallel().FirstOrDefault(o => o.Equals(groupUUID)),
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref groupName))
                         {
                             return;
@@ -4801,11 +4214,11 @@ namespace Corrade
                             !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                                 ref currentGroups))
                             return;
-                        if (!currentGroups.Any(o => o.Equals(groupUUID)))
+                        if (!currentGroups.AsParallel().Any(o => o.Equals(groupUUID)))
                         {
                             return;
                         }
-                        Client.Groups.ActivateGroup(currentGroups.FirstOrDefault(o => o.Equals(groupUUID)));
+                        Client.Groups.ActivateGroup(currentGroups.AsParallel().FirstOrDefault(o => o.Equals(groupUUID)));
                     };
                     break;
                 case RLVBehaviour.GETSITID:
@@ -4947,10 +4360,10 @@ namespace Corrade
                         {
                             case true:
                                 WearableType wearableType =
-                                    RLVWearables.FirstOrDefault(
+                                    RLVWearables.AsParallel().FirstOrDefault(
                                         o => o.Name.Equals(RLVrule.Option, StringComparison.InvariantCultureIgnoreCase))
                                         .WearableType;
-                                if (!wearables.Any(o => o.Value.Equals(wearableType)))
+                                if (!wearables.AsParallel().Any(o => o.Value.Equals(wearableType)))
                                 {
                                     response.Append(RLV_CONSTANTS.FALSE_MARKER);
                                     break;
@@ -4961,7 +4374,7 @@ namespace Corrade
                                 string[] data = new string[RLVWearables.Count];
                                 Parallel.ForEach(Enumerable.Range(0, RLVWearables.Count), o =>
                                 {
-                                    if (!wearables.Any(p => p.Value.Equals(RLVWearables[o].WearableType)))
+                                    if (!wearables.AsParallel().Any(p => p.Value.Equals(RLVWearables[o].WearableType)))
                                     {
                                         data[o] = RLV_CONSTANTS.FALSE_MARKER;
                                         return;
@@ -4983,19 +4396,20 @@ namespace Corrade
                             return;
                         }
                         HashSet<Primitive> attachments = new HashSet<Primitive>(
-                            GetAttachments(Configuration.SERVICES_TIMEOUT).Select(o => o.Key));
+                            GetAttachments(Configuration.SERVICES_TIMEOUT).AsParallel().Select(o => o.Key));
                         StringBuilder response = new StringBuilder();
                         if (attachments.Count.Equals(0))
                         {
                             Client.Self.Chat(response.ToString(), channel, ChatType.Normal);
                         }
                         HashSet<AttachmentPoint> attachmentPoints =
-                            new HashSet<AttachmentPoint>(attachments.Select(o => o.PrimData.AttachmentPoint));
+                            new HashSet<AttachmentPoint>(attachments.AsParallel()
+                                .Select(o => o.PrimData.AttachmentPoint));
                         switch (!string.IsNullOrEmpty(RLVrule.Option))
                         {
                             case true:
                                 AttachmentPoint attachmentPoint =
-                                    RLVAttachments.FirstOrDefault(
+                                    RLVAttachments.AsParallel().FirstOrDefault(
                                         o => o.Name.Equals(RLVrule.Option, StringComparison.InvariantCultureIgnoreCase))
                                         .AttachmentPoint;
                                 if (!attachmentPoints.Contains(attachmentPoint))
@@ -5031,7 +4445,7 @@ namespace Corrade
                         }
                         KeyValuePair<Primitive, AttachmentPoint> attachment =
                             GetAttachments(Configuration.SERVICES_TIMEOUT)
-                                .FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
+                                .AsParallel().FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
                         if (attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                         {
                             return;
@@ -5040,7 +4454,7 @@ namespace Corrade
                             FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                 attachment.Key.Properties.ItemID
                                 )
-                                .FirstOrDefault(
+                                .AsParallel().FirstOrDefault(
                                     p =>
                                         (p is InventoryItem) &&
                                         ((InventoryItem) p).AssetType.Equals(AssetType.Object));
@@ -5061,7 +4475,9 @@ namespace Corrade
                         }
                         InventoryNode RLVFolder =
                             FindInventory<InventoryNode>(Client.Inventory.Store.RootNode,
-                                RLV_CONSTANTS.SHARED_FOLDER_NAME).FirstOrDefault(o => o.Data is InventoryFolder);
+                                RLV_CONSTANTS.SHARED_FOLDER_NAME)
+                                .AsParallel()
+                                .FirstOrDefault(o => o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
                             return;
@@ -5071,35 +4487,36 @@ namespace Corrade
                         {
                             case true:
                                 RLVAttachment RLVattachment =
-                                    RLVAttachments.FirstOrDefault(
+                                    RLVAttachments.AsParallel().FirstOrDefault(
                                         o => o.Name.Equals(RLVrule.Option, StringComparison.InvariantCultureIgnoreCase));
                                 switch (!RLVattachment.Equals(default(RLVAttachment)))
                                 {
                                     case true: // detach by attachment point
                                         Parallel.ForEach(
                                             GetAttachments(Configuration.SERVICES_TIMEOUT)
-                                                .Where(o => o.Value.Equals(RLVattachment.AttachmentPoint)), o =>
+                                                .AsParallel().Where(o => o.Value.Equals(RLVattachment.AttachmentPoint)),
+                                            o =>
+                                            {
+                                                inventoryBase =
+                                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
+                                                        o.Key.Properties.Name
+                                                        )
+                                                        .FirstOrDefault(
+                                                            p =>
+                                                                (p is InventoryItem) &&
+                                                                ((InventoryItem) p).AssetType.Equals(
+                                                                    AssetType.Object));
+                                                if (inventoryBase is InventoryAttachment ||
+                                                    inventoryBase is InventoryObject)
                                                 {
-                                                    inventoryBase =
-                                                        FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                                                            o.Key.Properties.Name
-                                                            )
-                                                            .FirstOrDefault(
-                                                                p =>
-                                                                    (p is InventoryItem) &&
-                                                                    ((InventoryItem) p).AssetType.Equals(
-                                                                        AssetType.Object));
-                                                    if (inventoryBase is InventoryAttachment ||
-                                                        inventoryBase is InventoryObject)
-                                                    {
-                                                        Detach(inventoryBase as InventoryItem);
-                                                    }
-                                                });
+                                                    Detach(inventoryBase as InventoryItem);
+                                                }
+                                            });
                                         break;
                                     default: // detach by folder(s) name
                                         Parallel.ForEach(
                                             RLVrule.Option.Split(RLV_CONSTANTS.PATH_SEPARATOR[0])
-                                                .Select(
+                                                .AsParallel().Select(
                                                     folder =>
                                                         FindInventory<InventoryBase>(RLVFolder,
                                                             new Regex(Regex.Escape(folder),
@@ -5133,6 +4550,7 @@ namespace Corrade
                             default: //detach everything from RLV attachmentpoints
                                 Parallel.ForEach(
                                     GetAttachments(Configuration.SERVICES_TIMEOUT)
+                                        .AsParallel()
                                         .Where(o => RLVAttachments.Any(p => p.AttachmentPoint.Equals(o.Value))), o =>
                                         {
                                             inventoryBase = FindInventory<InventoryBase>(
@@ -5163,14 +4581,16 @@ namespace Corrade
                         }
                         InventoryNode RLVFolder =
                             FindInventory<InventoryNode>(Client.Inventory.Store.RootNode,
-                                RLV_CONSTANTS.SHARED_FOLDER_NAME).FirstOrDefault(o => o.Data is InventoryFolder);
+                                RLV_CONSTANTS.SHARED_FOLDER_NAME)
+                                .AsParallel()
+                                .FirstOrDefault(o => o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
                             return;
                         }
                         Parallel.ForEach(
                             RLVrule.Option.Split(RLV_CONSTANTS.PATH_SEPARATOR[0])
-                                .Select(
+                                .AsParallel().Select(
                                     folder =>
                                         FindInventory<InventoryBase>(RLVFolder,
                                             new Regex(Regex.Escape(folder),
@@ -5215,7 +4635,7 @@ namespace Corrade
                             case true: // A single wearable
                                 FieldInfo wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
                                                                                          BindingFlags.Static)
-                                    .FirstOrDefault(
+                                    .AsParallel().FirstOrDefault(
                                         p => p.Name.Equals(RLVrule.Option, StringComparison.InvariantCultureIgnoreCase));
                                 if (wearTypeInfo == null)
                                 {
@@ -5224,7 +4644,7 @@ namespace Corrade
                                 inventoryBase =
                                     FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                         GetWearables(Client.Inventory.Store.RootNode)
-                                            .FirstOrDefault(
+                                            .AsParallel().FirstOrDefault(
                                                 o => o.Value.Equals((WearableType) wearTypeInfo.GetValue(null)))
                                             .Value).FirstOrDefault();
                                 if (inventoryBase == null)
@@ -5235,7 +4655,7 @@ namespace Corrade
                                 break;
                             default:
                                 Parallel.ForEach(GetWearables(Client.Inventory.Store.RootNode)
-                                    .Select(o => new[]
+                                    .AsParallel().Select(o => new[]
                                     {
                                         o.Key
                                     }).SelectMany(o => o), o =>
@@ -5266,7 +4686,9 @@ namespace Corrade
                         }
                         InventoryNode RLVFolder =
                             FindInventory<InventoryNode>(Client.Inventory.Store.RootNode,
-                                RLV_CONSTANTS.SHARED_FOLDER_NAME).FirstOrDefault(o => o.Data is InventoryFolder);
+                                RLV_CONSTANTS.SHARED_FOLDER_NAME)
+                                .AsParallel()
+                                .FirstOrDefault(o => o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
                             Client.Self.Chat(string.Empty, channel, ChatType.Normal);
@@ -5280,12 +4702,13 @@ namespace Corrade
                             case true:
                                 // Try attachments
                                 RLVAttachment RLVattachment =
-                                    RLVAttachments.FirstOrDefault(
+                                    RLVAttachments.AsParallel().FirstOrDefault(
                                         o => o.Name.Equals(RLVrule.Option, StringComparison.InvariantCultureIgnoreCase));
                                 if (!RLVattachment.Equals(default(RLVAttachment)))
                                 {
                                     attachment =
                                         GetAttachments(Configuration.SERVICES_TIMEOUT)
+                                            .AsParallel()
                                             .FirstOrDefault(o => o.Value.Equals(RLVattachment.AttachmentPoint));
                                     if (attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                                     {
@@ -5294,20 +4717,20 @@ namespace Corrade
                                     inventoryBase = FindInventory<InventoryBase>(
                                         RLVFolder, attachment.Key.Properties.ItemID
                                         )
-                                        .FirstOrDefault(
+                                        .AsParallel().FirstOrDefault(
                                             p =>
                                                 (p is InventoryItem) &&
                                                 ((InventoryItem) p).AssetType.Equals(AssetType.Object));
                                     break;
                                 }
                                 RLVWearable RLVwearable =
-                                    RLVWearables.FirstOrDefault(
+                                    RLVWearables.AsParallel().FirstOrDefault(
                                         o => o.Name.Equals(RLVrule.Option, StringComparison.InvariantCultureIgnoreCase));
                                 if (!RLVwearable.Equals(default(RLVWearable)))
                                 {
                                     FieldInfo wearTypeInfo = typeof (WearableType).GetFields(BindingFlags.Public |
                                                                                              BindingFlags.Static)
-                                        .FirstOrDefault(
+                                        .AsParallel().FirstOrDefault(
                                             p =>
                                                 p.Name.Equals(RLVrule.Option,
                                                     StringComparison.InvariantCultureIgnoreCase));
@@ -5317,7 +4740,7 @@ namespace Corrade
                                     }
                                     KeyValuePair<AppearanceManager.WearableData, WearableType> wearable = GetWearables(
                                         RLVFolder)
-                                        .FirstOrDefault(
+                                        .AsParallel().FirstOrDefault(
                                             o => o.Value.Equals((WearableType) wearTypeInfo.GetValue(null)));
                                     if (
                                         wearable.Equals(
@@ -5329,13 +4752,13 @@ namespace Corrade
                                         FindInventory<InventoryBase>(RLVFolder,
                                             wearable
                                                 .Key.ItemID)
-                                            .FirstOrDefault(o => (o is InventoryWearable));
+                                            .AsParallel().FirstOrDefault(o => (o is InventoryWearable));
                                 }
                                 break;
                             default:
                                 attachment =
                                     GetAttachments(Configuration.SERVICES_TIMEOUT)
-                                        .FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
+                                        .AsParallel().FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
                                 if (attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                                 {
                                     break;
@@ -5343,7 +4766,7 @@ namespace Corrade
                                 inventoryBase = FindInventory<InventoryBase>(
                                     Client.Inventory.Store.RootNode, attachment.Key.Properties.ItemID
                                     )
-                                    .FirstOrDefault(
+                                    .AsParallel().FirstOrDefault(
                                         p =>
                                             (p is InventoryItem) &&
                                             ((InventoryItem) p).AssetType.Equals(AssetType.Object));
@@ -5381,7 +4804,9 @@ namespace Corrade
                         }
                         InventoryNode RLVFolder =
                             FindInventory<InventoryNode>(Client.Inventory.Store.RootNode,
-                                RLV_CONSTANTS.SHARED_FOLDER_NAME).FirstOrDefault(o => o.Data is InventoryFolder);
+                                RLV_CONSTANTS.SHARED_FOLDER_NAME)
+                                .AsParallel()
+                                .FirstOrDefault(o => o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
                             Client.Self.Chat(string.Empty, channel, ChatType.Normal);
@@ -5394,7 +4819,7 @@ namespace Corrade
                         Parallel.ForEach(FindInventoryPath<InventoryBase>(RLVFolder,
                             CORRADE_CONSTANTS.OneOrMoRegex,
                             new LinkedList<string>())
-                            .Where(
+                            .AsParallel().Where(
                                 o =>
                                     o.Key is InventoryFolder &&
                                     !o.Key.Name.Substring(1).Equals(RLV_CONSTANTS.DOT_MARKER) &&
@@ -5437,7 +4862,9 @@ namespace Corrade
                         }
                         InventoryNode RLVFolder =
                             FindInventory<InventoryNode>(Client.Inventory.Store.RootNode,
-                                RLV_CONSTANTS.SHARED_FOLDER_NAME).FirstOrDefault(o => o.Data is InventoryFolder);
+                                RLV_CONSTANTS.SHARED_FOLDER_NAME)
+                                .AsParallel()
+                                .FirstOrDefault(o => o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
                             Client.Self.Chat(string.Empty, channel, ChatType.Normal);
@@ -5452,7 +4879,7 @@ namespace Corrade
                                         RLVFolder,
                                         CORRADE_CONSTANTS.OneOrMoRegex,
                                         new LinkedList<string>())
-                                    .Where(o => o.Key.Data is InventoryFolder)
+                                    .AsParallel().Where(o => o.Key.Data is InventoryFolder)
                                     .FirstOrDefault(
                                         o =>
                                             string.Join(RLV_CONSTANTS.PATH_SEPARATOR, o.Value.Skip(1).ToArray())
@@ -5494,7 +4921,9 @@ namespace Corrade
                         }
                         InventoryNode RLVFolder =
                             FindInventory<InventoryNode>(Client.Inventory.Store.RootNode,
-                                RLV_CONSTANTS.SHARED_FOLDER_NAME).FirstOrDefault(o => o.Data is InventoryFolder);
+                                RLV_CONSTANTS.SHARED_FOLDER_NAME)
+                                .AsParallel()
+                                .FirstOrDefault(o => o.Data is InventoryFolder);
                         if (RLVFolder == null)
                         {
                             Client.Self.Chat(string.Empty, channel, ChatType.Normal);
@@ -5504,7 +4933,7 @@ namespace Corrade
                             RLVFolder,
                             CORRADE_CONSTANTS.OneOrMoRegex,
                             new LinkedList<string>())
-                            .Where(o => o.Key.Data is InventoryFolder)
+                            .AsParallel().Where(o => o.Key.Data is InventoryFolder)
                             .FirstOrDefault(
                                 o =>
                                     string.Join(RLV_CONSTANTS.PATH_SEPARATOR, o.Value.Skip(1).ToArray())
@@ -5525,7 +4954,7 @@ namespace Corrade
                             int myItemsWornCount = 0;
 
                             Parallel.ForEach(
-                                node.Nodes.Values.Where(
+                                node.Nodes.Values.AsParallel().Where(
                                     n =>
                                         !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
                                         n.Data is InventoryItem && CanBeWorn(n.Data)
@@ -5533,9 +4962,9 @@ namespace Corrade
                                     {
                                         Interlocked.Increment(ref myItemsCount);
                                         if ((n.Data is InventoryWearable &&
-                                             currentWearables.Keys.Any(
+                                             currentWearables.Keys.AsParallel().Any(
                                                  o => o.ItemID.Equals(ResolveItemLink(n.Data as InventoryItem).UUID))) ||
-                                            currentAttachments.Any(
+                                            currentAttachments.AsParallel().Any(
                                                 o =>
                                                     o.Key.Properties.ItemID.Equals(
                                                         ResolveItemLink(n.Data as InventoryItem).UUID)))
@@ -5549,13 +4978,13 @@ namespace Corrade
                             int allItemsWornCount = 0;
 
                             Parallel.ForEach(
-                                node.Nodes.Values.Where(
+                                node.Nodes.Values.AsParallel().Where(
                                     n =>
                                         !n.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) &&
                                         n.Data is InventoryFolder
                                     ),
                                 n => Parallel.ForEach(n.Nodes.Values
-                                    .Where(o => !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
+                                    .AsParallel().Where(o => !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
                                     .Where(
                                         o =>
                                             o.Data is InventoryItem && CanBeWorn(o.Data) &&
@@ -5563,11 +4992,11 @@ namespace Corrade
                                             {
                                                 Interlocked.Increment(ref allItemsCount);
                                                 if ((p.Data is InventoryWearable &&
-                                                     currentWearables.Keys.Any(
+                                                     currentWearables.Keys.AsParallel().Any(
                                                          o =>
                                                              o.ItemID.Equals(
                                                                  ResolveItemLink(p.Data as InventoryItem).UUID))) ||
-                                                    currentAttachments.Any(
+                                                    currentAttachments.AsParallel().Any(
                                                         o =>
                                                             o.Key.Properties.ItemID.Equals(
                                                                 ResolveItemLink(p.Data as InventoryItem).UUID)))
@@ -5589,7 +5018,7 @@ namespace Corrade
                                 GetWornIndicator(folderPath.Key))
                         };
                         response.AddRange(
-                            folderPath.Key.Nodes.Values.Where(node => node.Data is InventoryFolder)
+                            folderPath.Key.Nodes.Values.AsParallel().Where(node => node.Data is InventoryFolder)
                                 .Select(
                                     node =>
                                         string.Format("{0}{1}{2}", node.Data.Name,
@@ -5627,7 +5056,7 @@ namespace Corrade
                         lock (RLVRulesLock)
                         {
                             object LockObject = new object();
-                            Parallel.ForEach(RLVRules.Where(o =>
+                            Parallel.ForEach(RLVRules.AsParallel().Where(o =>
                                 o.ObjectUUID.Equals(senderUUID) && o.Behaviour.Contains(filter)
                                 ), o =>
                                 {
@@ -5674,11 +5103,8 @@ namespace Corrade
                         () =>
                         {
                             throw new Exception(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR,
-                                new[]
-                                {
-                                    wasGetDescriptionFromEnumValue(ConsoleError.BEHAVIOUR_NOT_IMPLEMENTED),
-                                    RLVrule.Behaviour
-                                }));
+                                wasGetDescriptionFromEnumValue(ConsoleError.BEHAVIOUR_NOT_IMPLEMENTED),
+                                RLVrule.Behaviour));
                         };
                     break;
             }
@@ -5713,7 +5139,7 @@ namespace Corrade
             if (UUID.TryParse(group, out groupUUID))
             {
                 // First, trust the user to have properly configured the UUID for the group.
-                Group configGroup = Configuration.GROUPS.FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                Group configGroup = Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
                 switch (!configGroup.Equals(default(Group)))
                 {
                     case true:
@@ -5788,7 +5214,7 @@ namespace Corrade
             lock (ClientInstanceLock)
             {
                 if ((uint) GroupWorkers[group] >
-                    Configuration.GROUPS.FirstOrDefault(
+                    Configuration.GROUPS.AsParallel().FirstOrDefault(
                         o => o.Name.Equals(group, StringComparison.InvariantCultureIgnoreCase)).Workers)
                 {
                     // And refuse to proceed if they have.
@@ -5852,7 +5278,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -5959,7 +5385,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -6008,7 +5434,7 @@ namespace Corrade
                                 wasCSVToEnumerable(
                                     wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
                                         message)))
-                                    .Where(o => !string.IsNullOrEmpty(o)))
+                                    .AsParallel().Where(o => !string.IsNullOrEmpty(o)))
                         {
                             UUID roleUUID;
                             if (!UUID.TryParse(role, out roleUUID) &&
@@ -6050,7 +5476,7 @@ namespace Corrade
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                                     .ToLowerInvariant());
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -6083,7 +5509,7 @@ namespace Corrade
                         }
                         lock (GroupInviteLock)
                         {
-                            if (!GroupInvites.Any(o => o.Session.Equals(sessionUUID)))
+                            if (!GroupInvites.AsParallel().Any(o => o.Session.Equals(sessionUUID)))
                             {
                                 throw new Exception(
                                     wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_GROUP_INVITE_SESSION));
@@ -6092,7 +5518,7 @@ namespace Corrade
                         int amount;
                         lock (GroupInviteLock)
                         {
-                            amount = GroupInvites.FirstOrDefault(o => o.Session.Equals(sessionUUID)).Fee;
+                            amount = GroupInvites.AsParallel().FirstOrDefault(o => o.Session.Equals(sessionUUID)).Fee;
                         }
                         if (!amount.Equals(0) && action.Equals((uint) Action.ACCEPT))
                         {
@@ -6161,7 +5587,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -6215,13 +5641,13 @@ namespace Corrade
                         ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler = (sender, args) =>
                         {
-                            if (args.RolesMembers.Any(
+                            if (args.RolesMembers.AsParallel().Any(
                                 o => o.Key.Equals(commandGroup.OwnerRole) && o.Value.Equals(agentUUID)))
                             {
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.CANNOT_EJECT_OWNERS));
                             }
                             Parallel.ForEach(
-                                args.RolesMembers.Where(
+                                args.RolesMembers.AsParallel().Where(
                                     o => o.Value.Equals(agentUUID)),
                                 o => Client.Groups.RemoveFromRole(groupUUID, o.Key, agentUUID));
                             GroupRoleMembersReplyEvent.Set();
@@ -6266,7 +5692,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -6338,7 +5764,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -6386,7 +5812,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -6437,7 +5863,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -6501,7 +5927,7 @@ namespace Corrade
                             o =>
                                 Parallel.ForEach(
                                     typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                        .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                        .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                     q => { powers |= ((ulong) q.GetValue(null)); }));
                         if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ChangeActions,
                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
@@ -6539,7 +5965,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -6565,7 +5991,7 @@ namespace Corrade
                         List<string> csv = new List<string>();
                         EventHandler<GroupRolesDataReplyEventArgs> GroupRolesDataEventHandler = (sender, args) =>
                         {
-                            csv.AddRange(args.Roles.Select(o => new[]
+                            csv.AddRange(args.Roles.AsParallel().Select(o => new[]
                             {
                                 o.Value.Name,
                                 o.Value.ID.ToString(),
@@ -6599,7 +6025,8 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
-                            Configuration.GROUPS.FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
+                            Configuration.GROUPS.AsParallel()
+                                .FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
                                 .UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -6654,7 +6081,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -6704,7 +6131,8 @@ namespace Corrade
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                         {
                             foreach (
-                                KeyValuePair<UUID, UUID> pair in args.RolesMembers.Where(o => o.Value.Equals(agentUUID))
+                                KeyValuePair<UUID, UUID> pair in
+                                    args.RolesMembers.AsParallel().Where(o => o.Value.Equals(agentUUID))
                                 )
                             {
                                 string roleName = string.Empty;
@@ -6742,7 +6170,8 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
-                            Configuration.GROUPS.FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
+                            Configuration.GROUPS.AsParallel()
+                                .FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
                                 .UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -6777,7 +6206,7 @@ namespace Corrade
                             {
                                 foreach (
                                     KeyValuePair<UUID, UUID> pair in
-                                        args.RolesMembers.Where(o => o.Key.Equals(roleUUID)))
+                                        args.RolesMembers.AsParallel().Where(o => o.Key.Equals(roleUUID)))
                                 {
                                     string agentName = string.Empty;
                                     if (
@@ -6813,7 +6242,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -6843,7 +6272,8 @@ namespace Corrade
                                 // First resolve the all the role names to role UUIDs
                                 Hashtable roleUUIDNames = new Hashtable(args.RolesMembers.Count);
                                 foreach (
-                                    UUID roleUUID in args.RolesMembers.GroupBy(o => o.Key).Select(o => o.First().Key))
+                                    UUID roleUUID in
+                                        args.RolesMembers.AsParallel().GroupBy(o => o.Key).Select(o => o.First().Key))
                                 {
                                     string roleName = string.Empty;
                                     if (
@@ -6891,7 +6321,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -6933,9 +6363,10 @@ namespace Corrade
                         ManualResetEvent GroupRoleDataReplyEvent = new ManualResetEvent(false);
                         EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataEventHandler = (sender, args) =>
                         {
-                            GroupRole queryRole = args.Roles.Values.FirstOrDefault(o => o.ID.Equals(roleUUID));
+                            GroupRole queryRole =
+                                args.Roles.Values.AsParallel().FirstOrDefault(o => o.ID.Equals(roleUUID));
                             csv.UnionWith(typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                .Where(
+                                .AsParallel().Where(
                                     o =>
                                         !(((ulong) o.GetValue(null) &
                                            (ulong) queryRole.Powers)).Equals(0))
@@ -6967,7 +6398,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -7025,7 +6456,7 @@ namespace Corrade
                         ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                         {
-                            Parallel.ForEach(args.RolesMembers.Where(o => o.Key.Equals(roleUUID)),
+                            Parallel.ForEach(args.RolesMembers.AsParallel().Where(o => o.Key.Equals(roleUUID)),
                                 o => Client.Groups.RemoveFromRole(groupUUID, roleUUID, o.Value));
                             GroupRoleMembersReplyEvent.Set();
                         };
@@ -7048,7 +6479,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -7119,7 +6550,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -7205,7 +6636,7 @@ namespace Corrade
                                 message));
                         List<string> myName =
                             new List<string>(
-                                GetAvatarNames(string.Join(" ", new[] {Client.Self.FirstName, Client.Self.LastName})));
+                                GetAvatarNames(string.Join(" ", Client.Self.FirstName, Client.Self.LastName)));
                         switch (
                             wasGetEnumValueFromDescription<Entity>(
                                 wasInput(
@@ -7255,11 +6686,8 @@ namespace Corrade
                                             using (
                                                 StreamWriter logWriter =
                                                     File.AppendText(
-                                                        wasPathCombine(new[]
-                                                        {
-                                                            Configuration.INSTANT_MESSAGE_LOG_DIRECTORY,
-                                                            string.Join(" ", new[] {fullName.First(), fullName.Last()})
-                                                        }) +
+                                                        wasPathCombine(Configuration.INSTANT_MESSAGE_LOG_DIRECTORY,
+                                                            string.Join(" ", fullName.First(), fullName.Last())) +
                                                         "." +
                                                         CORRADE_CONSTANTS.LOG_FILE_EXTENSION))
                                             {
@@ -7284,7 +6712,7 @@ namespace Corrade
                                 break;
                             case Entity.GROUP:
                                 UUID groupUUID =
-                                    Configuration.GROUPS.FirstOrDefault(
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(
                                         o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                                 if (groupUUID.Equals(UUID.Zero) &&
                                     !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -7316,7 +6744,7 @@ namespace Corrade
                                 }
                                 Client.Self.InstantMessageGroup(groupUUID, data);
                                 Parallel.ForEach(
-                                    Configuration.GROUPS.Where(
+                                    Configuration.GROUPS.AsParallel().Where(
                                         o => o.UUID.Equals(groupUUID) && o.ChatLogEnabled),
                                     o =>
                                     {
@@ -7361,7 +6789,7 @@ namespace Corrade
                                 }
                                 FieldInfo chatTypeInfo = typeof (ChatType).GetFields(BindingFlags.Public |
                                                                                      BindingFlags.Static)
-                                    .FirstOrDefault(
+                                    .AsParallel().FirstOrDefault(
                                         o =>
                                             o.Name.Equals(
                                                 wasInput(
@@ -7383,8 +6811,7 @@ namespace Corrade
                                 {
                                     List<string> fullName =
                                         new List<string>(
-                                            GetAvatarNames(string.Join(" ",
-                                                new[] {Client.Self.FirstName, Client.Self.LastName})));
+                                            GetAvatarNames(string.Join(" ", Client.Self.FirstName, Client.Self.LastName)));
                                     try
                                     {
                                         lock (LocalLogFileLock)
@@ -7392,11 +6819,8 @@ namespace Corrade
                                             using (
                                                 StreamWriter logWriter =
                                                     File.AppendText(
-                                                        wasPathCombine(new[]
-                                                        {
-                                                            Configuration.LOCAL_MESSAGE_LOG_DIRECTORY,
-                                                            Client.Network.CurrentSim.Name
-                                                        }) + "." +
+                                                        wasPathCombine(Configuration.LOCAL_MESSAGE_LOG_DIRECTORY,
+                                                            Client.Network.CurrentSim.Name) + "." +
                                                         CORRADE_CONSTANTS.LOG_FILE_EXTENSION))
                                             {
                                                 logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
@@ -7527,7 +6951,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -7623,7 +7047,7 @@ namespace Corrade
                         {
                             case Entity.GROUP:
                                 targetUUID =
-                                    Configuration.GROUPS.FirstOrDefault(
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(
                                         o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
                                 if (targetUUID.Equals(UUID.Zero) &&
                                     !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -8091,7 +7515,8 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
-                            Configuration.GROUPS.FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
+                            Configuration.GROUPS.AsParallel()
+                                .FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
                                 .UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -8117,7 +7542,7 @@ namespace Corrade
                         }
                         FieldInfo accessField = typeof (AccessList).GetFields(
                             BindingFlags.Public | BindingFlags.Static)
-                            .FirstOrDefault(
+                            .AsParallel().FirstOrDefault(
                                 o =>
                                     o.Name.Equals(
                                         wasInput(
@@ -8251,7 +7676,8 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
-                            Configuration.GROUPS.FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
+                            Configuration.GROUPS.AsParallel()
+                                .FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
                                 .UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -8304,7 +7730,8 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         UUID groupUUID =
-                            Configuration.GROUPS.FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
+                            Configuration.GROUPS.AsParallel()
+                                .FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
                                 .UUID;
                         if (groupUUID.Equals(UUID.Zero) &&
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -8356,7 +7783,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -8491,7 +7918,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -8576,7 +8003,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -9012,7 +8439,7 @@ namespace Corrade
                         EventHandler<AvatarPicksReplyEventArgs> AvatarPicksEventHandler = (sender, args) =>
                         {
                             pickUUID =
-                                args.Picks.FirstOrDefault(
+                                args.Picks.AsParallel().FirstOrDefault(
                                     o => o.Value.Equals(name, StringComparison.Ordinal)).Key;
                             AvatarPicksReplyEvent.Set();
                         };
@@ -9057,7 +8484,7 @@ namespace Corrade
                         EventHandler<AvatarPicksReplyEventArgs> AvatarPicksEventHandler = (sender, args) =>
                         {
                             pickUUID =
-                                args.Picks.FirstOrDefault(
+                                args.Picks.AsParallel().FirstOrDefault(
                                     o => o.Value.Equals(input, StringComparison.Ordinal)).Key;
                             AvatarPicksReplyEvent.Set();
                         };
@@ -9115,7 +8542,7 @@ namespace Corrade
                         EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedEventHandler = (sender, args) =>
                         {
                             classifiedUUID =
-                                args.Classifieds.FirstOrDefault(
+                                args.Classifieds.AsParallel().FirstOrDefault(
                                     o =>
                                         o.Value.Equals(name, StringComparison.Ordinal)).Key;
                             AvatarClassifiedReplyEvent.Set();
@@ -9159,7 +8586,7 @@ namespace Corrade
                         FieldInfo classifiedCategoriesField = typeof (DirectoryManager.ClassifiedCategories).GetFields(
                             BindingFlags.Public |
                             BindingFlags.Static)
-                            .FirstOrDefault(o =>
+                            .AsParallel().FirstOrDefault(o =>
                                 o.Name.Equals(
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
@@ -9191,7 +8618,7 @@ namespace Corrade
                         EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedEventHandler = (sender, args) =>
                         {
                             classifiedUUID =
-                                args.Classifieds.FirstOrDefault(
+                                args.Classifieds.AsParallel().FirstOrDefault(
                                     o =>
                                         o.Value.Equals(name, StringComparison.Ordinal)).Key;
                             AvatarClassifiedReplyEvent.Set();
@@ -9252,7 +8679,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -9344,11 +8771,13 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         HashSet<string> data =
-                            new HashSet<string>(GetWearables(Client.Inventory.Store.RootNode).Select(o => new[]
-                            {
-                                o.Value.ToString(),
-                                Client.Inventory.Store[o.Key.ItemID].Name
-                            }).SelectMany(o => o));
+                            new HashSet<string>(GetWearables(Client.Inventory.Store.RootNode)
+                                .AsParallel()
+                                .Select(o => new[]
+                                {
+                                    o.Value.ToString(),
+                                    Client.Inventory.Store[o.Key.ItemID].Name
+                                }).SelectMany(o => o));
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -9385,7 +8814,7 @@ namespace Corrade
                             {
                                 InventoryBase inventoryBaseItem =
                                     FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
-                                        ).FirstOrDefault(p => p is InventoryWearable);
+                                        ).AsParallel().FirstOrDefault(p => p is InventoryWearable);
                                 if (inventoryBaseItem == null)
                                     return;
                                 Wear(inventoryBaseItem as InventoryItem, replace);
@@ -9412,7 +8841,7 @@ namespace Corrade
                             {
                                 InventoryBase inventoryBaseItem =
                                     FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
-                                        ).FirstOrDefault(p => p is InventoryWearable);
+                                        ).AsParallel().FirstOrDefault(p => p is InventoryWearable);
                                 if (inventoryBaseItem == null)
                                     return;
                                 UnWear(inventoryBaseItem as InventoryItem);
@@ -9430,7 +8859,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         List<string> attachments = GetAttachments(
-                            Configuration.SERVICES_TIMEOUT).Select(o => new[]
+                            Configuration.SERVICES_TIMEOUT).AsParallel().Select(o => new[]
                             {
                                 o.Value.ToString(),
                                 o.Key.Properties.Name
@@ -9470,7 +8899,7 @@ namespace Corrade
                             replace = true;
                         }
                         Parallel.ForEach(
-                            wasCSVToEnumerable(attachments).Select((o, p) => new {o, p})
+                            wasCSVToEnumerable(attachments).AsParallel().Select((o, p) => new {o, p})
                                 .GroupBy(q => q.p/2, q => q.o)
                                 .Select(o => o.ToList())
                                 .TakeWhile(o => o.Count%2 == 0)
@@ -9478,7 +8907,7 @@ namespace Corrade
                             o =>
                                 Parallel.ForEach(
                                     typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                        .Where(
+                                        .AsParallel().Where(
                                             p =>
                                                 p.Name.Equals(o.Key, StringComparison.Ordinal)),
                                     q =>
@@ -9486,7 +8915,7 @@ namespace Corrade
                                         InventoryBase inventoryBaseItem =
                                             FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o.Value
                                                 )
-                                                .FirstOrDefault(
+                                                .AsParallel().FirstOrDefault(
                                                     r => r is InventoryObject || r is InventoryAttachment);
                                         if (inventoryBaseItem == null)
                                             return;
@@ -9519,7 +8948,7 @@ namespace Corrade
                                 InventoryBase inventoryBaseItem =
                                     FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
                                         )
-                                        .FirstOrDefault(
+                                        .AsParallel().FirstOrDefault(
                                             p =>
                                                 p is InventoryObject || p is InventoryAttachment);
                                 if (inventoryBaseItem == null)
@@ -9537,7 +8966,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -9622,7 +9051,7 @@ namespace Corrade
                                 FieldInfo objectReturnTypeField = typeof (ObjectReturnType).GetFields(
                                     BindingFlags.Public |
                                     BindingFlags.Static)
-                                    .FirstOrDefault(
+                                    .AsParallel().FirstOrDefault(
                                         o =>
                                             o.Name.Equals(type
                                                 .ToLowerInvariant(),
@@ -9634,33 +9063,36 @@ namespace Corrade
                                     : ObjectReturnType.Other;
                                 if (!Client.Network.CurrentSim.IsEstateManager)
                                 {
-                                    Parallel.ForEach(parcels.Where(o => !o.OwnerID.Equals(Client.Self.AgentID)), o =>
-                                    {
-                                        if (!o.IsGroupOwned || !o.GroupID.Equals(groupUUID))
+                                    Parallel.ForEach(
+                                        parcels.AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)), o =>
                                         {
-                                            throw new Exception(
-                                                wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
-                                        }
-                                        GroupPowers power = new GroupPowers();
-                                        switch (returnType)
-                                        {
-                                            case ObjectReturnType.Other:
-                                                power = GroupPowers.ReturnNonGroup;
-                                                break;
-                                            case ObjectReturnType.Group:
-                                                power = GroupPowers.ReturnGroupSet;
-                                                break;
-                                            case ObjectReturnType.Owner:
-                                                power = GroupPowers.ReturnGroupOwned;
-                                                break;
-                                        }
-                                        if (!HasGroupPowers(Client.Self.AgentID, groupUUID, power,
-                                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
-                                        {
-                                            throw new Exception(
-                                                wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
-                                        }
-                                    });
+                                            if (!o.IsGroupOwned || !o.GroupID.Equals(groupUUID))
+                                            {
+                                                throw new Exception(
+                                                    wasGetDescriptionFromEnumValue(
+                                                        ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                            }
+                                            GroupPowers power = new GroupPowers();
+                                            switch (returnType)
+                                            {
+                                                case ObjectReturnType.Other:
+                                                    power = GroupPowers.ReturnNonGroup;
+                                                    break;
+                                                case ObjectReturnType.Group:
+                                                    power = GroupPowers.ReturnGroupSet;
+                                                    break;
+                                                case ObjectReturnType.Owner:
+                                                    power = GroupPowers.ReturnGroupOwned;
+                                                    break;
+                                            }
+                                            if (!HasGroupPowers(Client.Self.AgentID, groupUUID, power,
+                                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                            {
+                                                throw new Exception(
+                                                    wasGetDescriptionFromEnumValue(
+                                                        ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                            }
+                                        });
                                 }
                                 Parallel.ForEach(parcels,
                                     o =>
@@ -9686,7 +9118,7 @@ namespace Corrade
                                 }
                                 FieldInfo estateReturnFlagsField = typeof (EstateTools.EstateReturnFlags).GetFields(
                                     BindingFlags.Public | BindingFlags.Static)
-                                    .FirstOrDefault(
+                                    .AsParallel().FirstOrDefault(
                                         o =>
                                             o.Name.Equals(type,
                                                 StringComparison.Ordinal));
@@ -9709,7 +9141,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -9764,34 +9196,35 @@ namespace Corrade
                         }
                         if (!Client.Network.CurrentSim.IsEstateManager)
                         {
-                            Parallel.ForEach(parcels.Where(o => !o.OwnerID.Equals(Client.Self.AgentID)), o =>
-                            {
-                                if (!o.IsGroupOwned || !o.GroupID.Equals(groupUUID))
+                            Parallel.ForEach(parcels.AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)),
+                                o =>
                                 {
-                                    throw new Exception(
-                                        wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
-                                }
-                                bool permissions = false;
-                                Parallel.ForEach(
-                                    new HashSet<GroupPowers>
+                                    if (!o.IsGroupOwned || !o.GroupID.Equals(groupUUID))
                                     {
-                                        GroupPowers.ReturnGroupSet,
-                                        GroupPowers.ReturnGroupOwned,
-                                        GroupPowers.ReturnNonGroup
-                                    }, p =>
-                                    {
-                                        if (HasGroupPowers(Client.Self.AgentID, groupUUID, p,
-                                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                    }
+                                    bool permissions = false;
+                                    Parallel.ForEach(
+                                        new HashSet<GroupPowers>
                                         {
-                                            permissions = true;
-                                        }
-                                    });
-                                if (!permissions)
-                                {
-                                    throw new Exception(
-                                        wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
-                                }
-                            });
+                                            GroupPowers.ReturnGroupSet,
+                                            GroupPowers.ReturnGroupOwned,
+                                            GroupPowers.ReturnNonGroup
+                                        }, p =>
+                                        {
+                                            if (HasGroupPowers(Client.Self.AgentID, groupUUID, p,
+                                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                            {
+                                                permissions = true;
+                                            }
+                                        });
+                                    if (!permissions)
+                                    {
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                    }
+                                });
                         }
                         ManualResetEvent ParcelObjectOwnersReplyEvent = new ManualResetEvent(false);
                         Dictionary<string, int> primitives = new Dictionary<string, int>();
@@ -9830,7 +9263,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_LAND_USERS));
                         }
-                        List<string> data = new List<string>(primitives.Select(
+                        List<string> data = new List<string>(primitives.AsParallel().Select(
                             p => wasEnumerableToCSV(new[] {p.Key, p.Value.ToString(CultureInfo.InvariantCulture)})));
                         if (!data.Count.Equals(0))
                         {
@@ -9847,7 +9280,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -9958,7 +9391,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -10076,7 +9509,7 @@ namespace Corrade
                         }
                         FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
                                                                                BindingFlags.Static)
-                            .FirstOrDefault(
+                            .AsParallel().FirstOrDefault(
                                 o =>
                                     o.Name.Equals(
                                         wasInput(
@@ -10110,7 +9543,7 @@ namespace Corrade
                                         wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
                                 }
                                 break;
-                                // All of these can only be fetched if they exist locally.
+                            // All of these can only be fetched if they exist locally.
                             case AssetType.LSLText:
                             case AssetType.Notecard:
                                 if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
@@ -10134,7 +9567,7 @@ namespace Corrade
                                         wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
                                 }
                                 break;
-                                // All images go through RequestImage and can be fetched directly from the asset server.
+                            // All images go through RequestImage and can be fetched directly from the asset server.
                             case AssetType.Texture:
                                 Client.Assets.RequestImage(itemUUID, ImageType.Normal,
                                     delegate(TextureRequestState state, AssetTexture asset)
@@ -10151,7 +9584,7 @@ namespace Corrade
                                         wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
                                 }
                                 break;
-                                // All of these can be fetched directly from the asset server.
+                            // All of these can be fetched directly from the asset server.
                             case AssetType.Landmark:
                             case AssetType.Gesture:
                             case AssetType.Animation: // Animatn
@@ -10209,11 +9642,11 @@ namespace Corrade
                             o =>
                                 Parallel.ForEach(
                                     typeof (PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                        .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                        .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                     q => { permissions |= ((uint) q.GetValue(null)); }));
                         FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
                                                                                BindingFlags.Static)
-                            .FirstOrDefault(o =>
+                            .AsParallel().FirstOrDefault(o =>
                                 o.Name.Equals(
                                     wasInput(
                                         wasKeyValueGet(
@@ -10268,7 +9701,7 @@ namespace Corrade
                                     assetType,
                                     (InventoryType)
                                         (typeof (InventoryType).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                            .FirstOrDefault(
+                                            .AsParallel().FirstOrDefault(
                                                 o => o.Name.Equals(Enum.GetName(typeof (AssetType), assetType),
                                                     StringComparison.Ordinal))).GetValue(null),
                                     Client.Inventory.FindFolderForType(assetType),
@@ -10287,7 +9720,7 @@ namespace Corrade
                             case AssetType.Clothing:
                                 FieldInfo wearTypeInfo = typeof (MuteType).GetFields(BindingFlags.Public |
                                                                                      BindingFlags.Static)
-                                    .FirstOrDefault(
+                                    .AsParallel().FirstOrDefault(
                                         o =>
                                             o.Name.Equals(
                                                 wasInput(
@@ -10481,7 +9914,7 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -10600,7 +10033,7 @@ namespace Corrade
                         }
                         FieldInfo deRezDestionationTypeInfo = typeof (DeRezDestination).GetFields(BindingFlags.Public |
                                                                                                   BindingFlags.Static)
-                            .FirstOrDefault(
+                            .AsParallel().FirstOrDefault(
                                 o =>
                                     o.Name.Equals(
                                         wasInput(
@@ -10669,8 +10102,8 @@ namespace Corrade
                             Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
                                 Configuration.SERVICES_TIMEOUT).ToList();
                         InventoryItem item = !entityUUID.Equals(UUID.Zero)
-                            ? inventory.FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
-                            : inventory.FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
+                            ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
+                            : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
                         if (item == null)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
@@ -10773,8 +10206,8 @@ namespace Corrade
                             Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
                                 Configuration.SERVICES_TIMEOUT).ToList();
                         InventoryItem item = !entityUUID.Equals(UUID.Zero)
-                            ? inventory.FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
-                            : inventory.FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
+                            ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
+                            : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
                         if (item == null)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
@@ -10837,7 +10270,7 @@ namespace Corrade
                         }
                         List<string> data =
                             new List<string>(Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                Configuration.SERVICES_TIMEOUT).Select(o => new[]
+                                Configuration.SERVICES_TIMEOUT).AsParallel().Select(o => new[]
                                 {
                                     o.Name,
                                     o.UUID.ToString()
@@ -10893,8 +10326,8 @@ namespace Corrade
                             Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
                                 Configuration.SERVICES_TIMEOUT).ToList();
                         InventoryItem item = !entityUUID.Equals(UUID.Zero)
-                            ? inventory.FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
-                            : inventory.FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
+                            ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
+                            : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
                         if (item == null)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
@@ -10972,7 +10405,10 @@ namespace Corrade
                                 if (entityUUID.Equals(UUID.Zero))
                                 {
                                     entityUUID = Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                        Configuration.SERVICES_TIMEOUT).FirstOrDefault(o => o.Name.Equals(entity)).UUID;
+                                        Configuration.SERVICES_TIMEOUT)
+                                        .AsParallel()
+                                        .FirstOrDefault(o => o.Name.Equals(entity))
+                                        .UUID;
                                     if (entityUUID.Equals(UUID.Zero))
                                     {
                                         throw new Exception(
@@ -10985,9 +10421,13 @@ namespace Corrade
                             case Action.TAKE:
                                 InventoryBase inventoryBase = !entityUUID.Equals(UUID.Zero)
                                     ? Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                        Configuration.SERVICES_TIMEOUT).FirstOrDefault(o => o.UUID.Equals(entityUUID))
+                                        Configuration.SERVICES_TIMEOUT)
+                                        .AsParallel()
+                                        .FirstOrDefault(o => o.UUID.Equals(entityUUID))
                                     : Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                        Configuration.SERVICES_TIMEOUT).FirstOrDefault(o => o.Name.Equals(entity));
+                                        Configuration.SERVICES_TIMEOUT)
+                                        .AsParallel()
+                                        .FirstOrDefault(o => o.Name.Equals(entity));
                                 InventoryItem inventoryItem = inventoryBase as InventoryItem;
                                 if (inventoryItem == null)
                                 {
@@ -11055,7 +10495,7 @@ namespace Corrade
                                 message))),
                             o => Parallel.ForEach(
                                 typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                    .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                 q => assetTypes.Add((AssetType) q.GetValue(null))));
                         string pattern =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATTERN)),
@@ -11112,7 +10552,7 @@ namespace Corrade
                                 message))),
                             o => Parallel.ForEach(
                                 typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                    .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                    .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                 q => assetTypes.Add((AssetType) q.GetValue(null))));
                         string pattern =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATTERN)),
@@ -11133,7 +10573,7 @@ namespace Corrade
                         }
                         List<string> csv = new List<string>();
                         Parallel.ForEach(FindInventoryPath<InventoryBase>(Client.Inventory.Store.RootNode,
-                            search, new LinkedList<string>()).Select(o => o.Value),
+                            search, new LinkedList<string>()).AsParallel().Select(o => o.Value),
                             o => csv.Add(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR, o.ToArray())));
                         if (!csv.Count.Equals(0))
                         {
@@ -11395,7 +10835,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -11430,7 +10870,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -11476,7 +10916,7 @@ namespace Corrade
                                 Client.Groups.GroupRoleDataReply -= Groups_GroupRoleDataReply;
 
                                 UUID roleUUID =
-                                    roleData.FirstOrDefault(
+                                    roleData.AsParallel().FirstOrDefault(
                                         o =>
                                             o.Key.Equals(
                                                 wasInput(
@@ -11497,7 +10937,7 @@ namespace Corrade
                                 EventHandler<GroupTitlesReplyEventArgs> GroupTitlesReplyEventHandler = (sender, args) =>
                                 {
                                     KeyValuePair<UUID, GroupTitle> pair =
-                                        args.Titles.FirstOrDefault(o => o.Value.Selected);
+                                        args.Titles.AsParallel().FirstOrDefault(o => o.Value.Selected);
                                     if (!pair.Equals(default(KeyValuePair<UUID, GroupTitle>)))
                                     {
                                         title = pair.Value.Title;
@@ -11531,7 +10971,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -11836,7 +11276,7 @@ namespace Corrade
                                     case ViewerEffectType.LOOK:
                                         FieldInfo lookAtTypeInfo = typeof (LookAtType).GetFields(BindingFlags.Public |
                                                                                                  BindingFlags.Static)
-                                            .FirstOrDefault(
+                                            .AsParallel().FirstOrDefault(
                                                 o =>
                                                     o.Name.Equals(
                                                         wasInput(
@@ -11851,7 +11291,7 @@ namespace Corrade
                                             : LookAtType.None;
                                         Client.Self.LookAtEffect(Client.Self.AgentID, targetUUID, offset,
                                             lookAtType, effectUUID);
-                                        if (LookAtEffects.Any(o => o.Effect.Equals(effectUUID)))
+                                        if (LookAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
                                         {
                                             LookAtEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
                                         }
@@ -11870,7 +11310,7 @@ namespace Corrade
                                     case ViewerEffectType.POINT:
                                         FieldInfo pointAtTypeInfo = typeof (PointAtType).GetFields(BindingFlags.Public |
                                                                                                    BindingFlags.Static)
-                                            .FirstOrDefault(
+                                            .AsParallel().FirstOrDefault(
                                                 o =>
                                                     o.Name.Equals(
                                                         wasInput(
@@ -11885,7 +11325,7 @@ namespace Corrade
                                             : PointAtType.None;
                                         Client.Self.PointAtEffect(Client.Self.AgentID, targetUUID, offset,
                                             pointAtType, effectUUID);
-                                        if (PointAtEffects.Any(o => o.Effect.Equals(effectUUID)))
+                                        if (PointAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
                                         {
                                             PointAtEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
                                         }
@@ -11944,7 +11384,7 @@ namespace Corrade
                                                     color, duration, effectUUID);
                                                 lock (BeamEffectsLock)
                                                 {
-                                                    if (BeamEffects.Any(o => o.Effect.Equals(effectUUID)))
+                                                    if (BeamEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
                                                     {
                                                         BeamEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
                                                     }
@@ -11966,7 +11406,7 @@ namespace Corrade
                                                     effectUUID);
                                                 lock (SphereEffectsLock)
                                                 {
-                                                    if (SphereEffects.Any(o => o.Effect.Equals(effectUUID)))
+                                                    if (SphereEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
                                                     {
                                                         SphereEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
                                                     }
@@ -12151,7 +11591,7 @@ namespace Corrade
                         {
                             case ViewerEffectType.LOOK:
                                 LookAtEffect lookAtEffect =
-                                    LookAtEffects.FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                                    LookAtEffects.AsParallel().FirstOrDefault(o => o.Effect.Equals(effectUUID));
                                 if (lookAtEffect.Equals(default(LookAtEffect)))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EFFECT_NOT_FOUND));
@@ -12162,7 +11602,7 @@ namespace Corrade
                                 break;
                             case ViewerEffectType.POINT:
                                 PointAtEffect pointAtEffect =
-                                    PointAtEffects.FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                                    PointAtEffects.AsParallel().FirstOrDefault(o => o.Effect.Equals(effectUUID));
                                 if (pointAtEffect.Equals(default(PointAtEffect)))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EFFECT_NOT_FOUND));
@@ -12184,7 +11624,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -12283,7 +11723,7 @@ namespace Corrade
                             case Action.MUTE:
                                 FieldInfo muteTypeInfo = typeof (MuteType).GetFields(BindingFlags.Public |
                                                                                      BindingFlags.Static)
-                                    .FirstOrDefault(
+                                    .AsParallel().FirstOrDefault(
                                         o =>
                                             o.Name.Equals(
                                                 wasInput(
@@ -12330,7 +11770,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        List<string> data = new List<string>(Client.Self.MuteList.Copy().Select(o => new[]
+                        List<string> data = new List<string>(Client.Self.MuteList.Copy().AsParallel().Select(o => new[]
                         {
                             o.Value.Name,
                             o.Value.ID.ToString()
@@ -12350,7 +11790,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         string databaseFile =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal)).DatabaseFile;
                         if (string.IsNullOrEmpty(databaseFile))
                         {
@@ -12528,7 +11968,7 @@ namespace Corrade
                                 lock (GroupNotificationsLock)
                                 {
                                     notification =
-                                        GroupNotifications.FirstOrDefault(
+                                        GroupNotifications.AsParallel().FirstOrDefault(
                                             o => o.GroupName.Equals(group, StringComparison.Ordinal));
                                 }
                                 if (notification.Equals(default(Notification)))
@@ -12580,7 +12020,7 @@ namespace Corrade
                                 lock (GroupNotificationsLock)
                                 {
                                     Notification groupNotification =
-                                        GroupNotifications.FirstOrDefault(
+                                        GroupNotifications.AsParallel().FirstOrDefault(
                                             o => o.GroupName.Equals(group, StringComparison.Ordinal));
                                     if (!groupNotification.Equals(default(Notification)))
                                     {
@@ -12724,7 +12164,7 @@ namespace Corrade
                             o =>
                                 Parallel.ForEach(
                                     typeof (ScriptPermission).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                        .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                        .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                     q => { permissionMask |= ((int) q.GetValue(null)); }));
                         Client.Self.ScriptQuestionReply(Client.Network.CurrentSim, itemUUID, taskUUID,
                             (ScriptPermission) permissionMask);
@@ -12757,7 +12197,7 @@ namespace Corrade
                                     csv.Add(wasGetStructureMemberDescription(o, o.Permission));
                                     csv.AddRange(typeof (ScriptPermission).GetFields(BindingFlags.Public |
                                                                                      BindingFlags.Static)
-                                        .Where(
+                                        .AsParallel().Where(
                                             p =>
                                                 !(((int) p.GetValue(null) &
                                                    (int) o.Permission)).Equals(0))
@@ -13112,7 +12552,7 @@ namespace Corrade
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_TOP_TYPE));
                         }
-                        List<string> data = new List<string>(topTasks.Take(amount).Select(o => new[]
+                        List<string> data = new List<string>(topTasks.Take(amount).AsParallel().Select(o => new[]
                         {
                             o.Value.TaskName,
                             o.Key.ToString(),
@@ -13745,11 +13185,13 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_MAP_ITEMS_FOUND));
                         }
                         List<string> data =
-                            new List<string>(mapItems.Where(o => (o as MapAgentLocation) != null).Select(o => new[]
-                            {
-                                ((MapAgentLocation) o).AvatarCount.ToString(CultureInfo.InvariantCulture),
-                                new Vector3(o.LocalX, o.LocalY, 0).ToString()
-                            }).SelectMany(o => o));
+                            new List<string>(mapItems.AsParallel()
+                                .Where(o => (o as MapAgentLocation) != null)
+                                .Select(o => new[]
+                                {
+                                    ((MapAgentLocation) o).AvatarCount.ToString(CultureInfo.InvariantCulture),
+                                    new Vector3(o.LocalX, o.LocalY, 0).ToString()
+                                }).SelectMany(o => o));
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -13902,7 +13344,7 @@ namespace Corrade
                         }
                         lock (InventoryOffersLock)
                         {
-                            if (!InventoryOffers.Any(o => o.Key.Offer.IMSessionID.Equals(session)))
+                            if (!InventoryOffers.AsParallel().Any(o => o.Key.Offer.IMSessionID.Equals(session)))
                             {
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_OFFER_NOT_FOUND));
                             }
@@ -13911,7 +13353,8 @@ namespace Corrade
                         lock (InventoryOffersLock)
                         {
                             offer =
-                                InventoryOffers.FirstOrDefault(o => o.Key.Offer.IMSessionID.Equals(session));
+                                InventoryOffers.AsParallel()
+                                    .FirstOrDefault(o => o.Key.Offer.IMSessionID.Equals(session));
                         }
                         UUID folderUUID;
                         string folder =
@@ -14202,7 +13645,7 @@ namespace Corrade
                             o =>
                                 Parallel.ForEach(
                                     typeof (FriendRights).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                        .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                        .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                     q => { rights |= ((int) q.GetValue(null)); }));
                         Client.Friends.GrantRights(agentUUID, (FriendRights) rights);
                     };
@@ -14325,7 +13768,7 @@ namespace Corrade
                             o =>
                                 Parallel.ForEach(
                                     typeof (PermissionWho).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                        .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                        .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                     q => { who |= ((byte) q.GetValue(null)); }));
                         uint permissions = 0;
                         Parallel.ForEach(wasCSVToEnumerable(
@@ -14335,7 +13778,7 @@ namespace Corrade
                             o =>
                                 Parallel.ForEach(
                                     typeof (PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                        .Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                        .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                     q => { permissions |= ((uint) q.GetValue(null)); }));
                         Client.Objects.SetPermissions(Client.Network.CurrentSim, new List<uint> {primitive.LocalID},
                             (PermissionWho) who, (PermissionMask) permissions, true);
@@ -14349,7 +13792,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -14396,7 +13839,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -14478,7 +13921,7 @@ namespace Corrade
                         }
                         FieldInfo saleTypeInfo = typeof (SaleType).GetFields(BindingFlags.Public |
                                                                              BindingFlags.Static)
-                            .FirstOrDefault(o =>
+                            .AsParallel().FirstOrDefault(o =>
                                 o.Name.Equals(
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
@@ -14662,7 +14105,7 @@ namespace Corrade
                         // Check for items that can be worn.
                         List<InventoryBase> items =
                             GetInventoryFolderContents<InventoryBase>(Client.Inventory.Store.RootNode, folder)
-                                .Where(CanBeWorn)
+                                .AsParallel().Where(CanBeWorn)
                                 .ToList();
                         if (items.Count.Equals(0))
                         {
@@ -14682,7 +14125,7 @@ namespace Corrade
                                         UnWear(item);
                                         return;
                                     }
-                                    if (items.Any(q =>
+                                    if (items.AsParallel().Any(q =>
                                     {
                                         InventoryWearable i = q as InventoryWearable;
                                         return i != null &&
@@ -15187,7 +14630,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        ConnectionSemaphores.FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
+                        ConnectionSemaphores.AsParallel().FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
                     };
                     break;
                 case ScriptKeys.RLV:
@@ -15233,7 +14676,7 @@ namespace Corrade
                                 {
                                     foreach (
                                         KeyValuePair<string, string> i in
-                                            wasCSVToEnumerable(input).Select((o, p) => new {o, p})
+                                            wasCSVToEnumerable(input).AsParallel().Select((o, p) => new {o, p})
                                                 .GroupBy(q => q.p/2, q => q.o)
                                                 .Select(o => o.ToList())
                                                 .TakeWhile(o => o.Count%2 == 0)
@@ -15256,7 +14699,7 @@ namespace Corrade
                                 {
                                     foreach (
                                         KeyValuePair<string, string> i in
-                                            wasCSVToEnumerable(output).Select((o, p) => new {o, p})
+                                            wasCSVToEnumerable(output).AsParallel().Select((o, p) => new {o, p})
                                                 .GroupBy(q => q.p/2, q => q.o)
                                                 .Select(o => o.ToList())
                                                 .TakeWhile(o => o.Count%2 == 0)
@@ -15312,7 +14755,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         Group configuredGroup =
-                            Configuration.GROUPS.FirstOrDefault(
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         switch (!configuredGroup.Equals(default(Group)))
@@ -15348,7 +14791,7 @@ namespace Corrade
                             // Pop first item to process.
                             string first = unpack.First();
                             // Remove item.
-                            unpack = unpack.Where(q => !q.Equals(first)).ToArray();
+                            unpack = unpack.AsParallel().Where(q => !q.Equals(first)).ToArray();
 
                             InventoryBase next = p;
 
@@ -15419,7 +14862,7 @@ namespace Corrade
                                 {
                                     case true:
                                         foreach (DirItem dirItem in Client.Inventory.Store.GetContents(
-                                            item.UUID).Select(
+                                            item.UUID).AsParallel().Select(
                                                 o => DirItem.FromInventoryBase(o)))
                                         {
                                             csv.AddRange(new[]
@@ -16263,7 +15706,7 @@ namespace Corrade
             {
                 KeyValuePair<FieldInfo, object> fi = wasGetFields(structure,
                     structure.GetType().Name)
-                    .FirstOrDefault(o => o.Key.Name.Equals(name, StringComparison.Ordinal));
+                    .AsParallel().FirstOrDefault(o => o.Key.Name.Equals(name, StringComparison.Ordinal));
 
                 lock (LockObject)
                 {
@@ -16277,7 +15720,7 @@ namespace Corrade
 
                 KeyValuePair<PropertyInfo, object> pi =
                     wasGetProperties(structure, structure.GetType().Name)
-                        .FirstOrDefault(
+                        .AsParallel().FirstOrDefault(
                             o => o.Key.Name.Equals(name, StringComparison.Ordinal));
                 lock (LockObject)
                 {
@@ -16306,7 +15749,7 @@ namespace Corrade
         {
             foreach (
                 KeyValuePair<string, string> match in
-                    wasCSVToEnumerable(data).Select((o, p) => new {o, p})
+                    wasCSVToEnumerable(data).AsParallel().Select((o, p) => new {o, p})
                         .GroupBy(q => q.p/2, q => q.o)
                         .Select(o => o.ToList())
                         .TakeWhile(o => o.Count%2 == 0)
@@ -16315,7 +15758,7 @@ namespace Corrade
                 KeyValuePair<string, string> localMatch = match;
                 KeyValuePair<FieldInfo, object> fi =
                     wasGetFields(structure, structure.GetType().Name)
-                        .FirstOrDefault(
+                        .AsParallel().FirstOrDefault(
                             o =>
                                 o.Key.Name.Equals(localMatch.Key,
                                     StringComparison.Ordinal));
@@ -16324,7 +15767,7 @@ namespace Corrade
 
                 KeyValuePair<PropertyInfo, object> pi =
                     wasGetProperties(structure, structure.GetType().Name)
-                        .FirstOrDefault(
+                        .AsParallel().FirstOrDefault(
                             o =>
                                 o.Key.Name.Equals(localMatch.Key,
                                     StringComparison.Ordinal));
@@ -16535,1093 +15978,6 @@ namespace Corrade
             yield return m.ToString();
         }
 
-        #region KEY-VALUE DATA
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Returns the value of a key from a key-value data string.
-        /// </summary>
-        /// <param name="key">the key of the value</param>
-        /// <param name="data">the key-value data segment</param>
-        /// <returns>true if the key was found in data</returns>
-        private static string wasKeyValueGet(string key, string data)
-        {
-            foreach (string tuples in data.Split('&'))
-            {
-                string[] tuple = tuples.Split('=');
-                if (!tuple.Length.Equals(2))
-                {
-                    continue;
-                }
-                if (tuple[0].Equals(key, StringComparison.Ordinal))
-                {
-                    return tuple[1];
-                }
-            }
-            return string.Empty;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Returns a key-value data string with a key set to a given value.
-        /// </summary>
-        /// <param name="key">the key of the value</param>
-        /// <param name="value">the value to set the key to</param>
-        /// <param name="data">the key-value data segment</param>
-        /// <returns>
-        ///     a key-value data string or the empty string if either key or
-        ///     value are empty
-        /// </returns>
-        private static string wasKeyValueSet(string key, string value, string data)
-        {
-            List<string> output = new List<string>();
-            foreach (string tuples in data.Split('&'))
-            {
-                string[] tuple = tuples.Split('=');
-                if (!tuple.Length.Equals(2))
-                {
-                    continue;
-                }
-                if (tuple[0].Equals(key, StringComparison.Ordinal))
-                {
-                    tuple[1] = value;
-                }
-                output.Add(string.Join("=", tuple));
-            }
-            string add = string.Join("=", new[] {key, value});
-            if (!output.Contains(add))
-            {
-                output.Add(add);
-            }
-            return string.Join("&", output.ToArray());
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Deletes a key-value pair from a string referenced by a key.
-        /// </summary>
-        /// <param name="key">the key to search for</param>
-        /// <param name="data">the key-value data segment</param>
-        /// <returns>a key-value pair string</returns>
-        private static string wasKeyValueDelete(string key, string data)
-        {
-            List<string> output = new List<string>();
-            foreach (string tuples in data.Split('&'))
-            {
-                string[] tuple = tuples.Split('=');
-                if (!tuple.Length.Equals(2))
-                {
-                    continue;
-                }
-                if (tuple[0].Equals(key, StringComparison.Ordinal))
-                {
-                    continue;
-                }
-                output.Add(string.Join("=", tuple));
-            }
-            return string.Join("&", output.ToArray());
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Decodes key-value pair data to a dictionary.
-        /// </summary>
-        /// <param name="data">the key-value pair data</param>
-        /// <returns>a dictionary containing the keys and values</returns>
-        private static Dictionary<string, string> wasKeyValueDecode(string data)
-        {
-            Dictionary<string, string> output = new Dictionary<string, string>();
-            foreach (string tuples in data.Split('&'))
-            {
-                string[] tuple = tuples.Split('=');
-                if (!tuple.Length.Equals(2))
-                {
-                    continue;
-                }
-                if (output.ContainsKey(tuple[0]))
-                {
-                    continue;
-                }
-                output.Add(tuple[0], tuple[1]);
-            }
-            return output;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Serialises a dictionary to key-value data.
-        /// </summary>
-        /// <param name="data">a dictionary</param>
-        /// <returns>a key-value data encoded string</returns>
-        private static string wasKeyValueEncode(Dictionary<string, string> data)
-        {
-            List<string> output = new List<string>();
-            foreach (KeyValuePair<string, string> tuple in data)
-            {
-                output.Add(string.Join("=", new[] {tuple.Key, tuple.Value}));
-            }
-            return string.Join("&", output.ToArray());
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>Escapes a dictionary's keys and values for sending as POST data.</summary>
-        /// <param name="data">A dictionary containing keys and values to be escaped</param>
-        private static Dictionary<string, string> wasKeyValueEscape(Dictionary<string, string> data)
-        {
-            Dictionary<string, string> output = new Dictionary<string, string>();
-            foreach (KeyValuePair<string, string> tuple in data)
-            {
-                output.Add(wasOutput(tuple.Key), wasOutput(tuple.Value));
-            }
-            return output;
-        }
-
-        #endregion
-
-        #region CRYPTOGRAPHY
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Gets an array element at a given modulo index.
-        /// </summary>
-        /// <typeparam name="T">the array type</typeparam>
-        /// <param name="index">a positive or negative index of the element</param>
-        /// <param name="data">the array</param>
-        /// <return>an array element</return>
-        public static T wasGetElementAt<T>(T[] data, int index)
-        {
-            switch (index < 0)
-            {
-                case true:
-                    return data[((index%data.Length) + data.Length)%data.Length];
-                default:
-                    return data[index%data.Length];
-            }
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Gets a sub-array from an array.
-        /// </summary>
-        /// <typeparam name="T">the array type</typeparam>
-        /// <param name="data">the array</param>
-        /// <param name="start">the start index</param>
-        /// <param name="stop">the stop index (-1 denotes the end)</param>
-        /// <returns>the array slice between start and stop</returns>
-        public static T[] wasGetSubArray<T>(T[] data, int start, int stop)
-        {
-            if (stop.Equals(-1))
-                stop = data.Length - 1;
-            T[] result = new T[stop - start + 1];
-            Array.Copy(data, start, result, 0, stop - start + 1);
-            return result;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Delete a sub-array and return the result.
-        /// </summary>
-        /// <typeparam name="T">the array type</typeparam>
-        /// <param name="data">the array</param>
-        /// <param name="start">the start index</param>
-        /// <param name="stop">the stop index (-1 denotes the end)</param>
-        /// <returns>the array without elements between start and stop</returns>
-        public static T[] wasDeleteSubArray<T>(T[] data, int start, int stop)
-        {
-            if (stop.Equals(-1))
-                stop = data.Length - 1;
-            T[] result = new T[data.Length - (stop - start) - 1];
-            Array.Copy(data, 0, result, 0, start);
-            Array.Copy(data, stop + 1, result, start, data.Length - stop - 1);
-            return result;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Concatenate multiple arrays.
-        /// </summary>
-        /// <typeparam name="T">the array type</typeparam>
-        /// <param name="arrays">multiple arrays</param>
-        /// <returns>a flat array with all arrays concatenated</returns>
-        public static T[] wasConcatenateArrays<T>(params T[][] arrays)
-        {
-            int resultLength = 0;
-            foreach (T[] o in arrays)
-            {
-                resultLength += o.Length;
-            }
-            T[] result = new T[resultLength];
-            int offset = 0;
-            for (int x = 0; x < arrays.Length; x++)
-            {
-                arrays[x].CopyTo(result, offset);
-                offset += arrays[x].Length;
-            }
-            return result;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Permutes an array in reverse a given number of times.
-        /// </summary>
-        /// <typeparam name="T">the array type</typeparam>
-        /// <param name="input">the array</param>
-        /// <param name="times">the number of times to permute</param>
-        /// <returns>the array with the elements permuted</returns>
-        private static T[] wasReversePermuteArrayElements<T>(T[] input, int times)
-        {
-            if (times.Equals(0)) return input;
-            T[] slice = new T[input.Length];
-            Array.Copy(input, 1, slice, 0, input.Length - 1);
-            Array.Copy(input, 0, slice, input.Length - 1, 1);
-            return wasReversePermuteArrayElements(slice, --times);
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Permutes an array forward a given number of times.
-        /// </summary>
-        /// <typeparam name="T">the array type</typeparam>
-        /// <param name="input">the array</param>
-        /// <param name="times">the number of times to permute</param>
-        /// <returns>the array with the elements permuted</returns>
-        private static T[] wasForwardPermuteArrayElements<T>(T[] input, int times)
-        {
-            if (times.Equals(0)) return input;
-            T[] slice = new T[input.Length];
-            Array.Copy(input, input.Length - 1, slice, 0, 1);
-            Array.Copy(input, 0, slice, 1, input.Length - 1);
-            return wasForwardPermuteArrayElements(slice, --times);
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Encrypt or decrypt a message given a set of rotors, plugs and a reflector.
-        /// </summary>
-        /// <param name="message">the message to encyrpt or decrypt</param>
-        /// <param name="rotors">any combination of: 1, 2, 3, 4, 5, 6, 7, 8, b, g</param>
-        /// <param name="plugs">the letter representing the start character for the rotor</param>
-        /// <param name="reflector">any one of: B, b, C, c</param>
-        /// <returns>either a decrypted or encrypted string</returns>
-        private static string wasEnigma(string message, char[] rotors, char[] plugs, char reflector)
-        {
-            Dictionary<char, char[]> def_rotors = new Dictionary<char, char[]>
-            {
-                {
-                    '1', new[]
-                    {
-                        'e', 'k', 'm', 'f', 'l',
-                        'g', 'd', 'q', 'v', 'z',
-                        'n', 't', 'o', 'w', 'y',
-                        'h', 'x', 'u', 's', 'p',
-                        'a', 'i', 'b', 'r', 'c',
-                        'j'
-                    }
-                },
-                {
-                    '2', new[]
-                    {
-                        'a', 'j', 'd', 'k', 's',
-                        'i', 'r', 'u', 'x', 'b',
-                        'l', 'h', 'w', 't', 'm',
-                        'c', 'q', 'g', 'z', 'n',
-                        'p', 'y', 'f', 'v', 'o',
-                        'e'
-                    }
-                },
-                {
-                    '3', new[]
-                    {
-                        'b', 'd', 'f', 'h', 'j',
-                        'l', 'c', 'p', 'r', 't',
-                        'x', 'v', 'z', 'n', 'y',
-                        'e', 'i', 'w', 'g', 'a',
-                        'k', 'm', 'u', 's', 'q',
-                        'o'
-                    }
-                },
-                {
-                    '4', new[]
-                    {
-                        'e', 's', 'o', 'v', 'p',
-                        'z', 'j', 'a', 'y', 'q',
-                        'u', 'i', 'r', 'h', 'x',
-                        'l', 'n', 'f', 't', 'g',
-                        'k', 'd', 'c', 'm', 'w',
-                        'b'
-                    }
-                },
-                {
-                    '5', new[]
-                    {
-                        'v', 'z', 'b', 'r', 'g',
-                        'i', 't', 'y', 'u', 'p',
-                        's', 'd', 'n', 'h', 'l',
-                        'x', 'a', 'w', 'm', 'j',
-                        'q', 'o', 'f', 'e', 'c',
-                        'k'
-                    }
-                },
-                {
-                    '6', new[]
-                    {
-                        'j', 'p', 'g', 'v', 'o',
-                        'u', 'm', 'f', 'y', 'q',
-                        'b', 'e', 'n', 'h', 'z',
-                        'r', 'd', 'k', 'a', 's',
-                        'x', 'l', 'i', 'c', 't',
-                        'w'
-                    }
-                },
-                {
-                    '7', new[]
-                    {
-                        'n', 'z', 'j', 'h', 'g',
-                        'r', 'c', 'x', 'm', 'y',
-                        's', 'w', 'b', 'o', 'u',
-                        'f', 'a', 'i', 'v', 'l',
-                        'p', 'e', 'k', 'q', 'd',
-                        't'
-                    }
-                },
-                {
-                    '8', new[]
-                    {
-                        'f', 'k', 'q', 'h', 't',
-                        'l', 'x', 'o', 'c', 'b',
-                        'j', 's', 'p', 'd', 'z',
-                        'r', 'a', 'm', 'e', 'w',
-                        'n', 'i', 'u', 'y', 'g',
-                        'v'
-                    }
-                },
-                {
-                    'b', new[]
-                    {
-                        'l', 'e', 'y', 'j', 'v',
-                        'c', 'n', 'i', 'x', 'w',
-                        'p', 'b', 'q', 'm', 'd',
-                        'r', 't', 'a', 'k', 'z',
-                        'g', 'f', 'u', 'h', 'o',
-                        's'
-                    }
-                },
-                {
-                    'g', new[]
-                    {
-                        'f', 's', 'o', 'k', 'a',
-                        'n', 'u', 'e', 'r', 'h',
-                        'm', 'b', 't', 'i', 'y',
-                        'c', 'w', 'l', 'q', 'p',
-                        'z', 'x', 'v', 'g', 'j',
-                        'd'
-                    }
-                }
-            };
-
-            Dictionary<char, char[]> def_reflectors = new Dictionary<char, char[]>
-            {
-                {
-                    'B', new[]
-                    {
-                        'a', 'y', 'b', 'r', 'c', 'u', 'd', 'h',
-                        'e', 'q', 'f', 's', 'g', 'l', 'i', 'p',
-                        'j', 'x', 'k', 'n', 'm', 'o', 't', 'z',
-                        'v', 'w'
-                    }
-                },
-                {
-                    'b', new[]
-                    {
-                        'a', 'e', 'b', 'n', 'c', 'k', 'd', 'q',
-                        'f', 'u', 'g', 'y', 'h', 'w', 'i', 'j',
-                        'l', 'o', 'm', 'p', 'r', 'x', 's', 'z',
-                        't', 'v'
-                    }
-                },
-                {
-                    'C', new[]
-                    {
-                        'a', 'f', 'b', 'v', 'c', 'p', 'd', 'j',
-                        'e', 'i', 'g', 'o', 'h', 'y', 'k', 'r',
-                        'l', 'z', 'm', 'x', 'n', 'w', 't', 'q',
-                        's', 'u'
-                    }
-                },
-                {
-                    'c', new[]
-                    {
-                        'a', 'r', 'b', 'd', 'c', 'o', 'e', 'j',
-                        'f', 'n', 'g', 't', 'h', 'k', 'i', 'v',
-                        'l', 'm', 'p', 'w', 'q', 'z', 's', 'x',
-                        'u', 'y'
-                    }
-                }
-            };
-
-            // Setup rotors from plugs.
-            foreach (char rotor in rotors)
-            {
-                char plug = plugs[Array.IndexOf(rotors, rotor)];
-                int i = Array.IndexOf(def_rotors[rotor], plug);
-                if (i.Equals(0)) continue;
-                def_rotors[rotor] = wasConcatenateArrays(new[] {plug},
-                    wasGetSubArray(wasDeleteSubArray(def_rotors[rotor], i, i), i, -1),
-                    wasGetSubArray(wasDeleteSubArray(def_rotors[rotor], i + 1, -1), 0, i - 1));
-            }
-
-            StringBuilder result = new StringBuilder();
-            foreach (char c in message)
-            {
-                if (!char.IsLetter(c))
-                {
-                    result.Append(c);
-                    continue;
-                }
-
-                // Normalize to lower.
-                char l = char.ToLower(c);
-
-                Action<char[]> rotate = o =>
-                {
-                    int i = o.Length - 1;
-                    do
-                    {
-                        def_rotors[o[0]] = wasForwardPermuteArrayElements(def_rotors[o[0]], 1);
-                        if (i.Equals(0))
-                        {
-                            rotors = wasReversePermuteArrayElements(o, 1);
-                            continue;
-                        }
-                        l = wasGetElementAt(def_rotors[o[1]], Array.IndexOf(def_rotors[o[0]], l) - 1);
-                        o = wasReversePermuteArrayElements(o, 1);
-                    } while (--i > -1);
-                };
-
-                // Forward pass through the Enigma's rotors.
-                rotate.Invoke(rotors);
-
-                // Reflect
-                int x = Array.IndexOf(def_reflectors[reflector], l);
-                l = (x + 1)%2 == 0 ? def_reflectors[reflector][x - 1] : def_reflectors[reflector][x + 1];
-
-                // Reverse the order of the rotors.
-                Array.Reverse(rotors);
-
-                // Reverse pass through the Enigma's rotors.
-                rotate.Invoke(rotors);
-
-                if (char.IsUpper(c))
-                {
-                    l = char.ToUpper(l);
-                }
-                result.Append(l);
-            }
-
-            return result.ToString();
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Expand the VIGENRE key to the length of the input.
-        /// </summary>
-        /// <param name="input">the input to expand to</param>
-        /// <param name="enc_key">the key to expand</param>
-        /// <returns>the expanded key</returns>
-        private static string wasVigenereExpandKey(string input, string enc_key)
-        {
-            string exp_key = "";
-            int i = 0, j = 0;
-            do
-            {
-                char p = input[i];
-                if (!char.IsLetter(p))
-                {
-                    exp_key += p;
-                    ++i;
-                    continue;
-                }
-                int m = j%enc_key.Length;
-                exp_key += enc_key[m];
-                ++j;
-                ++i;
-            } while (i < input.Length);
-            return exp_key;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Encrypt using VIGENERE.
-        /// </summary>
-        /// <param name="input">the input to encrypt</param>
-        /// <param name="enc_key">the key to encrypt with</param>
-        /// <returns>the encrypted input</returns>
-        private static string wasEncryptVIGENERE(string input, string enc_key)
-        {
-            char[] a =
-            {
-                'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-                'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
-            };
-
-            enc_key = wasVigenereExpandKey(input, enc_key);
-            string result = "";
-            int i = 0;
-            do
-            {
-                char p = input[i];
-                if (!char.IsLetter(p))
-                {
-                    result += p;
-                    ++i;
-                    continue;
-                }
-                char q =
-                    wasReversePermuteArrayElements(a, Array.IndexOf(a, enc_key[i]))[
-                        Array.IndexOf(a, char.ToLowerInvariant(p))];
-                if (char.IsUpper(p))
-                {
-                    q = char.ToUpperInvariant(q);
-                }
-                result += q;
-                ++i;
-            } while (i < input.Length);
-            return result;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Decrypt using VIGENERE.
-        /// </summary>
-        /// <param name="input">the input to decrypt</param>
-        /// <param name="enc_key">the key to decrypt with</param>
-        /// <returns>the decrypted input</returns>
-        private static string wasDecryptVIGENERE(string input, string enc_key)
-        {
-            char[] a =
-            {
-                'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-                'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
-            };
-
-            enc_key = wasVigenereExpandKey(input, enc_key);
-            string result = "";
-            int i = 0;
-            do
-            {
-                char p = input[i];
-                if (!char.IsLetter(p))
-                {
-                    result += p;
-                    ++i;
-                    continue;
-                }
-                char q =
-                    a[
-                        Array.IndexOf(wasReversePermuteArrayElements(a, Array.IndexOf(a, enc_key[i])),
-                            char.ToLowerInvariant(p))];
-                if (char.IsUpper(p))
-                {
-                    q = char.ToUpperInvariant(q);
-                }
-                result += q;
-                ++i;
-            } while (i < input.Length);
-            return result;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2015 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     An implementation of the ATBASH cypher for latin alphabets.
-        /// </summary>
-        /// <param name="data">the data to encrypt or decrypt</param>
-        /// <returns>the encrypted or decrypted data</returns>
-        private static string wasATBASH(string data)
-        {
-            char[] a =
-            {
-                'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-                'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
-            };
-
-            char[] input = data.ToArray();
-
-            Parallel.ForEach(Enumerable.Range(0, data.Length), i =>
-            {
-                char e = input[i];
-                if (!char.IsLetter(e)) return;
-                int x = 25 - Array.BinarySearch(a, char.ToLowerInvariant(e));
-                if (!char.IsUpper(e))
-                {
-                    input[i] = a[x];
-                    return;
-                }
-                input[i] = char.ToUpperInvariant(a[x]);
-            });
-
-            return new string(input);
-        }
-
-        #endregion
-
-        #region NAME AND UUID RESOLVERS
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Tries to build an UUID out of the data string.
-        /// </summary>
-        /// <param name="data">a string</param>
-        /// <returns>an UUID or the supplied string in case data could not be resolved</returns>
-        private static object StringOrUUID(string data)
-        {
-            if (string.IsNullOrEmpty(data))
-            {
-                return null;
-            }
-            UUID @UUID;
-            if (!UUID.TryParse(data, out @UUID))
-            {
-                return data;
-            }
-            return @UUID;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Updates the current balance by requesting it from the grid.
-        /// </summary>
-        /// <param name="millisecondsTimeout">timeout for the request in milliseconds</param>
-        /// <returns>true if the balance could be retrieved</returns>
-        private static bool UpdateBalance(int millisecondsTimeout)
-        {
-            ManualResetEvent MoneyBalanceEvent = new ManualResetEvent(false);
-            EventHandler<MoneyBalanceReplyEventArgs> MoneyBalanceEventHandler =
-                (sender, args) => MoneyBalanceEvent.Set();
-            Client.Self.MoneyBalanceReply += MoneyBalanceEventHandler;
-            Client.Self.RequestBalance();
-            if (!MoneyBalanceEvent.WaitOne(millisecondsTimeout, false))
-            {
-                Client.Self.MoneyBalanceReply -= MoneyBalanceEventHandler;
-                return false;
-            }
-            Client.Self.MoneyBalanceReply -= MoneyBalanceEventHandler;
-            return true;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Resolves a group name to an UUID by using the directory search.
-        /// </summary>
-        /// <param name="groupName">the name of the group to resolve</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="groupUUID">an object in which to store the UUID of the group</param>
-        /// <returns>true if the group name could be resolved to an UUID</returns>
-        private static bool directGroupNameToUUID(string groupName, int millisecondsTimeout, int dataTimeout,
-            ref UUID groupUUID)
-        {
-            UUID localGroupUUID = UUID.Zero;
-            wasAdaptiveAlarm DirGroupsReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
-            EventHandler<DirGroupsReplyEventArgs> DirGroupsReplyDelegate = (sender, args) =>
-            {
-                DirGroupsReceivedAlarm.Alarm(dataTimeout);
-                DirectoryManager.GroupSearchData groupSearchData =
-                    args.MatchedGroups.FirstOrDefault(o => o.GroupName.Equals(groupName));
-                if (groupSearchData.Equals(default(DirectoryManager.GroupSearchData))) return;
-                localGroupUUID = groupSearchData.GroupID;
-            };
-            Client.Directory.DirGroupsReply += DirGroupsReplyDelegate;
-            Client.Directory.StartGroupSearch(groupName, 0);
-            if (!DirGroupsReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
-            {
-                Client.Directory.DirGroupsReply -= DirGroupsReplyDelegate;
-                return false;
-            }
-            Client.Directory.DirGroupsReply -= DirGroupsReplyDelegate;
-            if (localGroupUUID.Equals(UUID.Zero)) return false;
-            groupUUID = localGroupUUID;
-            return true;
-        }
-
-        /// <summary>
-        ///     A wrapper for resolving group names to UUIDs by using Corrade's internal cache.
-        /// </summary>
-        /// <param name="groupName">the name of the group to resolve</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="groupUUID">an object in which to store the UUID of the group</param>
-        /// <returns>true if the group name could be resolved to an UUID</returns>
-        private static bool GroupNameToUUID(string groupName, int millisecondsTimeout, int dataTimeout,
-            ref UUID groupUUID)
-        {
-            lock (Cache.Locks.GroupCacheLock)
-            {
-                Cache.Groups @group = Cache.GroupCache.FirstOrDefault(o => o.Name.Equals(groupName));
-
-                if (!@group.Equals(default(Cache.Groups)))
-                {
-                    groupUUID = @group.UUID;
-                    return true;
-                }
-            }
-            bool succeeded = directGroupNameToUUID(groupName, millisecondsTimeout, dataTimeout, ref groupUUID);
-            if (succeeded)
-            {
-                lock (Cache.Locks.GroupCacheLock)
-                {
-                    Cache.GroupCache.Add(new Cache.Groups
-                    {
-                        Name = groupName,
-                        UUID = groupUUID
-                    });
-                }
-            }
-            return succeeded;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Resolves a group name to an UUID by using the directory search.
-        /// </summary>
-        /// <param name="groupName">a string to store the name to</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="groupUUID">the UUID of the group to resolve</param>
-        /// <returns>true if the group UUID could be resolved to an name</returns>
-        private static bool directGroupUUIDToName(UUID groupUUID, int millisecondsTimeout, int dataTimeout,
-            ref string groupName)
-        {
-            string localGroupName = groupName;
-            wasAdaptiveAlarm GroupProfileReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
-            EventHandler<GroupProfileEventArgs> GroupProfileDelegate = (o, s) =>
-            {
-                GroupProfileReceivedAlarm.Alarm(dataTimeout);
-                localGroupName = s.Group.Name;
-            };
-            Client.Groups.GroupProfile += GroupProfileDelegate;
-            Client.Groups.RequestGroupProfile(groupUUID);
-            if (!GroupProfileReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
-            {
-                Client.Groups.GroupProfile -= GroupProfileDelegate;
-                return false;
-            }
-            Client.Groups.GroupProfile -= GroupProfileDelegate;
-            groupName = localGroupName;
-            return true;
-        }
-
-        /// <summary>
-        ///     A wrapper for resolving group names to UUIDs by using Corrade's internal cache.
-        /// </summary>
-        /// <param name="groupName">a string to store the name to</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="groupUUID">the UUID of the group to resolve</param>
-        /// <returns>true if the group UUID could be resolved to an name</returns>
-        private static bool GroupUUIDToName(UUID groupUUID, int millisecondsTimeout, int dataTimeout,
-            ref string groupName)
-        {
-            lock (Cache.Locks.GroupCacheLock)
-            {
-                Cache.Groups @group = Cache.GroupCache.FirstOrDefault(o => o.UUID.Equals(groupUUID));
-
-                if (!@group.Equals(default(Cache.Groups)))
-                {
-                    groupName = @group.Name;
-                    return true;
-                }
-            }
-            bool succeeded = directGroupUUIDToName(groupUUID, millisecondsTimeout, dataTimeout, ref groupName);
-            if (succeeded)
-            {
-                lock (Cache.Locks.GroupCacheLock)
-                {
-                    Cache.GroupCache.Add(new Cache.Groups
-                    {
-                        Name = groupName,
-                        UUID = groupUUID
-                    });
-                }
-            }
-            return succeeded;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Resolves an agent name to an agent UUID by searching the directory
-        ///     services.
-        /// </summary>
-        /// <param name="agentFirstName">the first name of the agent</param>
-        /// <param name="agentLastName">the last name of the agent</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="agentUUID">an object to store the agent UUID</param>
-        /// <returns>true if the agent name could be resolved to an UUID</returns>
-        private static bool directAgentNameToUUID(string agentFirstName, string agentLastName, int millisecondsTimeout,
-            int dataTimeout,
-            ref UUID agentUUID)
-        {
-            UUID localAgentUUID = UUID.Zero;
-            wasAdaptiveAlarm DirPeopleReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
-            EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyDelegate = (sender, args) =>
-            {
-                DirPeopleReceivedAlarm.Alarm(dataTimeout);
-                localAgentUUID =
-                    args.MatchedPeople.FirstOrDefault(
-                        o =>
-                            o.FirstName.Equals(agentFirstName, StringComparison.OrdinalIgnoreCase) &&
-                            o.LastName.Equals(agentLastName, StringComparison.OrdinalIgnoreCase)).AgentID;
-            };
-            Client.Directory.DirPeopleReply += DirPeopleReplyDelegate;
-            Client.Directory.StartPeopleSearch(
-                string.Format(CultureInfo.InvariantCulture, "{0} {1}", agentFirstName, agentLastName), 0);
-            if (!DirPeopleReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
-            {
-                Client.Directory.DirPeopleReply -= DirPeopleReplyDelegate;
-                return false;
-            }
-            Client.Directory.DirPeopleReply -= DirPeopleReplyDelegate;
-            if (localAgentUUID.Equals(UUID.Zero)) return false;
-            agentUUID = localAgentUUID;
-            return true;
-        }
-
-        /// <summary>
-        ///     A wrapper for looking up an agent name using Corrade's internal cache.
-        /// </summary>
-        /// <param name="agentFirstName">the first name of the agent</param>
-        /// <param name="agentLastName">the last name of the agent</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="agentUUID">an object to store the agent UUID</param>
-        /// <returns>true if the agent name could be resolved to an UUID</returns>
-        private static bool AgentNameToUUID(string agentFirstName, string agentLastName, int millisecondsTimeout,
-            int dataTimeout,
-            ref UUID agentUUID)
-        {
-            lock (Cache.Locks.AgentCacheLock)
-            {
-                Cache.Agents agent =
-                    Cache.AgentCache.FirstOrDefault(
-                        o => o.FirstName.Equals(agentFirstName) && o.LastName.Equals(agentLastName));
-
-                if (!agent.Equals(default(Cache.Agents)))
-                {
-                    agentUUID = agent.UUID;
-                    return true;
-                }
-            }
-            bool succeeded = directAgentNameToUUID(agentFirstName, agentLastName, millisecondsTimeout, dataTimeout,
-                ref agentUUID);
-            if (succeeded)
-            {
-                lock (Cache.Locks.AgentCacheLock)
-                {
-                    Cache.AgentCache.Add(new Cache.Agents
-                    {
-                        FirstName = agentFirstName,
-                        LastName = agentLastName,
-                        UUID = agentUUID
-                    });
-                }
-            }
-            return succeeded;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Resolves an agent UUID to an agent name.
-        /// </summary>
-        /// <param name="agentUUID">the UUID of the agent</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="agentName">an object to store the name of the agent in</param>
-        /// <returns>true if the UUID could be resolved to a name</returns>
-        private static bool directAgentUUIDToName(UUID agentUUID, int millisecondsTimeout,
-            ref string agentName)
-        {
-            if (agentUUID.Equals(UUID.Zero))
-                return false;
-            string localAgentName = string.Empty;
-            ManualResetEvent UUIDNameReplyEvent = new ManualResetEvent(false);
-            EventHandler<UUIDNameReplyEventArgs> UUIDNameReplyDelegate = (sender, args) =>
-            {
-                localAgentName = args.Names.FirstOrDefault(o => o.Key.Equals(agentUUID)).Value;
-                UUIDNameReplyEvent.Set();
-            };
-            Client.Avatars.UUIDNameReply += UUIDNameReplyDelegate;
-            Client.Avatars.RequestAvatarName(agentUUID);
-            if (!UUIDNameReplyEvent.WaitOne(millisecondsTimeout, false))
-            {
-                Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
-                return false;
-            }
-            Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
-            if (string.IsNullOrEmpty(localAgentName)) return false;
-            agentName = localAgentName;
-            return true;
-        }
-
-        /// <summary>
-        ///     A wrapper for agent to UUID lookups using Corrade's internal cache.
-        /// </summary>
-        /// <param name="agentUUID">the UUID of the agent</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="agentName">an object to store the name of the agent in</param>
-        /// <returns>true if the UUID could be resolved to a name</returns>
-        private static bool AgentUUIDToName(UUID agentUUID, int millisecondsTimeout,
-            ref string agentName)
-        {
-            lock (Cache.Locks.AgentCacheLock)
-            {
-                Cache.Agents agent = Cache.AgentCache.FirstOrDefault(o => o.UUID.Equals(agentUUID));
-
-                if (!agent.Equals(default(Cache.Agents)))
-                {
-                    agentName = string.Join(" ", new[] {agent.FirstName, agent.LastName});
-                    return true;
-                }
-            }
-            bool succeeded = directAgentUUIDToName(agentUUID, millisecondsTimeout, ref agentName);
-            if (succeeded)
-            {
-                List<string> name = new List<string>(GetAvatarNames(agentName));
-                lock (Cache.Locks.AgentCacheLock)
-                {
-                    Cache.AgentCache.Add(new Cache.Agents
-                    {
-                        FirstName = name.First(),
-                        LastName = name.Last(),
-                        UUID = agentUUID
-                    });
-                }
-            }
-            return succeeded;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// ///
-        /// <summary>
-        ///     Resolves a role name to a role UUID.
-        /// </summary>
-        /// <param name="roleName">the name of the role to be resolved to an UUID</param>
-        /// <param name="groupUUID">the UUID of the group to query for the role UUID</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="roleUUID">an UUID object to store the role UUID in</param>
-        /// <returns>true if the role could be found</returns>
-        private static bool RoleNameToRoleUUID(string roleName, UUID groupUUID, int millisecondsTimeout,
-            int dataTimeout,
-            ref UUID roleUUID)
-        {
-            UUID localRoleUUID = UUID.Zero;
-            wasAdaptiveAlarm GroupRoleDataReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
-            EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
-            {
-                GroupRoleDataReceivedAlarm.Alarm(dataTimeout);
-                localRoleUUID =
-                    args.Roles.FirstOrDefault(o => o.Value.Name.Equals(roleName, StringComparison.Ordinal))
-                        .Key;
-            };
-            Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
-            Client.Groups.RequestGroupRoles(groupUUID);
-            if (!GroupRoleDataReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
-            {
-                Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
-                return false;
-            }
-            Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
-            roleUUID = localRoleUUID;
-            return true;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Resolves a role name to a role UUID.
-        /// </summary>
-        /// <param name="RoleUUID">the UUID of the role to be resolved to a name</param>
-        /// <param name="GroupUUID">the UUID of the group to query for the role name</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
-        /// <param name="roleName">a string object to store the role name in</param>
-        /// <returns>true if the role could be resolved</returns>
-        private static bool RoleUUIDToName(UUID RoleUUID, UUID GroupUUID, int millisecondsTimeout, int dataTimeout,
-            ref string roleName)
-        {
-            if (RoleUUID.Equals(UUID.Zero) || GroupUUID.Equals(UUID.Zero))
-                return false;
-            string localRoleName = string.Empty;
-            wasAdaptiveAlarm GroupRoleDataReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
-            EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
-            {
-                GroupRoleDataReceivedAlarm.Alarm(dataTimeout);
-                localRoleName = args.Roles.FirstOrDefault(o => o.Key.Equals(RoleUUID)).Value.Name;
-            };
-
-            Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
-            Client.Groups.RequestGroupRoles(GroupUUID);
-            if (!GroupRoleDataReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
-            {
-                Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
-                return false;
-            }
-            Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
-            if (string.IsNullOrEmpty(localRoleName)) return false;
-            roleName = localRoleName;
-            return true;
-        }
-
-        #endregion
-
         /// <summary>
         ///     Constants for Corrade's integrated chat bot.
         /// </summary>
@@ -17781,6 +16137,22 @@ namespace Corrade
             public const string STATE_DIRECTORY = @"state";
             public const string NOTIFICATIONS_STATE_FILE = @"Notifications.state";
 
+            public static readonly Regex AvatarFullNameRegex = new Regex(@"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$",
+                RegexOptions.Compiled);
+
+            public static readonly Regex OneOrMoRegex = new Regex(@".+?", RegexOptions.Compiled);
+
+            public static readonly Regex InventoryOfferObjectNameRegEx = new Regex(@"^[']{0,1}(.+?)(('\s)|$)",
+                RegexOptions.Compiled);
+
+            public static readonly Regex EjectedFromGroupRegEx =
+                new Regex(@"You have been ejected from '(.+?)' by .+?\.$", RegexOptions.Compiled);
+
+            public struct PERMISSIONS
+            {
+                public const string NONE = @"------------------------------";
+            }
+
             /// <summary>
             ///     Corrade version.
             /// </summary>
@@ -17813,22 +16185,6 @@ namespace Corrade
                     CORRADE_COMPILE_DATE),
                 string.Format(CultureInfo.InvariantCulture, "Copyright: {0}", COPYRIGHT)
             };
-
-            public static readonly Regex AvatarFullNameRegex = new Regex(@"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$",
-                RegexOptions.Compiled);
-
-            public static readonly Regex OneOrMoRegex = new Regex(@".+?", RegexOptions.Compiled);
-
-            public static readonly Regex InventoryOfferObjectNameRegEx = new Regex(@"^[']{0,1}(.+?)(('\s)|$)",
-                RegexOptions.Compiled);
-
-            public static readonly Regex EjectedFromGroupRegEx =
-                new Regex(@"You have been ejected from '(.+?)' by .+?\.$", RegexOptions.Compiled);
-
-            public struct PERMISSIONS
-            {
-                public const string NONE = @"------------------------------";
-            }
         }
 
         /// <summary>
@@ -17928,8 +16284,8 @@ namespace Corrade
         /// </summary>
         private struct CallbackQueueElement
         {
-            public string URL;
             public Dictionary<string, string> message;
+            public string URL;
         }
 
         private struct Configuration
@@ -19019,7 +17375,7 @@ namespace Corrade
                                                 XmlNode node = permissioNode;
                                                 Parallel.ForEach(
                                                     wasGetEnumDescriptions<Permissions>()
-                                                        .Where(name => name.Equals(node.Name,
+                                                        .AsParallel().Where(name => name.Equals(node.Name,
                                                             StringComparison.Ordinal)), name =>
                                                             {
                                                                 bool granted;
@@ -19051,7 +17407,7 @@ namespace Corrade
                                                 XmlNode node = notificationNode;
                                                 Parallel.ForEach(
                                                     wasGetEnumDescriptions<Notifications>()
-                                                        .Where(name => name.Equals(node.Name,
+                                                        .AsParallel().Where(name => name.Equals(node.Name,
                                                             StringComparison.Ordinal)), name =>
                                                             {
                                                                 bool granted;
@@ -19110,10 +17466,10 @@ namespace Corrade
                             break;
                     }
                     // Dynamically disable or enable notifications.
-                    Parallel.ForEach(wasGetEnumDescriptions<Notifications>().Select(
+                    Parallel.ForEach(wasGetEnumDescriptions<Notifications>().AsParallel().Select(
                         o => wasGetEnumValueFromDescription<Notifications>(o)), o =>
                         {
-                            bool enabled = GROUPS.Any(
+                            bool enabled = GROUPS.AsParallel().Any(
                                 p =>
                                     !(p.NotificationMask & (uint) o).Equals(0));
                             switch (o)
@@ -19270,9 +17626,9 @@ namespace Corrade
                         });
                     // If any group has either the avatar radar notification or the primitive radar notification then install the listeners.
                     switch (
-                        GROUPS.Any(
+                        GROUPS.AsParallel().Any(
                             o => !(o.NotificationMask & (uint) Notifications.NOTIFICATION_RADAR_AVATARS).Equals(0)) ||
-                        GROUPS.Any(
+                        GROUPS.AsParallel().Any(
                             o => !(o.NotificationMask & (uint) Notifications.NOTIFICATION_RADAR_PRIMITIVES).Equals(0)))
                     {
                         case true:
@@ -19499,7 +17855,7 @@ namespace Corrade
                 {
                     item.Type = (DirItemType) typeof (DirItemType).GetFields(BindingFlags.Public |
                                                                              BindingFlags.Static)
-                        .FirstOrDefault(
+                        .AsParallel().FirstOrDefault(
                             o =>
                                 string.Equals(o.Name,
                                     Enum.GetName(typeof (WearableType),
@@ -19847,8 +18203,8 @@ namespace Corrade
         /// </summary>
         private struct NotificationQueueElement
         {
-            public string URL;
             public Dictionary<string, string> message;
+            public string URL;
         }
 
         /// <summary>
@@ -20354,6 +18710,26 @@ namespace Corrade
         public class SerializableDictionary<TKey, TValue>
             : Dictionary<TKey, TValue>, IXmlSerializable
         {
+            [XmlRoot("Item")]
+            public class SerializableKeyValuePair<TK, TV>
+            {
+                [XmlAttribute("Key")] public TK Key;
+                [XmlAttribute("Value")] public TV Value;
+
+                /// <summary>
+                ///     Default constructor
+                /// </summary>
+                public SerializableKeyValuePair()
+                {
+                }
+
+                public SerializableKeyValuePair(TK key, TV value)
+                {
+                    Key = key;
+                    Value = value;
+                }
+            }
+
             #region IXmlSerializable Members
 
             public XmlSchema GetSchema()
@@ -20388,7 +18764,7 @@ namespace Corrade
                 XmlSerializerNamespaces ns = new XmlSerializerNamespaces();
                 ns.Add("", "");
                 foreach (SerializableKeyValuePair<TKey, TValue> kvp in
-                    Keys.Select(key => new {key, value = this[key]})
+                    Keys.AsParallel().Select(key => new {key, value = this[key]})
                         .Select(@t => new SerializableKeyValuePair<TKey, TValue>(@t.key, @t.value)))
                 {
                     serializer.Serialize(writer, kvp, ns);
@@ -20396,27 +18772,6 @@ namespace Corrade
             }
 
             #endregion
-
-            [XmlRoot("Item")]
-            public class SerializableKeyValuePair<TK, TV>
-            {
-                [XmlAttribute("Key")] public TK Key;
-
-                [XmlAttribute("Value")] public TV Value;
-
-                /// <summary>
-                ///     Default constructor
-                /// </summary>
-                public SerializableKeyValuePair()
-                {
-                }
-
-                public SerializableKeyValuePair(TK key, TV value)
-                {
-                    Key = key;
-                    Value = value;
-                }
-            }
         }
 
         /// <summary>
@@ -20497,10 +18852,9 @@ namespace Corrade
                 [Description("harmonic")] HARMONIC = 4
             }
 
-            private readonly object LockObject = new object();
-
             private readonly DECAY_TYPE decay = DECAY_TYPE.NONE;
             private readonly Stopwatch elapsed = new Stopwatch();
+            private readonly object LockObject = new object();
             private readonly HashSet<double> times = new HashSet<double>();
             private System.Timers.Timer alarm;
 
@@ -20574,6 +18928,1645 @@ namespace Corrade
                 }
             }
         }
+
+        /// <summary>
+        ///     Semaphores that sense the state of the connection. When any of these semaphores fail,
+        ///     Corrade does not consider itself connected anymore and terminates.
+        /// </summary>
+        private static readonly Dictionary<char, ManualResetEvent> ConnectionSemaphores = new Dictionary
+            <char, ManualResetEvent>
+        {
+            {'l', new ManualResetEvent(false)},
+            {'s', new ManualResetEvent(false)},
+            {'u', new ManualResetEvent(false)}
+        };
+
+        public static string CorradeServiceName;
+        private static Thread programThread;
+        private static readonly EventLog CorradeLog = new EventLog();
+        private static readonly GridClient Client = new GridClient();
+
+        private static readonly Bot AIMLBot = new Bot
+        {
+            TrustAIML = false
+        };
+
+        private static readonly User AIMLBotUser = new User(CORRADE_CONSTANTS.CORRADE, AIMLBot);
+        private static readonly FileSystemWatcher AIMLBotConfigurationWatcher = new FileSystemWatcher();
+        private static readonly object AIMLBotLock = new object();
+        private static readonly object ClientInstanceLock = new object();
+        private static readonly object ConfigurationFileLock = new object();
+        private static readonly object ClientLogFileLock = new object();
+        private static readonly object GroupLogFileLock = new object();
+        private static readonly object LocalLogFileLock = new object();
+        private static readonly object RegionLogFileLock = new object();
+        private static readonly object InstantMessageLogFileLock = new object();
+        private static readonly object DatabaseFileLock = new object();
+        private static readonly Dictionary<string, object> DatabaseLocks = new Dictionary<string, object>();
+        private static readonly object GroupNotificationsLock = new object();
+        public static HashSet<Notification> GroupNotifications = new HashSet<Notification>();
+
+        private static readonly Dictionary<InventoryObjectOfferedEventArgs, ManualResetEvent> InventoryOffers =
+            new Dictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>();
+
+        private static readonly object InventoryOffersLock = new object();
+        private static readonly Queue<CallbackQueueElement> CallbackQueue = new Queue<CallbackQueueElement>();
+        private static readonly object CallbackQueueLock = new object();
+
+        private static readonly Queue<NotificationQueueElement> NotificationQueue =
+            new Queue<NotificationQueueElement>();
+
+        private static readonly object NotificationQueueLock = new object();
+        private static readonly HashSet<GroupInvite> GroupInvites = new HashSet<GroupInvite>();
+        private static readonly object GroupInviteLock = new object();
+        private static readonly HashSet<TeleportLure> TeleportLures = new HashSet<TeleportLure>();
+        private static readonly object TeleportLureLock = new object();
+
+        private static readonly HashSet<ScriptPermissionRequest> ScriptPermissionRequests =
+            new HashSet<ScriptPermissionRequest>();
+
+        private static readonly object ScriptPermissionRequestLock = new object();
+        private static readonly HashSet<ScriptDialog> ScriptDialogs = new HashSet<ScriptDialog>();
+        private static readonly object ScriptDialogLock = new object();
+
+        private static readonly Dictionary<UUID, HashSet<UUID>> GroupMembers =
+            new Dictionary<UUID, HashSet<UUID>>();
+
+        private static readonly object GroupMembersLock = new object();
+        private static readonly Hashtable GroupWorkers = new Hashtable();
+        private static readonly object GroupWorkersLock = new object();
+        private static readonly Hashtable GroupDirectoryTrackers = new Hashtable();
+        private static readonly object GroupDirectoryTrackersLock = new object();
+        private static readonly HashSet<LookAtEffect> LookAtEffects = new HashSet<LookAtEffect>();
+        private static readonly HashSet<PointAtEffect> PointAtEffects = new HashSet<PointAtEffect>();
+        private static readonly HashSet<SphereEffect> SphereEffects = new HashSet<SphereEffect>();
+        private static readonly object SphereEffectsLock = new object();
+        private static readonly HashSet<BeamEffect> BeamEffects = new HashSet<BeamEffect>();
+        private static readonly Dictionary<UUID, Primitive> RadarObjects = new Dictionary<UUID, Primitive>();
+        private static readonly object RadarObjectsLock = new object();
+        private static readonly object BeamEffectsLock = new object();
+        private static readonly object InputFiltersLock = new object();
+        private static readonly object OutputFiltersLock = new object();
+        private static volatile bool EnableRLV;
+        private static volatile bool EnableAIML;
+        private static volatile bool AIMLBotBrainCompiled;
+
+        /// <summary>
+        ///     The various types of threads used by Corrade.
+        /// </summary>
+        private static readonly Dictionary<CorradeThreadType, CorradeThread> CorradeThreadPool =
+            new Dictionary<CorradeThreadType, CorradeThread>
+            {
+                {CorradeThreadType.COMMAND, new CorradeThread()},
+                {CorradeThreadType.RLV, new CorradeThread()},
+                {CorradeThreadType.NOTIFICATION, new CorradeThread()},
+                {CorradeThreadType.INSTANT_MESSAGE, new CorradeThread()}
+            };
+
+        /// <summary>
+        ///     Group membership sweep thread.
+        /// </summary>
+        private static Thread GroupMembershipSweepThread;
+
+        /// <summary>
+        ///     Group membership sweep thread starter.
+        /// </summary>
+        private static readonly System.Action StartGroupMembershipSweepThread = () =>
+        {
+            if (GroupMembershipSweepThread != null &&
+                (GroupMembershipSweepThread.ThreadState.Equals(ThreadState.Running) ||
+                 GroupMembershipSweepThread.ThreadState.Equals(ThreadState.WaitSleepJoin))) return;
+            runGroupMembershipSweepThread = true;
+            GroupMembershipSweepThread = new Thread(GroupMembershipSweep) {IsBackground = true};
+            GroupMembershipSweepThread.Start();
+        };
+
+        /// <summary>
+        ///     Group membership sweep thread stopper.
+        /// </summary>
+        private static readonly System.Action StopGroupMembershipSweepThread = () =>
+        {
+            // Stop the notification thread.
+            runGroupMembershipSweepThread = false;
+            if (GroupMembershipSweepThread == null ||
+                (!GroupMembershipSweepThread.ThreadState.Equals(ThreadState.Running) &&
+                 !GroupMembershipSweepThread.ThreadState.Equals(ThreadState.WaitSleepJoin))) return;
+            if (GroupMembershipSweepThread.Join(1000)) return;
+            try
+            {
+                GroupMembershipSweepThread.Abort();
+                GroupMembershipSweepThread.Join();
+            }
+            catch (ThreadStateException)
+            {
+            }
+        };
+
+        /// <summary>
+        ///     Schedules a load of the configuration file.
+        /// </summary>
+        private static readonly Timer ConfigurationChangedTimer = new Timer(ConfigurationChanged =>
+        {
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
+            lock (ClientInstanceLock)
+            {
+                Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
+            }
+        });
+
+        /// <summary>
+        ///     Schedules a load of the AIML configuration file.
+        /// </summary>
+        private static readonly Timer AIMLConfigurationChangedTimer = new Timer(AIMLConfigurationChanged =>
+        {
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AIML_CONFIGURATION_MODIFIED));
+            new Thread(
+                () =>
+                {
+                    lock (AIMLBotLock)
+                    {
+                        LoadChatBotFiles.Invoke();
+                    }
+                }) {IsBackground = true}.Start();
+        });
+
+        /// <summary>
+        ///     Global rebake timer.
+        /// </summary>
+        private static readonly Timer RebakeTimer = new Timer(Rebake =>
+        {
+            ManualResetEvent AppearanceSetEvent = new ManualResetEvent(false);
+            EventHandler<AppearanceSetEventArgs> HandleAppearanceSet = (sender, args) => AppearanceSetEvent.Set();
+            lock (ClientInstanceLock)
+            {
+                Client.Appearance.AppearanceSet += HandleAppearanceSet;
+                Client.Appearance.RequestSetAppearance(true);
+                AppearanceSetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                Client.Appearance.AppearanceSet -= HandleAppearanceSet;
+            }
+        });
+
+        /// <summary>
+        ///     Current land group activation timer.
+        /// </summary>
+        private static readonly Timer ActivateCurrentLandGroupTimer = new Timer(ActivateCurrentLandGroup =>
+        {
+            Parcel parcel = null;
+            lock (ClientInstanceLock)
+            {
+                if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel)) return;
+            }
+            UUID groupUUID = Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(parcel.GroupID)).UUID;
+            if (groupUUID.Equals(UUID.Zero)) return;
+            lock (ClientInstanceLock)
+            {
+                Client.Groups.ActivateGroup(groupUUID);
+            }
+        });
+
+        public static EventHandler ConsoleEventHandler;
+
+        /// <summary>
+        ///     Corrade's input filter function.
+        /// </summary>
+        private static readonly Func<string, string> wasInput = o =>
+        {
+            if (string.IsNullOrEmpty(o)) return string.Empty;
+
+            List<Filter> safeFilters;
+            lock (InputFiltersLock)
+            {
+                safeFilters = Configuration.INPUT_FILTERS;
+            }
+            foreach (Filter filter in safeFilters)
+            {
+                switch (filter)
+                {
+                    case Filter.RFC3986:
+                        o = wasUriUnescapeDataString(o);
+                        break;
+                    case Filter.ENIGMA:
+                        o = wasEnigma(o, Configuration.ENIGMA.rotors.ToArray(), Configuration.ENIGMA.plugs.ToArray(),
+                            Configuration.ENIGMA.reflector);
+                        break;
+                    case Filter.VIGENERE:
+                        o = wasDecryptVIGENERE(o, Configuration.VIGENERE_SECRET);
+                        break;
+                    case Filter.ATBASH:
+                        o = wasATBASH(o);
+                        break;
+                    case Filter.BASE64:
+                        o = Encoding.UTF8.GetString(Convert.FromBase64String(o));
+                        break;
+                }
+            }
+            return o;
+        };
+
+        /// <summary>
+        ///     Corrade's output filter function.
+        /// </summary>
+        private static readonly Func<string, string> wasOutput = o =>
+        {
+            if (string.IsNullOrEmpty(o)) return string.Empty;
+
+            List<Filter> safeFilters;
+            lock (OutputFiltersLock)
+            {
+                safeFilters = Configuration.OUTPUT_FILTERS;
+            }
+            foreach (Filter filter in safeFilters)
+            {
+                switch (filter)
+                {
+                    case Filter.RFC3986:
+                        o = wasUriEscapeDataString(o);
+                        break;
+                    case Filter.ENIGMA:
+                        o = wasEnigma(o, Configuration.ENIGMA.rotors.ToArray(), Configuration.ENIGMA.plugs.ToArray(),
+                            Configuration.ENIGMA.reflector);
+                        break;
+                    case Filter.VIGENERE:
+                        o = wasEncryptVIGENERE(o, Configuration.VIGENERE_SECRET);
+                        break;
+                    case Filter.ATBASH:
+                        o = wasATBASH(o);
+                        break;
+                    case Filter.BASE64:
+                        o = Convert.ToBase64String(Encoding.UTF8.GetBytes(o));
+                        break;
+                }
+            }
+            return o;
+        };
+
+        /// <summary>
+        ///     Determines whether a string is a Corrade command.
+        /// </summary>
+        /// <returns>true if the string is a Corrade command</returns>
+        private static readonly Func<string, bool> IsCorradeCommand = o =>
+        {
+            Dictionary<string, string> data = wasKeyValueDecode(o);
+            return !data.Count.Equals(0) && data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND)) &&
+                   data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)) &&
+                   data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD));
+        };
+
+        /// <summary>
+        ///     Gets the first name and last name from an avatar name.
+        /// </summary>
+        /// <returns>the firstname and the lastname or Resident</returns>
+        private static readonly Func<string, IEnumerable<string>> GetAvatarNames =
+            o => CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(o)
+                .Cast<Match>()
+                .ToDictionary(p => new[]
+                {
+                    p.Groups["first"].Value,
+                    p.Groups["last"].Value
+                })
+                .SelectMany(
+                    p =>
+                        new[]
+                        {
+                            p.Key[0].Trim(),
+                            !string.IsNullOrEmpty(p.Key[1])
+                                ? p.Key[1].Trim()
+                                : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                        });
+
+        /// <summary>
+        ///     Updates the inventory starting from a folder recursively.
+        /// </summary>
+        private static readonly Action<InventoryFolder> UpdateInventoryRecursive = o =>
+        {
+            // Create the queue of folders.
+            Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
+            object LockObject = new object();
+            // Enqueue the first folder (root).
+            inventoryFolders.Enqueue(o);
+
+            AutoResetEvent FolderUpdatedEvent = new AutoResetEvent(false);
+            EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
+            {
+                // Enqueue all the new folders.
+                Client.Inventory.Store.GetContents(q.FolderID).ForEach(r =>
+                {
+                    if (r is InventoryFolder)
+                    {
+                        lock (LockObject)
+                        {
+                            inventoryFolders.Enqueue(r as InventoryFolder);
+                        }
+                    }
+                });
+                FolderUpdatedEvent.Set();
+            };
+
+            do
+            {
+                InventoryFolder folder;
+                lock (LockObject)
+                {
+                    folder = inventoryFolders.Dequeue();
+                }
+                if (folder == null) continue;
+                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
+                    InventorySortOrder.ByDate);
+                FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+            } while (!inventoryFolders.Count.Equals(0));
+        };
+
+        /// <summary>
+        ///     Loads the OpenMetaverse inventory cache.
+        /// </summary>
+        private static readonly System.Action LoadInventoryCache = () =>
+        {
+            int itemsLoaded =
+                Client.Inventory.Store.RestoreFromDisk(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                    CORRADE_CONSTANTS.INVENTORY_CACHE_FILE));
+
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_LOADED),
+                itemsLoaded < 0 ? "0" : itemsLoaded.ToString(CultureInfo.InvariantCulture));
+        };
+
+        /// <summary>
+        ///     Saves the OpenMetaverse inventory cache.
+        /// </summary>
+        private static readonly System.Action SaveInventoryCache = () =>
+        {
+            string path = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
+            int itemsSaved = Client.Inventory.Store.Items.Count;
+            Client.Inventory.Store.SaveToDisk(path);
+
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_SAVED),
+                itemsSaved.ToString(CultureInfo.InvariantCulture));
+        };
+
+        /// <summary>
+        ///     Loads Corrade's caches.
+        /// </summary>
+        private static readonly System.Action LoadCorradeCache = () =>
+        {
+            lock (Cache.Locks.AgentCacheLock)
+            {
+                Cache.AgentCache =
+                    Cache.Load(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
+                        Cache.AgentCache);
+            }
+            lock (Cache.Locks.GroupCacheLock)
+            {
+                Cache.GroupCache =
+                    Cache.Load(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
+                        Cache.GroupCache);
+            }
+        };
+
+        /// <summary>
+        ///     Saves Corrade's caches.
+        /// </summary>
+        private static readonly System.Action SaveCorradeCache = () =>
+        {
+            lock (Cache.Locks.AgentCacheLock)
+            {
+                Cache.Save(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
+                    Cache.AgentCache);
+            }
+            lock (Cache.Locks.GroupCacheLock)
+            {
+                Cache.Save(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
+                    Cache.GroupCache);
+            }
+        };
+
+        /// <summary>
+        ///     Saves Corrade's states.
+        /// </summary>
+        private static readonly System.Action SaveCorradeState = () =>
+        {
+            lock (GroupNotificationsLock)
+            {
+                try
+                {
+                    using (
+                        StreamWriter writer =
+                            new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                                CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE)))
+                    {
+                        XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
+                        serializer.Serialize(writer, GroupNotifications);
+                        writer.Flush();
+                    }
+                }
+                catch (Exception e)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE),
+                        e.Message);
+                }
+            }
+        };
+
+        /// <summary>
+        ///     Loads Corrade's states.
+        /// </summary>
+        private static readonly System.Action LoadCorradeState = () =>
+        {
+            lock (GroupNotificationsLock)
+            {
+                string groupNotificationsStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                    CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE);
+                if (File.Exists(groupNotificationsStateFile))
+                {
+                    HashSet<Notification> groupNotifications = new HashSet<Notification>();
+                    try
+                    {
+                        using (FileStream stream = File.OpenRead(groupNotificationsStateFile))
+                        {
+                            XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
+                            groupNotifications =
+                                (HashSet<Notification>) serializer.Deserialize(stream);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Feedback(
+                            wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE),
+                            ex.Message);
+                    }
+
+                    // Only add notifications for existing configured groups.
+                    Parallel.ForEach(groupNotifications, o =>
+                    {
+                        if (!Configuration.GROUPS.AsParallel().Any(p => p.Name.Equals(o.GroupName))) return;
+                        GroupNotifications.Add(o);
+                    });
+                }
+            }
+        };
+
+        /// <summary>
+        ///     Loads the chatbot configuration and AIML files.
+        /// </summary>
+        private static readonly System.Action LoadChatBotFiles = () =>
+        {
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READING_AIML_BOT_CONFIGURATION));
+            try
+            {
+                AIMLBot.isAcceptingUserInput = false;
+                AIMLBot.loadSettings(wasPathCombine(
+                    Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
+                    AIML_BOT_CONSTANTS.CONFIG.DIRECTORY, AIML_BOT_CONSTANTS.CONFIG.SETTINGS_FILE));
+                string AIMLBotBrain =
+                    wasPathCombine(
+                        Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
+                        AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_FILE);
+                switch (File.Exists(AIMLBotBrain))
+                {
+                    case true:
+                        AIMLBot.loadFromBinaryFile(AIMLBotBrain);
+                        break;
+                    default:
+                        AIMLBot.loadAIMLFromFiles();
+                        AIMLBot.saveToBinaryFile(AIMLBotBrain);
+                        break;
+                }
+                string AIMLBotUserBrain =
+                    wasPathCombine(
+                        Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
+                        AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_SESSION_FILE);
+                if (File.Exists(AIMLBotUserBrain))
+                {
+                    AIMLBotUser.Predicates.loadSettings(AIMLBotUserBrain);
+                }
+                AIMLBot.isAcceptingUserInput = true;
+            }
+            catch (Exception ex)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_LOADING_AIML_BOT_FILES), ex.Message);
+                return;
+            }
+            finally
+            {
+                AIMLBotBrainCompiled = true;
+            }
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_AIML_BOT_CONFIGURATION));
+        };
+
+        /// <summary>
+        ///     Saves the chatbot configuration and AIML files.
+        /// </summary>
+        private static readonly System.Action SaveChatBotFiles = () =>
+        {
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WRITING_AIML_BOT_CONFIGURATION));
+            try
+            {
+                AIMLBot.isAcceptingUserInput = false;
+                AIMLBotUser.Predicates.DictionaryAsXML.Save(wasPathCombine(
+                    Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
+                    AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_SESSION_FILE));
+                AIMLBot.isAcceptingUserInput = true;
+            }
+            catch (Exception ex)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SAVING_AIML_BOT_FILES), ex.Message);
+                return;
+            }
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WROTE_AIML_BOT_CONFIGURATION));
+        };
+
+        private static volatile bool runCallbackThread = true;
+        private static volatile bool runGroupMembershipSweepThread = true;
+        private static volatile bool runNotificationThread = true;
+        private static volatile bool runEffectsExpirationThread = true;
+
+        #region KEY-VALUE DATA
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Returns the value of a key from a key-value data string.
+        /// </summary>
+        /// <param name="key">the key of the value</param>
+        /// <param name="data">the key-value data segment</param>
+        /// <returns>true if the key was found in data</returns>
+        private static string wasKeyValueGet(string key, string data)
+        {
+            foreach (string tuples in data.Split('&'))
+            {
+                string[] tuple = tuples.Split('=');
+                if (!tuple.Length.Equals(2))
+                {
+                    continue;
+                }
+                if (tuple[0].Equals(key, StringComparison.Ordinal))
+                {
+                    return tuple[1];
+                }
+            }
+            return string.Empty;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Returns a key-value data string with a key set to a given value.
+        /// </summary>
+        /// <param name="key">the key of the value</param>
+        /// <param name="value">the value to set the key to</param>
+        /// <param name="data">the key-value data segment</param>
+        /// <returns>
+        ///     a key-value data string or the empty string if either key or
+        ///     value are empty
+        /// </returns>
+        private static string wasKeyValueSet(string key, string value, string data)
+        {
+            List<string> output = new List<string>();
+            foreach (string tuples in data.Split('&'))
+            {
+                string[] tuple = tuples.Split('=');
+                if (!tuple.Length.Equals(2))
+                {
+                    continue;
+                }
+                if (tuple[0].Equals(key, StringComparison.Ordinal))
+                {
+                    tuple[1] = value;
+                }
+                output.Add(string.Join("=", tuple));
+            }
+            string add = string.Join("=", key, value);
+            if (!output.Contains(add))
+            {
+                output.Add(add);
+            }
+            return string.Join("&", output.ToArray());
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Deletes a key-value pair from a string referenced by a key.
+        /// </summary>
+        /// <param name="key">the key to search for</param>
+        /// <param name="data">the key-value data segment</param>
+        /// <returns>a key-value pair string</returns>
+        private static string wasKeyValueDelete(string key, string data)
+        {
+            List<string> output = new List<string>();
+            foreach (string tuples in data.Split('&'))
+            {
+                string[] tuple = tuples.Split('=');
+                if (!tuple.Length.Equals(2))
+                {
+                    continue;
+                }
+                if (tuple[0].Equals(key, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+                output.Add(string.Join("=", tuple));
+            }
+            return string.Join("&", output.ToArray());
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Decodes key-value pair data to a dictionary.
+        /// </summary>
+        /// <param name="data">the key-value pair data</param>
+        /// <returns>a dictionary containing the keys and values</returns>
+        private static Dictionary<string, string> wasKeyValueDecode(string data)
+        {
+            Dictionary<string, string> output = new Dictionary<string, string>();
+            foreach (string tuples in data.Split('&'))
+            {
+                string[] tuple = tuples.Split('=');
+                if (!tuple.Length.Equals(2))
+                {
+                    continue;
+                }
+                if (output.ContainsKey(tuple[0]))
+                {
+                    continue;
+                }
+                output.Add(tuple[0], tuple[1]);
+            }
+            return output;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Serialises a dictionary to key-value data.
+        /// </summary>
+        /// <param name="data">a dictionary</param>
+        /// <returns>a key-value data encoded string</returns>
+        private static string wasKeyValueEncode(Dictionary<string, string> data)
+        {
+            List<string> output = new List<string>();
+            foreach (KeyValuePair<string, string> tuple in data)
+            {
+                output.Add(string.Join("=", tuple.Key, tuple.Value));
+            }
+            return string.Join("&", output.ToArray());
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>Escapes a dictionary's keys and values for sending as POST data.</summary>
+        /// <param name="data">A dictionary containing keys and values to be escaped</param>
+        private static Dictionary<string, string> wasKeyValueEscape(Dictionary<string, string> data)
+        {
+            Dictionary<string, string> output = new Dictionary<string, string>();
+            foreach (KeyValuePair<string, string> tuple in data)
+            {
+                output.Add(wasOutput(tuple.Key), wasOutput(tuple.Value));
+            }
+            return output;
+        }
+
+        #endregion
+
+        #region CRYPTOGRAPHY
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Gets an array element at a given modulo index.
+        /// </summary>
+        /// <typeparam name="T">the array type</typeparam>
+        /// <param name="index">a positive or negative index of the element</param>
+        /// <param name="data">the array</param>
+        /// <return>an array element</return>
+        public static T wasGetElementAt<T>(T[] data, int index)
+        {
+            switch (index < 0)
+            {
+                case true:
+                    return data[((index%data.Length) + data.Length)%data.Length];
+                default:
+                    return data[index%data.Length];
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Gets a sub-array from an array.
+        /// </summary>
+        /// <typeparam name="T">the array type</typeparam>
+        /// <param name="data">the array</param>
+        /// <param name="start">the start index</param>
+        /// <param name="stop">the stop index (-1 denotes the end)</param>
+        /// <returns>the array slice between start and stop</returns>
+        public static T[] wasGetSubArray<T>(T[] data, int start, int stop)
+        {
+            if (stop.Equals(-1))
+                stop = data.Length - 1;
+            T[] result = new T[stop - start + 1];
+            Array.Copy(data, start, result, 0, stop - start + 1);
+            return result;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Delete a sub-array and return the result.
+        /// </summary>
+        /// <typeparam name="T">the array type</typeparam>
+        /// <param name="data">the array</param>
+        /// <param name="start">the start index</param>
+        /// <param name="stop">the stop index (-1 denotes the end)</param>
+        /// <returns>the array without elements between start and stop</returns>
+        public static T[] wasDeleteSubArray<T>(T[] data, int start, int stop)
+        {
+            if (stop.Equals(-1))
+                stop = data.Length - 1;
+            T[] result = new T[data.Length - (stop - start) - 1];
+            Array.Copy(data, 0, result, 0, start);
+            Array.Copy(data, stop + 1, result, start, data.Length - stop - 1);
+            return result;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Concatenate multiple arrays.
+        /// </summary>
+        /// <typeparam name="T">the array type</typeparam>
+        /// <param name="arrays">multiple arrays</param>
+        /// <returns>a flat array with all arrays concatenated</returns>
+        public static T[] wasConcatenateArrays<T>(params T[][] arrays)
+        {
+            int resultLength = 0;
+            foreach (T[] o in arrays)
+            {
+                resultLength += o.Length;
+            }
+            T[] result = new T[resultLength];
+            int offset = 0;
+            for (int x = 0; x < arrays.Length; x++)
+            {
+                arrays[x].CopyTo(result, offset);
+                offset += arrays[x].Length;
+            }
+            return result;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Permutes an array in reverse a given number of times.
+        /// </summary>
+        /// <typeparam name="T">the array type</typeparam>
+        /// <param name="input">the array</param>
+        /// <param name="times">the number of times to permute</param>
+        /// <returns>the array with the elements permuted</returns>
+        private static T[] wasReversePermuteArrayElements<T>(T[] input, int times)
+        {
+            if (times.Equals(0)) return input;
+            T[] slice = new T[input.Length];
+            Array.Copy(input, 1, slice, 0, input.Length - 1);
+            Array.Copy(input, 0, slice, input.Length - 1, 1);
+            return wasReversePermuteArrayElements(slice, --times);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Permutes an array forward a given number of times.
+        /// </summary>
+        /// <typeparam name="T">the array type</typeparam>
+        /// <param name="input">the array</param>
+        /// <param name="times">the number of times to permute</param>
+        /// <returns>the array with the elements permuted</returns>
+        private static T[] wasForwardPermuteArrayElements<T>(T[] input, int times)
+        {
+            if (times.Equals(0)) return input;
+            T[] slice = new T[input.Length];
+            Array.Copy(input, input.Length - 1, slice, 0, 1);
+            Array.Copy(input, 0, slice, 1, input.Length - 1);
+            return wasForwardPermuteArrayElements(slice, --times);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Encrypt or decrypt a message given a set of rotors, plugs and a reflector.
+        /// </summary>
+        /// <param name="message">the message to encyrpt or decrypt</param>
+        /// <param name="rotors">any combination of: 1, 2, 3, 4, 5, 6, 7, 8, b, g</param>
+        /// <param name="plugs">the letter representing the start character for the rotor</param>
+        /// <param name="reflector">any one of: B, b, C, c</param>
+        /// <returns>either a decrypted or encrypted string</returns>
+        private static string wasEnigma(string message, char[] rotors, char[] plugs, char reflector)
+        {
+            Dictionary<char, char[]> def_rotors = new Dictionary<char, char[]>
+            {
+                {
+                    '1', new[]
+                    {
+                        'e', 'k', 'm', 'f', 'l',
+                        'g', 'd', 'q', 'v', 'z',
+                        'n', 't', 'o', 'w', 'y',
+                        'h', 'x', 'u', 's', 'p',
+                        'a', 'i', 'b', 'r', 'c',
+                        'j'
+                    }
+                },
+                {
+                    '2', new[]
+                    {
+                        'a', 'j', 'd', 'k', 's',
+                        'i', 'r', 'u', 'x', 'b',
+                        'l', 'h', 'w', 't', 'm',
+                        'c', 'q', 'g', 'z', 'n',
+                        'p', 'y', 'f', 'v', 'o',
+                        'e'
+                    }
+                },
+                {
+                    '3', new[]
+                    {
+                        'b', 'd', 'f', 'h', 'j',
+                        'l', 'c', 'p', 'r', 't',
+                        'x', 'v', 'z', 'n', 'y',
+                        'e', 'i', 'w', 'g', 'a',
+                        'k', 'm', 'u', 's', 'q',
+                        'o'
+                    }
+                },
+                {
+                    '4', new[]
+                    {
+                        'e', 's', 'o', 'v', 'p',
+                        'z', 'j', 'a', 'y', 'q',
+                        'u', 'i', 'r', 'h', 'x',
+                        'l', 'n', 'f', 't', 'g',
+                        'k', 'd', 'c', 'm', 'w',
+                        'b'
+                    }
+                },
+                {
+                    '5', new[]
+                    {
+                        'v', 'z', 'b', 'r', 'g',
+                        'i', 't', 'y', 'u', 'p',
+                        's', 'd', 'n', 'h', 'l',
+                        'x', 'a', 'w', 'm', 'j',
+                        'q', 'o', 'f', 'e', 'c',
+                        'k'
+                    }
+                },
+                {
+                    '6', new[]
+                    {
+                        'j', 'p', 'g', 'v', 'o',
+                        'u', 'm', 'f', 'y', 'q',
+                        'b', 'e', 'n', 'h', 'z',
+                        'r', 'd', 'k', 'a', 's',
+                        'x', 'l', 'i', 'c', 't',
+                        'w'
+                    }
+                },
+                {
+                    '7', new[]
+                    {
+                        'n', 'z', 'j', 'h', 'g',
+                        'r', 'c', 'x', 'm', 'y',
+                        's', 'w', 'b', 'o', 'u',
+                        'f', 'a', 'i', 'v', 'l',
+                        'p', 'e', 'k', 'q', 'd',
+                        't'
+                    }
+                },
+                {
+                    '8', new[]
+                    {
+                        'f', 'k', 'q', 'h', 't',
+                        'l', 'x', 'o', 'c', 'b',
+                        'j', 's', 'p', 'd', 'z',
+                        'r', 'a', 'm', 'e', 'w',
+                        'n', 'i', 'u', 'y', 'g',
+                        'v'
+                    }
+                },
+                {
+                    'b', new[]
+                    {
+                        'l', 'e', 'y', 'j', 'v',
+                        'c', 'n', 'i', 'x', 'w',
+                        'p', 'b', 'q', 'm', 'd',
+                        'r', 't', 'a', 'k', 'z',
+                        'g', 'f', 'u', 'h', 'o',
+                        's'
+                    }
+                },
+                {
+                    'g', new[]
+                    {
+                        'f', 's', 'o', 'k', 'a',
+                        'n', 'u', 'e', 'r', 'h',
+                        'm', 'b', 't', 'i', 'y',
+                        'c', 'w', 'l', 'q', 'p',
+                        'z', 'x', 'v', 'g', 'j',
+                        'd'
+                    }
+                }
+            };
+
+            Dictionary<char, char[]> def_reflectors = new Dictionary<char, char[]>
+            {
+                {
+                    'B', new[]
+                    {
+                        'a', 'y', 'b', 'r', 'c', 'u', 'd', 'h',
+                        'e', 'q', 'f', 's', 'g', 'l', 'i', 'p',
+                        'j', 'x', 'k', 'n', 'm', 'o', 't', 'z',
+                        'v', 'w'
+                    }
+                },
+                {
+                    'b', new[]
+                    {
+                        'a', 'e', 'b', 'n', 'c', 'k', 'd', 'q',
+                        'f', 'u', 'g', 'y', 'h', 'w', 'i', 'j',
+                        'l', 'o', 'm', 'p', 'r', 'x', 's', 'z',
+                        't', 'v'
+                    }
+                },
+                {
+                    'C', new[]
+                    {
+                        'a', 'f', 'b', 'v', 'c', 'p', 'd', 'j',
+                        'e', 'i', 'g', 'o', 'h', 'y', 'k', 'r',
+                        'l', 'z', 'm', 'x', 'n', 'w', 't', 'q',
+                        's', 'u'
+                    }
+                },
+                {
+                    'c', new[]
+                    {
+                        'a', 'r', 'b', 'd', 'c', 'o', 'e', 'j',
+                        'f', 'n', 'g', 't', 'h', 'k', 'i', 'v',
+                        'l', 'm', 'p', 'w', 'q', 'z', 's', 'x',
+                        'u', 'y'
+                    }
+                }
+            };
+
+            // Setup rotors from plugs.
+            foreach (char rotor in rotors)
+            {
+                char plug = plugs[Array.IndexOf(rotors, rotor)];
+                int i = Array.IndexOf(def_rotors[rotor], plug);
+                if (i.Equals(0)) continue;
+                def_rotors[rotor] = wasConcatenateArrays(new[] {plug},
+                    wasGetSubArray(wasDeleteSubArray(def_rotors[rotor], i, i), i, -1),
+                    wasGetSubArray(wasDeleteSubArray(def_rotors[rotor], i + 1, -1), 0, i - 1));
+            }
+
+            StringBuilder result = new StringBuilder();
+            foreach (char c in message)
+            {
+                if (!char.IsLetter(c))
+                {
+                    result.Append(c);
+                    continue;
+                }
+
+                // Normalize to lower.
+                char l = char.ToLower(c);
+
+                Action<char[]> rotate = o =>
+                {
+                    int i = o.Length - 1;
+                    do
+                    {
+                        def_rotors[o[0]] = wasForwardPermuteArrayElements(def_rotors[o[0]], 1);
+                        if (i.Equals(0))
+                        {
+                            rotors = wasReversePermuteArrayElements(o, 1);
+                            continue;
+                        }
+                        l = wasGetElementAt(def_rotors[o[1]], Array.IndexOf(def_rotors[o[0]], l) - 1);
+                        o = wasReversePermuteArrayElements(o, 1);
+                    } while (--i > -1);
+                };
+
+                // Forward pass through the Enigma's rotors.
+                rotate.Invoke(rotors);
+
+                // Reflect
+                int x = Array.IndexOf(def_reflectors[reflector], l);
+                l = (x + 1)%2 == 0 ? def_reflectors[reflector][x - 1] : def_reflectors[reflector][x + 1];
+
+                // Reverse the order of the rotors.
+                Array.Reverse(rotors);
+
+                // Reverse pass through the Enigma's rotors.
+                rotate.Invoke(rotors);
+
+                if (char.IsUpper(c))
+                {
+                    l = char.ToUpper(l);
+                }
+                result.Append(l);
+            }
+
+            return result.ToString();
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Expand the VIGENRE key to the length of the input.
+        /// </summary>
+        /// <param name="input">the input to expand to</param>
+        /// <param name="enc_key">the key to expand</param>
+        /// <returns>the expanded key</returns>
+        private static string wasVigenereExpandKey(string input, string enc_key)
+        {
+            string exp_key = "";
+            int i = 0, j = 0;
+            do
+            {
+                char p = input[i];
+                if (!char.IsLetter(p))
+                {
+                    exp_key += p;
+                    ++i;
+                    continue;
+                }
+                int m = j%enc_key.Length;
+                exp_key += enc_key[m];
+                ++j;
+                ++i;
+            } while (i < input.Length);
+            return exp_key;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Encrypt using VIGENERE.
+        /// </summary>
+        /// <param name="input">the input to encrypt</param>
+        /// <param name="enc_key">the key to encrypt with</param>
+        /// <returns>the encrypted input</returns>
+        private static string wasEncryptVIGENERE(string input, string enc_key)
+        {
+            char[] a =
+            {
+                'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+                'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+            };
+
+            enc_key = wasVigenereExpandKey(input, enc_key);
+            string result = "";
+            int i = 0;
+            do
+            {
+                char p = input[i];
+                if (!char.IsLetter(p))
+                {
+                    result += p;
+                    ++i;
+                    continue;
+                }
+                char q =
+                    wasReversePermuteArrayElements(a, Array.IndexOf(a, enc_key[i]))[
+                        Array.IndexOf(a, char.ToLowerInvariant(p))];
+                if (char.IsUpper(p))
+                {
+                    q = char.ToUpperInvariant(q);
+                }
+                result += q;
+                ++i;
+            } while (i < input.Length);
+            return result;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Decrypt using VIGENERE.
+        /// </summary>
+        /// <param name="input">the input to decrypt</param>
+        /// <param name="enc_key">the key to decrypt with</param>
+        /// <returns>the decrypted input</returns>
+        private static string wasDecryptVIGENERE(string input, string enc_key)
+        {
+            char[] a =
+            {
+                'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+                'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+            };
+
+            enc_key = wasVigenereExpandKey(input, enc_key);
+            string result = "";
+            int i = 0;
+            do
+            {
+                char p = input[i];
+                if (!char.IsLetter(p))
+                {
+                    result += p;
+                    ++i;
+                    continue;
+                }
+                char q =
+                    a[
+                        Array.IndexOf(wasReversePermuteArrayElements(a, Array.IndexOf(a, enc_key[i])),
+                            char.ToLowerInvariant(p))];
+                if (char.IsUpper(p))
+                {
+                    q = char.ToUpperInvariant(q);
+                }
+                result += q;
+                ++i;
+            } while (i < input.Length);
+            return result;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2015 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     An implementation of the ATBASH cypher for latin alphabets.
+        /// </summary>
+        /// <param name="data">the data to encrypt or decrypt</param>
+        /// <returns>the encrypted or decrypted data</returns>
+        private static string wasATBASH(string data)
+        {
+            char[] a =
+            {
+                'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+                'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+            };
+
+            char[] input = data.ToArray();
+
+            Parallel.ForEach(Enumerable.Range(0, data.Length), i =>
+            {
+                char e = input[i];
+                if (!char.IsLetter(e)) return;
+                int x = 25 - Array.BinarySearch(a, char.ToLowerInvariant(e));
+                if (!char.IsUpper(e))
+                {
+                    input[i] = a[x];
+                    return;
+                }
+                input[i] = char.ToUpperInvariant(a[x]);
+            });
+
+            return new string(input);
+        }
+
+        #endregion
+
+        #region NAME AND UUID RESOLVERS
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Tries to build an UUID out of the data string.
+        /// </summary>
+        /// <param name="data">a string</param>
+        /// <returns>an UUID or the supplied string in case data could not be resolved</returns>
+        private static object StringOrUUID(string data)
+        {
+            if (string.IsNullOrEmpty(data))
+            {
+                return null;
+            }
+            UUID @UUID;
+            if (!UUID.TryParse(data, out @UUID))
+            {
+                return data;
+            }
+            return @UUID;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Updates the current balance by requesting it from the grid.
+        /// </summary>
+        /// <param name="millisecondsTimeout">timeout for the request in milliseconds</param>
+        /// <returns>true if the balance could be retrieved</returns>
+        private static bool UpdateBalance(int millisecondsTimeout)
+        {
+            ManualResetEvent MoneyBalanceEvent = new ManualResetEvent(false);
+            EventHandler<MoneyBalanceReplyEventArgs> MoneyBalanceEventHandler =
+                (sender, args) => MoneyBalanceEvent.Set();
+            Client.Self.MoneyBalanceReply += MoneyBalanceEventHandler;
+            Client.Self.RequestBalance();
+            if (!MoneyBalanceEvent.WaitOne(millisecondsTimeout, false))
+            {
+                Client.Self.MoneyBalanceReply -= MoneyBalanceEventHandler;
+                return false;
+            }
+            Client.Self.MoneyBalanceReply -= MoneyBalanceEventHandler;
+            return true;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Resolves a group name to an UUID by using the directory search.
+        /// </summary>
+        /// <param name="groupName">the name of the group to resolve</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
+        /// <param name="groupUUID">an object in which to store the UUID of the group</param>
+        /// <returns>true if the group name could be resolved to an UUID</returns>
+        private static bool directGroupNameToUUID(string groupName, int millisecondsTimeout, int dataTimeout,
+            ref UUID groupUUID)
+        {
+            UUID localGroupUUID = UUID.Zero;
+            wasAdaptiveAlarm DirGroupsReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+            EventHandler<DirGroupsReplyEventArgs> DirGroupsReplyDelegate = (sender, args) =>
+            {
+                DirGroupsReceivedAlarm.Alarm(dataTimeout);
+                DirectoryManager.GroupSearchData groupSearchData =
+                    args.MatchedGroups.AsParallel().FirstOrDefault(o => o.GroupName.Equals(groupName));
+                if (groupSearchData.Equals(default(DirectoryManager.GroupSearchData))) return;
+                localGroupUUID = groupSearchData.GroupID;
+            };
+            Client.Directory.DirGroupsReply += DirGroupsReplyDelegate;
+            Client.Directory.StartGroupSearch(groupName, 0);
+            if (!DirGroupsReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
+            {
+                Client.Directory.DirGroupsReply -= DirGroupsReplyDelegate;
+                return false;
+            }
+            Client.Directory.DirGroupsReply -= DirGroupsReplyDelegate;
+            if (localGroupUUID.Equals(UUID.Zero)) return false;
+            groupUUID = localGroupUUID;
+            return true;
+        }
+
+        /// <summary>
+        ///     A wrapper for resolving group names to UUIDs by using Corrade's internal cache.
+        /// </summary>
+        /// <param name="groupName">the name of the group to resolve</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
+        /// <param name="groupUUID">an object in which to store the UUID of the group</param>
+        /// <returns>true if the group name could be resolved to an UUID</returns>
+        private static bool GroupNameToUUID(string groupName, int millisecondsTimeout, int dataTimeout,
+            ref UUID groupUUID)
+        {
+            lock (Cache.Locks.GroupCacheLock)
+            {
+                Cache.Groups @group = Cache.GroupCache.AsParallel().FirstOrDefault(o => o.Name.Equals(groupName));
+
+                if (!@group.Equals(default(Cache.Groups)))
+                {
+                    groupUUID = @group.UUID;
+                    return true;
+                }
+            }
+            bool succeeded = directGroupNameToUUID(groupName, millisecondsTimeout, dataTimeout, ref groupUUID);
+            if (succeeded)
+            {
+                lock (Cache.Locks.GroupCacheLock)
+                {
+                    Cache.GroupCache.Add(new Cache.Groups
+                    {
+                        Name = groupName,
+                        UUID = groupUUID
+                    });
+                }
+            }
+            return succeeded;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Resolves a group name to an UUID by using the directory search.
+        /// </summary>
+        /// <param name="groupName">a string to store the name to</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
+        /// <param name="groupUUID">the UUID of the group to resolve</param>
+        /// <returns>true if the group UUID could be resolved to an name</returns>
+        private static bool directGroupUUIDToName(UUID groupUUID, int millisecondsTimeout, int dataTimeout,
+            ref string groupName)
+        {
+            string localGroupName = groupName;
+            wasAdaptiveAlarm GroupProfileReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+            EventHandler<GroupProfileEventArgs> GroupProfileDelegate = (o, s) =>
+            {
+                GroupProfileReceivedAlarm.Alarm(dataTimeout);
+                localGroupName = s.Group.Name;
+            };
+            Client.Groups.GroupProfile += GroupProfileDelegate;
+            Client.Groups.RequestGroupProfile(groupUUID);
+            if (!GroupProfileReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
+            {
+                Client.Groups.GroupProfile -= GroupProfileDelegate;
+                return false;
+            }
+            Client.Groups.GroupProfile -= GroupProfileDelegate;
+            groupName = localGroupName;
+            return true;
+        }
+
+        /// <summary>
+        ///     A wrapper for resolving group names to UUIDs by using Corrade's internal cache.
+        /// </summary>
+        /// <param name="groupName">a string to store the name to</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
+        /// <param name="groupUUID">the UUID of the group to resolve</param>
+        /// <returns>true if the group UUID could be resolved to an name</returns>
+        private static bool GroupUUIDToName(UUID groupUUID, int millisecondsTimeout, int dataTimeout,
+            ref string groupName)
+        {
+            lock (Cache.Locks.GroupCacheLock)
+            {
+                Cache.Groups @group = Cache.GroupCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+
+                if (!@group.Equals(default(Cache.Groups)))
+                {
+                    groupName = @group.Name;
+                    return true;
+                }
+            }
+            bool succeeded = directGroupUUIDToName(groupUUID, millisecondsTimeout, dataTimeout, ref groupName);
+            if (succeeded)
+            {
+                lock (Cache.Locks.GroupCacheLock)
+                {
+                    Cache.GroupCache.Add(new Cache.Groups
+                    {
+                        Name = groupName,
+                        UUID = groupUUID
+                    });
+                }
+            }
+            return succeeded;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Resolves an agent name to an agent UUID by searching the directory
+        ///     services.
+        /// </summary>
+        /// <param name="agentFirstName">the first name of the agent</param>
+        /// <param name="agentLastName">the last name of the agent</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
+        /// <param name="agentUUID">an object to store the agent UUID</param>
+        /// <returns>true if the agent name could be resolved to an UUID</returns>
+        private static bool directAgentNameToUUID(string agentFirstName, string agentLastName, int millisecondsTimeout,
+            int dataTimeout,
+            ref UUID agentUUID)
+        {
+            UUID localAgentUUID = UUID.Zero;
+            wasAdaptiveAlarm DirPeopleReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+            EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyDelegate = (sender, args) =>
+            {
+                DirPeopleReceivedAlarm.Alarm(dataTimeout);
+                localAgentUUID =
+                    args.MatchedPeople.AsParallel().FirstOrDefault(
+                        o =>
+                            o.FirstName.Equals(agentFirstName, StringComparison.OrdinalIgnoreCase) &&
+                            o.LastName.Equals(agentLastName, StringComparison.OrdinalIgnoreCase)).AgentID;
+            };
+            Client.Directory.DirPeopleReply += DirPeopleReplyDelegate;
+            Client.Directory.StartPeopleSearch(
+                string.Format(CultureInfo.InvariantCulture, "{0} {1}", agentFirstName, agentLastName), 0);
+            if (!DirPeopleReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
+            {
+                Client.Directory.DirPeopleReply -= DirPeopleReplyDelegate;
+                return false;
+            }
+            Client.Directory.DirPeopleReply -= DirPeopleReplyDelegate;
+            if (localAgentUUID.Equals(UUID.Zero)) return false;
+            agentUUID = localAgentUUID;
+            return true;
+        }
+
+        /// <summary>
+        ///     A wrapper for looking up an agent name using Corrade's internal cache.
+        /// </summary>
+        /// <param name="agentFirstName">the first name of the agent</param>
+        /// <param name="agentLastName">the last name of the agent</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
+        /// <param name="agentUUID">an object to store the agent UUID</param>
+        /// <returns>true if the agent name could be resolved to an UUID</returns>
+        private static bool AgentNameToUUID(string agentFirstName, string agentLastName, int millisecondsTimeout,
+            int dataTimeout,
+            ref UUID agentUUID)
+        {
+            lock (Cache.Locks.AgentCacheLock)
+            {
+                Cache.Agents agent =
+                    Cache.AgentCache.AsParallel().FirstOrDefault(
+                        o => o.FirstName.Equals(agentFirstName) && o.LastName.Equals(agentLastName));
+
+                if (!agent.Equals(default(Cache.Agents)))
+                {
+                    agentUUID = agent.UUID;
+                    return true;
+                }
+            }
+            bool succeeded = directAgentNameToUUID(agentFirstName, agentLastName, millisecondsTimeout, dataTimeout,
+                ref agentUUID);
+            if (succeeded)
+            {
+                lock (Cache.Locks.AgentCacheLock)
+                {
+                    Cache.AgentCache.Add(new Cache.Agents
+                    {
+                        FirstName = agentFirstName,
+                        LastName = agentLastName,
+                        UUID = agentUUID
+                    });
+                }
+            }
+            return succeeded;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Resolves an agent UUID to an agent name.
+        /// </summary>
+        /// <param name="agentUUID">the UUID of the agent</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="agentName">an object to store the name of the agent in</param>
+        /// <returns>true if the UUID could be resolved to a name</returns>
+        private static bool directAgentUUIDToName(UUID agentUUID, int millisecondsTimeout,
+            ref string agentName)
+        {
+            if (agentUUID.Equals(UUID.Zero))
+                return false;
+            string localAgentName = string.Empty;
+            ManualResetEvent UUIDNameReplyEvent = new ManualResetEvent(false);
+            EventHandler<UUIDNameReplyEventArgs> UUIDNameReplyDelegate = (sender, args) =>
+            {
+                localAgentName = args.Names.AsParallel().FirstOrDefault(o => o.Key.Equals(agentUUID)).Value;
+                UUIDNameReplyEvent.Set();
+            };
+            Client.Avatars.UUIDNameReply += UUIDNameReplyDelegate;
+            Client.Avatars.RequestAvatarName(agentUUID);
+            if (!UUIDNameReplyEvent.WaitOne(millisecondsTimeout, false))
+            {
+                Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
+                return false;
+            }
+            Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
+            if (string.IsNullOrEmpty(localAgentName)) return false;
+            agentName = localAgentName;
+            return true;
+        }
+
+        /// <summary>
+        ///     A wrapper for agent to UUID lookups using Corrade's internal cache.
+        /// </summary>
+        /// <param name="agentUUID">the UUID of the agent</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="agentName">an object to store the name of the agent in</param>
+        /// <returns>true if the UUID could be resolved to a name</returns>
+        private static bool AgentUUIDToName(UUID agentUUID, int millisecondsTimeout,
+            ref string agentName)
+        {
+            lock (Cache.Locks.AgentCacheLock)
+            {
+                Cache.Agents agent = Cache.AgentCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(agentUUID));
+
+                if (!agent.Equals(default(Cache.Agents)))
+                {
+                    agentName = string.Join(" ", agent.FirstName, agent.LastName);
+                    return true;
+                }
+            }
+            bool succeeded = directAgentUUIDToName(agentUUID, millisecondsTimeout, ref agentName);
+            if (succeeded)
+            {
+                List<string> name = new List<string>(GetAvatarNames(agentName));
+                lock (Cache.Locks.AgentCacheLock)
+                {
+                    Cache.AgentCache.Add(new Cache.Agents
+                    {
+                        FirstName = name.First(),
+                        LastName = name.Last(),
+                        UUID = agentUUID
+                    });
+                }
+            }
+            return succeeded;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// ///
+        /// <summary>
+        ///     Resolves a role name to a role UUID.
+        /// </summary>
+        /// <param name="roleName">the name of the role to be resolved to an UUID</param>
+        /// <param name="groupUUID">the UUID of the group to query for the role UUID</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
+        /// <param name="roleUUID">an UUID object to store the role UUID in</param>
+        /// <returns>true if the role could be found</returns>
+        private static bool RoleNameToRoleUUID(string roleName, UUID groupUUID, int millisecondsTimeout,
+            int dataTimeout,
+            ref UUID roleUUID)
+        {
+            UUID localRoleUUID = UUID.Zero;
+            wasAdaptiveAlarm GroupRoleDataReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+            EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
+            {
+                GroupRoleDataReceivedAlarm.Alarm(dataTimeout);
+                localRoleUUID =
+                    args.Roles.AsParallel().FirstOrDefault(o => o.Value.Name.Equals(roleName, StringComparison.Ordinal))
+                        .Key;
+            };
+            Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
+            Client.Groups.RequestGroupRoles(groupUUID);
+            if (!GroupRoleDataReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
+            {
+                Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
+                return false;
+            }
+            Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
+            roleUUID = localRoleUUID;
+            return true;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Resolves a role name to a role UUID.
+        /// </summary>
+        /// <param name="RoleUUID">the UUID of the role to be resolved to a name</param>
+        /// <param name="GroupUUID">the UUID of the group to query for the role name</param>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout for receiving answers from services</param>
+        /// <param name="roleName">a string object to store the role name in</param>
+        /// <returns>true if the role could be resolved</returns>
+        private static bool RoleUUIDToName(UUID RoleUUID, UUID GroupUUID, int millisecondsTimeout, int dataTimeout,
+            ref string roleName)
+        {
+            if (RoleUUID.Equals(UUID.Zero) || GroupUUID.Equals(UUID.Zero))
+                return false;
+            string localRoleName = string.Empty;
+            wasAdaptiveAlarm GroupRoleDataReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+            EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
+            {
+                GroupRoleDataReceivedAlarm.Alarm(dataTimeout);
+                localRoleName = args.Roles.AsParallel().FirstOrDefault(o => o.Key.Equals(RoleUUID)).Value.Name;
+            };
+
+            Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
+            Client.Groups.RequestGroupRoles(GroupUUID);
+            if (!GroupRoleDataReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
+            {
+                Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
+                return false;
+            }
+            Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
+            if (string.IsNullOrEmpty(localRoleName)) return false;
+            roleName = localRoleName;
+            return true;
+        }
+
+        #endregion
 
         #region RLV STRUCTURES
 
@@ -20722,7 +20715,7 @@ namespace Corrade
         }
 
         /// <summary>
-        ///     Structure for RLV contants.
+        ///     Structure for RLV constants.
         /// </summary>
         private struct RLV_CONSTANTS
         {
