@@ -12,6 +12,8 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration.Install;
 using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
@@ -30,8 +32,11 @@ using System.Xml.Serialization;
 using AIMLbot;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
+using OpenMetaverse.Imaging;
+using Encoder = System.Drawing.Imaging.Encoder;
 using Parallel = System.Threading.Tasks.Parallel;
 using ThreadState = System.Threading.ThreadState;
+using Timer = System.Timers.Timer;
 
 #endregion
 
@@ -110,38 +115,42 @@ namespace Corrade
             ManualResetEvent GroupMembersReplyEvent = new ManualResetEvent(false);
             EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
             {
-                if (GroupMembers.ContainsKey(args.GroupID))
+                lock (GroupMembersLock)
                 {
-                    object LockObject = new object();
-                    Parallel.ForEach(
-                        args.Members.Values,
-                        o =>
-                        {
-                            lock (GroupMembersLock)
-                            {
-                                if (GroupMembers[args.GroupID].Contains(o.ID)) return;
-                            }
-                            lock (LockObject)
-                            {
-                                joinedMembers.Add(o.ID);
-                            }
-                        });
-                    lock (GroupMembersLock)
+                    if (!GroupMembers.ContainsKey(args.GroupID))
                     {
-                        Parallel.ForEach(
-                            GroupMembers[args.GroupID],
-                            o =>
-                            {
-                                if (args.Members.Values.AsParallel().Any(p => p.ID.Equals(o))) return;
-                                lock (LockObject)
-                                {
-                                    partedMembers.Add(o);
-                                }
-                            });
+                        groupMembers.UnionWith(args.Members.Values.Select(o => o.ID));
+                        GroupMembersReplyEvent.Set();
+                        return;
                     }
                 }
-                groupMembers.UnionWith(args.Members.Values.Select(o => o.ID));
-                GroupMembersReplyEvent.Set();
+                object LockObject = new object();
+                Parallel.ForEach(
+                    args.Members.Values,
+                    o =>
+                    {
+                        lock (GroupMembersLock)
+                        {
+                            if (GroupMembers[args.GroupID].Contains(o.ID)) return;
+                        }
+                        lock (LockObject)
+                        {
+                            joinedMembers.Add(o.ID);
+                        }
+                    });
+                lock (GroupMembersLock)
+                {
+                    Parallel.ForEach(
+                        GroupMembers[args.GroupID],
+                        o =>
+                        {
+                            if (args.Members.Values.AsParallel().Any(p => p.ID.Equals(o))) return;
+                            lock (LockObject)
+                            {
+                                partedMembers.Add(o);
+                            }
+                        });
+                }
             };
 
             while (runGroupMembershipSweepThread)
@@ -2015,7 +2024,14 @@ namespace Corrade
             // Load Corrade caches.
             LoadCorradeCache.Invoke();
             // Load Corrade states.
-            LoadCorradeState.Invoke();
+            lock (GroupNotificationsLock)
+            {
+                LoadNotificationState.Invoke();
+            }
+            lock (InventoryOffersLock)
+            {
+                LoadInventoryOffersState.Invoke();
+            }
             // Start the HTTP Server if it is supported
             Thread HTTPListenerThread = null;
             HttpListener HTTPListener = null;
@@ -2191,7 +2207,14 @@ namespace Corrade
             Client.Network.LoginProgress -= HandleLoginProgress;
             Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
             // Save Corrade states.
-            SaveCorradeState.Invoke();
+            lock (InventoryOffersLock)
+            {
+                SaveInventoryOffersState.Invoke();
+            }
+            lock (GroupNotificationsLock)
+            {
+                SaveNotificationState.Invoke();
+            }
             // Save Corrade caches.
             SaveCorradeCache.Invoke();
             // Stop the sphere effects expiration thread.
@@ -2283,6 +2306,8 @@ namespace Corrade
                     o.Key.Accept = false;
                     o.Value.Set();
                 });
+
+                SaveInventoryOffersState.Invoke();
             }
             // Disable the configuration watcher.
             configurationWatcher.EnableRaisingEvents = false;
@@ -3431,6 +3456,7 @@ namespace Corrade
             lock (InventoryOffersLock)
             {
                 InventoryOffers.Add(e, wait);
+                SaveInventoryOffersState.Invoke();
             }
 
             lock (ClientInstanceLock)
@@ -5163,9 +5189,9 @@ namespace Corrade
                 message));
 
             // Initialize workers for the group if they are not set.
-            if (!GroupWorkers.Contains(group))
+            lock (GroupWorkersLock)
             {
-                lock (GroupWorkersLock)
+                if (!GroupWorkers.Contains(group))
                 {
                     GroupWorkers.Add(group, 0u);
                 }
@@ -9544,6 +9570,60 @@ namespace Corrade
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
                                 }
+                                // Convert to desired format if specified.
+                                string format =
+                                    wasInput(wasKeyValueGet(
+                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FORMAT)),
+                                        message));
+                                if (!string.IsNullOrEmpty(format))
+                                {
+                                    PropertyInfo formatProperty = typeof (ImageFormat).GetProperties(
+                                        BindingFlags.Public |
+                                        BindingFlags.Static)
+                                        .AsParallel().FirstOrDefault(
+                                            o =>
+                                                string.Equals(o.Name, format, StringComparison.Ordinal));
+                                    if (formatProperty == null)
+                                    {
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED));
+                                    }
+                                    ManagedImage managedImage;
+                                    if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
+                                    {
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_DECODE_ASSET_DATA));
+                                    }
+                                    using (MemoryStream imageStream = new MemoryStream())
+                                    {
+                                        try
+                                        {
+                                            using (Bitmap bitmapImage = managedImage.ExportBitmap())
+                                            {
+                                                EncoderParameters encoderParameters = new EncoderParameters(1);
+                                                encoderParameters.Param[0] =
+                                                    new EncoderParameter(Encoder.Quality, 100L);
+                                                bitmapImage.Save(imageStream,
+                                                    ImageCodecInfo.GetImageDecoders()
+                                                        .AsParallel()
+                                                        .FirstOrDefault(
+                                                            o =>
+                                                                o.FormatID.Equals(
+                                                                    ((ImageFormat)
+                                                                        formatProperty.GetValue(
+                                                                            new ImageFormat(Guid.Empty))).Guid)),
+                                                    encoderParameters);
+                                            }
+                                        }
+                                        catch (Exception)
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(
+                                                    ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT));
+                                        }
+                                        assetData = imageStream.ToArray();
+                                    }
+                                }
                                 break;
                             // All of these can be fetched directly from the asset server.
                             case AssetType.Landmark:
@@ -9651,6 +9731,33 @@ namespace Corrade
                                 if (Client.Self.Balance < Client.Settings.UPLOAD_COST)
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INSUFFICIENT_FUNDS));
+                                }
+                                switch (assetType)
+                                {
+                                    case AssetType.Texture:
+                                        // If the user did not send a JPEG-2000 Codestream, attempt to convert the data
+                                        // and then encode to JPEG-2000 Codestream since that is what Second Life expects.
+                                        ManagedImage managedImage;
+                                        if (!OpenJPEG.DecodeToImage(data, out managedImage))
+                                        {
+                                            try
+                                            {
+                                                using (Image image = (Image) (new ImageConverter().ConvertFrom(data)))
+                                                {
+                                                    using (Bitmap bitmap = new Bitmap(image))
+                                                    {
+                                                        data = OpenJPEG.EncodeFromImage(bitmap, true);
+                                                    }
+                                                }
+                                            }
+                                            catch (Exception)
+                                            {
+                                                throw new Exception(
+                                                    wasGetDescriptionFromEnumValue(
+                                                        ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED));
+                                            }
+                                        }
+                                        break;
                                 }
                                 // now create and upload the asset
                                 ManualResetEvent CreateItemFromAssetEvent = new ManualResetEvent(false);
@@ -12016,8 +12123,11 @@ namespace Corrade
                                 throw new Exception(
                                     wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
                         }
-                        // Now the Corrade state.
-                        SaveCorradeState.Invoke();
+                        // Now save the state.
+                        lock (GroupNotificationsLock)
+                        {
+                            SaveNotificationState.Invoke();
+                        }
                     };
                     break;
                 case ScriptKeys.REPLYTOTELEPORTLURE:
@@ -13356,6 +13466,7 @@ namespace Corrade
                                     }
                                     offer.Key.Accept = true;
                                     offer.Value.Set();
+                                    SaveInventoryOffersState.Invoke();
                                 }
                                 break;
                             case Action.DECLINE:
@@ -13363,6 +13474,7 @@ namespace Corrade
                                 {
                                     offer.Key.Accept = false;
                                     offer.Value.Set();
+                                    SaveInventoryOffersState.Invoke();
                                 }
                                 break;
                             default:
@@ -16097,6 +16209,7 @@ namespace Corrade
             public const string LOG_FILE_EXTENSION = @"log";
             public const string STATE_DIRECTORY = @"state";
             public const string NOTIFICATIONS_STATE_FILE = @"Notifications.state";
+            public const string INVENTORY_OFFERS_STATE_FILE = @"InventoryOffers.state";
 
             public static readonly Regex AvatarFullNameRegex = new Regex(@"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$",
                 RegexOptions.Compiled);
@@ -17741,7 +17854,9 @@ namespace Corrade
             [Description("could not write to region message log file")] COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE,
             [Description("unknown IP address")] UNKNOWN_IP_ADDRESS,
             [Description("unable to save Corrade notifications state")] UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE,
-            [Description("unable to load Corrade notifications state")] UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE
+            [Description("unable to load Corrade notifications state")] UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE,
+            [Description("unable to save Corrade inventory offers state")] UNABLE_TO_SAVE_CORRADE_INVENTORY_OFFERS_STATE,
+            [Description("unable to load Corrade inventory offers state")] UNABLE_TO_LOAD_CORRADE_INVENTORY_OFFERS_STATE
         }
 
         /// <summary>
@@ -18404,7 +18519,11 @@ namespace Corrade
             [Description("unable to load configuration")] UNABLE_TO_LOAD_CONFIGURATION,
             [Description("unable to save configuration")] UNABLE_TO_SAVE_CONFIGURATION,
             [Description("invalid xml path")] INVALID_XML_PATH,
-            [Description("no data provided")] NO_DATA_PROVIDED
+            [Description("no data provided")] NO_DATA_PROVIDED,
+            [Description("unknown image format requested")] UNKNOWN_IMAGE_FORMAT_REQUESTED,
+            [Description("unknown image format provided")] UNKNOWN_IMAGE_FORMAT_PROVIDED,
+            [Description("unable to decode asset data")] UNABLE_TO_DECODE_ASSET_DATA,
+            [Description("unable to convert to requested format")] UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT
         }
 
         /// <summary>
@@ -18413,6 +18532,7 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+            [Description("format")] FORMAT,
             [Description("volume")] VOLUME,
             [Description("audible")] AUDIBLE,
             [Description("path")] PATH,
@@ -18817,7 +18937,7 @@ namespace Corrade
             private readonly Stopwatch elapsed = new Stopwatch();
             private readonly object LockObject = new object();
             private readonly HashSet<double> times = new HashSet<double>();
-            private System.Timers.Timer alarm;
+            private Timer alarm;
 
             /// <summary>
             ///     The default constructor using no decay.
@@ -18845,7 +18965,7 @@ namespace Corrade
                 {
                     if (alarm == null)
                     {
-                        alarm = new System.Timers.Timer(deadline);
+                        alarm = new Timer(deadline);
                         alarm.Elapsed += (o, p) =>
                         {
                             lock (LockObject)
@@ -18927,8 +19047,9 @@ namespace Corrade
         private static readonly object GroupNotificationsLock = new object();
         public static HashSet<Notification> GroupNotifications = new HashSet<Notification>();
 
-        private static readonly Dictionary<InventoryObjectOfferedEventArgs, ManualResetEvent> InventoryOffers =
-            new Dictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>();
+        private static readonly SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>
+            InventoryOffers =
+                new SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>();
 
         private static readonly object InventoryOffersLock = new object();
         private static readonly Queue<CallbackQueueElement> CallbackQueue = new Queue<CallbackQueueElement>();
@@ -19026,35 +19147,37 @@ namespace Corrade
         /// <summary>
         ///     Schedules a load of the configuration file.
         /// </summary>
-        private static readonly Timer ConfigurationChangedTimer = new Timer(ConfigurationChanged =>
-        {
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
-            lock (ClientInstanceLock)
+        private static readonly System.Threading.Timer ConfigurationChangedTimer =
+            new System.Threading.Timer(ConfigurationChanged =>
             {
-                Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
-            }
-        });
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
+                lock (ClientInstanceLock)
+                {
+                    Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
+                }
+            });
 
         /// <summary>
         ///     Schedules a load of the AIML configuration file.
         /// </summary>
-        private static readonly Timer AIMLConfigurationChangedTimer = new Timer(AIMLConfigurationChanged =>
-        {
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AIML_CONFIGURATION_MODIFIED));
-            new Thread(
-                () =>
-                {
-                    lock (AIMLBotLock)
+        private static readonly System.Threading.Timer AIMLConfigurationChangedTimer =
+            new System.Threading.Timer(AIMLConfigurationChanged =>
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AIML_CONFIGURATION_MODIFIED));
+                new Thread(
+                    () =>
                     {
-                        LoadChatBotFiles.Invoke();
-                    }
-                }) {IsBackground = true}.Start();
-        });
+                        lock (AIMLBotLock)
+                        {
+                            LoadChatBotFiles.Invoke();
+                        }
+                    }) {IsBackground = true}.Start();
+            });
 
         /// <summary>
         ///     Global rebake timer.
         /// </summary>
-        private static readonly Timer RebakeTimer = new Timer(Rebake =>
+        private static readonly System.Threading.Timer RebakeTimer = new System.Threading.Timer(Rebake =>
         {
             lock (ClientInstanceLock)
             {
@@ -19070,20 +19193,22 @@ namespace Corrade
         /// <summary>
         ///     Current land group activation timer.
         /// </summary>
-        private static readonly Timer ActivateCurrentLandGroupTimer = new Timer(ActivateCurrentLandGroup =>
-        {
-            Parcel parcel = null;
-            lock (ClientInstanceLock)
+        private static readonly System.Threading.Timer ActivateCurrentLandGroupTimer =
+            new System.Threading.Timer(ActivateCurrentLandGroup =>
             {
-                if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel)) return;
-            }
-            UUID groupUUID = Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(parcel.GroupID)).UUID;
-            if (groupUUID.Equals(UUID.Zero)) return;
-            lock (ClientInstanceLock)
-            {
-                Client.Groups.ActivateGroup(groupUUID);
-            }
-        });
+                Parcel parcel = null;
+                lock (ClientInstanceLock)
+                {
+                    if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel)) return;
+                }
+                UUID groupUUID =
+                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(parcel.GroupID)).UUID;
+                if (groupUUID.Equals(UUID.Zero)) return;
+                lock (ClientInstanceLock)
+                {
+                    Client.Groups.ActivateGroup(groupUUID);
+                }
+            });
 
         public static EventHandler ConsoleEventHandler;
 
@@ -19303,11 +19428,11 @@ namespace Corrade
         };
 
         /// <summary>
-        ///     Saves Corrade's states.
+        ///     Saves Corrade notifications.
         /// </summary>
-        private static readonly System.Action SaveCorradeState = () =>
+        private static readonly System.Action SaveNotificationState = () =>
         {
-            lock (GroupNotificationsLock)
+            if (!GroupNotifications.Count.Equals(0))
             {
                 try
                 {
@@ -19330,39 +19455,89 @@ namespace Corrade
         };
 
         /// <summary>
-        ///     Loads Corrade's states.
+        ///     Saves inventory offers.
         /// </summary>
-        private static readonly System.Action LoadCorradeState = () =>
+        private static readonly System.Action SaveInventoryOffersState = () =>
         {
-            lock (GroupNotificationsLock)
+            if (!InventoryOffers.Count.Equals(0))
             {
-                string groupNotificationsStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                    CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE);
-                if (File.Exists(groupNotificationsStateFile))
+                try
                 {
-                    HashSet<Notification> groupNotifications = new HashSet<Notification>();
-                    try
+                    using (
+                        StreamWriter writer =
+                            new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                                CORRADE_CONSTANTS.INVENTORY_OFFERS_STATE_FILE)))
                     {
-                        using (FileStream stream = File.OpenRead(groupNotificationsStateFile))
-                        {
-                            XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
-                            groupNotifications =
-                                (HashSet<Notification>) serializer.Deserialize(stream);
-                        }
+                        XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
+                        serializer.Serialize(writer, InventoryOffers);
+                        writer.Flush();
                     }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE),
-                            ex.Message);
-                    }
+                }
+                catch (Exception e)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_INVENTORY_OFFERS_STATE),
+                        e.Message);
+                }
+            }
+        };
 
-                    // Only add notifications for existing configured groups.
-                    Parallel.ForEach(groupNotifications, o =>
+        /// <summary>
+        ///     Loads Corrade notifications.
+        /// </summary>
+        private static readonly System.Action LoadNotificationState = () =>
+        {
+            string groupNotificationsStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE);
+            if (File.Exists(groupNotificationsStateFile))
+            {
+                try
+                {
+                    using (FileStream stream = File.OpenRead(groupNotificationsStateFile))
                     {
-                        if (!Configuration.GROUPS.AsParallel().Any(p => p.Name.Equals(o.GroupName))) return;
-                        GroupNotifications.Add(o);
-                    });
+                        XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
+                        Parallel.ForEach((HashSet<Notification>) serializer.Deserialize(stream),
+                            o =>
+                            {
+                                if (!Configuration.GROUPS.AsParallel().Any(p => p.Name.Equals(o.GroupName)) ||
+                                    GroupNotifications.Contains(o)) return;
+                                GroupNotifications.Add(o);
+                            });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE),
+                        ex.Message);
+                }
+            }
+        };
+
+        /// <summary>
+        ///     Loads inventory offers.
+        /// </summary>
+        private static readonly System.Action LoadInventoryOffersState = () =>
+        {
+            string inventoryOffersStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                CORRADE_CONSTANTS.INVENTORY_OFFERS_STATE_FILE);
+            if (File.Exists(inventoryOffersStateFile))
+            {
+                try
+                {
+                    using (FileStream stream = File.OpenRead(inventoryOffersStateFile))
+                    {
+                        XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
+                        Parallel.ForEach(
+                            (SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>)
+                                serializer.Deserialize(stream),
+                            o => { InventoryOffers.Add(o.Key, o.Value); });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_INVENTORY_OFFERS_STATE),
+                        ex.Message);
                 }
             }
         };
