@@ -120,6 +120,14 @@
       <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1-arm.so</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="..\libopenmetaverse-overrides\libopenjpeg-dotnet-2-1.5.0-dotnet-1-freebsd.so">
+      <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1-freebsd.so</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\libopenmetaverse-overrides\libopenjpeg-dotnet-2-1.5.0-dotnet-1-x86_64-freebsd.so">
+      <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1-x86_64-freebsd.so</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="..\libopenmetaverse-overrides\OpenMetaverse.dll.config">
       <Link>OpenMetaverse.dll.config</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

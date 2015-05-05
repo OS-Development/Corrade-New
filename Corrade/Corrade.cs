@@ -2342,6 +2342,8 @@ namespace Corrade
             {
                 Client.Network.Shutdown(NetworkManager.DisconnectType.ClientInitiated);
             }
+            // Terminate.
+            Environment.Exit(0);
         }
 
         private static void HandleAvatarUpdate(object sender, AvatarUpdateEventArgs e)
@@ -2360,8 +2362,12 @@ namespace Corrade
 
         private static void HandleKillObject(object sender, KillObjectEventArgs e)
         {
-            KeyValuePair<UUID, Primitive> tracked =
-                RadarObjects.AsParallel().FirstOrDefault(o => o.Value.LocalID.Equals(e.ObjectLocalID));
+            KeyValuePair<UUID, Primitive> tracked;
+            lock (RadarObjectsLock)
+            {
+                tracked =
+                    RadarObjects.AsParallel().FirstOrDefault(o => o.Value.LocalID.Equals(e.ObjectLocalID));
+            }
             if (!tracked.Equals(default(KeyValuePair<UUID, Primitive>)))
             {
                 switch (tracked.Value is Avatar)
@@ -2464,6 +2470,8 @@ namespace Corrade
                 // only accept POST requests
                 if (!httpRequest.HttpMethod.Equals(WebRequestMethods.Http.Post, StringComparison.OrdinalIgnoreCase))
                     return;
+                // only accept connected remote endpoints
+                if (httpRequest.RemoteEndPoint == null) return;
                 using (Stream body = httpRequest.InputStream)
                 {
                     using (StreamReader reader = new StreamReader(body, httpRequest.ContentEncoding))
@@ -3204,8 +3212,11 @@ namespace Corrade
                             {
                                 AvatarUpdateEventArgs avatarUpdateEventArgs =
                                     (AvatarUpdateEventArgs) args;
-                                if (RadarObjects.ContainsKey(avatarUpdateEventArgs.Avatar.ID)) return;
-                                RadarObjects.Add(avatarUpdateEventArgs.Avatar.ID, avatarUpdateEventArgs.Avatar);
+                                lock (RadarObjectsLock)
+                                {
+                                    if (RadarObjects.ContainsKey(avatarUpdateEventArgs.Avatar.ID)) return;
+                                    RadarObjects.Add(avatarUpdateEventArgs.Avatar.ID, avatarUpdateEventArgs.Avatar);
+                                }
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
                                     avatarUpdateEventArgs.Avatar.ID.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
@@ -3253,19 +3264,19 @@ namespace Corrade
                                 lock (RadarObjectsLock)
                                 {
                                     if (RadarObjects.ContainsKey(primEventArgs.Prim.ID)) return;
-
                                     RadarObjects.Add(primEventArgs.Prim.ID, primEventArgs.Prim);
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                        primEventArgs.Prim.ID.ToString());
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                        primEventArgs.Prim.Position.ToString());
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
-                                        primEventArgs.Prim.Rotation.ToString());
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                        primEventArgs.Prim.PrimData.PCode.ToString());
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        wasGetDescriptionFromEnumValue(Action.APPEAR));
                                 }
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                    primEventArgs.Prim.ID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                    primEventArgs.Prim.Position.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                    primEventArgs.Prim.Rotation.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                    primEventArgs.Prim.PrimData.PCode.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                    wasGetDescriptionFromEnumValue(Action.APPEAR));
+
                                 break;
                             }
                             if (radarPrimitivesType == typeof (KillObjectEventArgs))
@@ -5200,23 +5211,32 @@ namespace Corrade
             // Check if the workers have not been exceeded.
             lock (ClientInstanceLock)
             {
-                if ((uint) GroupWorkers[group] >
-                    Configuration.GROUPS.AsParallel().FirstOrDefault(
-                        o => o.Name.Equals(group, StringComparison.InvariantCultureIgnoreCase)).Workers)
+                lock (GroupWorkersLock)
                 {
-                    // And refuse to proceed if they have.
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WORKERS_EXCEEDED),
-                        group);
-                    return null;
+                    if ((uint) GroupWorkers[group] >
+                        Configuration.GROUPS.AsParallel().FirstOrDefault(
+                            o => o.Name.Equals(group, StringComparison.InvariantCultureIgnoreCase)).Workers)
+                    {
+                        // And refuse to proceed if they have.
+                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WORKERS_EXCEEDED),
+                            group);
+                        return null;
+                    }
                 }
             }
 
             // Increment the group workers.
-            GroupWorkers[group] = ((uint) GroupWorkers[group]) + 1;
+            lock (GroupWorkersLock)
+            {
+                GroupWorkers[group] = ((uint) GroupWorkers[group]) + 1;
+            }
             // Perform the command.
             Dictionary<string, string> result = ProcessCommand(message);
             // Decrement the group workers.
-            GroupWorkers[group] = ((uint) GroupWorkers[group]) - 1;
+            lock (GroupWorkersLock)
+            {
+                GroupWorkers[group] = ((uint) GroupWorkers[group]) - 1;
+            }
             // send callback if registered
             string url =
                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.CALLBACK)), message));
@@ -10450,6 +10470,7 @@ namespace Corrade
                             }
                             entityUUID = UUID.Zero;
                         }
+                        InventoryBase inventoryBaseItem;
                         switch (
                             wasGetEnumValueFromDescription<Action>(
                                 wasInput(
@@ -10457,7 +10478,7 @@ namespace Corrade
                                         message)).ToLowerInvariant()))
                         {
                             case Action.ADD:
-                                InventoryBase inventoryBaseItem =
+                                inventoryBaseItem =
                                     FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                         !entityUUID.Equals(UUID.Zero) ? entityUUID.ToString() : entity
                                         ).FirstOrDefault();
@@ -10472,22 +10493,23 @@ namespace Corrade
                             case Action.REMOVE:
                                 if (entityUUID.Equals(UUID.Zero))
                                 {
-                                    entityUUID = Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
+                                    inventoryBaseItem = Client.Inventory.GetTaskInventory(primitive.ID,
+                                        primitive.LocalID,
                                         Configuration.SERVICES_TIMEOUT)
                                         .AsParallel()
-                                        .FirstOrDefault(o => o.Name.Equals(entity))
-                                        .UUID;
-                                    if (entityUUID.Equals(UUID.Zero))
+                                        .FirstOrDefault(o => o.Name.Equals(entity));
+                                    if (inventoryBaseItem == null)
                                     {
                                         throw new Exception(
                                             wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                                     }
+                                    entityUUID = inventoryBaseItem.UUID;
                                 }
                                 Client.Inventory.RemoveTaskInventory(primitive.LocalID, entityUUID,
                                     Client.Network.CurrentSim);
                                 break;
                             case Action.TAKE:
-                                InventoryBase inventoryBase = !entityUUID.Equals(UUID.Zero)
+                                inventoryBaseItem = !entityUUID.Equals(UUID.Zero)
                                     ? Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
                                         Configuration.SERVICES_TIMEOUT)
                                         .AsParallel()
@@ -10496,7 +10518,7 @@ namespace Corrade
                                         Configuration.SERVICES_TIMEOUT)
                                         .AsParallel()
                                         .FirstOrDefault(o => o.Name.Equals(entity));
-                                InventoryItem inventoryItem = inventoryBase as InventoryItem;
+                                InventoryItem inventoryItem = inventoryBaseItem as InventoryItem;
                                 if (inventoryItem == null)
                                 {
                                     throw new Exception(
@@ -12563,15 +12585,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_LAND_RIGHTS));
                         }
-                        int amount;
-                        if (
-                            !int.TryParse(
-                                wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT)), message)),
-                                out amount))
-                        {
-                            amount = 5;
-                        }
                         Dictionary<UUID, EstateTask> topTasks = new Dictionary<UUID, EstateTask>();
                         switch (
                             wasGetEnumValueFromDescription<Type>(
@@ -12623,11 +12636,20 @@ namespace Corrade
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_TOP_TYPE));
                         }
-                        List<string> data = new List<string>(topTasks.Take(amount).AsParallel().Select(o => new[]
+                        int amount;
+                        if (
+                            !int.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT)), message)),
+                                out amount))
                         {
+                            amount = topTasks.Count;
+                        }
+                        List<string> data = new List<string>(topTasks.Take(amount).Select(o => new[]
+                        {
+                            o.Value.Score.ToString(CultureInfo.InvariantCulture),
                             o.Value.TaskName,
                             o.Key.ToString(),
-                            o.Value.Score.ToString(CultureInfo.InvariantCulture),
                             o.Value.OwnerName,
                             o.Value.Position.ToString()
                         }).SelectMany(o => o));
@@ -14339,7 +14361,7 @@ namespace Corrade
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_ASSET_DATA));
                                 }
-                                if (data == null || !data.Length.Equals(0))
+                                if (!data.Length.Equals(0))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_ASSET_DATA));
                                 }
@@ -14520,12 +14542,20 @@ namespace Corrade
                         };
                         StringBuilder stdout = new StringBuilder();
                         StringBuilder stderr = new StringBuilder();
-                        Process q = Process.Start(p);
                         ManualResetEvent[] StdEvent =
                         {
                             new ManualResetEvent(false),
                             new ManualResetEvent(false)
                         };
+                        Process q;
+                        try
+                        {
+                            q = Process.Start(p);
+                        }
+                        catch (Exception)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_START_PROCESS));
+                        }
                         q.OutputDataReceived += (sender, output) =>
                         {
                             if (output.Data == null)
@@ -14723,7 +14753,10 @@ namespace Corrade
                                 break;
                             case Action.DISABLE:
                                 EnableRLV = false;
-                                RLVRules.Clear();
+                                lock (RLVRulesLock)
+                                {
+                                    RLVRules.Clear();
+                                }
                                 break;
                         }
                     };
@@ -18523,7 +18556,8 @@ namespace Corrade
             [Description("unknown image format requested")] UNKNOWN_IMAGE_FORMAT_REQUESTED,
             [Description("unknown image format provided")] UNKNOWN_IMAGE_FORMAT_PROVIDED,
             [Description("unable to decode asset data")] UNABLE_TO_DECODE_ASSET_DATA,
-            [Description("unable to convert to requested format")] UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT
+            [Description("unable to convert to requested format")] UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT,
+            [Description("could not start process")] COULD_NOT_START_PROCESS
         }
 
         /// <summary>
