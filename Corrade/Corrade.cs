@@ -1142,17 +1142,17 @@ namespace Corrade
         private static bool HasGroupPowers(UUID agentUUID, UUID groupUUID, GroupPowers powers,
             int millisecondsTimeout, int dataTimeout)
         {
+            bool hasPowers = false;
+            wasAdaptiveAlarm AvatarGroupsReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+            EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
+            {
+                AvatarGroupsReceivedAlarm.Alarm(dataTimeout);
+                hasPowers =
+                    args.Groups.AsParallel().Any(
+                        o => o.GroupID.Equals(groupUUID) && !(o.GroupPowers & powers).Equals(GroupPowers.None));
+            };
             lock (ClientInstanceAvatarsLock)
             {
-                bool hasPowers = false;
-                wasAdaptiveAlarm AvatarGroupsReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
-                EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
-                {
-                    AvatarGroupsReceivedAlarm.Alarm(dataTimeout);
-                    hasPowers =
-                        args.Groups.AsParallel().Any(
-                            o => o.GroupID.Equals(groupUUID) && !(o.GroupPowers & powers).Equals(GroupPowers.None));
-                };
                 Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
                 Client.Avatars.RequestAvatarProperties(agentUUID);
                 if (!AvatarGroupsReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
@@ -1161,8 +1161,8 @@ namespace Corrade
                     return false;
                 }
                 Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
-                return hasPowers;
             }
+            return hasPowers;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1176,16 +1176,16 @@ namespace Corrade
         /// <returns>true if the group chat was joined</returns>
         private static bool JoinGroupChat(UUID groupUUID, int millisecondsTimeout)
         {
+            bool succeeded = false;
+            ManualResetEvent GroupChatJoinedEvent = new ManualResetEvent(false);
+            EventHandler<GroupChatJoinedEventArgs> GroupChatJoinedEventHandler =
+                (sender, args) =>
+                {
+                    succeeded = args.Success;
+                    GroupChatJoinedEvent.Set();
+                };
             lock (ClientInstanceSelfLock)
             {
-                bool succeeded = false;
-                ManualResetEvent GroupChatJoinedEvent = new ManualResetEvent(false);
-                EventHandler<GroupChatJoinedEventArgs> GroupChatJoinedEventHandler =
-                    (sender, args) =>
-                    {
-                        succeeded = args.Success;
-                        GroupChatJoinedEvent.Set();
-                    };
                 Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
                 Client.Self.RequestJoinGroupChat(groupUUID);
                 if (!GroupChatJoinedEvent.WaitOne(millisecondsTimeout, false))
@@ -1194,8 +1194,8 @@ namespace Corrade
                     return false;
                 }
                 Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
-                return succeeded;
             }
+            return succeeded;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1212,15 +1212,15 @@ namespace Corrade
         /// <returns>true if the agent is in the group</returns>
         private static bool AgentInGroup(UUID agentUUID, UUID groupUUID, int millisecondsTimeout, int dataTimeout)
         {
+            bool agentInGroup = false;
+            wasAdaptiveAlarm GroupMembersReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+            EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
+            {
+                GroupMembersReceivedAlarm.Alarm(dataTimeout);
+                agentInGroup = args.Members.AsParallel().Any(o => o.Value.ID.Equals(agentUUID));
+            };
             lock (ClientInstanceGroupsLock)
             {
-                bool agentInGroup = false;
-                wasAdaptiveAlarm GroupMembersReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
-                EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
-                {
-                    GroupMembersReceivedAlarm.Alarm(dataTimeout);
-                    agentInGroup = args.Members.AsParallel().Any(o => o.Value.ID.Equals(agentUUID));
-                };
                 Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                 Client.Groups.RequestGroupMembers(groupUUID);
                 if (!GroupMembersReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
@@ -1229,8 +1229,8 @@ namespace Corrade
                     return false;
                 }
                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
-                return agentInGroup;
             }
+            return agentInGroup;
         }
 
         /// <summary>
@@ -1241,19 +1241,16 @@ namespace Corrade
         /// <returns>true if the agent has authenticated</returns>
         private static bool Authenticate(string group, string password)
         {
-            lock (ClientInstanceConfigurationLock)
-            {
-                UUID groupUUID;
-                return UUID.TryParse(group, out groupUUID)
-                    ? Configuration.GROUPS.AsParallel().Any(
-                        o =>
-                            groupUUID.Equals(o.UUID) &&
-                            password.Equals(o.Password, StringComparison.Ordinal))
-                    : Configuration.GROUPS.AsParallel().Any(
-                        o =>
-                            o.Name.Equals(group, StringComparison.Ordinal) &&
-                            password.Equals(o.Password, StringComparison.Ordinal));
-            }
+            UUID groupUUID;
+            return UUID.TryParse(group, out groupUUID)
+                ? Configuration.GROUPS.AsParallel().Any(
+                    o =>
+                        groupUUID.Equals(o.UUID) &&
+                        password.Equals(o.Password, StringComparison.Ordinal))
+                : Configuration.GROUPS.AsParallel().Any(
+                    o =>
+                        o.Name.Equals(group, StringComparison.Ordinal) &&
+                        password.Equals(o.Password, StringComparison.Ordinal));
         }
 
         /// <summary>
@@ -1264,17 +1261,14 @@ namespace Corrade
         /// <returns>true if the group has permission</returns>
         private static bool HasCorradePermission(string group, int permission)
         {
-            lock (ClientInstanceConfigurationLock)
-            {
-                UUID groupUUID;
-                return !permission.Equals(0) && UUID.TryParse(group, out groupUUID)
-                    ? Configuration.GROUPS.AsParallel()
-                        .Any(o => groupUUID.Equals(o.UUID) && !(o.PermissionMask & permission).Equals(0))
-                    : Configuration.GROUPS.AsParallel().Any(
-                        o =>
-                            o.Name.Equals(group, StringComparison.Ordinal) &&
-                            !(o.PermissionMask & permission).Equals(0));
-            }
+            UUID groupUUID;
+            return !permission.Equals(0) && UUID.TryParse(group, out groupUUID)
+                ? Configuration.GROUPS.AsParallel()
+                    .Any(o => groupUUID.Equals(o.UUID) && !(o.PermissionMask & permission).Equals(0))
+                : Configuration.GROUPS.AsParallel().Any(
+                    o =>
+                        o.Name.Equals(group, StringComparison.Ordinal) &&
+                        !(o.PermissionMask & permission).Equals(0));
         }
 
         /// <summary>
@@ -1285,17 +1279,14 @@ namespace Corrade
         /// <returns>true if the group has the notification</returns>
         private static bool GroupHasNotification(string group, uint notification)
         {
-            lock (ClientInstanceConfigurationLock)
-            {
-                UUID groupUUID;
-                return !notification.Equals(0) && UUID.TryParse(group, out groupUUID)
-                    ? Configuration.GROUPS.AsParallel().Any(
-                        o => groupUUID.Equals(o.UUID) &&
-                             !(o.NotificationMask & notification).Equals(0))
-                    : Configuration.GROUPS.AsParallel().Any(
-                        o => o.Name.Equals(group, StringComparison.Ordinal) &&
-                             !(o.NotificationMask & notification).Equals(0));
-            }
+            UUID groupUUID;
+            return !notification.Equals(0) && UUID.TryParse(group, out groupUUID)
+                ? Configuration.GROUPS.AsParallel().Any(
+                    o => groupUUID.Equals(o.UUID) &&
+                         !(o.NotificationMask & notification).Equals(0))
+                : Configuration.GROUPS.AsParallel().Any(
+                    o => o.Name.Equals(group, StringComparison.Ordinal) &&
+                         !(o.NotificationMask & notification).Equals(0));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1310,15 +1301,15 @@ namespace Corrade
         /// <returns>true if the group was found and false otherwise</returns>
         private static bool RequestGroup(UUID groupUUID, int millisecondsTimeout, ref OpenMetaverse.Group group)
         {
+            OpenMetaverse.Group localGroup = new OpenMetaverse.Group();
+            ManualResetEvent GroupProfileEvent = new ManualResetEvent(false);
+            EventHandler<GroupProfileEventArgs> GroupProfileDelegate = (sender, args) =>
+            {
+                localGroup = args.Group;
+                GroupProfileEvent.Set();
+            };
             lock (ClientInstanceGroupsLock)
             {
-                OpenMetaverse.Group localGroup = new OpenMetaverse.Group();
-                ManualResetEvent GroupProfileEvent = new ManualResetEvent(false);
-                EventHandler<GroupProfileEventArgs> GroupProfileDelegate = (sender, args) =>
-                {
-                    localGroup = args.Group;
-                    GroupProfileEvent.Set();
-                };
                 Client.Groups.GroupProfile += GroupProfileDelegate;
                 Client.Groups.RequestGroupProfile(groupUUID);
                 if (!GroupProfileEvent.WaitOne(millisecondsTimeout, false))
@@ -1327,9 +1318,9 @@ namespace Corrade
                     return false;
                 }
                 Client.Groups.GroupProfile -= GroupProfileDelegate;
-                group = localGroup;
-                return true;
             }
+            group = localGroup;
+            return true;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1345,12 +1336,12 @@ namespace Corrade
         private static bool GetParcelAtPosition(Simulator simulator, Vector3 position,
             ref Parcel parcel)
         {
+            Parcel localParcel = null;
+            ManualResetEvent RequestAllSimParcelsEvent = new ManualResetEvent(false);
+            EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedDelegate =
+                (sender, args) => RequestAllSimParcelsEvent.Set();
             lock (ClientInstanceParcelsLock)
             {
-                Parcel localParcel = null;
-                ManualResetEvent RequestAllSimParcelsEvent = new ManualResetEvent(false);
-                EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedDelegate =
-                    (sender, args) => RequestAllSimParcelsEvent.Set();
                 Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedDelegate;
                 switch (!simulator.IsParcelMapFull())
                 {
@@ -1374,11 +1365,11 @@ namespace Corrade
                         return;
                     localParcel = currentParcel;
                 });
-                if (localParcel == null)
-                    return false;
-                parcel = localParcel;
-                return true;
             }
+            if (localParcel == null)
+                return false;
+            parcel = localParcel;
+            return true;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1948,10 +1939,7 @@ namespace Corrade
             // Set the current directory to the service directory.
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
             // Load the configuration file.
-            lock (ClientInstanceConfigurationLock)
-            {
-                Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
-            }
+            Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
             // Write the logo.
             foreach (string line in CORRADE_CONSTANTS.LOGO)
             {
@@ -3895,20 +3883,15 @@ namespace Corrade
                         () => SendNotification(Notifications.NOTIFICATION_GROUP_INVITE, args),
                         Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     // If a master sends it, then accept.
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        if (
-                            !Configuration.MASTERS.AsParallel().Select(
-                                o =>
-                                    string.Format(CultureInfo.InvariantCulture, "{0}.{1}", o.FirstName, o.LastName))
-                                .
-                                Any(p => p.Equals(args.IM.FromAgentName, StringComparison.OrdinalIgnoreCase)))
-                            return;
-                    }
-                    lock (ClientInstanceSelfLock)
-                    {
-                        Client.Self.GroupInviteRespond(inviteGroup.ID, args.IM.IMSessionID, true);
-                    }
+                    if (
+                        !Configuration.MASTERS.AsParallel().Select(
+                            o =>
+                                string.Format(CultureInfo.InvariantCulture, "{0}.{1}", o.FirstName, o.LastName))
+                            .
+                            Any(p => p.Equals(args.IM.FromAgentName, StringComparison.OrdinalIgnoreCase)))
+                        return;
+
+                    Client.Self.GroupInviteRespond(inviteGroup.ID, args.IM.IMSessionID, true);
                     return;
                 // Group notice inventory accepted, declined or notice received.
                 case InstantMessageDialog.GroupNoticeInventoryAccepted:
@@ -3942,42 +3925,39 @@ namespace Corrade
                                 () => SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, args),
                                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
                             // Log group messages
-                            lock (ClientInstanceConfigurationLock)
-                            {
-                                Parallel.ForEach(
-                                    Configuration.GROUPS.AsParallel().Where(
-                                        o =>
-                                            o.Name.Equals(messageGroup.Name, StringComparison.Ordinal) &&
-                                            o.ChatLogEnabled),
+                            Parallel.ForEach(
+                                Configuration.GROUPS.AsParallel().Where(
                                     o =>
+                                        o.Name.Equals(messageGroup.Name, StringComparison.Ordinal) &&
+                                        o.ChatLogEnabled),
+                                o =>
+                                {
+                                    // Attempt to write to log file,
+                                    try
                                     {
-                                        // Attempt to write to log file,
-                                        try
+                                        lock (GroupLogFileLock)
                                         {
-                                            lock (GroupLogFileLock)
+                                            using (StreamWriter logWriter = File.AppendText(o.ChatLog))
                                             {
-                                                using (StreamWriter logWriter = File.AppendText(o.ChatLog))
-                                                {
-                                                    logWriter.WriteLine("[{0}] {1} {2} : {3}",
-                                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                            DateTimeFormatInfo.InvariantInfo), fullName.First(),
-                                                        fullName.Last(),
-                                                        args.IM.Message);
-                                                    //logWriter.Flush();
-                                                    //logWriter.Close();
-                                                }
+                                                logWriter.WriteLine("[{0}] {1} {2} : {3}",
+                                                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                        DateTimeFormatInfo.InvariantInfo), fullName.First(),
+                                                    fullName.Last(),
+                                                    args.IM.Message);
+                                                //logWriter.Flush();
+                                                //logWriter.Close();
                                             }
                                         }
-                                        catch (Exception ex)
-                                        {
-                                            // or fail and append the fail message.
-                                            Feedback(
-                                                wasGetDescriptionFromEnumValue(
-                                                    ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
-                                                ex.Message);
-                                        }
-                                    });
-                            }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        // or fail and append the fail message.
+                                        Feedback(
+                                            wasGetDescriptionFromEnumValue(
+                                                ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
+                                            ex.Message);
+                                    }
+                                });
                         }
                         return;
                     }
@@ -3987,8 +3967,8 @@ namespace Corrade
                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                             () => SendNotification(Notifications.NOTIFICATION_INSTANT_MESSAGE, args),
                             Configuration.MAXIMUM_NOTIFICATION_THREADS);
-                        // Check if we were ejected.
 
+                        // Check if we were ejected.
                         UUID groupUUID = UUID.Zero;
                         if (
                             GroupNameToUUID(
@@ -5210,24 +5190,27 @@ namespace Corrade
              * args.IM.FromAgentID to a name, which is what Second Life does, otherwise it just sets the name 
              * to the name of the primitive sending the message.
              */
+            bool isSecondLife;
             lock (ClientInstanceNetworkLock)
             {
-                if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE))
+                isSecondLife = Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE);
+            }
+            if (isSecondLife)
+            {
+                UUID fromAgentID;
+                if (UUID.TryParse(identifier, out fromAgentID))
                 {
-                    UUID fromAgentID;
-                    if (UUID.TryParse(identifier, out fromAgentID))
+                    if (
+                        !AgentUUIDToName(fromAgentID, Configuration.SERVICES_TIMEOUT,
+                            ref sender))
                     {
-                        if (
-                            !AgentUUIDToName(fromAgentID, Configuration.SERVICES_TIMEOUT,
-                                ref sender))
-                        {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AGENT_NOT_FOUND),
-                                fromAgentID.ToString());
-                            return null;
-                        }
+                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AGENT_NOT_FOUND),
+                            fromAgentID.ToString());
+                        return null;
                     }
                 }
             }
+
 
             // Log the command.
             Feedback(string.Format(CultureInfo.InvariantCulture, "{0} ({1}) : {2}", sender,
@@ -5244,19 +5227,16 @@ namespace Corrade
             }
 
             // Check if the workers have not been exceeded.
-            lock (ClientInstanceConfigurationLock)
+            lock (GroupWorkersLock)
             {
-                lock (GroupWorkersLock)
+                if ((uint) GroupWorkers[group] >
+                    Configuration.GROUPS.AsParallel().FirstOrDefault(
+                        o => o.Name.Equals(group, StringComparison.InvariantCultureIgnoreCase)).Workers)
                 {
-                    if ((uint) GroupWorkers[group] >
-                        Configuration.GROUPS.AsParallel().FirstOrDefault(
-                            o => o.Name.Equals(group, StringComparison.InvariantCultureIgnoreCase)).Workers)
-                    {
-                        // And refuse to proceed if they have.
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WORKERS_EXCEEDED),
-                            group);
-                        return null;
-                    }
+                    // And refuse to proceed if they have.
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WORKERS_EXCEEDED),
+                        group);
+                    return null;
                 }
             }
 
@@ -16562,57 +16542,975 @@ namespace Corrade
 
         private struct Configuration
         {
-            public static string FIRST_NAME;
-            public static string LAST_NAME;
-            public static string PASSWORD;
-            public static string LOGIN_URL;
-            public static string INSTANT_MESSAGE_LOG_DIRECTORY;
-            public static bool INSTANT_MESSAGE_LOG_ENABLED;
-            public static string LOCAL_MESSAGE_LOG_DIRECTORY;
-            public static bool LOCAL_MESSAGE_LOG_ENABLED;
-            public static string REGION_MESSAGE_LOG_DIRECTORY;
-            public static bool REGION_MESSAGE_LOG_ENABLED;
-            public static bool ENABLE_HTTP_SERVER;
-            public static string HTTP_SERVER_PREFIX;
-            public static int HTTP_SERVER_TIMEOUT;
-            public static HTTPCompressionMethod HTTP_SERVER_COMPRESSION;
-            public static int CALLBACK_TIMEOUT;
-            public static int CALLBACK_THROTTLE;
-            public static int CALLBACK_QUEUE_LENGTH;
-            public static int NOTIFICATION_TIMEOUT;
-            public static int NOTIFICATION_THROTTLE;
-            public static int NOTIFICATION_QUEUE_LENGTH;
-            public static int CONNECTION_LIMIT;
-            public static int CONNECTION_IDLE_TIME;
-            public static float RANGE;
-            public static int MAXIMUM_NOTIFICATION_THREADS;
-            public static int MAXIMUM_COMMAND_THREADS;
-            public static int MAXIMUM_RLV_THREADS;
-            public static int MAXIMUM_INSTANT_MESSAGE_THREADS;
-            public static bool USE_NAGGLE;
-            public static bool USE_EXPECT100CONTINUE;
-            public static int SERVICES_TIMEOUT;
-            public static int DATA_TIMEOUT;
-            public static wasAdaptiveAlarm.DECAY_TYPE DATA_DECAY_TYPE;
-            public static int REBAKE_DELAY;
-            public static int MEMBERSHIP_SWEEP_INTERVAL;
-            public static bool TOS_ACCEPTED;
-            public static string START_LOCATION;
-            public static string BIND_IP_ADDRESS;
-            public static string NETWORK_CARD_MAC;
-            public static string DRIVE_IDENTIFIER_HASH;
-            public static string CLIENT_LOG_FILE;
-            public static bool CLIENT_LOG_ENABLED;
-            public static bool AUTO_ACTIVATE_GROUP;
-            public static int ACTIVATE_DELAY;
-            public static int GROUP_CREATE_FEE;
-            public static HashSet<Group> GROUPS;
-            public static HashSet<Master> MASTERS;
-            public static List<Filter> INPUT_FILTERS;
-            public static List<Filter> OUTPUT_FILTERS;
-            public static string VIGENERE_SECRET;
-            public static ENIGMA ENIGMA;
-            public static int LOGOUT_GRACE;
+            private static string _firstName;
+            private static string _lastName;
+            private static string _password;
+            private static string _loginURL;
+            private static string _instantMessageLogDirectory;
+            private static bool _instantMessageLogEnabled;
+            private static string _localMessageLogDirectory;
+            private static bool _localMessageLogEnabled;
+            private static string _regionMessageLogDirectory;
+            private static bool _regionMessageLogEnabled;
+            private static bool _enableHTTPServer;
+            private static string _HTTPServerPrefix;
+            private static int _HTTPServerTimeout;
+            private static HTTPCompressionMethod _HTTPServerCompression;
+            private static int _callbackTimeout;
+            private static int _callbackThrottle;
+            private static int _callbackQueueLength;
+            private static int _notificationTimeout;
+            private static int _notificationThrottle;
+            private static int _notificationQueueLength;
+            private static int _connectionLimit;
+            private static int _connectionIdleTime;
+            private static float _range;
+            private static int _maximumNotificationThreads;
+            private static int _maximumCommandThreads;
+            private static int _maximumRLVThreads;
+            private static int _maximumInstantMessageThreads;
+            private static bool _useNaggle;
+            private static bool _useExpect100Continue;
+            private static int _servicesTimeout;
+            private static int _dataTimeout;
+            private static wasAdaptiveAlarm.DECAY_TYPE _dataDecayType;
+            private static int _rebakeDelay;
+            private static int _membershipSweepInterval;
+            private static bool _TOSAccepted;
+            private static string _startLocation;
+            private static string _bindIPAddress;
+            private static string _networkCardMAC;
+            private static string _driveIdentifierHash;
+            private static string _clientLogFile;
+            private static bool _clientLogEnabled;
+            private static bool _autoActivateGroup;
+            private static int _activateDelay;
+            private static int _groupCreateFee;
+            private static HashSet<Group> _groups;
+            private static HashSet<Master> _masters;
+            private static List<Filter> _inputFilters;
+            private static List<Filter> _outputFilters;
+            private static string _vigenereSecret;
+            private static ENIGMA _enigma;
+            private static int _logoutGrace;
+
+            public static string FIRST_NAME
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _firstName;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _firstName = value;
+                    }
+                }
+            }
+
+            public static string LAST_NAME
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _lastName;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _lastName = value;
+                    }
+                }
+            }
+
+            public static string PASSWORD
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _password;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _password = value;
+                    }
+                }
+            }
+
+            public static string LOGIN_URL
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _loginURL;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _loginURL = value;
+                    }
+                }
+            }
+
+            public static string INSTANT_MESSAGE_LOG_DIRECTORY
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _instantMessageLogDirectory;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _instantMessageLogDirectory = value;
+                    }
+                }
+            }
+
+            public static bool INSTANT_MESSAGE_LOG_ENABLED
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _instantMessageLogEnabled;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _instantMessageLogEnabled = value;
+                    }
+                }
+            }
+
+            public static string LOCAL_MESSAGE_LOG_DIRECTORY
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _localMessageLogDirectory;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _localMessageLogDirectory = value;
+                    }
+                }
+            }
+
+            public static bool LOCAL_MESSAGE_LOG_ENABLED
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _localMessageLogEnabled;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _localMessageLogEnabled = value;
+                    }
+                }
+            }
+
+            public static string REGION_MESSAGE_LOG_DIRECTORY
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _regionMessageLogDirectory;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _regionMessageLogDirectory = value;
+                    }
+                }
+            }
+
+            public static bool REGION_MESSAGE_LOG_ENABLED
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _regionMessageLogEnabled;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _regionMessageLogEnabled = value;
+                    }
+                }
+            }
+
+            public static bool ENABLE_HTTP_SERVER
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _enableHTTPServer;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _enableHTTPServer = value;
+                    }
+                }
+            }
+
+            public static string HTTP_SERVER_PREFIX
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _HTTPServerPrefix;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _HTTPServerPrefix = value;
+                    }
+                }
+            }
+
+            public static int HTTP_SERVER_TIMEOUT
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _HTTPServerTimeout;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _HTTPServerTimeout = value;
+                    }
+                }
+            }
+
+            public static HTTPCompressionMethod HTTP_SERVER_COMPRESSION
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _HTTPServerCompression;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _HTTPServerCompression = value;
+                    }
+                }
+            }
+
+            public static int CALLBACK_TIMEOUT
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _callbackTimeout;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _callbackTimeout = value;
+                    }
+                }
+            }
+
+            public static int CALLBACK_THROTTLE
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _callbackThrottle;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _callbackThrottle = value;
+                    }
+                }
+            }
+
+            public static int CALLBACK_QUEUE_LENGTH
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _callbackQueueLength;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _callbackQueueLength = value;
+                    }
+                }
+            }
+
+            public static int NOTIFICATION_TIMEOUT
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _notificationTimeout;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _notificationTimeout = value;
+                    }
+                }
+            }
+
+            public static int NOTIFICATION_THROTTLE
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _notificationThrottle;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _notificationThrottle = value;
+                    }
+                }
+            }
+
+            public static int NOTIFICATION_QUEUE_LENGTH
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _notificationQueueLength;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _notificationQueueLength = value;
+                    }
+                }
+            }
+
+            public static int CONNECTION_LIMIT
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _connectionLimit;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _connectionLimit = value;
+                    }
+                }
+            }
+
+            public static int CONNECTION_IDLE_TIME
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _connectionIdleTime;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _connectionIdleTime = value;
+                    }
+                }
+            }
+
+            public static float RANGE
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _range;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _range = value;
+                    }
+                }
+            }
+
+            public static int MAXIMUM_NOTIFICATION_THREADS
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _maximumNotificationThreads;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _maximumNotificationThreads = value;
+                    }
+                }
+            }
+
+            public static int MAXIMUM_COMMAND_THREADS
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _maximumCommandThreads;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _maximumCommandThreads = value;
+                    }
+                }
+            }
+
+            public static int MAXIMUM_RLV_THREADS
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _maximumRLVThreads;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _maximumRLVThreads = value;
+                    }
+                }
+            }
+
+            public static int MAXIMUM_INSTANT_MESSAGE_THREADS
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _maximumInstantMessageThreads;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _maximumInstantMessageThreads = value;
+                    }
+                }
+            }
+
+            public static bool USE_NAGGLE
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _useNaggle;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _useNaggle = value;
+                    }
+                }
+            }
+
+            public static bool USE_EXPECT100CONTINUE
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _useExpect100Continue;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _useExpect100Continue = value;
+                    }
+                }
+            }
+
+            public static int SERVICES_TIMEOUT
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _servicesTimeout;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _servicesTimeout = value;
+                    }
+                }
+            }
+
+            public static int DATA_TIMEOUT
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _dataTimeout;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _dataTimeout = value;
+                    }
+                }
+            }
+
+            public static wasAdaptiveAlarm.DECAY_TYPE DATA_DECAY_TYPE
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _dataDecayType;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _dataDecayType = value;
+                    }
+                }
+            }
+
+            public static int REBAKE_DELAY
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _rebakeDelay;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _rebakeDelay = value;
+                    }
+                }
+            }
+
+            public static int MEMBERSHIP_SWEEP_INTERVAL
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _membershipSweepInterval;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _membershipSweepInterval = value;
+                    }
+                }
+            }
+
+            public static bool TOS_ACCEPTED
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _TOSAccepted;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _TOSAccepted = value;
+                    }
+                }
+            }
+
+            public static string START_LOCATION
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _startLocation;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _startLocation = value;
+                    }
+                }
+            }
+
+            public static string BIND_IP_ADDRESS
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _bindIPAddress;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _bindIPAddress = value;
+                    }
+                }
+            }
+
+            public static string NETWORK_CARD_MAC
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _networkCardMAC;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _networkCardMAC = value;
+                    }
+                }
+            }
+
+            public static string DRIVE_IDENTIFIER_HASH
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _driveIdentifierHash;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _driveIdentifierHash = value;
+                    }
+                }
+            }
+
+            public static string CLIENT_LOG_FILE
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _clientLogFile;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _clientLogFile = value;
+                    }
+                }
+            }
+
+            public static bool CLIENT_LOG_ENABLED
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _clientLogEnabled;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _clientLogEnabled = value;
+                    }
+                }
+            }
+
+            public static bool AUTO_ACTIVATE_GROUP
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _autoActivateGroup;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _autoActivateGroup = value;
+                    }
+                }
+            }
+
+            public static int ACTIVATE_DELAY
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _activateDelay;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _activateDelay = value;
+                    }
+                }
+            }
+
+            public static int GROUP_CREATE_FEE
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _groupCreateFee;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _groupCreateFee = value;
+                    }
+                }
+            }
+
+            public static HashSet<Group> GROUPS
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _groups;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _groups = value;
+                    }
+                }
+            }
+
+            public static HashSet<Master> MASTERS
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _masters;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _masters = value;
+                    }
+                }
+            }
+
+            public static List<Filter> INPUT_FILTERS
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _inputFilters;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _inputFilters = value;
+                    }
+                }
+            }
+
+            public static List<Filter> OUTPUT_FILTERS
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _outputFilters;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _outputFilters = value;
+                    }
+                }
+            }
+
+            public static string VIGENERE_SECRET
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _vigenereSecret;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _vigenereSecret = value;
+                    }
+                }
+            }
+
+            public static ENIGMA ENIGMA
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _enigma;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _enigma = value;
+                    }
+                }
+            }
+
+            public static int LOGOUT_GRACE
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _logoutGrace;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _logoutGrace = value;
+                    }
+                }
+            }
 
             public static string Read(string file)
             {
@@ -16767,22 +17665,28 @@ namespace Corrade
                                     LOGIN_URL = client.InnerText;
                                     break;
                                 case ConfigurationKeys.TOS_ACCEPTED:
-                                    if (!bool.TryParse(client.InnerText, out TOS_ACCEPTED))
+                                    bool accepted;
+                                    if (!bool.TryParse(client.InnerText, out accepted))
                                     {
                                         throw new Exception("error in client section");
                                     }
+                                    TOS_ACCEPTED = accepted;
                                     break;
                                 case ConfigurationKeys.GROUP_CREATE_FEE:
-                                    if (!int.TryParse(client.InnerText, out GROUP_CREATE_FEE))
-                                    {
-                                        throw new Exception("err r in client section");
-                                    }
-                                    break;
-                                case ConfigurationKeys.AUTO_ACTIVATE_GROUP:
-                                    if (!bool.TryParse(client.InnerText, out AUTO_ACTIVATE_GROUP))
+                                    int groupCreateFee;
+                                    if (!int.TryParse(client.InnerText, out groupCreateFee))
                                     {
                                         throw new Exception("error in client section");
                                     }
+                                    GROUP_CREATE_FEE = groupCreateFee;
+                                    break;
+                                case ConfigurationKeys.AUTO_ACTIVATE_GROUP:
+                                    bool autoActivateGroup;
+                                    if (!bool.TryParse(client.InnerText, out autoActivateGroup))
+                                    {
+                                        throw new Exception("error in client section");
+                                    }
+                                    AUTO_ACTIVATE_GROUP = autoActivateGroup;
                                     break;
                                 case ConfigurationKeys.START_LOCATION:
                                     if (string.IsNullOrEmpty(client.InnerText))
@@ -17010,21 +17914,23 @@ namespace Corrade
                                         {
                                             throw new Exception("error in cryptography section");
                                         }
+                                        ENIGMA enigma = new ENIGMA();
                                         foreach (XmlNode ENIGMANode in ENIGMANodeList)
                                         {
                                             switch (ENIGMANode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.ROTORS:
-                                                    ENIGMA.rotors = ENIGMANode.InnerText.ToArray();
+                                                    enigma.rotors = ENIGMANode.InnerText.ToArray();
                                                     break;
                                                 case ConfigurationKeys.PLUGS:
-                                                    ENIGMA.plugs = ENIGMANode.InnerText.ToArray();
+                                                    enigma.plugs = ENIGMANode.InnerText.ToArray();
                                                     break;
                                                 case ConfigurationKeys.REFLECTOR:
-                                                    ENIGMA.reflector = ENIGMANode.InnerText.SingleOrDefault();
+                                                    enigma.reflector = ENIGMANode.InnerText.SingleOrDefault();
                                                     break;
                                             }
                                         }
+                                        ENIGMA = enigma;
                                         break;
                                     case ConfigurationKeys.VIGENERE:
                                         XmlNodeList VIGENERENodeList = FilterNode.SelectNodes("*");
@@ -17116,10 +18022,12 @@ namespace Corrade
                                 switch (serverNode.Name.ToLowerInvariant())
                                 {
                                     case ConfigurationKeys.HTTP:
-                                        if (!bool.TryParse(serverNode.InnerText, out ENABLE_HTTP_SERVER))
+                                        bool enableHTTPServer;
+                                        if (!bool.TryParse(serverNode.InnerText, out enableHTTPServer))
                                         {
                                             throw new Exception("error in server section");
                                         }
+                                        ENABLE_HTTP_SERVER = enableHTTPServer;
                                         break;
                                     case ConfigurationKeys.PREFIX:
                                         if (string.IsNullOrEmpty(serverNode.InnerText))
@@ -17170,16 +18078,20 @@ namespace Corrade
                                         }
                                         break;
                                     case ConfigurationKeys.NAGGLE:
-                                        if (!bool.TryParse(networkNode.InnerText, out USE_NAGGLE))
+                                        bool useNaggle;
+                                        if (!bool.TryParse(networkNode.InnerText, out useNaggle))
                                         {
                                             throw new Exception("error in network section");
                                         }
+                                        USE_NAGGLE = useNaggle;
                                         break;
                                     case ConfigurationKeys.EXPECT100CONTINUE:
-                                        if (!bool.TryParse(networkNode.InnerText, out USE_EXPECT100CONTINUE))
+                                        bool useExpect100Continue;
+                                        if (!bool.TryParse(networkNode.InnerText, out useExpect100Continue))
                                         {
                                             throw new Exception("error in network section");
                                         }
+                                        USE_EXPECT100CONTINUE = useExpect100Continue;
                                         break;
                                 }
                             }
@@ -17201,11 +18113,13 @@ namespace Corrade
                                 switch (limitsNode.Name.ToLowerInvariant())
                                 {
                                     case ConfigurationKeys.RANGE:
+                                        float range;
                                         if (!float.TryParse(limitsNode.InnerText,
-                                            out RANGE))
+                                            out range))
                                         {
                                             throw new Exception("error in range limits section");
                                         }
+                                        RANGE = range;
                                         break;
                                     case ConfigurationKeys.RLV:
                                         XmlNodeList rlvLimitNodeList = limitsNode.SelectNodes("*");
@@ -17218,12 +18132,14 @@ namespace Corrade
                                             switch (rlvLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.THREADS:
+                                                    int maximumRLVThreads;
                                                     if (
                                                         !int.TryParse(rlvLimitNode.InnerText,
-                                                            out MAXIMUM_RLV_THREADS))
+                                                            out maximumRLVThreads))
                                                     {
                                                         throw new Exception("error in RLV limits section");
                                                     }
+                                                    MAXIMUM_RLV_THREADS = maximumRLVThreads;
                                                     break;
                                             }
                                         }
@@ -17239,12 +18155,14 @@ namespace Corrade
                                             switch (commandsLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.THREADS:
+                                                    int maximumCommandThreads;
                                                     if (
                                                         !int.TryParse(commandsLimitNode.InnerText,
-                                                            out MAXIMUM_COMMAND_THREADS))
+                                                            out maximumCommandThreads))
                                                     {
                                                         throw new Exception("error in commands limits section");
                                                     }
+                                                    MAXIMUM_COMMAND_THREADS = maximumCommandThreads;
                                                     break;
                                             }
                                         }
@@ -17257,15 +18175,17 @@ namespace Corrade
                                         }
                                         foreach (XmlNode instantMessageLimitNode in instantMessageLimitNodeList)
                                         {
+                                            int maximumInstantMessageThreads;
                                             switch (instantMessageLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.THREADS:
                                                     if (
                                                         !int.TryParse(instantMessageLimitNode.InnerText,
-                                                            out MAXIMUM_INSTANT_MESSAGE_THREADS))
+                                                            out maximumInstantMessageThreads))
                                                     {
                                                         throw new Exception("error in instant message limits section");
                                                     }
+                                                    MAXIMUM_INSTANT_MESSAGE_THREADS = maximumInstantMessageThreads;
                                                     break;
                                             }
                                         }
@@ -17281,20 +18201,24 @@ namespace Corrade
                                             switch (clientLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.CONNECTIONS:
+                                                    int connectionLimit;
                                                     if (
                                                         !int.TryParse(clientLimitNode.InnerText,
-                                                            out CONNECTION_LIMIT))
+                                                            out connectionLimit))
                                                     {
                                                         throw new Exception("error in client limits section");
                                                     }
+                                                    CONNECTION_LIMIT = connectionLimit;
                                                     break;
                                                 case ConfigurationKeys.IDLE:
+                                                    int connectionIdleTime;
                                                     if (
                                                         !int.TryParse(clientLimitNode.InnerText,
-                                                            out CONNECTION_IDLE_TIME))
+                                                            out connectionIdleTime))
                                                     {
                                                         throw new Exception("error in client limits section");
                                                     }
+                                                    CONNECTION_IDLE_TIME = connectionIdleTime;
                                                     break;
                                             }
                                         }
@@ -17310,25 +18234,31 @@ namespace Corrade
                                             switch (callbackLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.TIMEOUT:
-                                                    if (!int.TryParse(callbackLimitNode.InnerText, out CALLBACK_TIMEOUT))
+                                                    int callbackTimeout;
+                                                    if (!int.TryParse(callbackLimitNode.InnerText, out callbackTimeout))
                                                     {
                                                         throw new Exception("error in callback limits section");
                                                     }
+                                                    CALLBACK_TIMEOUT = callbackTimeout;
                                                     break;
                                                 case ConfigurationKeys.THROTTLE:
+                                                    int callbackThrottle;
                                                     if (
-                                                        !int.TryParse(callbackLimitNode.InnerText, out CALLBACK_THROTTLE))
+                                                        !int.TryParse(callbackLimitNode.InnerText, out callbackThrottle))
                                                     {
                                                         throw new Exception("error in callback limits section");
                                                     }
+                                                    CALLBACK_THROTTLE = callbackThrottle;
                                                     break;
                                                 case ConfigurationKeys.QUEUE_LENGTH:
+                                                    int callbackQueueLength;
                                                     if (
                                                         !int.TryParse(callbackLimitNode.InnerText,
-                                                            out CALLBACK_QUEUE_LENGTH))
+                                                            out callbackQueueLength))
                                                     {
                                                         throw new Exception("error in callback limits section");
                                                     }
+                                                    CALLBACK_QUEUE_LENGTH = callbackQueueLength;
                                                     break;
                                             }
                                         }
@@ -17344,36 +18274,44 @@ namespace Corrade
                                             switch (notificationLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.TIMEOUT:
+                                                    int notificationTimeout;
                                                     if (
                                                         !int.TryParse(notificationLimitNode.InnerText,
-                                                            out NOTIFICATION_TIMEOUT))
+                                                            out notificationTimeout))
                                                     {
                                                         throw new Exception("error in notification limits section");
                                                     }
+                                                    NOTIFICATION_TIMEOUT = notificationTimeout;
                                                     break;
                                                 case ConfigurationKeys.THROTTLE:
+                                                    int notificationThrottle;
                                                     if (
                                                         !int.TryParse(notificationLimitNode.InnerText,
-                                                            out NOTIFICATION_THROTTLE))
+                                                            out notificationThrottle))
                                                     {
                                                         throw new Exception("error in notification limits section");
                                                     }
+                                                    NOTIFICATION_THROTTLE = notificationThrottle;
                                                     break;
                                                 case ConfigurationKeys.QUEUE_LENGTH:
+                                                    int notificationQueueLength;
                                                     if (
                                                         !int.TryParse(notificationLimitNode.InnerText,
-                                                            out NOTIFICATION_QUEUE_LENGTH))
+                                                            out notificationQueueLength))
                                                     {
                                                         throw new Exception("error in notification limits section");
                                                     }
+                                                    NOTIFICATION_QUEUE_LENGTH = notificationQueueLength;
                                                     break;
                                                 case ConfigurationKeys.THREADS:
+                                                    int maximumNotificationThreads;
                                                     if (
                                                         !int.TryParse(notificationLimitNode.InnerText,
-                                                            out MAXIMUM_NOTIFICATION_THREADS))
+                                                            out maximumNotificationThreads))
                                                     {
                                                         throw new Exception("error in notification limits section");
                                                     }
+                                                    MAXIMUM_NOTIFICATION_THREADS = maximumNotificationThreads;
                                                     break;
                                             }
                                         }
@@ -17389,12 +18327,14 @@ namespace Corrade
                                             switch (HTTPServerLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.TIMEOUT:
+                                                    int HTTPServerTimeout;
                                                     if (
                                                         !int.TryParse(HTTPServerLimitNode.InnerText,
-                                                            out HTTP_SERVER_TIMEOUT))
+                                                            out HTTPServerTimeout))
                                                     {
                                                         throw new Exception("error in server limits section");
                                                     }
+                                                    HTTP_SERVER_TIMEOUT = HTTPServerTimeout;
                                                     break;
                                             }
                                         }
@@ -17410,27 +18350,32 @@ namespace Corrade
                                             switch (servicesLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.TIMEOUT:
+                                                    int servicesTimeout;
                                                     if (
                                                         !int.TryParse(servicesLimitNode.InnerText,
-                                                            out SERVICES_TIMEOUT))
+                                                            out servicesTimeout))
                                                     {
                                                         throw new Exception("error in services limits section");
                                                     }
+                                                    SERVICES_TIMEOUT = servicesTimeout;
                                                     break;
-
                                                 case ConfigurationKeys.REBAKE:
-                                                    if (!int.TryParse(servicesLimitNode.InnerText, out REBAKE_DELAY))
+                                                    int rebakeDelay;
+                                                    if (!int.TryParse(servicesLimitNode.InnerText, out rebakeDelay))
                                                     {
                                                         throw new Exception("error in services limits section");
                                                     }
+                                                    REBAKE_DELAY = rebakeDelay;
                                                     break;
                                                 case ConfigurationKeys.ACTIVATE:
+                                                    int activateDelay;
                                                     if (
                                                         !int.TryParse(servicesLimitNode.InnerText,
-                                                            out ACTIVATE_DELAY))
+                                                            out activateDelay))
                                                     {
                                                         throw new Exception("error in services limits section");
                                                     }
+                                                    ACTIVATE_DELAY = activateDelay;
                                                     break;
                                             }
                                         }
@@ -17446,12 +18391,14 @@ namespace Corrade
                                             switch (dataLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.TIMEOUT:
+                                                    int dataTimeout;
                                                     if (
                                                         !int.TryParse(dataLimitNode.InnerText,
-                                                            out DATA_TIMEOUT))
+                                                            out dataTimeout))
                                                     {
                                                         throw new Exception("error in data limits section");
                                                     }
+                                                    DATA_TIMEOUT = dataTimeout;
                                                     break;
                                                 case ConfigurationKeys.DECAY:
                                                     DATA_DECAY_TYPE =
@@ -17472,12 +18419,14 @@ namespace Corrade
                                             switch (servicesLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.SWEEP:
+                                                    int membershipSweepInterval;
                                                     if (
                                                         !int.TryParse(servicesLimitNode.InnerText,
-                                                            out MEMBERSHIP_SWEEP_INTERVAL))
+                                                            out membershipSweepInterval))
                                                     {
                                                         throw new Exception("error in membership limits section");
                                                     }
+                                                    MEMBERSHIP_SWEEP_INTERVAL = membershipSweepInterval;
                                                     break;
                                             }
                                         }
@@ -17493,12 +18442,14 @@ namespace Corrade
                                             switch (logoutLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.TIMEOUT:
+                                                    int logoutGrace;
                                                     if (
                                                         !int.TryParse(logoutLimitNode.InnerText,
-                                                            out LOGOUT_GRACE))
+                                                            out logoutGrace))
                                                     {
                                                         throw new Exception("error in logout limits section");
                                                     }
+                                                    LOGOUT_GRACE = logoutGrace;
                                                     break;
                                             }
                                         }
@@ -19363,10 +20314,7 @@ namespace Corrade
             new System.Threading.Timer(ConfigurationChanged =>
             {
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
-                lock (ClientInstanceConfigurationLock)
-                {
-                    Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
-                }
+                Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
             });
 
         /// <summary>
