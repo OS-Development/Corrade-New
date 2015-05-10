@@ -1522,6 +1522,7 @@ namespace Corrade
                 Parallel.ForEach(primitiveEvents,
                     new ParallelOptions
                     {
+                        // Don't choke the chicken.
                         MaxDegreeOfParallelism = Environment.ProcessorCount > 1 ? Environment.ProcessorCount/2 : 1
                     }, o =>
                     {
@@ -1538,6 +1539,74 @@ namespace Corrade
                     });
             }
             return enumerable.AsParallel().Where(o => o.Properties != null);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Updates a set of avatars by scanning their profile data.
+        /// </summary>
+        /// <param name="avatars">a list of avatars to update</param>
+        /// <param name="millisecondsTimeout">the amount of time in milliseconds to timeout</param>
+        /// <returns>a list of updated avatars</returns>
+        private static IEnumerable<Avatar> UpdateAvatars(IEnumerable<Avatar> avatars, int millisecondsTimeout)
+        {
+            IEnumerable<Avatar> enumerable = avatars as Avatar[] ?? avatars.ToArray();
+            Dictionary<UUID, wasAdaptiveAlarm> avatarAlarms =
+                new Dictionary<UUID, wasAdaptiveAlarm>(enumerable.AsParallel()
+                    .ToDictionary(o => o.ID, p => new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE)));
+            Dictionary<UUID, Avatar> avatarUpdates = new Dictionary<UUID, Avatar>(enumerable.AsParallel()
+                .ToDictionary(o => o.ID, p => p));
+            object LockObject = new object();
+            EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
+            {
+                avatarAlarms[args.AvatarID].Alarm(Configuration.DATA_TIMEOUT);
+                avatarUpdates[args.AvatarID].ProfileInterests = args.Interests;
+            };
+            EventHandler<AvatarPropertiesReplyEventArgs> AvatarPropertiesReplyEventHandler =
+                (sender, args) =>
+                {
+                    avatarAlarms[args.AvatarID].Alarm(Configuration.DATA_TIMEOUT);
+                    avatarUpdates[args.AvatarID].ProfileProperties = args.Properties;
+                };
+            EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
+            {
+                avatarAlarms[args.AvatarID].Alarm(Configuration.DATA_TIMEOUT);
+                lock (LockObject)
+                {
+                    avatarUpdates[args.AvatarID].Groups.AddRange(args.Groups.Select(o => o.GroupID));
+                }
+            };
+            EventHandler<AvatarPicksReplyEventArgs> AvatarPicksReplyEventHandler =
+                (sender, args) => avatarAlarms[args.AvatarID].Alarm(Configuration.DATA_TIMEOUT);
+            EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedReplyEventHandler =
+                (sender, args) => avatarAlarms[args.AvatarID].Alarm(Configuration.DATA_TIMEOUT);
+            lock (ClientInstanceAvatarsLock)
+            {
+                Parallel.ForEach(enumerable, new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = Environment.ProcessorCount > 1 ? Environment.ProcessorCount/2 : 1
+                }, o =>
+                {
+                    Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
+                    Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;
+                    Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
+                    Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
+                    Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
+                    Client.Avatars.RequestAvatarProperties(o.ID);
+                    Client.Avatars.RequestAvatarPicks(o.ID);
+                    Client.Avatars.RequestAvatarClassified(o.ID);
+                    avatarAlarms[o.ID].Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                    Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
+                    Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
+                    Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+                    Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
+                    Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
+                });
+            }
+
+            return enumerable;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -15515,21 +15584,21 @@ namespace Corrade
                         }
                         List<string> data = new List<string>();
                         object LockObject = new object();
-                        Parallel.ForEach(Client.Network.CurrentSim.ObjectsAvatars.Copy(), o =>
-                        {
-                            if (parcels.AsParallel().Any(p => IsVectorInParcel(o.Value.Position, p)))
-                            {
-                                lock (LockObject)
+                        Parallel.ForEach(
+                            UpdateAvatars(Client.Network.CurrentSim.ObjectsAvatars.Copy().Values
+                                .Where(o => parcels.AsParallel().Any(p => IsVectorInParcel(o.Position, p))),
+                                Configuration.SERVICES_TIMEOUT), o =>
                                 {
-                                    data.Add(o.Value.ID.ToString());
-                                    data.AddRange(GetStructuredData(o.Value,
-                                        wasInput(
-                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                                message)))
-                                        );
-                                }
-                            }
-                        });
+                                    lock (LockObject)
+                                    {
+                                        data.AddRange(GetStructuredData(o,
+                                            wasInput(
+                                                wasKeyValueGet(
+                                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                                    message)))
+                                            );
+                                    }
+                                });
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -15593,7 +15662,6 @@ namespace Corrade
                             {
                                 lock (LockObject)
                                 {
-                                    data.Add(o.ID.ToString());
                                     data.AddRange(GetStructuredData(o,
                                         wasInput(
                                             wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
