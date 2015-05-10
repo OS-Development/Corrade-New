@@ -1520,7 +1520,10 @@ namespace Corrade
             lock (ClientInstanceObjectsLock)
             {
                 Parallel.ForEach(primitiveEvents,
-                    new ParallelOptions {MaxDegreeOfParallelism = Environment.ProcessorCount - 1}, o =>
+                    new ParallelOptions
+                    {
+                        MaxDegreeOfParallelism = Environment.ProcessorCount > 1 ? Environment.ProcessorCount/2 : 1
+                    }, o =>
                     {
                         Primitive queryPrimitive =
                             enumerable.AsParallel().SingleOrDefault(p => p.ID.Equals(o.Key));
@@ -3557,12 +3560,9 @@ namespace Corrade
                 SaveInventoryOffersState.Invoke();
             }
 
-            lock (ClientInstanceInventoryLock)
-            {
-                UpdateInventoryRecursive.Invoke(
-                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                        InventoryFolder);
-            }
+            UpdateInventoryRecursive.Invoke(
+                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                    InventoryFolder);
 
             // Find the item in the inventory.
             InventoryBase inventoryBaseItem;
@@ -3600,16 +3600,20 @@ namespace Corrade
                 switch (!e.FolderID.Equals(UUID.Zero))
                 {
                     case true:
+                        InventoryBase inventoryBaseFolder;
                         lock (ClientInstanceInventoryLock)
                         {
                             // Locate the folder and move.
-                            InventoryBase inventoryBaseFolder =
+                            inventoryBaseFolder =
                                 FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, e.FolderID
                                     ).FirstOrDefault();
                             if (inventoryBaseFolder != null)
                             {
                                 Client.Inventory.Move(inventoryBaseItem, inventoryBaseFolder as InventoryFolder);
                             }
+                        }
+                        if (inventoryBaseFolder != null)
+                        {
                             UpdateInventoryRecursive.Invoke(inventoryBaseFolder as InventoryFolder);
                         }
                         break;
@@ -3620,10 +3624,10 @@ namespace Corrade
                                 inventoryBaseItem,
                                 Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
                                     InventoryFolder);
-                            UpdateInventoryRecursive.Invoke(
-                                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                                    InventoryFolder);
                         }
+                        UpdateInventoryRecursive.Invoke(
+                            Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                                InventoryFolder);
                         break;
                 }
             }
@@ -3714,13 +3718,16 @@ namespace Corrade
                         {
                             // First load the caches.
                             LoadInventoryCache.Invoke();
-                            // Update the inventory.
-                            UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
+                        }
+                        // Update the inventory.
+                        UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
+                        lock (ClientInstanceInventoryLock)
+                        {
                             // Now save the caches.
                             SaveInventoryCache.Invoke();
-                            // Signal completion.
-                            InventoryLoadedEvent.Set();
                         }
+                        // Signal completion.
+                        InventoryLoadedEvent.Set();
                     }) {IsBackground = true}.Start();
                     // Set current group to land group.
                     new Thread(() =>
@@ -20642,12 +20649,15 @@ namespace Corrade
         private static readonly Action<InventoryFolder> UpdateInventoryRecursive = o =>
         {
             // Create the queue of folders.
-            Queue<InventoryFolder> inventoryFolders = new Queue<InventoryFolder>();
-            object LockObject = new object();
-            // Enqueue the first folder (root).
-            inventoryFolders.Enqueue(o);
+            Dictionary<UUID, ManualResetEvent> inventoryFolders = new Dictionary<UUID, ManualResetEvent>();
+            Dictionary<UUID, Stopwatch> inventoryStopwatch = new Dictionary<UUID, Stopwatch>();
+            HashSet<long> times = new HashSet<long>(new[] {(long) Client.Settings.CAPS_TIMEOUT});
+            // Enqueue the first folder (as the root).
+            inventoryFolders.Add(o.UUID, new ManualResetEvent(false));
+            inventoryStopwatch.Add(o.UUID, new Stopwatch());
 
-            AutoResetEvent FolderUpdatedEvent = new AutoResetEvent(false);
+            object LockObject = new object();
+
             EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
             {
                 // Enqueue all the new folders.
@@ -20655,28 +20665,62 @@ namespace Corrade
                 {
                     if (r is InventoryFolder)
                     {
+                        UUID inventoryFolderUUID = (r as InventoryFolder).UUID;
                         lock (LockObject)
                         {
-                            inventoryFolders.Enqueue(r as InventoryFolder);
+                            inventoryFolders.Add(inventoryFolderUUID, new ManualResetEvent(false));
+                            inventoryStopwatch.Add(inventoryFolderUUID, new Stopwatch());
                         }
                     }
                 });
-                FolderUpdatedEvent.Set();
+                inventoryFolders[q.FolderID].Set();
+                inventoryStopwatch[q.FolderID].Stop();
+                times.Add(inventoryStopwatch[q.FolderID].ElapsedMilliseconds);
             };
 
             do
             {
-                InventoryFolder folder;
+                Dictionary<UUID, ManualResetEvent> closureFolders;
                 lock (LockObject)
                 {
-                    folder = inventoryFolders.Dequeue();
+                    closureFolders =
+                        new Dictionary<UUID, ManualResetEvent>(
+                            inventoryFolders.Where(p => !p.Key.Equals(UUID.Zero)).ToDictionary(p => p.Key, q => q.Value));
                 }
-                if (folder == null) continue;
-                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
-                    InventorySortOrder.ByDate);
-                FolderUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
-                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                lock (ClientInstanceInventoryLock)
+                {
+                    Parallel.ForEach(closureFolders,
+                        new ParallelOptions
+                        {
+                            MaxDegreeOfParallelism = Environment.ProcessorCount > 1 ? Environment.ProcessorCount/2 : 1
+                        },
+                        p =>
+                        {
+                            Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                            inventoryStopwatch[p.Key].Start();
+                            Client.Inventory.RequestFolderContents(p.Key, Client.Self.AgentID, true, true,
+                                InventorySortOrder.ByDate);
+                            closureFolders[p.Key].WaitOne((int) times.Average(), false);
+                            Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                        });
+                }
+                Parallel.ForEach(closureFolders, new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = Environment.ProcessorCount > 1 ? Environment.ProcessorCount/2 : 1
+                }, p =>
+                {
+                    lock (LockObject)
+                    {
+                        if (inventoryFolders.ContainsKey(p.Key))
+                        {
+                            inventoryFolders.Remove(p.Key);
+                        }
+                        if (inventoryStopwatch.ContainsKey(p.Key))
+                        {
+                            inventoryStopwatch.Remove(p.Key);
+                        }
+                    }
+                });
             } while (!inventoryFolders.Count.Equals(0));
         };
 
