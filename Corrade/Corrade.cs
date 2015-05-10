@@ -25,6 +25,7 @@ using System.ServiceProcess;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
@@ -1373,6 +1374,21 @@ namespace Corrade
         }
 
         ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Determines whether a vector falls within a parcel.
+        /// </summary>
+        /// <param name="position">a 3D vector</param>
+        /// <param name="parcel">a parcel</param>
+        /// <returns>true if the vector falls within the parcel bounds</returns>
+        private static bool IsVectorInParcel(Vector3 position, Parcel parcel)
+        {
+            return position.X >= parcel.AABBMin.X && position.X <= parcel.AABBMax.X &&
+                   position.Y >= parcel.AABBMin.Y && position.Y <= parcel.AABBMax.Y;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
@@ -1380,13 +1396,11 @@ namespace Corrade
         /// </summary>
         /// <param name="item">the name or UUID of the primitive</param>
         /// <param name="range">the range in meters to search for the object</param>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="primitive">a primitive object to store the result</param>
         /// <returns>true if the primitive could be found</returns>
-        private static bool FindPrimitive<T>(T item, float range, int millisecondsTimeout,
-            ref Primitive primitive)
+        private static bool FindPrimitive<T>(T item, float range, ref Primitive primitive)
         {
-            Hashtable queue = new Hashtable();
+            HashSet<Primitive> selectedPrimitives = new HashSet<Primitive>();
             HashSet<Primitive> objectsPrimitives;
             HashSet<Avatar> objectsAvatars;
             lock (ClientInstanceNetworkLock)
@@ -1406,12 +1420,12 @@ namespace Corrade
                         {
                             if (item is UUID && o.ID.Equals(item))
                             {
-                                queue.Add(o.ID, o.LocalID);
+                                selectedPrimitives.Add(o);
                                 break;
                             }
                             if (item is string)
                             {
-                                queue.Add(o.ID, o.LocalID);
+                                selectedPrimitives.Add(o);
                             }
                         }
                         break;
@@ -1435,12 +1449,12 @@ namespace Corrade
                             {
                                 if (item is UUID && o.ID.Equals(item))
                                 {
-                                    queue.Add(o.ID, o.LocalID);
+                                    selectedPrimitives.Add(o);
                                     break;
                                 }
                                 if (item is string)
                                 {
-                                    queue.Add(o.ID, o.LocalID);
+                                    selectedPrimitives.Add(o);
                                 }
                                 break;
                             }
@@ -1455,47 +1469,72 @@ namespace Corrade
                         {
                             if (item is UUID && o.ID.Equals(item))
                             {
-                                queue.Add(o.ID, o.LocalID);
+                                selectedPrimitives.Add(o);
                                 break;
                             }
                             if (item is string)
                             {
-                                queue.Add(o.ID, o.LocalID);
+                                selectedPrimitives.Add(o);
                             }
                         }
                         break;
                 }
             });
-            if (queue.Count.Equals(0))
-                return false;
-            ManualResetEvent ObjectPropertiesEvent = new ManualResetEvent(false);
+            if (selectedPrimitives.Count.Equals(0)) return false;
+            primitive =
+                UpdatePrimitives(selectedPrimitives).FirstOrDefault(
+                    o =>
+                        (item is UUID && o.ID.Equals(item)) ||
+                        (item is string && (item as string).Equals(o.Properties.Name, StringComparison.Ordinal)));
+            return primitive != null;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Updates a set of primitives by scanning their properties.
+        /// </summary>
+        /// <param name="primitives">a list of primitives to update</param>
+        /// <returns>a list of updated primitives</returns>
+        private static IEnumerable<Primitive> UpdatePrimitives(IEnumerable<Primitive> primitives)
+        {
+            IEnumerable<Primitive> enumerable = primitives as Primitive[] ?? primitives.ToArray();
+            Dictionary<UUID, ManualResetEvent> primitiveEvents =
+                new Dictionary<UUID, ManualResetEvent>(
+                    enumerable
+                        .ToDictionary(o => o.ID, p => new ManualResetEvent(false)));
+            Dictionary<UUID, Stopwatch> stopWatch = new Dictionary<UUID, Stopwatch>(
+                enumerable
+                    .ToDictionary(o => o.ID, p => new Stopwatch()));
+            HashSet<long> times = new HashSet<long>(new[] {(long) Client.Network.CurrentSim.Stats.LastLag});
             EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler = (sender, args) =>
             {
-                queue.Remove(args.Properties.ObjectID);
-                if ((((item is string && !(item as string).Equals(args.Properties.Name)) ||
-                      (item is UUID && !item.Equals(args.Properties.ItemID)))) && !queue.Count.Equals(0)) return;
-                ObjectPropertiesEvent.Set();
+                KeyValuePair<UUID, ManualResetEvent> queueElement =
+                    primitiveEvents.AsParallel().FirstOrDefault(o => o.Key.Equals(args.Properties.ObjectID));
+                if (queueElement.Equals(default(KeyValuePair<UUID, ManualResetEvent>))) return;
+                queueElement.Value.Set();
+                stopWatch[queueElement.Key].Stop();
+                times.Add(stopWatch[queueElement.Key].ElapsedMilliseconds);
             };
             lock (ClientInstanceObjectsLock)
             {
-                Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
-                Client.Objects.SelectObjects(Client.Network.CurrentSim, queue.Values.Cast<uint>().ToArray(), true);
-                if (
-                    !ObjectPropertiesEvent.WaitOne(
-                        millisecondsTimeout, false))
-                {
-                    Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
-                    return false;
-                }
-                Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
+                Parallel.ForEach(primitiveEvents,
+                    new ParallelOptions {MaxDegreeOfParallelism = Environment.ProcessorCount - 1}, o =>
+                    {
+                        Primitive queryPrimitive =
+                            enumerable.AsParallel().SingleOrDefault(p => p.ID.Equals(o.Key));
+                        if (queryPrimitive == null) return;
+                        stopWatch[queryPrimitive.ID].Start();
+                        Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
+                        Client.Objects.SelectObject(Client.Network.CurrentSim,
+                            queryPrimitive.LocalID,
+                            true);
+                        primitiveEvents[queryPrimitive.ID].WaitOne((int) times.Average(), false);
+                        Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
+                    });
             }
-            primitive =
-                objectsPrimitives.FirstOrDefault(
-                    o =>
-                        (item is UUID && o.ID.Equals(item)) ||
-                        (item is string && o.Properties != null &&
-                         (item as string).Equals(o.Properties.Name, StringComparison.Ordinal)));
-            return primitive != null;
+            return enumerable.AsParallel().Where(o => o.Properties != null);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -3253,6 +3292,10 @@ namespace Corrade
                                     if (RadarObjects.ContainsKey(avatarUpdateEventArgs.Avatar.ID)) return;
                                     RadarObjects.Add(avatarUpdateEventArgs.Avatar.ID, avatarUpdateEventArgs.Avatar);
                                 }
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    avatarUpdateEventArgs.Avatar.FirstName);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    avatarUpdateEventArgs.Avatar.LastName);
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
                                     avatarUpdateEventArgs.Avatar.ID.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
@@ -3269,24 +3312,29 @@ namespace Corrade
                             {
                                 KillObjectEventArgs killObjectEventArgs =
                                     (KillObjectEventArgs) args;
-                                Primitive prim;
+                                Avatar avatar;
                                 lock (RadarObjectsLock)
                                 {
                                     KeyValuePair<UUID, Primitive> tracked =
                                         RadarObjects.AsParallel().FirstOrDefault(
                                             p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
                                     if (tracked.Equals(default(KeyValuePair<UUID, Primitive>))) return;
-                                    prim = tracked.Value;
                                     RadarObjects.Remove(tracked.Key);
+                                    if (!(tracked.Value is Avatar)) return;
+                                    avatar = tracked.Value as Avatar;
                                 }
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    avatar.FirstName);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    avatar.LastName);
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                    prim.ID.ToString());
+                                    avatar.ID.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                    prim.Position.ToString());
+                                    avatar.Position.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
-                                    prim.Rotation.ToString());
+                                    avatar.Rotation.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                    prim.PrimData.PCode.ToString());
+                                    avatar.PrimData.PCode.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                     wasGetDescriptionFromEnumValue(Action.VANISH));
                             }
@@ -3302,6 +3350,8 @@ namespace Corrade
                                     if (RadarObjects.ContainsKey(primEventArgs.Prim.ID)) return;
                                     RadarObjects.Add(primEventArgs.Prim.ID, primEventArgs.Prim);
                                 }
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                                    primEventArgs.Prim.OwnerID.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
                                     primEventArgs.Prim.ID.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
@@ -3312,7 +3362,6 @@ namespace Corrade
                                     primEventArgs.Prim.PrimData.PCode.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
                                     wasGetDescriptionFromEnumValue(Action.APPEAR));
-
                                 break;
                             }
                             if (radarPrimitivesType == typeof (KillObjectEventArgs))
@@ -3326,9 +3375,11 @@ namespace Corrade
                                         RadarObjects.AsParallel().FirstOrDefault(
                                             p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
                                     if (tracked.Equals(default(KeyValuePair<UUID, Primitive>))) return;
-                                    prim = tracked.Value;
                                     RadarObjects.Remove(tracked.Key);
+                                    prim = tracked.Value;
                                 }
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                                    prim.OwnerID.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
                                     prim.ID.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
@@ -4275,7 +4326,6 @@ namespace Corrade
                         if (
                             !FindPrimitive(sitTarget,
                                 LINDEN_CONSTANTS.LSL.SENSOR_RANGE,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             return;
@@ -7458,7 +7508,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -8386,7 +8435,6 @@ namespace Corrade
                                             wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)),
                                                 message))),
                                         range,
-                                        Configuration.SERVICES_TIMEOUT,
                                         ref primitive))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -8749,7 +8797,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -9284,38 +9331,35 @@ namespace Corrade
                                 Client.Network.CurrentSim.Parcels.ForEach(o => parcels.Add(o));
                                 break;
                         }
-                        if (!Client.Network.CurrentSim.IsEstateManager)
-                        {
-                            Parallel.ForEach(parcels.AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)),
-                                o =>
+                        Parallel.ForEach(parcels.AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)),
+                            o =>
+                            {
+                                if (!o.IsGroupOwned || !o.GroupID.Equals(groupUUID))
                                 {
-                                    if (!o.IsGroupOwned || !o.GroupID.Equals(groupUUID))
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                }
+                                bool permissions = false;
+                                Parallel.ForEach(
+                                    new HashSet<GroupPowers>
                                     {
-                                        throw new Exception(
-                                            wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
-                                    }
-                                    bool permissions = false;
-                                    Parallel.ForEach(
-                                        new HashSet<GroupPowers>
-                                        {
-                                            GroupPowers.ReturnGroupSet,
-                                            GroupPowers.ReturnGroupOwned,
-                                            GroupPowers.ReturnNonGroup
-                                        }, p =>
-                                        {
-                                            if (HasGroupPowers(Client.Self.AgentID, groupUUID, p,
-                                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
-                                            {
-                                                permissions = true;
-                                            }
-                                        });
-                                    if (!permissions)
+                                        GroupPowers.ReturnGroupSet,
+                                        GroupPowers.ReturnGroupOwned,
+                                        GroupPowers.ReturnNonGroup
+                                    }, p =>
                                     {
-                                        throw new Exception(
-                                            wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
-                                    }
-                                });
-                        }
+                                        if (HasGroupPowers(Client.Self.AgentID, groupUUID, p,
+                                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                        {
+                                            permissions = true;
+                                        }
+                                    });
+                                if (!permissions)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                }
+                            });
                         ManualResetEvent ParcelObjectOwnersReplyEvent = new ManualResetEvent(false);
                         Dictionary<string, int> primitives = new Dictionary<string, int>();
                         EventHandler<ParcelObjectOwnersReplyEventArgs> ParcelObjectOwnersEventHandler =
@@ -9428,7 +9472,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -10222,7 +10265,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -10269,7 +10311,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -10375,7 +10416,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -10443,7 +10483,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -10485,7 +10524,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -10545,7 +10583,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -10786,7 +10823,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -11430,7 +11466,6 @@ namespace Corrade
                                             !FindPrimitive(
                                                 StringOrUUID(item),
                                                 range,
-                                                Configuration.SERVICES_TIMEOUT,
                                                 ref primitive))
                                         {
                                             throw new Exception(
@@ -13223,62 +13258,48 @@ namespace Corrade
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
                         }
                         List<string> csv = new List<string>();
-                        HashSet<Primitive> primitives =
-                            new HashSet<Primitive>(
-                                Client.Network.CurrentSim.ObjectsPrimitives.FindAll(o => !o.ID.Equals(UUID.Zero)));
-                        foreach (Primitive p in primitives)
-                        {
-                            ManualResetEvent ObjectPropertiesEvent = new ManualResetEvent(false);
-                            EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler =
-                                (sender, args) => ObjectPropertiesEvent.Set();
-                            lock (ClientInstanceObjectsLock)
+                        object LockObject = new object();
+                        Parallel.ForEach(UpdatePrimitives(Client.Network.CurrentSim.ObjectsPrimitives.Copy().Values),
+                            o =>
                             {
-                                Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
-                                Client.Objects.SelectObjects(Client.Network.CurrentSim, new[] {p.LocalID}, true);
-                                if (
-                                    !ObjectPropertiesEvent.WaitOne(
-                                        Configuration.SERVICES_TIMEOUT, false))
+                                switch (entity)
                                 {
-                                    Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                                    case Entity.REGION:
+                                        break;
+                                    case Entity.AVATAR:
+                                        Primitive parent = o;
+                                        do
+                                        {
+                                            Primitive closure = parent;
+                                            Primitive ancestor =
+                                                Client.Network.CurrentSim.ObjectsPrimitives.Find(
+                                                    p => p.LocalID.Equals(closure.ParentID));
+                                            if (ancestor == null) break;
+                                            parent = ancestor;
+                                        } while (!parent.ParentID.Equals(0));
+                                        // check if an avatar is the parent of the parent primitive
+                                        Avatar parentAvatar =
+                                            Client.Network.CurrentSim.ObjectsAvatars.Find(
+                                                p => p.LocalID.Equals(parent.ParentID));
+                                        // parent avatar not found, this should not happen
+                                        if (parentAvatar == null || !parentAvatar.ID.Equals(agentUUID)) return;
+                                        break;
+                                    case Entity.PARCEL:
+                                        if (parcel == null) return;
+                                        Parcel primitiveParcel = null;
+                                        if (
+                                            !GetParcelAtPosition(Client.Network.CurrentSim, o.Position,
+                                                ref primitiveParcel))
+                                            return;
+                                        if (!primitiveParcel.LocalID.Equals(parcel.LocalID)) return;
+                                        break;
                                 }
-                                Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
-                            }
-                            if (p.Properties == null) continue;
-
-                            switch (entity)
-                            {
-                                case Entity.REGION:
-                                    break;
-                                case Entity.AVATAR:
-                                    Primitive parent = p;
-                                    do
-                                    {
-                                        Primitive closure = parent;
-                                        Primitive ancestor =
-                                            Client.Network.CurrentSim.ObjectsPrimitives.Find(
-                                                o => o.LocalID.Equals(closure.ParentID));
-                                        if (ancestor == null) break;
-                                        parent = ancestor;
-                                    } while (!parent.ParentID.Equals(0));
-                                    // check if an avatar is the parent of the parent primitive
-                                    Avatar parentAvatar =
-                                        Client.Network.CurrentSim.ObjectsAvatars.Find(
-                                            o => o.LocalID.Equals(parent.ParentID));
-                                    // parent avatar not found, this should not happen
-                                    if (parentAvatar == null || !parentAvatar.ID.Equals(agentUUID)) continue;
-                                    break;
-                                case Entity.PARCEL:
-                                    if (parcel == null) continue;
-                                    Parcel primitiveParcel = null;
-                                    if (!GetParcelAtPosition(Client.Network.CurrentSim, p.Position, ref primitiveParcel))
-                                        continue;
-                                    if (!primitiveParcel.LocalID.Equals(parcel.LocalID)) continue;
-                                    break;
-                            }
-                            csv.Add(p.Properties.Name);
-                            csv.Add(p.ID.ToString());
-                        }
+                                lock (LockObject)
+                                {
+                                    csv.Add(o.Properties.Name);
+                                    csv.Add(o.ID.ToString());
+                                }
+                            });
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -13976,7 +13997,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -14043,7 +14063,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -14090,7 +14109,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -14134,7 +14152,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -14175,7 +14192,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -14215,7 +14231,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -14255,7 +14270,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -14292,7 +14306,6 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                Configuration.SERVICES_TIMEOUT,
                                 ref primitive))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -15442,6 +15455,149 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
+                        }
+                    };
+                    break;
+                case ScriptKeys.GETAVATARSDATA:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(group,
+                                (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        Vector3 position;
+                        HashSet<Parcel> parcels = new HashSet<Parcel>();
+                        switch (Vector3.TryParse(
+                            wasInput(wasKeyValueGet(
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)), message)),
+                            out position))
+                        {
+                            case true:
+                                Parcel parcel = null;
+                                if (!GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
+                                }
+                                parcels.Add(parcel);
+                                break;
+                            default:
+                                // Get all sim parcels
+                                ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
+                                EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
+                                    (sender, args) => SimParcelsDownloadedEvent.Set();
+                                lock (ClientInstanceParcelsLock)
+                                {
+                                    Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
+                                    Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim);
+                                    if (Client.Network.CurrentSim.IsParcelMapFull())
+                                    {
+                                        SimParcelsDownloadedEvent.Set();
+                                    }
+                                    if (!SimParcelsDownloadedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                    {
+                                        Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
+                                    }
+                                    Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                }
+                                Client.Network.CurrentSim.Parcels.ForEach(o => parcels.Add(o));
+                                break;
+                        }
+                        List<string> data = new List<string>();
+                        object LockObject = new object();
+                        Parallel.ForEach(Client.Network.CurrentSim.ObjectsAvatars.Copy(), o =>
+                        {
+                            if (parcels.AsParallel().Any(p => IsVectorInParcel(o.Value.Position, p)))
+                            {
+                                lock (LockObject)
+                                {
+                                    data.Add(o.Value.ID.ToString());
+                                    data.AddRange(GetStructuredData(o.Value,
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                                message)))
+                                        );
+                                }
+                            }
+                        });
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                wasEnumerableToCSV(data));
+                        }
+                    };
+                    break;
+                case ScriptKeys.GETPRIMITIVESDATA:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(group,
+                                (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        Vector3 position;
+                        HashSet<Parcel> parcels = new HashSet<Parcel>();
+                        switch (Vector3.TryParse(
+                            wasInput(wasKeyValueGet(
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)), message)),
+                            out position))
+                        {
+                            case true:
+                                Parcel parcel = null;
+                                if (!GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
+                                }
+                                parcels.Add(parcel);
+                                break;
+                            default:
+                                // Get all sim parcels
+                                ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
+                                EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
+                                    (sender, args) => SimParcelsDownloadedEvent.Set();
+                                lock (ClientInstanceParcelsLock)
+                                {
+                                    Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
+                                    Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim);
+                                    if (Client.Network.CurrentSim.IsParcelMapFull())
+                                    {
+                                        SimParcelsDownloadedEvent.Set();
+                                    }
+                                    if (!SimParcelsDownloadedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                    {
+                                        Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
+                                    }
+                                    Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                                }
+                                Client.Network.CurrentSim.Parcels.ForEach(o => parcels.Add(o));
+                                break;
+                        }
+                        List<string> data = new List<string>();
+                        object LockObject = new object();
+                        Parallel.ForEach(UpdatePrimitives(Client.Network.CurrentSim.ObjectsPrimitives.Copy()
+                            .Values.AsParallel()
+                            .Where(o => parcels.AsParallel().Any(p => IsVectorInParcel(o.Position, p)))), o =>
+                            {
+                                lock (LockObject)
+                                {
+                                    data.Add(o.ID.ToString());
+                                    data.AddRange(GetStructuredData(o,
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                                message)))
+                                        );
+                                }
+                            });
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                wasEnumerableToCSV(data));
                         }
                     };
                     break;
@@ -19673,7 +19829,8 @@ namespace Corrade
             [Description("unknown image format provided")] UNKNOWN_IMAGE_FORMAT_PROVIDED,
             [Description("unable to decode asset data")] UNABLE_TO_DECODE_ASSET_DATA,
             [Description("unable to convert to requested format")] UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT,
-            [Description("could not start process")] COULD_NOT_START_PROCESS
+            [Description("could not start process")] COULD_NOT_START_PROCESS,
+            [Description("timeout getting primitive data")] TIMEOUT_GETTING_PRIMITIVE_DATA
         }
 
         /// <summary>
@@ -19682,6 +19839,8 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+            [Description("getprimitivesdata")] GETPRIMITIVESDATA,
+            [Description("getavatarsdata")] GETAVATARSDATA,
             [Description("format")] FORMAT,
             [Description("volume")] VOLUME,
             [Description("audible")] AUDIBLE,
