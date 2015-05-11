@@ -199,7 +199,7 @@ namespace Corrade
 
                 do
                 {
-                    // Pause for one second between scans.
+                    // Pause a second between group sweeps.
                     Thread.Sleep(1000);
                     // Dequeue the first group.
                     UUID groupUUID = groupUUIDs.Dequeue();
@@ -1596,7 +1596,7 @@ namespace Corrade
                     new ParallelOptions
                     {
                         // Don't choke the chicken.
-                        MaxDegreeOfParallelism = Environment.ProcessorCount > 1 ? Environment.ProcessorCount/2 : 1
+                        MaxDegreeOfParallelism = Environment.ProcessorCount > 1 ? Environment.ProcessorCount - 1 : 1
                     }, o =>
                     {
                         Primitive queryPrimitive =
@@ -1661,7 +1661,7 @@ namespace Corrade
             {
                 Parallel.ForEach(enumerable, new ParallelOptions
                 {
-                    MaxDegreeOfParallelism = Environment.ProcessorCount > 1 ? Environment.ProcessorCount/2 : 1
+                    MaxDegreeOfParallelism = Environment.ProcessorCount > 1 ? Environment.ProcessorCount - 1 : 1
                 }, o =>
                 {
                     Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
@@ -2287,7 +2287,7 @@ namespace Corrade
                     {
                         Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR), ex.Message);
                     }
-                }) {IsBackground = true};
+                }) {IsBackground = true, Priority = ThreadPriority.BelowNormal};
                 HTTPListenerThread.Start();
             }
             // Start the callback thread to send callbacks.
@@ -2320,7 +2320,7 @@ namespace Corrade
                             ex.Message);
                     }
                 } while (runCallbackThread);
-            }) {IsBackground = true};
+            }) {IsBackground = true, Priority = ThreadPriority.BelowNormal};
             CallbackThread.Start();
             Thread NotificationThread = new Thread(() =>
             {
@@ -2351,7 +2351,7 @@ namespace Corrade
                             ex.Message);
                     }
                 } while (runNotificationThread);
-            }) {IsBackground = true};
+            }) {IsBackground = true, Priority = ThreadPriority.BelowNormal};
             NotificationThread.Start();
             // Start sphere effect expiration thread
             Thread EffectsExpirationThread = new Thread(() =>
@@ -2368,7 +2368,7 @@ namespace Corrade
                         BeamEffects.RemoveWhere(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
                     }
                 } while (runEffectsExpirationThread);
-            }) {IsBackground = true};
+            }) {IsBackground = true, Priority = ThreadPriority.BelowNormal};
             EffectsExpirationThread.Start();
             // Install non-dynamic global event handlers.
             Client.Inventory.InventoryObjectOffered += HandleInventoryObjectOffered;
@@ -3872,13 +3872,13 @@ namespace Corrade
                         }
                         // Signal completion.
                         InventoryLoadedEvent.Set();
-                    }) {IsBackground = true}.Start();
+                    }) {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
                     // Set current group to land group.
                     new Thread(() =>
                     {
                         if (!Configuration.AUTO_ACTIVATE_GROUP) return;
                         ActivateCurrentLandGroupTimer.Change(Configuration.ACTIVATE_DELAY, 0);
-                    }) {IsBackground = true}.Start();
+                    }) {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
                     // Retrieve instant messages.
                     new Thread(() =>
                     {
@@ -3889,7 +3889,7 @@ namespace Corrade
                         {
                             Client.Self.RetrieveInstantMessages();
                         }
-                    }) {IsBackground = true}.Start();
+                    }) {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
                     // Set the camera on the avatar.
                     Client.Self.Movement.Camera.LookAt(
                         Client.Self.SimPosition,
@@ -3943,7 +3943,7 @@ namespace Corrade
                     {
                         if (!Configuration.AUTO_ACTIVATE_GROUP) return;
                         ActivateCurrentLandGroupTimer.Change(Configuration.ACTIVATE_DELAY, 0);
-                    }) {IsBackground = true}.Start();
+                    }) {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
                     // Set the camera on the avatar.
                     Client.Self.Movement.Camera.LookAt(
                         Client.Self.SimPosition,
@@ -7153,7 +7153,7 @@ namespace Corrade
                                                         LoadChatBotFiles.Invoke();
                                                         AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
                                                     }
-                                                }) {IsBackground = true}.Start();
+                                                }) {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
                                             break;
                                         default:
                                             AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
@@ -19004,7 +19004,7 @@ namespace Corrade
                                                 LoadChatBotFiles.Invoke();
                                                 AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
                                             }
-                                        }) {IsBackground = true}.Start();
+                                        }) {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
                                     break;
                                 default:
                                     AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
@@ -19355,7 +19355,7 @@ namespace Corrade
                         return;
                     }
                 }
-                Thread t = new Thread(s) {IsBackground = true};
+                Thread t = new Thread(s) {IsBackground = true, Priority = ThreadPriority.BelowNormal};
                 lock (LockObject)
                 {
                     WorkSet.Add(t);
@@ -20547,11 +20547,14 @@ namespace Corrade
                 new SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>();
 
         private static readonly object InventoryOffersLock = new object();
-        private static readonly Queue<CallbackQueueElement> CallbackQueue = new Queue<CallbackQueueElement>();
+
+        private static readonly BlockingQueue<CallbackQueueElement> CallbackQueue =
+            new BlockingQueue<CallbackQueueElement>();
+
         private static readonly object CallbackQueueLock = new object();
 
-        private static readonly Queue<NotificationQueueElement> NotificationQueue =
-            new Queue<NotificationQueueElement>();
+        private static readonly BlockingQueue<NotificationQueueElement> NotificationQueue =
+            new BlockingQueue<NotificationQueueElement>();
 
         private static readonly object NotificationQueueLock = new object();
         private static readonly HashSet<GroupInvite> GroupInvites = new HashSet<GroupInvite>();
@@ -20614,7 +20617,11 @@ namespace Corrade
                 (GroupMembershipSweepThread.ThreadState.Equals(ThreadState.Running) ||
                  GroupMembershipSweepThread.ThreadState.Equals(ThreadState.WaitSleepJoin))) return;
             runGroupMembershipSweepThread = true;
-            GroupMembershipSweepThread = new Thread(GroupMembershipSweep) {IsBackground = true};
+            GroupMembershipSweepThread = new Thread(GroupMembershipSweep)
+            {
+                IsBackground = true,
+                Priority = ThreadPriority.BelowNormal
+            };
             GroupMembershipSweepThread.Start();
         };
 
@@ -20663,7 +20670,7 @@ namespace Corrade
                         {
                             LoadChatBotFiles.Invoke();
                         }
-                    }) {IsBackground = true}.Start();
+                    }) {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
             });
 
         /// <summary>
@@ -20814,80 +20821,90 @@ namespace Corrade
         /// </summary>
         private static readonly Action<InventoryFolder> UpdateInventoryRecursive = o =>
         {
-            // Create the queue of folders.
-            Dictionary<UUID, ManualResetEvent> inventoryFolders = new Dictionary<UUID, ManualResetEvent>();
-            Dictionary<UUID, Stopwatch> inventoryStopwatch = new Dictionary<UUID, Stopwatch>();
-            HashSet<long> times = new HashSet<long>(new[] {(long) Client.Settings.CAPS_TIMEOUT});
-            // Enqueue the first folder (as the root).
-            inventoryFolders.Add(o.UUID, new ManualResetEvent(false));
-            inventoryStopwatch.Add(o.UUID, new Stopwatch());
-
-            object LockObject = new object();
-
-            EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
+            Thread updateInventoryRecursiveThread = new Thread(() =>
             {
-                // Enqueue all the new folders.
-                Client.Inventory.Store.GetContents(q.FolderID).ForEach(r =>
+                // Create the queue of folders.
+                Dictionary<UUID, ManualResetEvent> inventoryFolders = new Dictionary<UUID, ManualResetEvent>();
+                Dictionary<UUID, Stopwatch> inventoryStopwatch = new Dictionary<UUID, Stopwatch>();
+                HashSet<long> times = new HashSet<long>(new[] {(long) Client.Settings.CAPS_TIMEOUT});
+                // Enqueue the first folder (as the root).
+                inventoryFolders.Add(o.UUID, new ManualResetEvent(false));
+                inventoryStopwatch.Add(o.UUID, new Stopwatch());
+
+                object LockObject = new object();
+
+                EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
                 {
-                    if (r is InventoryFolder)
+                    // Enqueue all the new folders.
+                    Client.Inventory.Store.GetContents(q.FolderID).ForEach(r =>
                     {
-                        UUID inventoryFolderUUID = (r as InventoryFolder).UUID;
-                        lock (LockObject)
+                        if (r is InventoryFolder)
                         {
-                            inventoryFolders.Add(inventoryFolderUUID, new ManualResetEvent(false));
-                            inventoryStopwatch.Add(inventoryFolderUUID, new Stopwatch());
+                            UUID inventoryFolderUUID = (r as InventoryFolder).UUID;
+                            lock (LockObject)
+                            {
+                                inventoryFolders.Add(inventoryFolderUUID, new ManualResetEvent(false));
+                                inventoryStopwatch.Add(inventoryFolderUUID, new Stopwatch());
+                            }
                         }
-                    }
-                });
-                inventoryFolders[q.FolderID].Set();
-                inventoryStopwatch[q.FolderID].Stop();
-                times.Add(inventoryStopwatch[q.FolderID].ElapsedMilliseconds);
-            };
+                    });
+                    inventoryFolders[q.FolderID].Set();
+                    inventoryStopwatch[q.FolderID].Stop();
+                    times.Add(inventoryStopwatch[q.FolderID].ElapsedMilliseconds);
+                };
 
-            do
-            {
-                Dictionary<UUID, ManualResetEvent> closureFolders;
-                lock (LockObject)
+                do
                 {
-                    closureFolders =
-                        new Dictionary<UUID, ManualResetEvent>(
-                            inventoryFolders.Where(p => !p.Key.Equals(UUID.Zero)).ToDictionary(p => p.Key, q => q.Value));
-                }
-                lock (ClientInstanceInventoryLock)
-                {
-                    Parallel.ForEach(closureFolders,
-                        new ParallelOptions
-                        {
-                            MaxDegreeOfParallelism = Environment.ProcessorCount > 1 ? Environment.ProcessorCount/2 : 1
-                        },
-                        p =>
-                        {
-                            Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                            inventoryStopwatch[p.Key].Start();
-                            Client.Inventory.RequestFolderContents(p.Key, Client.Self.AgentID, true, true,
-                                InventorySortOrder.ByDate);
-                            closureFolders[p.Key].WaitOne((int) times.Average(), false);
-                            Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                        });
-                }
-                Parallel.ForEach(closureFolders, new ParallelOptions
-                {
-                    MaxDegreeOfParallelism = Environment.ProcessorCount > 1 ? Environment.ProcessorCount/2 : 1
-                }, p =>
-                {
+                    // Don't choke the chicken.
+                    Thread.Yield();
+                    Dictionary<UUID, ManualResetEvent> closureFolders;
                     lock (LockObject)
                     {
-                        if (inventoryFolders.ContainsKey(p.Key))
-                        {
-                            inventoryFolders.Remove(p.Key);
-                        }
-                        if (inventoryStopwatch.ContainsKey(p.Key))
-                        {
-                            inventoryStopwatch.Remove(p.Key);
-                        }
+                        closureFolders =
+                            new Dictionary<UUID, ManualResetEvent>(
+                                inventoryFolders.Where(p => !p.Key.Equals(UUID.Zero))
+                                    .ToDictionary(p => p.Key, q => q.Value));
                     }
-                });
-            } while (!inventoryFolders.Count.Equals(0));
+                    lock (ClientInstanceInventoryLock)
+                    {
+                        Parallel.ForEach(closureFolders,
+                            new ParallelOptions
+                            {
+                                MaxDegreeOfParallelism =
+                                    Environment.ProcessorCount > 1 ? Environment.ProcessorCount - 1 : 1
+                            },
+                            p =>
+                            {
+                                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                                inventoryStopwatch[p.Key].Start();
+                                Client.Inventory.RequestFolderContents(p.Key, Client.Self.AgentID, true, true,
+                                    InventorySortOrder.ByDate);
+                                closureFolders[p.Key].WaitOne((int) times.Average(), false);
+                                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                            });
+                    }
+                    Parallel.ForEach(closureFolders, new ParallelOptions
+                    {
+                        MaxDegreeOfParallelism = Environment.ProcessorCount > 1 ? Environment.ProcessorCount - 1 : 1
+                    }, p =>
+                    {
+                        lock (LockObject)
+                        {
+                            if (inventoryFolders.ContainsKey(p.Key))
+                            {
+                                inventoryFolders.Remove(p.Key);
+                            }
+                            if (inventoryStopwatch.ContainsKey(p.Key))
+                            {
+                                inventoryStopwatch.Remove(p.Key);
+                            }
+                        }
+                    });
+                } while (!inventoryFolders.Count.Equals(0));
+            }) {IsBackground = true, Priority = ThreadPriority.Lowest};
+
+            updateInventoryRecursiveThread.Start();
+            updateInventoryRecursiveThread.Join(Timeout.Infinite);
         };
 
         /// <summary>
