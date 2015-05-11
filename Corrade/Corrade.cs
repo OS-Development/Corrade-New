@@ -1397,26 +1397,23 @@ namespace Corrade
         /// <param name="item">the name or UUID of the primitive</param>
         /// <param name="range">the range in meters to search for the object</param>
         /// <param name="primitive">a primitive object to store the result</param>
+        /// <param name="millisecondsTimeout">the services timeout in milliseconds</param>
+        /// <param name="dataTimeout">the data timeout in milliseconds</param>
         /// <returns>true if the primitive could be found</returns>
-        private static bool FindPrimitive<T>(T item, float range, ref Primitive primitive)
+        private static bool FindPrimitive<T>(T item, float range, ref Primitive primitive, int millisecondsTimeout,
+            int dataTimeout)
         {
             HashSet<Primitive> selectedPrimitives = new HashSet<Primitive>();
-            HashSet<Primitive> objectsPrimitives;
-            HashSet<Avatar> objectsAvatars;
-            lock (ClientInstanceNetworkLock)
-            {
-                objectsPrimitives =
-                    new HashSet<Primitive>(Client.Network.CurrentSim.ObjectsPrimitives.Copy().Values);
-                objectsAvatars =
-                    new HashSet<Avatar>(Client.Network.CurrentSim.ObjectsAvatars.Copy().Values);
-            }
+            HashSet<Primitive> objectsPrimitives =
+                new HashSet<Primitive>(GetPrimitives(range, millisecondsTimeout, dataTimeout));
+            HashSet<Avatar> objectsAvatars = new HashSet<Avatar>(GetAvatars(range, millisecondsTimeout, dataTimeout));
             Parallel.ForEach(objectsPrimitives, o =>
             {
                 switch (o.ParentID)
                 {
                     // primitive is a parent and it is in range
                     case 0:
-                        if (Vector3.Distance(o.Position, Client.Self.SimPosition) < range)
+                        if (Vector3.Distance(o.Position, Client.Self.SimPosition) <= range)
                         {
                             if (item is UUID && o.ID.Equals(item))
                             {
@@ -1445,7 +1442,7 @@ namespace Corrade
                         if (parent.ParentID.Equals(0))
                         {
                             // if the parent is in range, add the child
-                            if (Vector3.Distance(parent.Position, Client.Self.SimPosition) < range)
+                            if (Vector3.Distance(parent.Position, Client.Self.SimPosition) <= range)
                             {
                                 if (item is UUID && o.ID.Equals(item))
                                 {
@@ -1465,7 +1462,7 @@ namespace Corrade
                         // parent avatar not found, this should not happen
                         if (parentAvatar == null) break;
                         // check if the avatar is in range
-                        if (Vector3.Distance(parentAvatar.Position, Client.Self.SimPosition) < range)
+                        if (Vector3.Distance(parentAvatar.Position, Client.Self.SimPosition) <= range)
                         {
                             if (item is UUID && o.ID.Equals(item))
                             {
@@ -1487,6 +1484,82 @@ namespace Corrade
                         (item is UUID && o.ID.Equals(item)) ||
                         (item is string && (item as string).Equals(o.Properties.Name, StringComparison.Ordinal)));
             return primitive != null;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Fetches all the avatars in-range.
+        /// </summary>
+        /// <param name="range">the range to extend or contract to</param>
+        /// <param name="millisecondsTimeout">the timeout in milliseconds</param>
+        /// <param name="dataTimeout">the data timeout in milliseconds</param>
+        /// <returns>the avatars in range</returns>
+        private static IEnumerable<Avatar> GetAvatars(float range, int millisecondsTimeout, int dataTimeout)
+        {
+            switch (Client.Self.Movement.Camera.Far < range)
+            {
+                case true:
+                    IEnumerable<Avatar> avatars;
+                    wasAdaptiveAlarm RangeUpdateAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+                    EventHandler<AvatarUpdateEventArgs> AvatarUpdateEventHandler =
+                        (sender, args) => { RangeUpdateAlarm.Alarm(dataTimeout); };
+                    lock (ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.AvatarUpdate += AvatarUpdateEventHandler;
+                        lock (ClientInstanceConfigurationLock)
+                        {
+                            Client.Self.Movement.Camera.Far = range;
+                            RangeUpdateAlarm.Alarm(dataTimeout);
+                            RangeUpdateAlarm.Signal.WaitOne(millisecondsTimeout, false);
+                            avatars = Client.Network.CurrentSim.ObjectsAvatars.Copy().Values;
+                            Client.Self.Movement.Camera.Far = Configuration.RANGE;
+                        }
+                        Client.Objects.AvatarUpdate -= AvatarUpdateEventHandler;
+                    }
+                    return avatars;
+                default:
+                    return Client.Network.CurrentSim.ObjectsAvatars.Copy().Values;
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Fetches all the primitives in-range.
+        /// </summary>
+        /// <param name="range">the range to extend or contract to</param>
+        /// <param name="millisecondsTimeout">the timeout in milliseconds</param>
+        /// <param name="dataTimeout">the data timeout in milliseconds</param>
+        /// <returns>the primitives in range</returns>
+        private static IEnumerable<Primitive> GetPrimitives(float range, int millisecondsTimeout, int dataTimeout)
+        {
+            switch (Client.Self.Movement.Camera.Far < range)
+            {
+                case true:
+                    IEnumerable<Primitive> primitives;
+                    wasAdaptiveAlarm RangeUpdateAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+                    EventHandler<PrimEventArgs> ObjectUpdateEventHandler =
+                        (sender, args) => { RangeUpdateAlarm.Alarm(dataTimeout); };
+                    lock (ClientInstanceObjectsLock)
+                    {
+                        Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
+                        lock (ClientInstanceConfigurationLock)
+                        {
+                            Client.Self.Movement.Camera.Far = range;
+                            RangeUpdateAlarm.Alarm(dataTimeout);
+                            RangeUpdateAlarm.Signal.WaitOne(millisecondsTimeout, false);
+                            primitives = Client.Network.CurrentSim.ObjectsPrimitives.Copy().Values;
+                            Client.Self.Movement.Camera.Far = Configuration.RANGE;
+                        }
+                        Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                    }
+                    return primitives;
+                default:
+                    return Client.Network.CurrentSim.ObjectsPrimitives.Copy().Values;
+            }
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1549,8 +1622,10 @@ namespace Corrade
         /// </summary>
         /// <param name="avatars">a list of avatars to update</param>
         /// <param name="millisecondsTimeout">the amount of time in milliseconds to timeout</param>
+        /// <param name="dataTimeout">the data timeout</param>
         /// <returns>a list of updated avatars</returns>
-        private static IEnumerable<Avatar> UpdateAvatars(IEnumerable<Avatar> avatars, int millisecondsTimeout)
+        private static IEnumerable<Avatar> UpdateAvatars(IEnumerable<Avatar> avatars, int millisecondsTimeout,
+            int dataTimeout)
         {
             IEnumerable<Avatar> enumerable = avatars as Avatar[] ?? avatars.ToArray();
             Dictionary<UUID, wasAdaptiveAlarm> avatarAlarms =
@@ -1561,27 +1636,27 @@ namespace Corrade
             object LockObject = new object();
             EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
             {
-                avatarAlarms[args.AvatarID].Alarm(Configuration.DATA_TIMEOUT);
+                avatarAlarms[args.AvatarID].Alarm(dataTimeout);
                 avatarUpdates[args.AvatarID].ProfileInterests = args.Interests;
             };
             EventHandler<AvatarPropertiesReplyEventArgs> AvatarPropertiesReplyEventHandler =
                 (sender, args) =>
                 {
-                    avatarAlarms[args.AvatarID].Alarm(Configuration.DATA_TIMEOUT);
+                    avatarAlarms[args.AvatarID].Alarm(dataTimeout);
                     avatarUpdates[args.AvatarID].ProfileProperties = args.Properties;
                 };
             EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
             {
-                avatarAlarms[args.AvatarID].Alarm(Configuration.DATA_TIMEOUT);
+                avatarAlarms[args.AvatarID].Alarm(dataTimeout);
                 lock (LockObject)
                 {
                     avatarUpdates[args.AvatarID].Groups.AddRange(args.Groups.Select(o => o.GroupID));
                 }
             };
             EventHandler<AvatarPicksReplyEventArgs> AvatarPicksReplyEventHandler =
-                (sender, args) => avatarAlarms[args.AvatarID].Alarm(Configuration.DATA_TIMEOUT);
+                (sender, args) => avatarAlarms[args.AvatarID].Alarm(dataTimeout);
             EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedReplyEventHandler =
-                (sender, args) => avatarAlarms[args.AvatarID].Alarm(Configuration.DATA_TIMEOUT);
+                (sender, args) => avatarAlarms[args.AvatarID].Alarm(dataTimeout);
             lock (ClientInstanceAvatarsLock)
             {
                 Parallel.ForEach(enumerable, new ParallelOptions
@@ -1597,7 +1672,7 @@ namespace Corrade
                     Client.Avatars.RequestAvatarProperties(o.ID);
                     Client.Avatars.RequestAvatarPicks(o.ID);
                     Client.Avatars.RequestAvatarClassified(o.ID);
-                    avatarAlarms[o.ID].Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                    avatarAlarms[o.ID].Signal.WaitOne(millisecondsTimeout, false);
                     Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
                     Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
                     Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
@@ -4402,7 +4477,7 @@ namespace Corrade
                         if (
                             !FindPrimitive(sitTarget,
                                 LINDEN_CONSTANTS.LSL.SENSOR_RANGE,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             return;
                         }
@@ -7584,7 +7659,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -8511,7 +8586,7 @@ namespace Corrade
                                             wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)),
                                                 message))),
                                         range,
-                                        ref primitive))
+                                        ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                                 }
@@ -8873,7 +8948,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -9548,7 +9623,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -10341,7 +10416,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -10387,7 +10462,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -10492,7 +10567,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -10559,7 +10634,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -10600,7 +10675,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -10659,7 +10734,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -10899,7 +10974,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -11542,7 +11617,8 @@ namespace Corrade
                                             !FindPrimitive(
                                                 StringOrUUID(item),
                                                 range,
-                                                ref primitive))
+                                                ref primitive, Configuration.SERVICES_TIMEOUT,
+                                                Configuration.DATA_TIMEOUT))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
@@ -13208,7 +13284,18 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
-                        Avatar avatar = Client.Network.CurrentSim.ObjectsAvatars.Find(o => o.ID.Equals(agentUUID));
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Avatar avatar =
+                            GetAvatars(range, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                                .FirstOrDefault(o => o.ID.Equals(agentUUID));
                         if (avatar == null)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AVATAR_NOT_ON_CURRENT_REGION));
@@ -14073,7 +14160,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -14139,7 +14226,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -14185,7 +14272,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -14228,7 +14315,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -14268,7 +14355,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -14307,7 +14394,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -14346,7 +14433,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -14382,7 +14469,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive))
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
@@ -15585,9 +15672,15 @@ namespace Corrade
                         List<string> data = new List<string>();
                         object LockObject = new object();
                         Parallel.ForEach(
-                            UpdateAvatars(Client.Network.CurrentSim.ObjectsAvatars.Copy().Values
+                            UpdateAvatars(GetAvatars(parcels.AsParallel().Select(o => new[]
+                            {
+                                Vector3.Distance(Client.Self.SimPosition, o.AABBMin),
+                                Vector3.Distance(Client.Self.SimPosition, o.AABBMax),
+                                Vector3.Distance(Client.Self.SimPosition, new Vector3(o.AABBMin.X, o.AABBMax.Y, 0)),
+                                Vector3.Distance(Client.Self.SimPosition, new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
+                            }.Max()).Max(), Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
                                 .Where(o => parcels.AsParallel().Any(p => IsVectorInParcel(o.Position, p))),
-                                Configuration.SERVICES_TIMEOUT), o =>
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT), o =>
                                 {
                                     lock (LockObject)
                                     {
@@ -15656,8 +15749,13 @@ namespace Corrade
                         }
                         List<string> data = new List<string>();
                         object LockObject = new object();
-                        Parallel.ForEach(UpdatePrimitives(Client.Network.CurrentSim.ObjectsPrimitives.Copy()
-                            .Values.AsParallel()
+                        Parallel.ForEach(UpdatePrimitives(GetPrimitives(parcels.AsParallel().Select(o => new[]
+                        {
+                            Vector3.Distance(Client.Self.SimPosition, o.AABBMin),
+                            Vector3.Distance(Client.Self.SimPosition, o.AABBMax),
+                            Vector3.Distance(Client.Self.SimPosition, new Vector3(o.AABBMin.X, o.AABBMax.Y, 0)),
+                            Vector3.Distance(Client.Self.SimPosition, new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
+                        }.Max()).Max(), Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT).AsParallel()
                             .Where(o => parcels.AsParallel().Any(p => IsVectorInParcel(o.Position, p)))), o =>
                             {
                                 lock (LockObject)
@@ -18406,10 +18504,10 @@ namespace Corrade
                                         }
                                         foreach (XmlNode instantMessageLimitNode in instantMessageLimitNodeList)
                                         {
-                                            int maximumInstantMessageThreads;
                                             switch (instantMessageLimitNode.Name.ToLowerInvariant())
                                             {
                                                 case ConfigurationKeys.THREADS:
+                                                    int maximumInstantMessageThreads;
                                                     if (
                                                         !int.TryParse(instantMessageLimitNode.InnerText,
                                                             out maximumInstantMessageThreads))
