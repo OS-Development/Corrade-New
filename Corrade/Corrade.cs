@@ -34,8 +34,11 @@ using AIMLbot;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using OpenMetaverse.Imaging;
+using OpenMetaverse.Rendering;
+using OpenMetaverse.StructuredData;
 using Encoder = System.Drawing.Imaging.Encoder;
 using Parallel = System.Threading.Tasks.Parallel;
+using Path = System.IO.Path;
 using ThreadState = System.Threading.ThreadState;
 using Timer = System.Timers.Timer;
 
@@ -1429,20 +1432,12 @@ namespace Corrade
                     // primitive is a child
                     default:
                         // find the parent of the primitive
-                        Primitive parent = o;
-                        do
-                        {
-                            Primitive closure = parent;
-                            Primitive ancestor =
-                                objectsPrimitives.FirstOrDefault(p => p.LocalID.Equals(closure.ParentID));
-                            if (ancestor == null) break;
-                            parent = ancestor;
-                        } while (!parent.ParentID.Equals(0));
+                        Primitive primitiveParent = objectsPrimitives.FirstOrDefault(p => p.LocalID.Equals(o.ParentID));
                         // the parent primitive has no other parent
-                        if (parent.ParentID.Equals(0))
+                        if (primitiveParent != null)
                         {
                             // if the parent is in range, add the child
-                            if (Vector3.Distance(parent.Position, Client.Self.SimPosition) <= range)
+                            if (Vector3.Distance(primitiveParent.Position, Client.Self.SimPosition) <= range)
                             {
                                 if (item is UUID && o.ID.Equals(item))
                                 {
@@ -1457,33 +1452,539 @@ namespace Corrade
                             }
                         }
                         // check if an avatar is the parent of the parent primitive
-                        Avatar parentAvatar =
-                            objectsAvatars.FirstOrDefault(p => p.LocalID.Equals(parent.ParentID));
+                        Avatar avatarParent =
+                            objectsAvatars.FirstOrDefault(p => p.LocalID.Equals(o.ParentID));
                         // parent avatar not found, this should not happen
-                        if (parentAvatar == null) break;
-                        // check if the avatar is in range
-                        if (Vector3.Distance(parentAvatar.Position, Client.Self.SimPosition) <= range)
+                        if (avatarParent != null)
                         {
-                            if (item is UUID && o.ID.Equals(item))
+                            // check if the avatar is in range
+                            if (Vector3.Distance(avatarParent.Position, Client.Self.SimPosition) <= range)
                             {
-                                selectedPrimitives.Add(o);
-                                break;
-                            }
-                            if (item is string)
-                            {
-                                selectedPrimitives.Add(o);
+                                if (item is UUID && o.ID.Equals(item))
+                                {
+                                    selectedPrimitives.Add(o);
+                                    break;
+                                }
+                                if (item is string)
+                                {
+                                    selectedPrimitives.Add(o);
+                                }
                             }
                         }
                         break;
                 }
             });
             if (selectedPrimitives.Count.Equals(0)) return false;
+            if (!UpdatePrimitives(ref selectedPrimitives, dataTimeout))
+                return false;
             primitive =
-                UpdatePrimitives(selectedPrimitives).FirstOrDefault(
+                selectedPrimitives.FirstOrDefault(
                     o =>
                         (item is UUID && o.ID.Equals(item)) ||
                         (item is string && (item as string).Equals(o.Properties.Name, StringComparison.Ordinal)));
             return primitive != null;
+        }
+
+        /// <summary>
+        ///     Creates a faceted mesh from a primitive.
+        /// </summary>
+        /// <param name="primitive">the primitive to convert</param>
+        /// <param name="mesher">the mesher to use</param>
+        /// <param name="facetedMesh">a reference to an output facted mesh object</param>
+        /// <param name="millisecondsTimeout">the services timeout</param>
+        /// <returns>true if the mesh could be created successfully</returns>
+        private static bool MakeFacetedMesh(Primitive primitive, MeshmerizerR mesher, ref FacetedMesh facetedMesh,
+            int millisecondsTimeout)
+        {
+            if (primitive.Sculpt == null || primitive.Sculpt.SculptTexture.Equals(UUID.Zero))
+            {
+                facetedMesh = mesher.GenerateFacetedMesh(primitive, DetailLevel.Highest);
+                return true;
+            }
+            if (!primitive.Sculpt.Type.Equals(SculptType.Mesh))
+            {
+                Image image = null;
+                ManualResetEvent ImageDownloadedEvent = new ManualResetEvent(false);
+                lock (ClientInstanceAssetsLock)
+                {
+                    Client.Assets.RequestImage(primitive.Sculpt.SculptTexture, (state, args) =>
+                    {
+                        ManagedImage managedImage;
+                        if (state.Equals(TextureRequestState.Finished) &&
+                            OpenJPEG.DecodeToImage(args.AssetData, out managedImage))
+                        {
+                            if ((managedImage.Channels & ManagedImage.ImageChannels.Alpha) != 0)
+                            {
+                                managedImage.ConvertChannels(managedImage.Channels & ~ManagedImage.ImageChannels.Alpha);
+                            }
+                            image = LoadTGAClass.LoadTGA(new MemoryStream(managedImage.ExportTGA()));
+                        }
+                        ImageDownloadedEvent.Set();
+                    });
+                    if (!ImageDownloadedEvent.WaitOne(millisecondsTimeout, false))
+                        return false;
+                }
+                facetedMesh = mesher.GenerateFacetedSculptMesh(primitive, (Bitmap) image, DetailLevel.Highest);
+                return true;
+            }
+            FacetedMesh localFacetedMesh = null;
+            ManualResetEvent MeshDownloadedEvent = new ManualResetEvent(false);
+            lock (ClientInstanceAssetsLock)
+            {
+                Client.Assets.RequestMesh(primitive.Sculpt.SculptTexture, (success, meshAsset) =>
+                {
+                    FacetedMesh.TryDecodeFromAsset(primitive, meshAsset, DetailLevel.Highest, out localFacetedMesh);
+                    MeshDownloadedEvent.Set();
+                });
+
+                if (!MeshDownloadedEvent.WaitOne(millisecondsTimeout, false))
+                    return false;
+            }
+            if (localFacetedMesh == null)
+                return false;
+
+            facetedMesh = localFacetedMesh;
+            return true;
+        }
+
+        /// <summary>
+        ///     Generates a Collada DAE XML Document.
+        /// </summary>
+        /// <param name="facetedMeshSet">the faceted meshes</param>
+        /// <param name="textures">a dictionary of UUID to texture names</param>
+        /// <param name="imageFormat">the image export format</param>
+        /// <returns>the DAE document</returns>
+        /// <remarks>This function is taken from the Radegast Viewer with some changes by Wizardry and Steamworks.</remarks>
+        private static XmlDocument GenerateCollada(IEnumerable<FacetedMesh> facetedMeshSet,
+            Dictionary<UUID, string> textures, string imageFormat)
+        {
+            List<MaterialInfo> AllMeterials = new List<MaterialInfo>();
+
+            XmlDocument Doc = new XmlDocument();
+            var root = Doc.AppendChild(Doc.CreateElement("COLLADA"));
+            root.Attributes.Append(Doc.CreateAttribute("xmlns")).Value = "http://www.collada.org/2005/11/COLLADASchema";
+            root.Attributes.Append(Doc.CreateAttribute("version")).Value = "1.4.1";
+
+            var asset = root.AppendChild(Doc.CreateElement("asset"));
+            var contributor = asset.AppendChild(Doc.CreateElement("contributor"));
+            contributor.AppendChild(Doc.CreateElement("author")).InnerText = "Radegast User";
+            contributor.AppendChild(Doc.CreateElement("authoring_tool")).InnerText = "Radegast Collada Export";
+
+            asset.AppendChild(Doc.CreateElement("created")).InnerText = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss");
+            asset.AppendChild(Doc.CreateElement("modified")).InnerText = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss");
+
+            var unit = asset.AppendChild(Doc.CreateElement("unit"));
+            unit.Attributes.Append(Doc.CreateAttribute("name")).Value = "meter";
+            unit.Attributes.Append(Doc.CreateAttribute("meter")).Value = "1";
+
+            asset.AppendChild(Doc.CreateElement("up_axis")).InnerText = "Z_UP";
+
+            var images = root.AppendChild(Doc.CreateElement("library_images"));
+            var geomLib = root.AppendChild(Doc.CreateElement("library_geometries"));
+            var effects = root.AppendChild(Doc.CreateElement("library_effects"));
+            var materials = root.AppendChild(Doc.CreateElement("library_materials"));
+            var scene = root.AppendChild(Doc.CreateElement("library_visual_scenes"))
+                .AppendChild(Doc.CreateElement("visual_scene"));
+            scene.Attributes.Append(Doc.CreateAttribute("id")).InnerText = "Scene";
+            scene.Attributes.Append(Doc.CreateAttribute("name")).InnerText = "Scene";
+
+            foreach (string name in textures.Values)
+            {
+                string colladaName = name + "_" + imageFormat.ToLower();
+                var image = images.AppendChild(Doc.CreateElement("image"));
+                image.Attributes.Append(Doc.CreateAttribute("id")).InnerText = colladaName;
+                image.Attributes.Append(Doc.CreateAttribute("name")).InnerText = colladaName;
+                image.AppendChild(Doc.CreateElement("init_from")).InnerText =
+                    wasUriUnescapeDataString(name + "." + imageFormat.ToLower());
+            }
+
+            Func<XmlNode, string, string, List<float>, bool> addSource = (mesh, src_id, param, vals) =>
+            {
+                var source = mesh.AppendChild(Doc.CreateElement("source"));
+                source.Attributes.Append(Doc.CreateAttribute("id")).InnerText = src_id;
+                var src_array = source.AppendChild(Doc.CreateElement("float_array"));
+
+                src_array.Attributes.Append(Doc.CreateAttribute("id")).InnerText = string.Format("{0}-{1}", src_id,
+                    "array");
+                src_array.Attributes.Append(Doc.CreateAttribute("count")).InnerText = vals.Count.ToString();
+
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < vals.Count; i++)
+                {
+                    sb.Append(vals[i].ToString(CultureInfo.InvariantCulture));
+                    if (i != vals.Count - 1)
+                    {
+                        sb.Append(" ");
+                    }
+                }
+                src_array.InnerText = sb.ToString();
+
+                var acc = source.AppendChild(Doc.CreateElement("technique_common"))
+                    .AppendChild(Doc.CreateElement("accessor"));
+                acc.Attributes.Append(Doc.CreateAttribute("source")).InnerText = string.Format("#{0}-{1}", src_id,
+                    "array");
+                acc.Attributes.Append(Doc.CreateAttribute("count")).InnerText = (vals.Count/param.Length).ToString();
+                acc.Attributes.Append(Doc.CreateAttribute("stride")).InnerText = param.Length.ToString();
+
+                foreach (char c in param)
+                {
+                    var pX = acc.AppendChild(Doc.CreateElement("param"));
+                    pX.Attributes.Append(Doc.CreateAttribute("name")).InnerText = c.ToString();
+                    pX.Attributes.Append(Doc.CreateAttribute("type")).InnerText = "float";
+                }
+
+                return true;
+            };
+
+            Func<Primitive.TextureEntryFace, MaterialInfo> getMaterial = o =>
+            {
+                MaterialInfo ret = null;
+                foreach (var mat in AllMeterials)
+                {
+                    if (mat.Matches(o))
+                    {
+                        ret = mat;
+                        break;
+                    }
+                }
+
+                if (ret == null)
+                {
+                    ret = new MaterialInfo
+                    {
+                        TextureID = o.TextureID,
+                        Color = o.RGBA
+                    };
+                    ret.Name = string.Format("Material{0}", AllMeterials.Count);
+                    AllMeterials.Add(ret);
+                }
+
+                return ret;
+            };
+
+            Func<FacetedMesh, List<MaterialInfo>> getMaterials = o =>
+            {
+                var ret = new List<MaterialInfo>();
+
+                for (int face_num = 0; face_num < o.Faces.Count; face_num++)
+                {
+                    var te = o.Faces[face_num].TextureFace;
+                    if (te.RGBA.A < 0.01f)
+                    {
+                        continue;
+                    }
+                    var mat = getMaterial.Invoke(te);
+                    if (!ret.Contains(mat))
+                    {
+                        ret.Add(mat);
+                    }
+                }
+                return ret;
+            };
+
+            Func<XmlNode, string, string, FacetedMesh, List<int>, bool> addPolygons =
+                (mesh, geomID, materialID, obj, faces_to_include) =>
+                {
+                    var polylist = mesh.AppendChild(Doc.CreateElement("polylist"));
+                    polylist.Attributes.Append(Doc.CreateAttribute("material")).InnerText = materialID;
+
+                    // Vertices semantic
+                    {
+                        var input = polylist.AppendChild(Doc.CreateElement("input"));
+                        input.Attributes.Append(Doc.CreateAttribute("semantic")).InnerText = "VERTEX";
+                        input.Attributes.Append(Doc.CreateAttribute("offset")).InnerText = "0";
+                        input.Attributes.Append(Doc.CreateAttribute("source")).InnerText = string.Format("#{0}-{1}",
+                            geomID, "vertices");
+                    }
+
+                    // Normals semantic
+                    {
+                        var input = polylist.AppendChild(Doc.CreateElement("input"));
+                        input.Attributes.Append(Doc.CreateAttribute("semantic")).InnerText = "NORMAL";
+                        input.Attributes.Append(Doc.CreateAttribute("offset")).InnerText = "0";
+                        input.Attributes.Append(Doc.CreateAttribute("source")).InnerText = string.Format("#{0}-{1}",
+                            geomID, "normals");
+                    }
+
+                    // UV semantic
+                    {
+                        var input = polylist.AppendChild(Doc.CreateElement("input"));
+                        input.Attributes.Append(Doc.CreateAttribute("semantic")).InnerText = "TEXCOORD";
+                        input.Attributes.Append(Doc.CreateAttribute("offset")).InnerText = "0";
+                        input.Attributes.Append(Doc.CreateAttribute("source")).InnerText = string.Format("#{0}-{1}",
+                            geomID, "map0");
+                    }
+
+                    // Save indices
+                    var vcount = polylist.AppendChild(Doc.CreateElement("vcount"));
+                    var p = polylist.AppendChild(Doc.CreateElement("p"));
+                    int index_offset = 0;
+                    int num_tris = 0;
+                    StringBuilder pBuilder = new StringBuilder();
+                    StringBuilder vcountBuilder = new StringBuilder();
+
+                    for (int face_num = 0; face_num < obj.Faces.Count; face_num++)
+                    {
+                        var face = obj.Faces[face_num];
+                        if (faces_to_include == null || faces_to_include.Contains(face_num))
+                        {
+                            for (int i = 0; i < face.Indices.Count; i++)
+                            {
+                                int index = index_offset + face.Indices[i];
+                                pBuilder.Append(index);
+                                pBuilder.Append(" ");
+                                if (i%3 == 0)
+                                {
+                                    vcountBuilder.Append("3 ");
+                                    num_tris++;
+                                }
+                            }
+                        }
+                        index_offset += face.Vertices.Count;
+                    }
+
+                    p.InnerText = pBuilder.ToString().TrimEnd();
+                    vcount.InnerText = vcountBuilder.ToString().TrimEnd();
+                    polylist.Attributes.Append(Doc.CreateAttribute("count")).InnerText = num_tris.ToString();
+
+                    return true;
+                };
+
+            Func<FacetedMesh, MaterialInfo, List<int>> getFacesWithMaterial = (obj, mat) =>
+            {
+                var ret = new List<int>();
+                for (int face_num = 0; face_num < obj.Faces.Count; face_num++)
+                {
+                    if (mat == getMaterial.Invoke(obj.Faces[face_num].TextureFace))
+                    {
+                        ret.Add(face_num);
+                    }
+                }
+                return ret;
+            };
+
+            Func<Vector3, Quaternion, Vector3, float[]> createSRTMatrix = (scale, q, pos) =>
+            {
+                float[] mat = new float[16];
+
+                // Transpose the quaternion (don't ask me why)
+                q.X = q.X*-1f;
+                q.Y = q.Y*-1f;
+                q.Z = q.Z*-1f;
+
+                float x2 = q.X + q.X;
+                float y2 = q.Y + q.Y;
+                float z2 = q.Z + q.Z;
+                float xx = q.X*x2;
+                float xy = q.X*y2;
+                float xz = q.X*z2;
+                float yy = q.Y*y2;
+                float yz = q.Y*z2;
+                float zz = q.Z*z2;
+                float wx = q.W*x2;
+                float wy = q.W*y2;
+                float wz = q.W*z2;
+
+                mat[0] = (1.0f - (yy + zz))*scale.X;
+                mat[1] = (xy - wz)*scale.X;
+                mat[2] = (xz + wy)*scale.X;
+                mat[3] = 0.0f;
+
+                mat[4] = (xy + wz)*scale.Y;
+                mat[5] = (1.0f - (xx + zz))*scale.Y;
+                mat[6] = (yz - wx)*scale.Y;
+                mat[7] = 0.0f;
+
+                mat[8] = (xz - wy)*scale.Z;
+                mat[9] = (yz + wx)*scale.Z;
+                mat[10] = (1.0f - (xx + yy))*scale.Z;
+                mat[11] = 0.0f;
+
+                //Positional parts
+                mat[12] = pos.X;
+                mat[13] = pos.Y;
+                mat[14] = pos.Z;
+                mat[15] = 1.0f;
+
+                return mat;
+            };
+
+            Func<XmlNode, bool> generateEffects = o =>
+            {
+                // Effects (face color, alpha)
+                foreach (var mat in AllMeterials)
+                {
+                    var color = mat.Color;
+                    var effect = effects.AppendChild(Doc.CreateElement("effect"));
+                    effect.Attributes.Append(Doc.CreateAttribute("id")).InnerText = mat.Name + "-fx";
+                    var profile = effect.AppendChild(Doc.CreateElement("profile_COMMON"));
+                    string colladaName = null;
+
+                    KeyValuePair<UUID, string> kvp = textures.FirstOrDefault(p => p.Key.Equals(mat.TextureID));
+
+                    if (!kvp.Equals(default(KeyValuePair<UUID, string>)))
+                    {
+                        UUID textID = kvp.Key;
+                        colladaName = textures[textID] + "_" + imageFormat.ToLower();
+                        var newparam = profile.AppendChild(Doc.CreateElement("newparam"));
+                        newparam.Attributes.Append(Doc.CreateAttribute("sid")).InnerText = colladaName + "-surface";
+                        var surface = newparam.AppendChild(Doc.CreateElement("surface"));
+                        surface.Attributes.Append(Doc.CreateAttribute("type")).InnerText = "2D";
+                        surface.AppendChild(Doc.CreateElement("init_from")).InnerText = colladaName;
+                        newparam = profile.AppendChild(Doc.CreateElement("newparam"));
+                        newparam.Attributes.Append(Doc.CreateAttribute("sid")).InnerText = colladaName + "-sampler";
+                        newparam.AppendChild(Doc.CreateElement("sampler2D"))
+                            .AppendChild(Doc.CreateElement("source"))
+                            .InnerText = colladaName + "-surface";
+                    }
+
+                    var t = profile.AppendChild(Doc.CreateElement("technique"));
+                    t.Attributes.Append(Doc.CreateAttribute("sid")).InnerText = "common";
+                    var phong = t.AppendChild(Doc.CreateElement("phong"));
+
+                    var diffuse = phong.AppendChild(Doc.CreateElement("diffuse"));
+                    // Only one <color> or <texture> can appear inside diffuse element
+                    if (colladaName != null)
+                    {
+                        var txtr = diffuse.AppendChild(Doc.CreateElement("texture"));
+                        txtr.Attributes.Append(Doc.CreateAttribute("texture")).InnerText = colladaName + "-sampler";
+                        txtr.Attributes.Append(Doc.CreateAttribute("texcoord")).InnerText = colladaName;
+                    }
+                    else
+                    {
+                        var diffuseColor = diffuse.AppendChild(Doc.CreateElement("color"));
+                        diffuseColor.Attributes.Append(Doc.CreateAttribute("sid")).InnerText = "diffuse";
+                        diffuseColor.InnerText = string.Format("{0} {1} {2} {3}",
+                            color.R.ToString(CultureInfo.InvariantCulture),
+                            color.G.ToString(CultureInfo.InvariantCulture),
+                            color.B.ToString(CultureInfo.InvariantCulture),
+                            color.A.ToString(CultureInfo.InvariantCulture));
+                    }
+
+                    phong.AppendChild(Doc.CreateElement("transparency"))
+                        .AppendChild(Doc.CreateElement("float"))
+                        .InnerText = color.A.ToString(CultureInfo.InvariantCulture);
+                }
+
+                return true;
+            };
+
+            int prim_nr = 0;
+            foreach (var obj in facetedMeshSet)
+            {
+                int total_num_vertices = 0;
+                string name = string.Format("prim{0}", prim_nr++);
+                string geomID = name;
+
+                var geom = geomLib.AppendChild(Doc.CreateElement("geometry"));
+                geom.Attributes.Append(Doc.CreateAttribute("id")).InnerText = string.Format("{0}-{1}", geomID, "mesh");
+                var mesh = geom.AppendChild(Doc.CreateElement("mesh"));
+
+                List<float> position_data = new List<float>();
+                List<float> normal_data = new List<float>();
+                List<float> uv_data = new List<float>();
+
+                int num_faces = obj.Faces.Count;
+
+                for (int face_num = 0; face_num < num_faces; face_num++)
+                {
+                    var face = obj.Faces[face_num];
+                    total_num_vertices += face.Vertices.Count;
+
+                    foreach (var v in face.Vertices)
+                    {
+                        position_data.Add(v.Position.X);
+                        position_data.Add(v.Position.Y);
+                        position_data.Add(v.Position.Z);
+
+                        normal_data.Add(v.Normal.X);
+                        normal_data.Add(v.Normal.Y);
+                        normal_data.Add(v.Normal.Z);
+
+                        uv_data.Add(v.TexCoord.X);
+                        uv_data.Add(v.TexCoord.Y);
+                    }
+                }
+
+                addSource.Invoke(mesh, string.Format("{0}-{1}", geomID, "positions"), "XYZ", position_data);
+                addSource.Invoke(mesh, string.Format("{0}-{1}", geomID, "normals"), "XYZ", normal_data);
+                addSource.Invoke(mesh, string.Format("{0}-{1}", geomID, "map0"), "ST", uv_data);
+
+                // Add the <vertices> element
+                {
+                    var verticesNode = mesh.AppendChild(Doc.CreateElement("vertices"));
+                    verticesNode.Attributes.Append(Doc.CreateAttribute("id")).InnerText = string.Format("{0}-{1}",
+                        geomID, "vertices");
+                    var verticesInput = verticesNode.AppendChild(Doc.CreateElement("input"));
+                    verticesInput.Attributes.Append(Doc.CreateAttribute("semantic")).InnerText = "POSITION";
+                    verticesInput.Attributes.Append(Doc.CreateAttribute("source")).InnerText = string.Format(
+                        "#{0}-{1}", geomID, "positions");
+                }
+
+                var objMaterials = getMaterials.Invoke(obj);
+
+                // Add triangles
+                foreach (var objMaterial in objMaterials)
+                {
+                    addPolygons.Invoke(mesh, geomID, objMaterial.Name + "-material", obj,
+                        getFacesWithMaterial.Invoke(obj, objMaterial));
+                }
+
+                var node = scene.AppendChild(Doc.CreateElement("node"));
+                node.Attributes.Append(Doc.CreateAttribute("type")).InnerText = "NODE";
+                node.Attributes.Append(Doc.CreateAttribute("id")).InnerText = geomID;
+                node.Attributes.Append(Doc.CreateAttribute("name")).InnerText = geomID;
+
+                // Set tranform matrix (node position, rotation and scale)
+                var matrix = node.AppendChild(Doc.CreateElement("matrix"));
+
+                var srt = createSRTMatrix.Invoke(obj.Prim.Scale, obj.Prim.Rotation, obj.Prim.Position);
+                string matrixVal = "";
+                for (int i = 0; i < 4; i++)
+                {
+                    for (int j = 0; j < 4; j++)
+                    {
+                        matrixVal += srt[j*4 + i].ToString(CultureInfo.InvariantCulture) + " ";
+                    }
+                }
+                matrix.InnerText = matrixVal.TrimEnd();
+
+                // Geometry of the node
+                var nodeGeometry = node.AppendChild(Doc.CreateElement("instance_geometry"));
+
+                // Bind materials
+                var tq = nodeGeometry.AppendChild(Doc.CreateElement("bind_material"))
+                    .AppendChild(Doc.CreateElement("technique_common"));
+                foreach (var objMaterial in objMaterials)
+                {
+                    var instanceMaterial = tq.AppendChild(Doc.CreateElement("instance_material"));
+                    instanceMaterial.Attributes.Append(Doc.CreateAttribute("symbol")).InnerText =
+                        string.Format("{0}-{1}", objMaterial.Name, "material");
+                    instanceMaterial.Attributes.Append(Doc.CreateAttribute("target")).InnerText =
+                        string.Format("#{0}-{1}", objMaterial.Name, "material");
+                }
+
+                nodeGeometry.Attributes.Append(Doc.CreateAttribute("url")).InnerText = string.Format("#{0}-{1}", geomID,
+                    "mesh");
+            }
+
+            generateEffects.Invoke(effects);
+
+            // Materials
+            foreach (var objMaterial in AllMeterials)
+            {
+                var mat = materials.AppendChild(Doc.CreateElement("material"));
+                mat.Attributes.Append(Doc.CreateAttribute("id")).InnerText = objMaterial.Name + "-material";
+                var matEffect = mat.AppendChild(Doc.CreateElement("instance_effect"));
+                matEffect.Attributes.Append(Doc.CreateAttribute("url")).InnerText = string.Format("#{0}-{1}",
+                    objMaterial.Name, "fx");
+            }
+
+            root.AppendChild(Doc.CreateElement("scene"))
+                .AppendChild(Doc.CreateElement("instance_visual_scene"))
+                .Attributes.Append(Doc.CreateAttribute("url")).InnerText = "#Scene";
+
+            return Doc;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1569,26 +2070,33 @@ namespace Corrade
         ///     Updates a set of primitives by scanning their properties.
         /// </summary>
         /// <param name="primitives">a list of primitives to update</param>
+        /// <param name="dataTimeout">the timeout for receiving data from the grid</param>
         /// <returns>a list of updated primitives</returns>
-        private static IEnumerable<Primitive> UpdatePrimitives(IEnumerable<Primitive> primitives)
+        private static bool UpdatePrimitives(ref HashSet<Primitive> primitives, int dataTimeout)
         {
-            IEnumerable<Primitive> enumerable = primitives as Primitive[] ?? primitives.ToArray();
+            HashSet<Primitive> scansPrimitives = new HashSet<Primitive>(primitives);
+            HashSet<Primitive> localPrimitives = new HashSet<Primitive>();
             Dictionary<UUID, ManualResetEvent> primitiveEvents =
                 new Dictionary<UUID, ManualResetEvent>(
-                    enumerable
-                        .ToDictionary(o => o.ID, p => new ManualResetEvent(false)));
+                    scansPrimitives
+                        .AsParallel().ToDictionary(o => o.ID, p => new ManualResetEvent(false)));
             Dictionary<UUID, Stopwatch> stopWatch = new Dictionary<UUID, Stopwatch>(
-                enumerable
-                    .ToDictionary(o => o.ID, p => new Stopwatch()));
-            HashSet<long> times = new HashSet<long>(new[] {(long) Client.Network.CurrentSim.Stats.LastLag});
+                scansPrimitives
+                    .AsParallel().ToDictionary(o => o.ID, p => new Stopwatch()));
+            HashSet<long> times = new HashSet<long>(new[] {(long) dataTimeout});
             EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler = (sender, args) =>
             {
                 KeyValuePair<UUID, ManualResetEvent> queueElement =
                     primitiveEvents.AsParallel().FirstOrDefault(o => o.Key.Equals(args.Properties.ObjectID));
                 if (queueElement.Equals(default(KeyValuePair<UUID, ManualResetEvent>))) return;
-                queueElement.Value.Set();
+                Primitive updatedPrimitive =
+                    scansPrimitives.AsParallel().FirstOrDefault(o => o.ID.Equals(args.Properties.ObjectID));
+                if (updatedPrimitive == null) return;
+                updatedPrimitive.Properties = args.Properties;
+                localPrimitives.Add(updatedPrimitive);
                 stopWatch[queueElement.Key].Stop();
                 times.Add(stopWatch[queueElement.Key].ElapsedMilliseconds);
+                queueElement.Value.Set();
             };
             lock (ClientInstanceObjectsLock)
             {
@@ -1600,18 +2108,23 @@ namespace Corrade
                     }, o =>
                     {
                         Primitive queryPrimitive =
-                            enumerable.AsParallel().SingleOrDefault(p => p.ID.Equals(o.Key));
+                            scansPrimitives.AsParallel().SingleOrDefault(p => p.ID.Equals(o.Key));
                         if (queryPrimitive == null) return;
                         stopWatch[queryPrimitive.ID].Start();
                         Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
                         Client.Objects.SelectObject(Client.Network.CurrentSim,
                             queryPrimitive.LocalID,
                             true);
-                        primitiveEvents[queryPrimitive.ID].WaitOne((int) times.Average(), false);
+                        int average = (int) times.Average();
+                        primitiveEvents[queryPrimitive.ID].WaitOne(
+                            average != 0 ? average : dataTimeout, false);
                         Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
                     });
             }
-            return enumerable.AsParallel().Where(o => o.Properties != null);
+            if (!scansPrimitives.Count.Equals(localPrimitives.Count))
+                return false;
+            primitives = localPrimitives;
+            return true;
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1624,14 +2137,14 @@ namespace Corrade
         /// <param name="millisecondsTimeout">the amount of time in milliseconds to timeout</param>
         /// <param name="dataTimeout">the data timeout</param>
         /// <returns>a list of updated avatars</returns>
-        private static IEnumerable<Avatar> UpdateAvatars(IEnumerable<Avatar> avatars, int millisecondsTimeout,
+        private static bool UpdateAvatars(ref HashSet<Avatar> avatars, int millisecondsTimeout,
             int dataTimeout)
         {
-            IEnumerable<Avatar> enumerable = avatars as Avatar[] ?? avatars.ToArray();
+            HashSet<Avatar> scansAvatars = new HashSet<Avatar>(avatars);
             Dictionary<UUID, wasAdaptiveAlarm> avatarAlarms =
-                new Dictionary<UUID, wasAdaptiveAlarm>(enumerable.AsParallel()
+                new Dictionary<UUID, wasAdaptiveAlarm>(scansAvatars.AsParallel()
                     .ToDictionary(o => o.ID, p => new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE)));
-            Dictionary<UUID, Avatar> avatarUpdates = new Dictionary<UUID, Avatar>(enumerable.AsParallel()
+            Dictionary<UUID, Avatar> avatarUpdates = new Dictionary<UUID, Avatar>(scansAvatars.AsParallel()
                 .ToDictionary(o => o.ID, p => p));
             object LockObject = new object();
             EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
@@ -1659,7 +2172,7 @@ namespace Corrade
                 (sender, args) => avatarAlarms[args.AvatarID].Alarm(dataTimeout);
             lock (ClientInstanceAvatarsLock)
             {
-                Parallel.ForEach(enumerable, new ParallelOptions
+                Parallel.ForEach(scansAvatars, new ParallelOptions
                 {
                     MaxDegreeOfParallelism = Environment.ProcessorCount > 1 ? Environment.ProcessorCount - 1 : 1
                 }, o =>
@@ -1681,7 +2194,16 @@ namespace Corrade
                 });
             }
 
-            return enumerable;
+            avatars = new HashSet<Avatar>(avatarUpdates.Values);
+
+            return
+                !avatarUpdates.Values.AsParallel()
+                    .Any(
+                        o =>
+                            o == null || (
+                                o.ProfileInterests.Equals(default(Avatar.Interests)) &&
+                                o.ProfileProperties.Equals(default(Avatar.AvatarProperties)) &&
+                                o.Groups.Count.Equals(0)));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -2278,7 +2800,7 @@ namespace Corrade
                             HTTPListener.Start();
                             while (HTTPListener.IsListening)
                             {
-                                IAsyncResult result = HTTPListener.BeginGetContext(ProcesHTTPRequest, HTTPListener);
+                                IAsyncResult result = HTTPListener.BeginGetContext(ProcessHTTPRequest, HTTPListener);
                                 result.AsyncWaitHandle.WaitOne(Configuration.HTTP_SERVER_TIMEOUT, false);
                             }
                         }
@@ -2680,7 +3202,7 @@ namespace Corrade
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
-        private static void ProcesHTTPRequest(IAsyncResult ar)
+        private static void ProcessHTTPRequest(IAsyncResult ar)
         {
             try
             {
@@ -5371,6 +5893,9 @@ namespace Corrade
                         break;
                 }
             }
+            // Set literal group.
+            message = wasKeyValueSet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)),
+                group, message);
             // Get password.
             string password =
                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD)), message));
@@ -13296,10 +13821,10 @@ namespace Corrade
                         Avatar avatar =
                             GetAvatars(range, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
                                 .FirstOrDefault(o => o.ID.Equals(agentUUID));
+
                         if (avatar == null)
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AVATAR_NOT_ON_CURRENT_REGION));
-                        }
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AVATAR_NOT_IN_RANGE));
+
                         wasAdaptiveAlarm ProfileDataReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
                         object LockObject = new object();
                         EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
@@ -13358,115 +13883,6 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
-                        }
-                    };
-                    break;
-                case ScriptKeys.GETPRIMITIVES:
-                    execute = () =>
-                    {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
-                        }
-                        Vector3 position;
-                        if (
-                            !Vector3.TryParse(
-                                wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
-                                        message)),
-                                out position))
-                        {
-                            position = Client.Self.SimPosition;
-                        }
-                        Entity entity =
-                            wasGetEnumValueFromDescription<Entity>(
-                                wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)), message))
-                                    .ToLowerInvariant());
-                        Parcel parcel = null;
-                        UUID agentUUID = UUID.Zero;
-                        switch (entity)
-                        {
-                            case Entity.REGION:
-                                break;
-                            case Entity.AVATAR:
-                                if (
-                                    !UUID.TryParse(
-                                        wasInput(
-                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
-                                                message)), out agentUUID) && !AgentNameToUUID(
-                                                    wasInput(
-                                                        wasKeyValueGet(
-                                                            wasOutput(
-                                                                wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
-                                                            message)),
-                                                    wasInput(
-                                                        wasKeyValueGet(
-                                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
-                                                            message)),
-                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                                    ref agentUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
-                                }
-                                break;
-                            case Entity.PARCEL:
-                                if (
-                                    !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
-                                }
-                                break;
-                            default:
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
-                        }
-                        List<string> csv = new List<string>();
-                        object LockObject = new object();
-                        Parallel.ForEach(UpdatePrimitives(Client.Network.CurrentSim.ObjectsPrimitives.Copy().Values),
-                            o =>
-                            {
-                                switch (entity)
-                                {
-                                    case Entity.REGION:
-                                        break;
-                                    case Entity.AVATAR:
-                                        Primitive parent = o;
-                                        do
-                                        {
-                                            Primitive closure = parent;
-                                            Primitive ancestor =
-                                                Client.Network.CurrentSim.ObjectsPrimitives.Find(
-                                                    p => p.LocalID.Equals(closure.ParentID));
-                                            if (ancestor == null) break;
-                                            parent = ancestor;
-                                        } while (!parent.ParentID.Equals(0));
-                                        // check if an avatar is the parent of the parent primitive
-                                        Avatar parentAvatar =
-                                            Client.Network.CurrentSim.ObjectsAvatars.Find(
-                                                p => p.LocalID.Equals(parent.ParentID));
-                                        // parent avatar not found, this should not happen
-                                        if (parentAvatar == null || !parentAvatar.ID.Equals(agentUUID)) return;
-                                        break;
-                                    case Entity.PARCEL:
-                                        if (parcel == null) return;
-                                        Parcel primitiveParcel = null;
-                                        if (
-                                            !GetParcelAtPosition(Client.Network.CurrentSim, o.Position,
-                                                ref primitiveParcel))
-                                            return;
-                                        if (!primitiveParcel.LocalID.Equals(parcel.LocalID)) return;
-                                        break;
-                                }
-                                lock (LockObject)
-                                {
-                                    csv.Add(o.Properties.Name);
-                                    csv.Add(o.ID.ToString());
-                                }
-                            });
-                        if (!csv.Count.Equals(0))
-                        {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                wasEnumerableToCSV(csv));
                         }
                     };
                     break;
@@ -15630,22 +16046,72 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Vector3 position;
-                        HashSet<Parcel> parcels = new HashSet<Parcel>();
-                        switch (Vector3.TryParse(
-                            wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)), message)),
-                            out position))
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
                         {
-                            case true:
+                            range = Configuration.RANGE;
+                        }
+                        HashSet<Avatar> avatars = new HashSet<Avatar>();
+                        object LockObject = new object();
+                        switch (wasGetEnumValueFromDescription<Entity>(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)), message))
+                                .ToLowerInvariant()))
+                        {
+                            case Entity.RANGE:
+                                Parallel.ForEach(
+                                    GetAvatars(range, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                                        .AsParallel()
+                                        .Where(o => Vector3.Distance(o.Position, Client.Self.SimPosition) <= range),
+                                    o =>
+                                    {
+                                        lock (LockObject)
+                                        {
+                                            avatars.Add(o);
+                                        }
+                                    });
+                                break;
+                            case Entity.PARCEL:
+                                Vector3 position;
+                                if (
+                                    !Vector3.TryParse(
+                                        wasInput(
+                                            wasKeyValueGet(
+                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                                message)),
+                                        out position))
+                                {
+                                    position = Client.Self.SimPosition;
+                                }
                                 Parcel parcel = null;
-                                if (!GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                                if (
+                                    !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                                 }
-                                parcels.Add(parcel);
+                                Parallel.ForEach(GetAvatars(new[]
+                                {
+                                    Vector3.Distance(Client.Self.SimPosition, parcel.AABBMin),
+                                    Vector3.Distance(Client.Self.SimPosition, parcel.AABBMax),
+                                    Vector3.Distance(Client.Self.SimPosition,
+                                        new Vector3(parcel.AABBMin.X, parcel.AABBMax.Y, 0)),
+                                    Vector3.Distance(Client.Self.SimPosition,
+                                        new Vector3(parcel.AABBMax.X, parcel.AABBMin.Y, 0))
+                                }.Max(), Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                                    .AsParallel()
+                                    .Where(o => IsVectorInParcel(o.Position, parcel)), o =>
+                                    {
+                                        lock (LockObject)
+                                        {
+                                            avatars.Add(o);
+                                        }
+                                    });
                                 break;
-                            default:
+                            case Entity.REGION:
                                 // Get all sim parcels
                                 ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
                                 EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
@@ -15666,32 +16132,77 @@ namespace Corrade
                                     }
                                     Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                 }
-                                Client.Network.CurrentSim.Parcels.ForEach(o => parcels.Add(o));
-                                break;
-                        }
-                        List<string> data = new List<string>();
-                        object LockObject = new object();
-                        Parallel.ForEach(
-                            UpdateAvatars(GetAvatars(parcels.AsParallel().Select(o => new[]
-                            {
-                                Vector3.Distance(Client.Self.SimPosition, o.AABBMin),
-                                Vector3.Distance(Client.Self.SimPosition, o.AABBMax),
-                                Vector3.Distance(Client.Self.SimPosition, new Vector3(o.AABBMin.X, o.AABBMax.Y, 0)),
-                                Vector3.Distance(Client.Self.SimPosition, new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
-                            }.Max()).Max(), Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
-                                .Where(o => parcels.AsParallel().Any(p => IsVectorInParcel(o.Position, p))),
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT), o =>
-                                {
-                                    lock (LockObject)
+                                HashSet<Parcel> regionParcels =
+                                    new HashSet<Parcel>(Client.Network.CurrentSim.Parcels.Copy().Values);
+                                Parallel.ForEach(
+                                    GetAvatars(
+                                        regionParcels.AsParallel().Select(o => new[]
+                                        {
+                                            Vector3.Distance(Client.Self.SimPosition, o.AABBMin),
+                                            Vector3.Distance(Client.Self.SimPosition, o.AABBMax),
+                                            Vector3.Distance(Client.Self.SimPosition,
+                                                new Vector3(o.AABBMin.X, o.AABBMax.Y, 0)),
+                                            Vector3.Distance(Client.Self.SimPosition,
+                                                new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
+                                        }.Max()).Max(), Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                                        .AsParallel()
+                                        .Where(o => regionParcels.AsParallel().Any(p => IsVectorInParcel(o.Position, p))),
+                                    o =>
                                     {
-                                        data.AddRange(GetStructuredData(o,
-                                            wasInput(
-                                                wasKeyValueGet(
-                                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                                    message)))
-                                            );
-                                    }
-                                });
+                                        lock (LockObject)
+                                        {
+                                            avatars.Add(o);
+                                        }
+                                    });
+                                break;
+                            case Entity.AVATAR:
+                                UUID agentUUID = UUID.Zero;
+                                if (
+                                    !UUID.TryParse(
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
+                                                message)), out agentUUID) && !AgentNameToUUID(
+                                                    wasInput(
+                                                        wasKeyValueGet(
+                                                            wasOutput(
+                                                                wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                                            message)),
+                                                    wasInput(
+                                                        wasKeyValueGet(
+                                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
+                                                            message)),
+                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    ref agentUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
+                                }
+                                Avatar avatar = GetAvatars(range, Configuration.SERVICES_TIMEOUT,
+                                    Configuration.DATA_TIMEOUT).AsParallel().FirstOrDefault(o => o.ID.Equals(agentUUID));
+                                if (avatar == null)
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AVATAR_NOT_IN_RANGE));
+                                avatars.Add(avatar);
+                                break;
+                            default:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
+                        }
+
+                        // allow partial results
+                        UpdateAvatars(ref avatars, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT);
+
+                        List<string> data = new List<string>();
+
+                        Parallel.ForEach(avatars, o =>
+                        {
+                            lock (LockObject)
+                            {
+                                data.AddRange(GetStructuredData(o,
+                                    wasInput(
+                                        wasKeyValueGet(
+                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                            message)))
+                                    );
+                            }
+                        });
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -15708,22 +16219,70 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Vector3 position;
-                        HashSet<Parcel> parcels = new HashSet<Parcel>();
-                        switch (Vector3.TryParse(
-                            wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)), message)),
-                            out position))
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
                         {
-                            case true:
+                            range = Configuration.RANGE;
+                        }
+                        HashSet<Primitive> updatePrimitives = new HashSet<Primitive>();
+                        object LockObject = new object();
+                        switch (wasGetEnumValueFromDescription<Entity>(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)), message))
+                                .ToLowerInvariant()))
+                        {
+                            case Entity.RANGE:
+                                Parallel.ForEach(
+                                    GetPrimitives(range, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                                        .AsParallel()
+                                        .Where(o => Vector3.Distance(o.Position, Client.Self.SimPosition) <= range),
+                                    o =>
+                                    {
+                                        lock (LockObject)
+                                        {
+                                            updatePrimitives.Add(o);
+                                        }
+                                    });
+                                break;
+                            case Entity.PARCEL:
+                                Vector3 position;
+                                if (
+                                    !Vector3.TryParse(
+                                        wasInput(
+                                            wasKeyValueGet(
+                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                                message)),
+                                        out position))
+                                {
+                                    position = Client.Self.SimPosition;
+                                }
                                 Parcel parcel = null;
-                                if (!GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                                if (
+                                    !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                                 }
-                                parcels.Add(parcel);
+                                Parallel.ForEach(GetPrimitives(new[]
+                                {
+                                    Vector3.Distance(Client.Self.SimPosition, parcel.AABBMin),
+                                    Vector3.Distance(Client.Self.SimPosition, parcel.AABBMax),
+                                    Vector3.Distance(Client.Self.SimPosition,
+                                        new Vector3(parcel.AABBMin.X, parcel.AABBMax.Y, 0)),
+                                    Vector3.Distance(Client.Self.SimPosition,
+                                        new Vector3(parcel.AABBMax.X, parcel.AABBMin.Y, 0))
+                                }.Max(), Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT), o =>
+                                {
+                                    lock (LockObject)
+                                    {
+                                        updatePrimitives.Add(o);
+                                    }
+                                });
                                 break;
-                            default:
+                            case Entity.REGION:
                                 // Get all sim parcels
                                 ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
                                 EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
@@ -15744,33 +16303,598 @@ namespace Corrade
                                     }
                                     Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                 }
-                                Client.Network.CurrentSim.Parcels.ForEach(o => parcels.Add(o));
+                                Parallel.ForEach(
+                                    GetPrimitives(
+                                        Client.Network.CurrentSim.Parcels.Copy().Values.AsParallel().Select(o => new[]
+                                        {
+                                            Vector3.Distance(Client.Self.SimPosition, o.AABBMin),
+                                            Vector3.Distance(Client.Self.SimPosition, o.AABBMax),
+                                            Vector3.Distance(Client.Self.SimPosition,
+                                                new Vector3(o.AABBMin.X, o.AABBMax.Y, 0)),
+                                            Vector3.Distance(Client.Self.SimPosition,
+                                                new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
+                                        }.Max()).Max(), Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT),
+                                    o =>
+                                    {
+                                        lock (LockObject)
+                                        {
+                                            updatePrimitives.Add(o);
+                                        }
+                                    });
                                 break;
-                        }
-                        List<string> data = new List<string>();
-                        object LockObject = new object();
-                        Parallel.ForEach(UpdatePrimitives(GetPrimitives(parcels.AsParallel().Select(o => new[]
-                        {
-                            Vector3.Distance(Client.Self.SimPosition, o.AABBMin),
-                            Vector3.Distance(Client.Self.SimPosition, o.AABBMax),
-                            Vector3.Distance(Client.Self.SimPosition, new Vector3(o.AABBMin.X, o.AABBMax.Y, 0)),
-                            Vector3.Distance(Client.Self.SimPosition, new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
-                        }.Max()).Max(), Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT).AsParallel()
-                            .Where(o => parcels.AsParallel().Any(p => IsVectorInParcel(o.Position, p)))), o =>
-                            {
-                                lock (LockObject)
-                                {
-                                    data.AddRange(GetStructuredData(o,
+                            case Entity.AVATAR:
+                                UUID agentUUID = UUID.Zero;
+                                if (
+                                    !UUID.TryParse(
                                         wasInput(
-                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                                message)))
-                                        );
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
+                                                message)), out agentUUID) && !AgentNameToUUID(
+                                                    wasInput(
+                                                        wasKeyValueGet(
+                                                            wasOutput(
+                                                                wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                                            message)),
+                                                    wasInput(
+                                                        wasKeyValueGet(
+                                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
+                                                            message)),
+                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    ref agentUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
-                            });
+                                Avatar avatar = GetAvatars(range, Configuration.SERVICES_TIMEOUT,
+                                    Configuration.DATA_TIMEOUT).AsParallel().FirstOrDefault(o => o.ID.Equals(agentUUID));
+                                if (avatar == null)
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AVATAR_NOT_IN_RANGE));
+                                Parallel.ForEach(
+                                    GetPrimitives(range, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT),
+                                    o =>
+                                    {
+                                        if (o.ParentID.Equals(avatar.LocalID))
+                                        {
+                                            lock (LockObject)
+                                            {
+                                                updatePrimitives.Add(o);
+                                            }
+                                        }
+                                    });
+                                break;
+                            default:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
+                        }
+
+                        // allow partial results
+                        UpdatePrimitives(ref updatePrimitives, Configuration.DATA_TIMEOUT);
+
+                        List<string> data = new List<string>();
+                        Parallel.ForEach(updatePrimitives, o =>
+                        {
+                            lock (LockObject)
+                            {
+                                data.AddRange(GetStructuredData(o,
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                            message)))
+                                    );
+                            }
+                        });
                         if (!data.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
+                        }
+                    };
+                    break;
+                case ScriptKeys.EXPORTXML:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(group,
+                                (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+
+                        // if the primitive is not an object (the root) or the primitive 
+                        // is not an object as an avatar attachment then do not export it.
+                        if (!primitive.ParentID.Equals(0) && !GetAvatars(range, Configuration.SERVICES_TIMEOUT,
+                            Configuration.DATA_TIMEOUT)
+                            .AsParallel()
+                            .Any(o => o.LocalID.Equals(primitive.ParentID)))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ITEM_IS_NOT_AN_OBJECT));
+                        }
+
+                        HashSet<Primitive> exportPrimitivesSet = new HashSet<Primitive>();
+                        Primitive root = new Primitive(primitive) {Position = Vector3.Zero};
+                        exportPrimitivesSet.Add(root);
+
+                        object LockObject = new object();
+
+                        // find all the children that have the object as parent.
+                        Parallel.ForEach(GetPrimitives(range, Configuration.SERVICES_TIMEOUT,
+                            Configuration.DATA_TIMEOUT), o =>
+                            {
+                                if (!o.ParentID.Equals(root.LocalID))
+                                    return;
+                                Primitive child = new Primitive(o);
+                                child.Position = root.Position + child.Position*root.Rotation;
+                                child.Rotation = root.Rotation*child.Rotation;
+                                lock (LockObject)
+                                {
+                                    exportPrimitivesSet.Add(child);
+                                }
+                            });
+
+                        // add all the textures to export
+                        HashSet<UUID> exportTexturesSet = new HashSet<UUID>();
+                        Parallel.ForEach(exportPrimitivesSet, o =>
+                        {
+                            lock (LockObject)
+                            {
+                                if (!o.Textures.DefaultTexture.TextureID.Equals(Primitive.TextureEntry.WHITE_TEXTURE) &&
+                                    !exportTexturesSet.Contains(o.Textures.DefaultTexture.TextureID))
+                                    exportTexturesSet.Add(new UUID(o.Textures.DefaultTexture.TextureID));
+                            }
+                            Parallel.ForEach(o.Textures.FaceTextures, p =>
+                            {
+                                lock (LockObject)
+                                {
+                                    if (p != null &&
+                                        !p.TextureID.Equals(Primitive.TextureEntry.WHITE_TEXTURE) &&
+                                        !exportTexturesSet.Contains(p.TextureID))
+                                        exportTexturesSet.Add(new UUID(p.TextureID));
+                                }
+                            });
+
+                            lock (LockObject)
+                            {
+                                if (o.Sculpt != null && !o.Sculpt.SculptTexture.Equals(UUID.Zero) &&
+                                    !exportTexturesSet.Contains(o.Sculpt.SculptTexture))
+                                    exportTexturesSet.Add(new UUID(o.Sculpt.SculptTexture));
+                            }
+                        });
+
+                        // Get the destination format to convert the downloaded textures to.
+                        string format =
+                            wasInput(wasKeyValueGet(
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FORMAT)),
+                                message));
+                        PropertyInfo formatProperty = null;
+                        if (!string.IsNullOrEmpty(format))
+                        {
+                            formatProperty = typeof (ImageFormat).GetProperties(
+                                BindingFlags.Public |
+                                BindingFlags.Static)
+                                .AsParallel().FirstOrDefault(
+                                    o =>
+                                        string.Equals(o.Name, format, StringComparison.Ordinal));
+                            if (formatProperty == null)
+                            {
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED));
+                            }
+                        }
+
+                        // download all the textures.
+                        Dictionary<string, byte[]> exportTextureSetFiles = new Dictionary<string, byte[]>();
+                        Parallel.ForEach(exportTexturesSet, o =>
+                        {
+                            ManualResetEvent RequestAssetEvent = new ManualResetEvent(false);
+                            lock (ClientInstanceAssetsLock)
+                            {
+                                Client.Assets.RequestImage(o, ImageType.Normal,
+                                    delegate(TextureRequestState state, AssetTexture asset)
+                                    {
+                                        if (!asset.AssetID.Equals(o)) return;
+                                        if (!state.Equals(TextureRequestState.Finished)) return;
+                                        switch (formatProperty != null)
+                                        {
+                                            case true:
+                                                ManagedImage managedImage;
+                                                if (!OpenJPEG.DecodeToImage(asset.AssetData, out managedImage))
+                                                {
+                                                    throw new Exception(
+                                                        wasGetDescriptionFromEnumValue(
+                                                            ScriptError.UNABLE_TO_DECODE_ASSET_DATA));
+                                                }
+                                                using (MemoryStream imageStream = new MemoryStream())
+                                                {
+                                                    try
+                                                    {
+                                                        using (Bitmap bitmapImage = managedImage.ExportBitmap())
+                                                        {
+                                                            EncoderParameters encoderParameters =
+                                                                new EncoderParameters(1);
+                                                            encoderParameters.Param[0] =
+                                                                new EncoderParameter(Encoder.Quality, 100L);
+                                                            bitmapImage.Save(imageStream,
+                                                                ImageCodecInfo.GetImageDecoders()
+                                                                    .AsParallel()
+                                                                    .FirstOrDefault(
+                                                                        p =>
+                                                                            p.FormatID.Equals(
+                                                                                ((ImageFormat)
+                                                                                    formatProperty.GetValue(
+                                                                                        new ImageFormat(Guid.Empty)))
+                                                                                    .Guid)),
+                                                                encoderParameters);
+                                                        }
+                                                    }
+                                                    catch (Exception)
+                                                    {
+                                                        throw new Exception(
+                                                            wasGetDescriptionFromEnumValue(
+                                                                ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT));
+                                                    }
+                                                    lock (LockObject)
+                                                    {
+                                                        exportTextureSetFiles.Add(asset.AssetID + format.ToLower(),
+                                                            imageStream.ToArray());
+                                                    }
+                                                }
+                                                break;
+                                            default:
+                                                format = "j2c";
+                                                lock (LockObject)
+                                                {
+                                                    exportTextureSetFiles.Add(asset.AssetID + ".j2c", asset.AssetData);
+                                                }
+                                                break;
+                                        }
+                                        RequestAssetEvent.Set();
+                                    });
+                                if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
+                                }
+                            }
+                        });
+
+                        using (MemoryStream zipMemoryStream = new MemoryStream())
+                        {
+                            using (
+                                ZipArchive zipOutputStream = new ZipArchive(zipMemoryStream, ZipArchiveMode.Create, true)
+                                )
+                            {
+                                ZipArchive zipOutputStreamClosure = zipOutputStream;
+                                // add all the textures to the zip file
+                                Parallel.ForEach(exportTextureSetFiles, o =>
+                                {
+                                    lock (LockObject)
+                                    {
+                                        ZipArchiveEntry textureEntry = zipOutputStreamClosure.CreateEntry(o.Key);
+                                        using (Stream textureEntryDataStream = textureEntry.Open())
+                                        {
+                                            using (
+                                                BinaryWriter textureEntryDataStreamWriter =
+                                                    new BinaryWriter(textureEntryDataStream))
+                                            {
+                                                textureEntryDataStreamWriter.Write(o.Value);
+                                                textureEntryDataStream.Flush();
+                                            }
+                                        }
+                                    }
+                                });
+
+                                // add the primitives XML data to the zip file
+                                ZipArchiveEntry primitiveEntry =
+                                    zipOutputStreamClosure.CreateEntry(primitive.Properties.Name + ".xml");
+                                using (Stream primitiveEntryDataStream = primitiveEntry.Open())
+                                {
+                                    using (
+                                        StreamWriter primitiveEntryDataStreamWriter =
+                                            new StreamWriter(primitiveEntryDataStream))
+                                    {
+                                        primitiveEntryDataStreamWriter.Write(
+                                            OSDParser.SerializeLLSDXmlString(
+                                                Helpers.PrimListToOSD(exportPrimitivesSet.ToList())));
+                                        primitiveEntryDataStreamWriter.Flush();
+                                    }
+                                }
+                            }
+
+                            // Base64-encode the zip stream and send it.
+                            zipMemoryStream.Seek(0, SeekOrigin.Begin);
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                Convert.ToBase64String(zipMemoryStream.ToArray()));
+                        }
+                    };
+                    break;
+                case ScriptKeys.EXPORTDAE:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(group,
+                                (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+
+                        // if the primitive is not an object (the root) or the primitive 
+                        // is not an object as an avatar attachment then do not export it.
+                        if (!primitive.ParentID.Equals(0) && !GetAvatars(range, Configuration.SERVICES_TIMEOUT,
+                            Configuration.DATA_TIMEOUT)
+                            .AsParallel()
+                            .Any(o => o.LocalID.Equals(primitive.ParentID)))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ITEM_IS_NOT_AN_OBJECT));
+                        }
+
+                        HashSet<Primitive> exportPrimitivesSet = new HashSet<Primitive>();
+                        Primitive root = new Primitive(primitive) {Position = Vector3.Zero};
+                        exportPrimitivesSet.Add(root);
+
+                        object LockObject = new object();
+
+                        // find all the children that have the object as parent.
+                        Parallel.ForEach(GetPrimitives(range, Configuration.SERVICES_TIMEOUT,
+                            Configuration.DATA_TIMEOUT), o =>
+                            {
+                                if (!o.ParentID.Equals(root.LocalID))
+                                    return;
+                                Primitive child = new Primitive(o);
+                                child.Position = root.Position + child.Position*root.Rotation;
+                                child.Rotation = root.Rotation*child.Rotation;
+                                lock (LockObject)
+                                {
+                                    exportPrimitivesSet.Add(child);
+                                }
+                            });
+
+                        // update the primitives in the link set
+                        if (!UpdatePrimitives(ref exportPrimitivesSet, Configuration.DATA_TIMEOUT))
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_PRIMITIVE_PROPERTIES));
+
+                        // add all the textures to export
+                        HashSet<UUID> exportTexturesSet = new HashSet<UUID>();
+                        Parallel.ForEach(exportPrimitivesSet, o =>
+                        {
+                            Primitive.TextureEntryFace defaultTexture = o.Textures.DefaultTexture;
+                            lock (LockObject)
+                            {
+                                if (defaultTexture != null && !exportTexturesSet.Contains(defaultTexture.TextureID))
+                                    exportTexturesSet.Add(defaultTexture.TextureID);
+                            }
+                            Parallel.ForEach(o.Textures.FaceTextures, p =>
+                            {
+                                if (p != null)
+                                {
+                                    lock (LockObject)
+                                    {
+                                        if (!exportTexturesSet.Contains(p.TextureID))
+                                        {
+                                            exportTexturesSet.Add(p.TextureID);
+                                        }
+                                    }
+                                }
+                            });
+                        });
+
+                        // Get the destination format to convert the downloaded textures to.
+                        string format =
+                            wasInput(wasKeyValueGet(
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FORMAT)),
+                                message));
+                        PropertyInfo formatProperty = null;
+                        if (!string.IsNullOrEmpty(format))
+                        {
+                            formatProperty = typeof (ImageFormat).GetProperties(
+                                BindingFlags.Public |
+                                BindingFlags.Static)
+                                .AsParallel().FirstOrDefault(
+                                    o =>
+                                        string.Equals(o.Name, format, StringComparison.Ordinal));
+                            if (formatProperty == null)
+                            {
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED));
+                            }
+                        }
+
+                        // download all the textures.
+                        Dictionary<string, byte[]> exportTextureSetFiles = new Dictionary<string, byte[]>();
+                        Dictionary<UUID, string> exportMeshTextures = new Dictionary<UUID, string>();
+                        Parallel.ForEach(exportTexturesSet, o =>
+                        {
+                            ManualResetEvent RequestAssetEvent = new ManualResetEvent(false);
+                            lock (ClientInstanceAssetsLock)
+                            {
+                                Client.Assets.RequestImage(o, ImageType.Normal,
+                                    delegate(TextureRequestState state, AssetTexture asset)
+                                    {
+                                        if (!asset.AssetID.Equals(o)) return;
+                                        if (!state.Equals(TextureRequestState.Finished)) return;
+                                        switch (formatProperty != null)
+                                        {
+                                            case true:
+                                                ManagedImage managedImage;
+                                                if (!OpenJPEG.DecodeToImage(asset.AssetData, out managedImage))
+                                                {
+                                                    throw new Exception(
+                                                        wasGetDescriptionFromEnumValue(
+                                                            ScriptError.UNABLE_TO_DECODE_ASSET_DATA));
+                                                }
+                                                using (MemoryStream imageStream = new MemoryStream())
+                                                {
+                                                    try
+                                                    {
+                                                        using (Bitmap bitmapImage = managedImage.ExportBitmap())
+                                                        {
+                                                            EncoderParameters encoderParameters =
+                                                                new EncoderParameters(1);
+                                                            encoderParameters.Param[0] =
+                                                                new EncoderParameter(Encoder.Quality, 100L);
+                                                            bitmapImage.Save(imageStream,
+                                                                ImageCodecInfo.GetImageDecoders()
+                                                                    .AsParallel()
+                                                                    .FirstOrDefault(
+                                                                        p =>
+                                                                            p.FormatID.Equals(
+                                                                                ((ImageFormat)
+                                                                                    formatProperty.GetValue(
+                                                                                        new ImageFormat(Guid.Empty)))
+                                                                                    .Guid)),
+                                                                encoderParameters);
+                                                        }
+                                                    }
+                                                    catch (Exception)
+                                                    {
+                                                        throw new Exception(
+                                                            wasGetDescriptionFromEnumValue(
+                                                                ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT));
+                                                    }
+                                                    lock (LockObject)
+                                                    {
+                                                        exportTextureSetFiles.Add(asset.AssetID + format.ToLower(),
+                                                            imageStream.ToArray());
+                                                        exportMeshTextures.Add(asset.AssetID,
+                                                            asset.AssetID.ToString());
+                                                    }
+                                                }
+                                                break;
+                                            default:
+                                                format = "j2c";
+                                                lock (LockObject)
+                                                {
+                                                    exportTextureSetFiles.Add(asset.AssetID + ".j2c", asset.AssetData);
+                                                    exportMeshTextures.Add(asset.AssetID,
+                                                        asset.AssetID.ToString());
+                                                }
+                                                break;
+                                        }
+                                        RequestAssetEvent.Set();
+                                    });
+                                if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
+                                }
+                            }
+                        });
+
+                        // meshmerize all the primitives
+                        HashSet<FacetedMesh> exportMeshSet = new HashSet<FacetedMesh>();
+                        MeshmerizerR mesher = new MeshmerizerR();
+                        Parallel.ForEach(exportPrimitivesSet, o =>
+                        {
+                            FacetedMesh mesh = null;
+                            if (!MakeFacetedMesh(o, mesher, ref mesh, Configuration.SERVICES_TIMEOUT))
+                            {
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_MESHMERIZE_OBJECT));
+                            }
+                            if (mesh == null) return;
+                            Parallel.ForEach(mesh.Faces, p =>
+                            {
+                                Primitive.TextureEntryFace textureEntryFace = p.TextureFace;
+                                if (textureEntryFace == null) return;
+
+                                // Sculpt UV vertically flipped compared to prims. Flip back
+                                if (o.Sculpt != null && !o.Sculpt.SculptTexture.Equals(UUID.Zero) &&
+                                    !o.Sculpt.Type.Equals(SculptType.Mesh))
+                                {
+                                    textureEntryFace = (Primitive.TextureEntryFace) textureEntryFace.Clone();
+                                    textureEntryFace.RepeatV *= -1;
+                                }
+                                // Texture transform for this face
+                                mesher.TransformTexCoords(p.Vertices, p.Center, textureEntryFace, o.Scale);
+                            });
+                            lock (LockObject)
+                            {
+                                exportMeshSet.Add(mesh);
+                            }
+                        });
+
+                        using (MemoryStream zipMemoryStream = new MemoryStream())
+                        {
+                            using (
+                                ZipArchive zipOutputStream = new ZipArchive(zipMemoryStream, ZipArchiveMode.Create, true)
+                                )
+                            {
+                                ZipArchive zipOutputStreamClosure = zipOutputStream;
+                                // add all the textures to the zip file
+                                Parallel.ForEach(exportTextureSetFiles, o =>
+                                {
+                                    lock (LockObject)
+                                    {
+                                        ZipArchiveEntry textureEntry = zipOutputStreamClosure.CreateEntry(o.Key);
+                                        using (Stream textureEntryDataStream = textureEntry.Open())
+                                        {
+                                            using (
+                                                BinaryWriter textureEntryDataStreamWriter =
+                                                    new BinaryWriter(textureEntryDataStream))
+                                            {
+                                                textureEntryDataStreamWriter.Write(o.Value);
+                                                textureEntryDataStream.Flush();
+                                            }
+                                        }
+                                    }
+                                });
+
+                                // add the primitives XML data to the zip file
+                                ZipArchiveEntry primitiveEntry =
+                                    zipOutputStreamClosure.CreateEntry(primitive.Properties.Name + ".dae");
+                                using (Stream primitiveEntryDataStream = primitiveEntry.Open())
+                                {
+                                    using (
+                                        XmlTextWriter XMLTextWriter = new XmlTextWriter(primitiveEntryDataStream,
+                                            Encoding.UTF8))
+                                    {
+                                        XMLTextWriter.Formatting = Formatting.Indented;
+                                        XMLTextWriter.WriteProcessingInstruction("xml", "version=\"1.0\" encoding=\"utf-8\"");
+                                        GenerateCollada(exportMeshSet, exportMeshTextures, format)
+                                            .WriteContentTo(XMLTextWriter);
+                                        XMLTextWriter.Flush();
+                                    }
+                                }
+                            }
+
+                            // Base64-encode the zip stream and send it.
+                            zipMemoryStream.Seek(0, SeekOrigin.Begin);
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                Convert.ToBase64String(zipMemoryStream.ToArray()));
                         }
                     };
                     break;
@@ -16556,6 +17680,22 @@ namespace Corrade
             }
 
             yield return m.ToString();
+        }
+
+        /// <summary>
+        ///     Material information for Collada DAE Export.
+        /// </summary>
+        /// <remarks>This class is taken from the Radegast Viewer with changes by Wizardry and Steamworks.</remarks>
+        private class MaterialInfo
+        {
+            public Color4 Color;
+            public string Name;
+            public UUID TextureID;
+
+            public bool Matches(Primitive.TextureEntryFace TextureEntry)
+            {
+                return TextureID.Equals(TextureEntry.TextureID) && Color.Equals(TextureEntry.RGBA);
+            }
         }
 
         /// <summary>
@@ -19568,7 +20708,8 @@ namespace Corrade
             [Description("estate")] ESTATE,
             [Description("region")] REGION,
             [Description("object")] OBJECT,
-            [Description("parcel")] PARCEL
+            [Description("parcel")] PARCEL,
+            [Description("range")] RANGE
         }
 
         /// <summary>
@@ -19974,7 +21115,6 @@ namespace Corrade
             [Description("unknown group invite session")] UNKNOWN_GROUP_INVITE_SESSION,
             [Description("unable to obtain money balance")] UNABLE_TO_OBTAIN_MONEY_BALANCE,
             [Description("timeout getting avatar data")] TIMEOUT_GETTING_AVATAR_DATA,
-            [Description("avatar is not on the current region")] AVATAR_NOT_ON_CURRENT_REGION,
             [Description("timeout retrieving estate list")] TIMEOUT_RETRIEVING_ESTATE_LIST,
             [Description("destination too close")] DESTINATION_TOO_CLOSE,
             [Description("timeout getting group titles")] TIMEOUT_GETTING_GROUP_TITLES,
@@ -20003,7 +21143,11 @@ namespace Corrade
             [Description("unable to decode asset data")] UNABLE_TO_DECODE_ASSET_DATA,
             [Description("unable to convert to requested format")] UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT,
             [Description("could not start process")] COULD_NOT_START_PROCESS,
-            [Description("timeout getting primitive data")] TIMEOUT_GETTING_PRIMITIVE_DATA
+            [Description("timeout getting primitive data")] TIMEOUT_GETTING_PRIMITIVE_DATA,
+            [Description("item is not an object")] ITEM_IS_NOT_AN_OBJECT,
+            [Description("timeout meshmerizing object")] COULD_NOT_MESHMERIZE_OBJECT,
+            [Description("could not get primitive properties")] COULD_NOT_GET_PRIMITIVE_PROPERTIES,
+            [Description("avatar not in range")] AVATAR_NOT_IN_RANGE
         }
 
         /// <summary>
@@ -20012,6 +21156,8 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+            [Description("exportdae")] EXPORTDAE,
+            [Description("exportxml")] EXPORTXML,
             [Description("getprimitivesdata")] GETPRIMITIVESDATA,
             [Description("getavatarsdata")] GETAVATARSDATA,
             [Description("format")] FORMAT,
