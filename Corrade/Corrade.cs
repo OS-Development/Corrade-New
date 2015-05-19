@@ -1433,7 +1433,7 @@ namespace Corrade
                     default:
                         // find the parent of the primitive
                         Primitive primitiveParent = objectsPrimitives.FirstOrDefault(p => p.LocalID.Equals(o.ParentID));
-                        // the parent primitive has no other parent
+                        // if the primitive has a parent
                         if (primitiveParent != null)
                         {
                             // if the parent is in range, add the child
@@ -3264,7 +3264,6 @@ namespace Corrade
                                 {
                                     responseStream.Write(data, 0, data.Length);
                                     responseStream.Flush();
-                                    responseStream.Close();
                                 }
                             }
                         }
@@ -4566,8 +4565,15 @@ namespace Corrade
                         {
                             Client.Self.Stand();
                         }
-                        Client.Self.SignaledAnimations.ForEach(
-                            animation => Client.Self.AnimationStop(animation.Key, true));
+                        // stop all non-built-in animations
+                        List<UUID> lindenAnimations = new List<UUID>(typeof (Animations).GetProperties(
+                            BindingFlags.Public |
+                            BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)).ToList());
+                        Parallel.ForEach(Client.Self.SignaledAnimations.Copy().Keys, o =>
+                        {
+                            if (!lindenAnimations.Contains(o))
+                                Client.Self.AnimationStop(o, true);
+                        });
                         Client.Self.TeleportLureRespond(args.IM.FromAgentID, args.IM.IMSessionID, true);
                     }
                     return;
@@ -5012,8 +5018,15 @@ namespace Corrade
                         {
                             Client.Self.Stand();
                         }
-                        Client.Self.SignaledAnimations.ForEach(
-                            animation => Client.Self.AnimationStop(animation.Key, true));
+                        // stop all non-built-in animations
+                        List<UUID> lindenAnimations = new List<UUID>(typeof (Animations).GetProperties(
+                            BindingFlags.Public |
+                            BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)).ToList());
+                        Parallel.ForEach(Client.Self.SignaledAnimations.Copy().Keys, o =>
+                        {
+                            if (!lindenAnimations.Contains(o))
+                                Client.Self.AnimationStop(o, true);
+                        });
                         lock (ClientInstanceSelfLock)
                         {
                             Client.Self.AvatarSitResponse += AvatarSitEventHandler;
@@ -5041,8 +5054,15 @@ namespace Corrade
                         {
                             Client.Self.Stand();
                         }
-                        Client.Self.SignaledAnimations.ForEach(
-                            animation => Client.Self.AnimationStop(animation.Key, true));
+                        // stop all non-built-in animations
+                        List<UUID> lindenAnimations = new List<UUID>(typeof (Animations).GetProperties(
+                            BindingFlags.Public |
+                            BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)).ToList());
+                        Parallel.ForEach(Client.Self.SignaledAnimations.Copy().Keys, o =>
+                        {
+                            if (!lindenAnimations.Contains(o))
+                                Client.Self.AnimationStop(o, true);
+                        });
                     };
                     break;
                 case RLVBehaviour.SETROT:
@@ -7974,8 +7994,15 @@ namespace Corrade
                         {
                             Client.Self.Stand();
                         }
-                        Client.Self.SignaledAnimations.ForEach(
-                            animation => Client.Self.AnimationStop(animation.Key, true));
+                        // stop all non-built-in animations
+                        List<UUID> lindenAnimations = new List<UUID>(typeof (Animations).GetProperties(
+                            BindingFlags.Public |
+                            BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)).ToList());
+                        Parallel.ForEach(Client.Self.SignaledAnimations.Copy().Keys, o =>
+                        {
+                            if (!lindenAnimations.Contains(o))
+                                Client.Self.AnimationStop(o, true);
+                        });
                         lock (ClientInstanceSelfLock)
                         {
                             Client.Self.TeleportProgress += TeleportEventHandler;
@@ -8084,8 +8111,15 @@ namespace Corrade
                         {
                             Client.Self.Stand();
                         }
-                        Client.Self.SignaledAnimations.ForEach(
-                            animation => Client.Self.AnimationStop(animation.Key, true));
+                        // stop all non-built-in animations
+                        List<UUID> lindenAnimations = new List<UUID>(typeof (Animations).GetProperties(
+                            BindingFlags.Public |
+                            BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)).ToList());
+                        Parallel.ForEach(Client.Self.SignaledAnimations.Copy().Keys, o =>
+                        {
+                            if (!lindenAnimations.Contains(o))
+                                Client.Self.AnimationStop(o, true);
+                        });
                         bool succeeded = Client.Self.GoHome();
                         if (!succeeded)
                         {
@@ -8176,7 +8210,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
                         }
                         Primitive primitive = null;
                         if (
@@ -8207,8 +8241,15 @@ namespace Corrade
                         {
                             Client.Self.Stand();
                         }
-                        Client.Self.SignaledAnimations.ForEach(
-                            animation => Client.Self.AnimationStop(animation.Key, true));
+                        // stop all non-built-in animations
+                        List<UUID> lindenAnimations = new List<UUID>(typeof (Animations).GetProperties(
+                            BindingFlags.Public |
+                            BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)).ToList());
+                        Parallel.ForEach(Client.Self.SignaledAnimations.Copy().Keys, o =>
+                        {
+                            if (!lindenAnimations.Contains(o))
+                                Client.Self.AnimationStop(o, true);
+                        });
                         lock (ClientInstanceSelfLock)
                         {
                             Client.Self.AvatarSitResponse += AvatarSitEventHandler;
@@ -8246,14 +8287,106 @@ namespace Corrade
                         {
                             Client.Self.Stand();
                         }
-                        Client.Self.SignaledAnimations.ForEach(
-                            animation => Client.Self.AnimationStop(animation.Key, true));
+                        // stop all non-built-in animations
+                        List<UUID> lindenAnimations = new List<UUID>(typeof (Animations).GetProperties(
+                            BindingFlags.Public |
+                            BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)).ToList());
+                        Parallel.ForEach(Client.Self.SignaledAnimations.Copy().Keys, o =>
+                        {
+                            if (!lindenAnimations.Contains(o))
+                                Client.Self.AnimationStop(o, true);
+                        });
                         Client.Self.SitOnGround();
                         // Set the camera on the avatar.
                         Client.Self.Movement.Camera.LookAt(
                             Client.Self.SimPosition,
                             Client.Self.SimPosition
                             );
+                    };
+                    break;
+                case ScriptKeys.AWAY:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        switch (wasGetEnumValueFromDescription<Action>(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
+                                .ToLowerInvariant()))
+                        {
+                            case Action.ENABLE:
+                                Client.Self.AnimationStart(Animations.AWAY, true);
+                                Client.Self.Movement.Away = true;
+                                Client.Self.Movement.SendUpdate(true);
+                                break;
+                            case Action.DISABLE:
+                                Client.Self.Movement.Away = false;
+                                Client.Self.AnimationStop(Animations.AWAY, true);
+                                Client.Self.Movement.SendUpdate(true);
+                                break;
+                            case Action.GET:
+                                result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                    Client.Self.Movement.Away.ToString());
+                                break;
+                            default:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
+                        }
+                    };
+                    break;
+                case ScriptKeys.BUSY:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        switch (wasGetEnumValueFromDescription<Action>(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
+                                .ToLowerInvariant()))
+                        {
+                            case Action.ENABLE:
+                                Client.Self.AnimationStart(Animations.BUSY, true);
+                                break;
+                            case Action.DISABLE:
+                                Client.Self.AnimationStop(Animations.BUSY, true);
+                                break;
+                            case Action.GET:
+                                result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                    Client.Self.SignaledAnimations.ContainsKey(Animations.BUSY).ToString());
+                                break;
+                            default:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
+                        }
+                    };
+                    break;
+                case ScriptKeys.TYPING:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        switch (wasGetEnumValueFromDescription<Action>(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
+                                .ToLowerInvariant()))
+                        {
+                            case Action.ENABLE:
+                                Client.Self.AnimationStart(Animations.TYPE, true);
+                                break;
+                            case Action.DISABLE:
+                                Client.Self.AnimationStop(Animations.TYPE, true);
+                                break;
+                            case Action.GET:
+                                result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                    Client.Self.SignaledAnimations.ContainsKey(Animations.TYPE).ToString());
+                                break;
+                            default:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
+                        }
                     };
                     break;
                 case ScriptKeys.RUN:
@@ -8271,7 +8404,12 @@ namespace Corrade
                         {
                             case Action.ENABLE:
                             case Action.DISABLE:
-                                Client.Self.Fly(action.Equals(Action.ENABLE));
+                                Client.Self.Movement.AlwaysRun = !action.Equals(Action.DISABLE);
+                                Client.Self.Movement.SendUpdate(true);
+                                break;
+                            case Action.GET:
+                                result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                    Client.Self.Movement.AlwaysRun.ToString());
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
@@ -8291,8 +8429,15 @@ namespace Corrade
                         {
                             Client.Self.Stand();
                         }
-                        Client.Self.SignaledAnimations.ForEach(
-                            animation => Client.Self.AnimationStop(animation.Key, true));
+                        // stop all non-built-in animations
+                        List<UUID> lindenAnimations = new List<UUID>(typeof (Animations).GetProperties(
+                            BindingFlags.Public |
+                            BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)).ToList());
+                        Parallel.ForEach(Client.Self.SignaledAnimations.Copy().Keys, o =>
+                        {
+                            if (!lindenAnimations.Contains(o))
+                                Client.Self.AnimationStop(o, true);
+                        });
                         // Set the camera on the avatar.
                         Client.Self.Movement.Camera.LookAt(
                             Client.Self.SimPosition,
@@ -9102,7 +9247,7 @@ namespace Corrade
                                                 message)),
                                         out range))
                                 {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                                    range = Configuration.RANGE;
                                 }
                                 Primitive primitive = null;
                                 if (
@@ -9191,8 +9336,15 @@ namespace Corrade
                                 {
                                     Client.Self.Stand();
                                 }
-                                Client.Self.SignaledAnimations.ForEach(
-                                    o => Client.Self.AnimationStop(o.Key, true));
+                                // stop all non-built-in animations
+                                List<UUID> lindenAnimations = new List<UUID>(typeof (Animations).GetProperties(
+                                    BindingFlags.Public |
+                                    BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)).ToList());
+                                Parallel.ForEach(Client.Self.SignaledAnimations.Copy().Keys, o =>
+                                {
+                                    if (!lindenAnimations.Contains(o))
+                                        Client.Self.AnimationStop(o, true);
+                                });
                                 Client.Self.Fly(action.Equals(Action.START));
                                 break;
                             default:
@@ -9465,7 +9617,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
                         }
                         Primitive primitive = null;
                         if (
@@ -10140,7 +10292,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
                         }
                         Primitive primitive = null;
                         if (
@@ -10899,7 +11051,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
                         }
                         UUID folderUUID;
                         string folder =
@@ -10967,7 +11119,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
                         }
                         string entity =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
@@ -11072,7 +11224,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
                         }
                         string entity =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
@@ -11151,7 +11303,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
                         }
                         Primitive primitive = null;
                         if (
@@ -11192,7 +11344,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
                         }
                         Primitive primitive = null;
                         if (
@@ -11251,7 +11403,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
                         }
                         Primitive primitive = null;
                         if (
@@ -11491,7 +11643,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
                         }
                         Primitive primitive = null;
                         if (
@@ -11961,8 +12113,15 @@ namespace Corrade
                                 {
                                     Client.Self.Stand();
                                 }
-                                Client.Self.SignaledAnimations.ForEach(
-                                    animation => Client.Self.AnimationStop(animation.Key, true));
+                                // stop all non-built-in animations
+                                List<UUID> lindenAnimations = new List<UUID>(typeof (Animations).GetProperties(
+                                    BindingFlags.Public |
+                                    BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)).ToList());
+                                Parallel.ForEach(Client.Self.SignaledAnimations.Copy().Keys, o =>
+                                {
+                                    if (!lindenAnimations.Contains(o))
+                                        Client.Self.AnimationStop(o, true);
+                                });
                                 Client.Self.AutoPilotCancel();
                                 Client.Self.Movement.TurnToward(position, true);
                                 Client.Self.AutoPilot(position.X + moveRegionX, position.Y + moveRegionY, position.Z);
@@ -12134,8 +12293,7 @@ namespace Corrade
                                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                                 out range))
                                         {
-                                            throw new Exception(
-                                                wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                                            range = Configuration.RANGE;
                                         }
                                         Primitive primitive = null;
                                         if (
@@ -14552,6 +14710,44 @@ namespace Corrade
                             wasEnumerableToCSV(new[] {regionName, position.ToString()}));
                     };
                     break;
+                case ScriptKeys.GETOBJECTPERMISSIONS:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(group,
+                                (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        // if the primitive is not an object (the root) or the primitive 
+                        // is not an object as an avatar attachment then bail out
+                        if (!primitive.ParentID.Equals(0) && !primitive.ParentID.Equals(Client.Self.LocalID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ITEM_IS_NOT_AN_OBJECT));
+                        }
+                        result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS),
+                            wasPermissionsToString(primitive.Properties.Permissions));
+                    };
+                    break;
                 case ScriptKeys.SETOBJECTPERMISSIONS:
                     execute = () =>
                     {
@@ -14568,7 +14764,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
                         }
                         Primitive primitive = null;
                         if (
@@ -14580,27 +14776,32 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
-                        byte who = 0;
-                        Parallel.ForEach(wasCSVToEnumerable(
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.WHO)),
-                                message))),
-                            o =>
-                                Parallel.ForEach(
-                                    typeof (PermissionWho).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                        .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
-                                    q => { who |= ((byte) q.GetValue(null)); }));
-                        uint permissions = 0;
-                        Parallel.ForEach(wasCSVToEnumerable(
+                        // if the primitive is not an object (the root) or the primitive 
+                        // is not an object as an avatar attachment then bail out
+                        if (!primitive.ParentID.Equals(0) && !primitive.ParentID.Equals(Client.Self.LocalID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ITEM_IS_NOT_AN_OBJECT));
+                        }
+                        string itemPermissions =
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS)),
-                                    message))),
-                            o =>
-                                Parallel.ForEach(
-                                    typeof (PermissionMask).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                        .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
-                                    q => { permissions |= ((uint) q.GetValue(null)); }));
+                                wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS)), message));
+                        if (string.IsNullOrEmpty(itemPermissions))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.NO_PERMISSIONS_PROVIDED));
+                        }
+                        OpenMetaverse.Permissions permissions = wasStringToPermissions(itemPermissions);
                         Client.Objects.SetPermissions(Client.Network.CurrentSim, new List<uint> {primitive.LocalID},
-                            (PermissionWho) who, (PermissionMask) permissions, true);
+                            PermissionWho.Base, permissions.BaseMask, true);
+                        Client.Objects.SetPermissions(Client.Network.CurrentSim, new List<uint> {primitive.LocalID},
+                            PermissionWho.Owner, permissions.OwnerMask, true);
+                        Client.Objects.SetPermissions(Client.Network.CurrentSim, new List<uint> {primitive.LocalID},
+                            PermissionWho.Group, permissions.GroupMask, true);
+                        Client.Objects.SetPermissions(Client.Network.CurrentSim, new List<uint> {primitive.LocalID},
+                            PermissionWho.Everyone, permissions.EveryoneMask, true);
+                        Client.Objects.SetPermissions(Client.Network.CurrentSim, new List<uint> {primitive.LocalID},
+                            PermissionWho.NextOwner, permissions.NextOwnerMask, true);
                     };
                     break;
                 case ScriptKeys.OBJECTDEED:
@@ -14634,7 +14835,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
                         }
                         Primitive primitive = null;
                         if (
@@ -14645,6 +14846,12 @@ namespace Corrade
                                 ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        // if the primitive is not an object (the root) or the primitive 
+                        // is not an object as an avatar attachment then bail out
+                        if (!primitive.ParentID.Equals(0) && !primitive.ParentID.Equals(Client.Self.LocalID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ITEM_IS_NOT_AN_OBJECT));
                         }
                         Client.Objects.DeedObject(Client.Network.CurrentSim, primitive.LocalID, groupUUID);
                     };
@@ -14680,7 +14887,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
                         }
                         Primitive primitive = null;
                         if (
@@ -14691,6 +14898,12 @@ namespace Corrade
                                 ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        // if the primitive is not an object (the root) or the primitive 
+                        // is not an object as an avatar attachment then bail out
+                        if (!primitive.ParentID.Equals(0) && !primitive.ParentID.Equals(Client.Self.LocalID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ITEM_IS_NOT_AN_OBJECT));
                         }
                         Client.Objects.SetObjectsGroup(Client.Network.CurrentSim, new List<uint> {primitive.LocalID},
                             groupUUID);
@@ -14723,7 +14936,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
                         }
                         Primitive primitive = null;
                         if (
@@ -14734,6 +14947,12 @@ namespace Corrade
                                 ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        // if the primitive is not an object (the root) or the primitive 
+                        // is not an object as an avatar attachment then bail out
+                        if (!primitive.ParentID.Equals(0) && !primitive.ParentID.Equals(Client.Self.LocalID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ITEM_IS_NOT_AN_OBJECT));
                         }
                         FieldInfo saleTypeInfo = typeof (SaleType).GetFields(BindingFlags.Public |
                                                                              BindingFlags.Static)
@@ -14763,7 +14982,52 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        // if the primitive is not an object (the root) or the primitive 
+                        // is not an object as an avatar attachment then bail out
+                        if (!primitive.ParentID.Equals(0) && !primitive.ParentID.Equals(Client.Self.LocalID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ITEM_IS_NOT_AN_OBJECT));
+                        }
+                        Vector3 position;
+                        if (
+                            !Vector3.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
+                                out position))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
+                        }
+                        Client.Objects.SetPosition(Client.Network.CurrentSim, primitive.LocalID, position);
+                    };
+                    break;
+                case ScriptKeys.SETPRIMITIVEPOSITION:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
                         }
                         Primitive primitive = null;
                         if (
@@ -14783,9 +15047,9 @@ namespace Corrade
                                         message)),
                                 out position))
                         {
-                            position = Client.Self.SimPosition;
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
                         }
-                        Client.Objects.SetPosition(Client.Network.CurrentSim, primitive.LocalID, position);
+                        Client.Objects.SetPosition(Client.Network.CurrentSim, primitive.LocalID, position, true);
                     };
                     break;
                 case ScriptKeys.SETOBJECTROTATION:
@@ -14802,7 +15066,52 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        // if the primitive is not an object (the root) or the primitive 
+                        // is not an object as an avatar attachment then bail out
+                        if (!primitive.ParentID.Equals(0) && !primitive.ParentID.Equals(Client.Self.LocalID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ITEM_IS_NOT_AN_OBJECT));
+                        }
+                        Quaternion rotation;
+                        if (
+                            !Quaternion.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION)),
+                                        message)),
+                                out rotation))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_ROTATION));
+                        }
+                        Client.Objects.SetRotation(Client.Network.CurrentSim, primitive.LocalID, rotation);
+                    };
+                    break;
+                case ScriptKeys.SETPRIMITIVEROTATION:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
                         }
                         Primitive primitive = null;
                         if (
@@ -14824,10 +15133,10 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_ROTATION));
                         }
-                        Client.Objects.SetRotation(Client.Network.CurrentSim, primitive.LocalID, rotation);
+                        Client.Objects.SetRotation(Client.Network.CurrentSim, primitive.LocalID, rotation, true);
                     };
                     break;
-                case ScriptKeys.SETOBJECTNAME:
+                case ScriptKeys.SETOBJECTSCALE:
                     execute = () =>
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
@@ -14841,7 +15150,109 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
+                        }
+                        bool uniform;
+                        if (
+                            !bool.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.UNIFORM)), message)),
+                                out uniform))
+                        {
+                            uniform = true;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        // if the primitive is not an object (the root) or the primitive 
+                        // is not an object as an avatar attachment then bail out
+                        if (!primitive.ParentID.Equals(0) && !primitive.ParentID.Equals(Client.Self.LocalID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ITEM_IS_NOT_AN_OBJECT));
+                        }
+                        Vector3 scale;
+                        if (
+                            !Vector3.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SCALE)),
+                                        message)),
+                                out scale))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
+                        }
+                        Client.Objects.SetScale(Client.Network.CurrentSim, primitive.LocalID, scale, false, uniform);
+                    };
+                    break;
+                case ScriptKeys.SETPRIMITIVESCALE:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        bool uniform;
+                        if (
+                            !bool.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.UNIFORM)), message)),
+                                out uniform))
+                        {
+                            uniform = true;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        Vector3 scale;
+                        if (
+                            !Vector3.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SCALE)),
+                                        message)),
+                                out scale))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
+                        }
+                        Client.Objects.SetScale(Client.Network.CurrentSim, primitive.LocalID, scale, true, uniform);
+                    };
+                    break;
+                case ScriptKeys.SETPRIMITIVENAME:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
                         }
                         Primitive primitive = null;
                         if (
@@ -14863,7 +15274,7 @@ namespace Corrade
                         Client.Objects.SetName(Client.Network.CurrentSim, primitive.LocalID, name);
                     };
                     break;
-                case ScriptKeys.SETOBJECTDESCRIPTION:
+                case ScriptKeys.SETPRIMITIVEDESCRIPTION:
                     execute = () =>
                     {
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
@@ -14877,7 +15288,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
                         }
                         Primitive primitive = null;
                         if (
@@ -15191,8 +15602,15 @@ namespace Corrade
                                 {
                                     Client.Self.Stand();
                                 }
-                                Client.Self.SignaledAnimations.ForEach(
-                                    o => Client.Self.AnimationStop(o.Key, true));
+                                // stop all non-built-in animations
+                                List<UUID> lindenAnimations = new List<UUID>(typeof (Animations).GetProperties(
+                                    BindingFlags.Public |
+                                    BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)).ToList());
+                                Parallel.ForEach(Client.Self.SignaledAnimations.Copy().Keys, o =>
+                                {
+                                    if (!lindenAnimations.Contains(o))
+                                        Client.Self.AnimationStop(o, true);
+                                });
                                 Client.Self.Crouch(action.Equals(Action.START));
                                 break;
                             default:
@@ -15224,8 +15642,15 @@ namespace Corrade
                                 {
                                     Client.Self.Stand();
                                 }
-                                Client.Self.SignaledAnimations.ForEach(
-                                    o => Client.Self.AnimationStop(o.Key, true));
+                                // stop all non-built-in animations
+                                List<UUID> lindenAnimations = new List<UUID>(typeof (Animations).GetProperties(
+                                    BindingFlags.Public |
+                                    BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)).ToList());
+                                Parallel.ForEach(Client.Self.SignaledAnimations.Copy().Keys, o =>
+                                {
+                                    if (!lindenAnimations.Contains(o))
+                                        Client.Self.AnimationStop(o, true);
+                                });
                                 Client.Self.Jump(action.Equals(Action.START));
                                 break;
                             default:
@@ -16347,16 +16772,33 @@ namespace Corrade
                                     Configuration.DATA_TIMEOUT).AsParallel().FirstOrDefault(o => o.ID.Equals(agentUUID));
                                 if (avatar == null)
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AVATAR_NOT_IN_RANGE));
-                                Parallel.ForEach(
-                                    GetPrimitives(range, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT),
+                                HashSet<Primitive> objectsPrimitives =
+                                    new HashSet<Primitive>(GetPrimitives(range, Configuration.SERVICES_TIMEOUT,
+                                        Configuration.DATA_TIMEOUT));
+                                Parallel.ForEach(objectsPrimitives,
                                     o =>
                                     {
-                                        if (o.ParentID.Equals(avatar.LocalID))
+                                        switch (!o.ParentID.Equals(avatar.LocalID))
                                         {
-                                            lock (LockObject)
-                                            {
-                                                updatePrimitives.Add(o);
-                                            }
+                                            case true:
+                                                Primitive primitiveParent =
+                                                    objectsPrimitives.AsParallel()
+                                                        .FirstOrDefault(p => p.LocalID.Equals(o.ParentID));
+                                                if (primitiveParent != null &&
+                                                    primitiveParent.ParentID.Equals(avatar.LocalID))
+                                                {
+                                                    lock (LockObject)
+                                                    {
+                                                        updatePrimitives.Add(o);
+                                                    }
+                                                }
+                                                break;
+                                            default:
+                                                lock (LockObject)
+                                                {
+                                                    updatePrimitives.Add(o);
+                                                }
+                                                break;
                                         }
                                     });
                                 break;
@@ -16402,7 +16844,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
                         }
                         Primitive primitive = null;
                         if (
@@ -16638,7 +17080,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_RANGE_PROVIDED));
+                            range = Configuration.RANGE;
                         }
                         Primitive primitive = null;
                         if (
@@ -16883,7 +17325,8 @@ namespace Corrade
                                             Encoding.UTF8))
                                     {
                                         XMLTextWriter.Formatting = Formatting.Indented;
-                                        XMLTextWriter.WriteProcessingInstruction("xml", "version=\"1.0\" encoding=\"utf-8\"");
+                                        XMLTextWriter.WriteProcessingInstruction("xml",
+                                            "version=\"1.0\" encoding=\"utf-8\"");
                                         GenerateCollada(exportMeshSet, exportMeshTextures, format)
                                             .WriteContentTo(XMLTextWriter);
                                         XMLTextWriter.Flush();
@@ -17511,7 +17954,6 @@ namespace Corrade
             {
                 dataStream.Write(byteArray, 0, byteArray.Length);
                 dataStream.Flush();
-                dataStream.Close();
             }
         }
 
@@ -21027,7 +21469,6 @@ namespace Corrade
             [Description("invalid url provided")] INVALID_URL_PROVIDED,
             [Description("invalid notification types")] INVALID_NOTIFICATION_TYPES,
             [Description("notification not allowed")] NOTIFICATION_NOT_ALLOWED,
-            [Description("no range provided")] NO_RANGE_PROVIDED,
             [Description("unknwon directory search type")] UNKNOWN_DIRECTORY_SEARCH_TYPE,
             [Description("no search text provided")] NO_SEARCH_TEXT_PROVIDED,
             [Description("unknwon restart action")] UNKNOWN_RESTART_ACTION,
@@ -21156,6 +21597,16 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+            [Description("typing")] TYPING,
+            [Description("busy")] BUSY,
+            [Description("away")] AWAY,
+            [Description("getobjectpermissions")] GETOBJECTPERMISSIONS,
+            [Description("scale")] SCALE,
+            [Description("uniform")] UNIFORM,
+            [Description("setobjectscale")] SETOBJECTSCALE,
+            [Description("setprimitivescale")] SETPRIMITIVESCALE,
+            [Description("setprimitiverotation")] SETPRIMITIVEROTATION,
+            [Description("setprimitiveposition")] SETPRIMITIVEPOSITION,
             [Description("exportdae")] EXPORTDAE,
             [Description("exportxml")] EXPORTXML,
             [Description("getprimitivesdata")] GETPRIMITIVESDATA,
@@ -21247,8 +21698,8 @@ namespace Corrade
             [Description("folder")] FOLDER,
             [Description("replace")] REPLACE,
             [Description("setobjectrotation")] SETOBJECTROTATION,
-            [Description("setobjectdescription")] SETOBJECTDESCRIPTION,
-            [Description("setobjectname")] SETOBJECTNAME,
+            [Description("setprimitivedescription")] SETPRIMITIVEDESCRIPTION,
+            [Description("setprimitivename")] SETPRIMITIVENAME,
             [Description("setobjectposition")] SETOBJECTPOSITION,
             [Description("setobjectsaleinfo")] SETOBJECTSALEINFO,
             [Description("setobjectgroup")] SETOBJECTGROUP,
@@ -21415,6 +21866,7 @@ namespace Corrade
             [Description("task")] public UUID Task;
         }
 
+        [Serializable]
         [XmlRoot("Dictionary")]
         public class SerializableDictionary<TKey, TValue>
             : Dictionary<TKey, TValue>, IXmlSerializable
