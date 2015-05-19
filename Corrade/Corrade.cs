@@ -15185,7 +15185,7 @@ namespace Corrade
                                         message)),
                                 out scale))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_SCALE));
                         }
                         Client.Objects.SetScale(Client.Network.CurrentSim, primitive.LocalID, scale, false, uniform);
                     };
@@ -15233,7 +15233,7 @@ namespace Corrade
                                         message)),
                                 out scale))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_SCALE));
                         }
                         Client.Objects.SetScale(Client.Network.CurrentSim, primitive.LocalID, scale, true, uniform);
                     };
@@ -21588,7 +21588,8 @@ namespace Corrade
             [Description("item is not an object")] ITEM_IS_NOT_AN_OBJECT,
             [Description("timeout meshmerizing object")] COULD_NOT_MESHMERIZE_OBJECT,
             [Description("could not get primitive properties")] COULD_NOT_GET_PRIMITIVE_PROPERTIES,
-            [Description("avatar not in range")] AVATAR_NOT_IN_RANGE
+            [Description("avatar not in range")] AVATAR_NOT_IN_RANGE,
+            [Description("invalid scale")] INVALID_SCALE
         }
 
         /// <summary>
