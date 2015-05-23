@@ -10635,8 +10635,32 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FAILED_TO_DOWNLOAD_ASSET));
                         }
-                        result.Add(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                            Convert.ToBase64String(assetData));
+                        // If no path was specificed, then send the data.
+                        string path =
+                            wasInput(wasKeyValueGet(
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATH)),
+                                message));
+                        if (string.IsNullOrEmpty(path))
+                        {
+                            result.Add(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                Convert.ToBase64String(assetData));
+                            return;
+                        }
+                        if (
+                            !HasCorradePermission(group, (int) Permissions.PERMISSION_SYSTEM))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        // Otherwise, save it to the specified file.
+                        using (FileStream fs = File.Open(path, FileMode.Create))
+                        {
+                            using (BinaryWriter bw = new BinaryWriter(fs))
+                            {
+                                bw.Write(assetData);
+                                bw.Flush();
+                            }
+                            fs.Flush();
+                        }
                     };
                     break;
                 case ScriptKeys.UPLOAD:
@@ -12082,7 +12106,7 @@ namespace Corrade
                         }
                     };
                     break;
-                case ScriptKeys.MOVE:
+                case ScriptKeys.AUTOPILOT:
                     execute = () =>
                     {
                         if (
@@ -17014,6 +17038,8 @@ namespace Corrade
                             }
                         });
 
+                        HashSet<char> invalidPathCharacters = new HashSet<char>(Path.GetInvalidPathChars());
+
                         using (MemoryStream zipMemoryStream = new MemoryStream())
                         {
                             using (
@@ -17026,7 +17052,10 @@ namespace Corrade
                                 {
                                     lock (LockObject)
                                     {
-                                        ZipArchiveEntry textureEntry = zipOutputStreamClosure.CreateEntry(o.Key);
+                                        ZipArchiveEntry textureEntry =
+                                            zipOutputStreamClosure.CreateEntry(
+                                                new string(
+                                                    o.Key.Where(p => !invalidPathCharacters.Contains(p)).ToArray()));
                                         using (Stream textureEntryDataStream = textureEntry.Open())
                                         {
                                             using (
@@ -17042,7 +17071,11 @@ namespace Corrade
 
                                 // add the primitives XML data to the zip file
                                 ZipArchiveEntry primitiveEntry =
-                                    zipOutputStreamClosure.CreateEntry(primitive.Properties.Name + ".xml");
+                                    zipOutputStreamClosure.CreateEntry(
+                                        new string(
+                                            (primitive.Properties.Name + ".xml").Where(
+                                                p => !invalidPathCharacters.Contains(p))
+                                                .ToArray()));
                                 using (Stream primitiveEntryDataStream = primitiveEntry.Open())
                                 {
                                     using (
@@ -17059,8 +17092,29 @@ namespace Corrade
 
                             // Base64-encode the zip stream and send it.
                             zipMemoryStream.Seek(0, SeekOrigin.Begin);
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                Convert.ToBase64String(zipMemoryStream.ToArray()));
+
+                            // If no path was specificed, then send the data.
+                            string path =
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATH)),
+                                    message));
+                            if (string.IsNullOrEmpty(path))
+                            {
+                                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                    Convert.ToBase64String(zipMemoryStream.ToArray()));
+                                return;
+                            }
+                            if (
+                                !HasCorradePermission(group, (int) Permissions.PERMISSION_SYSTEM))
+                            {
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                            }
+                            // Otherwise, save it to the specified file.
+                            using (FileStream fs = File.Open(path, FileMode.Create))
+                            {
+                                zipMemoryStream.WriteTo(fs);
+                                zipMemoryStream.Flush();
+                            }
                         }
                     };
                     break;
@@ -17289,6 +17343,8 @@ namespace Corrade
                             }
                         });
 
+                        HashSet<char> invalidPathCharacters = new HashSet<char>(Path.GetInvalidPathChars());
+
                         using (MemoryStream zipMemoryStream = new MemoryStream())
                         {
                             using (
@@ -17301,7 +17357,11 @@ namespace Corrade
                                 {
                                     lock (LockObject)
                                     {
-                                        ZipArchiveEntry textureEntry = zipOutputStreamClosure.CreateEntry(o.Key);
+                                        ZipArchiveEntry textureEntry =
+                                            zipOutputStreamClosure.CreateEntry(
+                                                new string(
+                                                    o.Key.Where(
+                                                        p => !invalidPathCharacters.Contains(p)).ToArray()));
                                         using (Stream textureEntryDataStream = textureEntry.Open())
                                         {
                                             using (
@@ -17317,7 +17377,11 @@ namespace Corrade
 
                                 // add the primitives XML data to the zip file
                                 ZipArchiveEntry primitiveEntry =
-                                    zipOutputStreamClosure.CreateEntry(primitive.Properties.Name + ".dae");
+                                    zipOutputStreamClosure.CreateEntry(
+                                        new string(
+                                            (primitive.Properties.Name + ".dae").Where(
+                                                p => !invalidPathCharacters.Contains(p))
+                                                .ToArray()));
                                 using (Stream primitiveEntryDataStream = primitiveEntry.Open())
                                 {
                                     using (
@@ -17336,8 +17400,29 @@ namespace Corrade
 
                             // Base64-encode the zip stream and send it.
                             zipMemoryStream.Seek(0, SeekOrigin.Begin);
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                Convert.ToBase64String(zipMemoryStream.ToArray()));
+
+                            // If no path was specificed, then send the data.
+                            string path =
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATH)),
+                                    message));
+                            if (string.IsNullOrEmpty(path))
+                            {
+                                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                    Convert.ToBase64String(zipMemoryStream.ToArray()));
+                                return;
+                            }
+                            if (
+                                !HasCorradePermission(group, (int) Permissions.PERMISSION_SYSTEM))
+                            {
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                            }
+                            // Otherwise, save it to the specified file.
+                            using (FileStream fs = File.Open(path, FileMode.Create))
+                            {
+                                zipMemoryStream.WriteTo(fs);
+                                zipMemoryStream.Flush();
+                            }
                         }
                     };
                     break;
@@ -21843,7 +21928,7 @@ namespace Corrade
             [Description("description")] DESCRIPTION,
             [Description("getprimitivedata")] GETPRIMITIVEDATA,
             [Description("activate")] ACTIVATE,
-            [Description("move")] MOVE,
+            [Description("autopilot")] AUTOPILOT,
             [Description("mute")] MUTE,
             [Description("getmutes")] GETMUTES,
             [Description("notify")] NOTIFY,
