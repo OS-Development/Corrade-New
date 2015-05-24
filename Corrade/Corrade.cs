@@ -17015,7 +17015,7 @@ namespace Corrade
                                                     }
                                                     lock (LockObject)
                                                     {
-                                                        exportTextureSetFiles.Add(asset.AssetID + format.ToLower(),
+                                                        exportTextureSetFiles.Add(asset.AssetID + "." + format.ToLower(),
                                                             imageStream.ToArray());
                                                     }
                                                 }
@@ -17024,7 +17024,7 @@ namespace Corrade
                                                 format = "j2c";
                                                 lock (LockObject)
                                                 {
-                                                    exportTextureSetFiles.Add(asset.AssetID + ".j2c", asset.AssetData);
+                                                    exportTextureSetFiles.Add(asset.AssetID + "." + "j2c", asset.AssetData);
                                                 }
                                                 break;
                                         }
@@ -17283,7 +17283,7 @@ namespace Corrade
                                                     }
                                                     lock (LockObject)
                                                     {
-                                                        exportTextureSetFiles.Add(asset.AssetID + format.ToLower(),
+                                                        exportTextureSetFiles.Add(asset.AssetID + "." + format.ToLower(),
                                                             imageStream.ToArray());
                                                         exportMeshTextures.Add(asset.AssetID,
                                                             asset.AssetID.ToString());
@@ -17294,7 +17294,7 @@ namespace Corrade
                                                 format = "j2c";
                                                 lock (LockObject)
                                                 {
-                                                    exportTextureSetFiles.Add(asset.AssetID + ".j2c", asset.AssetData);
+                                                    exportTextureSetFiles.Add(asset.AssetID + "." + "j2c", asset.AssetData);
                                                     exportMeshTextures.Add(asset.AssetID,
                                                         asset.AssetID.ToString());
                                                 }
