@@ -26,6 +26,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
@@ -1595,7 +1596,7 @@ namespace Corrade
                 image.Attributes.Append(Doc.CreateAttribute("id")).InnerText = colladaName;
                 image.Attributes.Append(Doc.CreateAttribute("name")).InnerText = colladaName;
                 image.AppendChild(Doc.CreateElement("init_from")).InnerText =
-                    wasUriUnescapeDataString(name + "." + imageFormat.ToLower());
+                    wasURIUnescapeDataString(name + "." + imageFormat.ToLower());
             }
 
             Func<XmlNode, string, string, List<float>, bool> addSource = (mesh, src_id, param, vals) =>
@@ -3225,7 +3226,16 @@ namespace Corrade
                             httpRequest.RemoteEndPoint.ToString());
                         using (HttpListenerResponse response = httpContext.Response)
                         {
-                            response.ContentType = CORRADE_CONSTANTS.TEXT_HTML;
+                            // set the content type based on chosen output filers
+                            switch (Configuration.OUTPUT_FILTERS.Last())
+                            {
+                                case Filter.RFC1738:
+                                    response.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
+                                    break;
+                                default:
+                                    response.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.TEXT_PLAIN;
+                                    break;
+                            }
                             byte[] data = !result.Count.Equals(0)
                                 ? Encoding.UTF8.GetBytes(wasKeyValueEncode(wasKeyValueEscape(result)))
                                 : new byte[0];
@@ -5998,10 +6008,13 @@ namespace Corrade
             {
                 GroupWorkers[group] = ((uint) GroupWorkers[group]) - 1;
             }
+            // do not send a callback if the callback queue is saturated
+            if (CallbackQueue.Count >= Configuration.CALLBACK_QUEUE_LENGTH) return result;
             // send callback if registered
             string url =
                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.CALLBACK)), message));
-            if (string.IsNullOrEmpty(url) || CallbackQueue.Count >= Configuration.CALLBACK_QUEUE_LENGTH) return result;
+            // if no url was provided, do not send the callback
+            if (string.IsNullOrEmpty(url)) return result;
             lock (CallbackQueueLock)
             {
                 CallbackQueue.Enqueue(new CallbackQueueElement
@@ -17015,7 +17028,8 @@ namespace Corrade
                                                     }
                                                     lock (LockObject)
                                                     {
-                                                        exportTextureSetFiles.Add(asset.AssetID + "." + format.ToLower(),
+                                                        exportTextureSetFiles.Add(
+                                                            asset.AssetID + "." + format.ToLower(),
                                                             imageStream.ToArray());
                                                     }
                                                 }
@@ -17024,7 +17038,8 @@ namespace Corrade
                                                 format = "j2c";
                                                 lock (LockObject)
                                                 {
-                                                    exportTextureSetFiles.Add(asset.AssetID + "." + "j2c", asset.AssetData);
+                                                    exportTextureSetFiles.Add(asset.AssetID + "." + "j2c",
+                                                        asset.AssetData);
                                                 }
                                                 break;
                                         }
@@ -17283,7 +17298,8 @@ namespace Corrade
                                                     }
                                                     lock (LockObject)
                                                     {
-                                                        exportTextureSetFiles.Add(asset.AssetID + "." + format.ToLower(),
+                                                        exportTextureSetFiles.Add(
+                                                            asset.AssetID + "." + format.ToLower(),
                                                             imageStream.ToArray());
                                                         exportMeshTextures.Add(asset.AssetID,
                                                             asset.AssetID.ToString());
@@ -17294,7 +17310,8 @@ namespace Corrade
                                                 format = "j2c";
                                                 lock (LockObject)
                                                 {
-                                                    exportTextureSetFiles.Add(asset.AssetID + "." + "j2c", asset.AssetData);
+                                                    exportTextureSetFiles.Add(asset.AssetID + "." + "j2c",
+                                                        asset.AssetData);
                                                     exportMeshTextures.Add(asset.AssetID,
                                                         asset.AssetID.ToString());
                                                 }
@@ -18028,7 +18045,16 @@ namespace Corrade
             request.ProtocolVersion = HttpVersion.Version11;
             request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             request.Method = WebRequestMethods.Http.Post;
-            request.ContentType = "application/x-www-form-urlencoded";
+            // set the content type based on chosen output filers
+            switch (Configuration.OUTPUT_FILTERS.Last())
+            {
+                case Filter.RFC1738:
+                    request.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
+                    break;
+                default:
+                    request.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.TEXT_PLAIN;
+                    break;
+            }
             request.UserAgent = string.Format("{0}/{1} ({2})", CORRADE_CONSTANTS.CORRADE,
                 CORRADE_CONSTANTS.CORRADE_VERSION,
                 CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS_WEBSITE);
@@ -18087,20 +18113,12 @@ namespace Corrade
         /// <summary>URI unescapes an RFC3986 URI escaped string</summary>
         /// <param name="data">a string to unescape</param>
         /// <returns>the resulting string</returns>
-        private static string wasUriUnescapeDataString(string data)
+        private static string wasURIUnescapeDataString(string data)
         {
-            return
-                Regex.Matches(data, @"%([0-9A-Fa-f]+?){2}")
-                    .Cast<Match>()
-                    .Select(m => m.Value)
-                    .Distinct()
-                    .Aggregate(data,
-                        (current, match) =>
-                            current.Replace(match,
-                                ((char)
-                                    int.Parse(match.Substring(1), NumberStyles.AllowHexSpecifier,
-                                        CultureInfo.InvariantCulture)).ToString(
-                                            CultureInfo.InvariantCulture)));
+            // Uri.UnescapeDataString can only handle 32766 characters at a time
+            return string.Join("", Enumerable.Range(0, (data.Length + 32765)/32766)
+                .Select(o => Uri.UnescapeDataString(data.Substring(o*32766, Math.Min(32766, data.Length - (o*32766)))))
+                .ToArray());
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -18109,19 +18127,34 @@ namespace Corrade
         /// <summary>RFC3986 URI Escapes a string</summary>
         /// <param name="data">a string to escape</param>
         /// <returns>an RFC3986 escaped string</returns>
-        private static string wasUriEscapeDataString(string data)
+        private static string wasURIEscapeDataString(string data)
         {
-            StringBuilder result = new StringBuilder();
-            foreach (char c in data.Select(o => o))
-            {
-                if (char.IsLetter(c) || char.IsDigit(c))
-                {
-                    result.Append(c);
-                    continue;
-                }
-                result.AppendFormat("%{0:X2}", (int) c);
-            }
-            return result.ToString();
+            // Uri.EscapeDataString can only handle 32766 characters at a time
+            return string.Join("", Enumerable.Range(0, (data.Length + 32765)/32766)
+                .Select(o => Uri.EscapeDataString(data.Substring(o*32766, Math.Min(32766, data.Length - (o*32766)))))
+                .ToArray());
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2015 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>RFC1738 URL Escapes a string</summary>
+        /// <param name="data">a string to escape</param>
+        /// <returns>an RFC1738 escaped string</returns>
+        private static string wasURLEscapeDataString(string data)
+        {
+            return HttpUtility.UrlEncode(data);
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //  Copyright (C) Wizardry and Steamworks 2015 - License: GNU GPLv3      //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>RFC1738 URL Unescape a string</summary>
+        /// <param name="data">a string to unescape</param>
+        /// <returns>an RFC1738 unescaped string</returns>
+        private static string wasURLUnescapeDataString(string data)
+        {
+            return HttpUtility.UrlDecode(data);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -18371,7 +18404,6 @@ namespace Corrade
             public const string DEFAULT_SERVICE_NAME = @"Corrade";
             public const string LOG_FACILITY = @"Application";
             public const string WEB_REQUEST = @"Web Request";
-            public const string TEXT_HTML = @"text/html";
             public const string CONFIGURATION_FILE = @"Corrade.ini";
             public const string DATE_TIME_STAMP = @"dd-MM-yyyy HH:mm";
             public const string INVENTORY_CACHE_FILE = @"Inventory.cache";
@@ -18395,6 +18427,15 @@ namespace Corrade
 
             public static readonly Regex EjectedFromGroupRegEx =
                 new Regex(@"You have been ejected from '(.+?)' by .+?\.$", RegexOptions.Compiled);
+
+            /// <summary>
+            ///     Conten-types that Corrade can send and receive.
+            /// </summary>
+            public struct CONTENT_TYPE
+            {
+                public const string TEXT_PLAIN = @"text/plain";
+                public const string WWW_FORM_URLENCODED = @"application/x-www-form-urlencoded";
+            }
 
             public struct PERMISSIONS
             {
@@ -19579,8 +19620,8 @@ namespace Corrade
                 GROUP_CREATE_FEE = 100;
                 GROUPS = new HashSet<Group>();
                 MASTERS = new HashSet<Master>();
-                INPUT_FILTERS = new List<Filter> {Filter.RFC3986};
-                OUTPUT_FILTERS = new List<Filter> {Filter.RFC3986};
+                INPUT_FILTERS = new List<Filter> {Filter.RFC1738};
+                OUTPUT_FILTERS = new List<Filter> {Filter.RFC1738};
                 ENIGMA = new ENIGMA
                 {
                     rotors = new[] {'3', 'g', '1'},
@@ -21245,6 +21286,7 @@ namespace Corrade
         private enum Filter : uint
         {
             [Description("none")] NONE = 0,
+            [Description("rfc1738")] RFC1738,
             [Description("rfc3986")] RFC3986,
             [Description("enigma")] ENIGMA,
             [Description("vigenere")] VIGENERE,
@@ -22408,8 +22450,11 @@ namespace Corrade
             {
                 switch (filter)
                 {
+                    case Filter.RFC1738:
+                        o = wasURLUnescapeDataString(o);
+                        break;
                     case Filter.RFC3986:
-                        o = wasUriUnescapeDataString(o);
+                        o = wasURIUnescapeDataString(o);
                         break;
                     case Filter.ENIGMA:
                         o = wasEnigma(o, Configuration.ENIGMA.rotors.ToArray(), Configuration.ENIGMA.plugs.ToArray(),
@@ -22445,8 +22490,11 @@ namespace Corrade
             {
                 switch (filter)
                 {
+                    case Filter.RFC1738:
+                        o = wasURLEscapeDataString(o);
+                        break;
                     case Filter.RFC3986:
-                        o = wasUriEscapeDataString(o);
+                        o = wasURIEscapeDataString(o);
                         break;
                     case Filter.ENIGMA:
                         o = wasEnigma(o, Configuration.ENIGMA.rotors.ToArray(), Configuration.ENIGMA.plugs.ToArray(),
