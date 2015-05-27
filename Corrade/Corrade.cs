@@ -1504,26 +1504,41 @@ namespace Corrade
             }
             if (!primitive.Sculpt.Type.Equals(SculptType.Mesh))
             {
-                Image image = null;
-                ManualResetEvent ImageDownloadedEvent = new ManualResetEvent(false);
-                lock (ClientInstanceAssetsLock)
+                byte[] assetData = null;
+                switch (!Client.Assets.Cache.HasAsset(primitive.Sculpt.SculptTexture))
                 {
-                    Client.Assets.RequestImage(primitive.Sculpt.SculptTexture, (state, args) =>
-                    {
-                        ManagedImage managedImage;
-                        if (state.Equals(TextureRequestState.Finished) &&
-                            OpenJPEG.DecodeToImage(args.AssetData, out managedImage))
+                    case true:
+                        lock (ClientInstanceAssetsLock)
                         {
-                            if ((managedImage.Channels & ManagedImage.ImageChannels.Alpha) != 0)
+                            ManualResetEvent ImageDownloadedEvent = new ManualResetEvent(false);
+                            Client.Assets.RequestImage(primitive.Sculpt.SculptTexture, (state, args) =>
                             {
-                                managedImage.ConvertChannels(managedImage.Channels & ~ManagedImage.ImageChannels.Alpha);
-                            }
-                            image = LoadTGAClass.LoadTGA(new MemoryStream(managedImage.ExportTGA()));
+                                if (!state.Equals(TextureRequestState.Finished)) return;
+                                assetData = args.AssetData;
+                                ImageDownloadedEvent.Set();
+                            });
+                            if (!ImageDownloadedEvent.WaitOne(millisecondsTimeout, false))
+                                return false;
                         }
-                        ImageDownloadedEvent.Set();
-                    });
-                    if (!ImageDownloadedEvent.WaitOne(millisecondsTimeout, false))
+                        Client.Assets.Cache.SaveAssetToCache(primitive.Sculpt.SculptTexture, assetData);
+                        break;
+                    default:
+                        assetData = Client.Assets.Cache.GetCachedAssetBytes(primitive.Sculpt.SculptTexture);
+                        break;
+                }
+                Image image;
+                ManagedImage managedImage;
+                switch (!OpenJPEG.DecodeToImage(assetData, out managedImage))
+                {
+                    case true:
                         return false;
+                    default:
+                        if ((managedImage.Channels & ManagedImage.ImageChannels.Alpha) != 0)
+                        {
+                            managedImage.ConvertChannels(managedImage.Channels & ~ManagedImage.ImageChannels.Alpha);
+                        }
+                        image = LoadTGAClass.LoadTGA(new MemoryStream(managedImage.ExportTGA()));
+                        break;
                 }
                 facetedMesh = mesher.GenerateFacetedSculptMesh(primitive, (Bitmap) image, DetailLevel.Highest);
                 return true;
@@ -1541,6 +1556,7 @@ namespace Corrade
                 if (!MeshDownloadedEvent.WaitOne(millisecondsTimeout, false))
                     return false;
             }
+
             if (localFacetedMesh == null)
                 return false;
 
@@ -1555,7 +1571,10 @@ namespace Corrade
         /// <param name="textures">a dictionary of UUID to texture names</param>
         /// <param name="imageFormat">the image export format</param>
         /// <returns>the DAE document</returns>
-        /// <remarks>This function is taken from the Radegast Viewer with some changes by Wizardry and Steamworks.</remarks>
+        /// <remarks>
+        ///     This function is a branch-in of several functions of the Radegast Viewer with some changes by Wizardry and
+        ///     Steamworks.
+        /// </remarks>
         private static XmlDocument GenerateCollada(IEnumerable<FacetedMesh> facetedMeshSet,
             Dictionary<UUID, string> textures, string imageFormat)
         {
@@ -1639,26 +1658,16 @@ namespace Corrade
 
             Func<Primitive.TextureEntryFace, MaterialInfo> getMaterial = o =>
             {
-                MaterialInfo ret = null;
-                foreach (var mat in AllMeterials)
-                {
-                    if (mat.Matches(o))
-                    {
-                        ret = mat;
-                        break;
-                    }
-                }
+                MaterialInfo ret = AllMeterials.FirstOrDefault(mat => mat.Matches(o));
 
-                if (ret == null)
+                if (ret != null) return ret;
+                ret = new MaterialInfo
                 {
-                    ret = new MaterialInfo
-                    {
-                        TextureID = o.TextureID,
-                        Color = o.RGBA
-                    };
-                    ret.Name = string.Format("Material{0}", AllMeterials.Count);
-                    AllMeterials.Add(ret);
-                }
+                    TextureID = o.TextureID,
+                    Color = o.RGBA,
+                    Name = string.Format("Material{0}", AllMeterials.Count)
+                };
+                AllMeterials.Add(ret);
 
                 return ret;
             };
@@ -10486,167 +10495,181 @@ namespace Corrade
                             }
                             itemUUID = inventoryItem.AssetUUID;
                         }
-                        FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
-                                                                               BindingFlags.Static)
-                            .AsParallel().FirstOrDefault(
-                                o =>
-                                    o.Name.Equals(
-                                        wasInput(
-                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                                                message)),
-                                        StringComparison.Ordinal));
-                        if (assetTypeInfo == null)
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ASSET_TYPE));
-                        }
-                        AssetType assetType = (AssetType) assetTypeInfo.GetValue(null);
-                        ManualResetEvent RequestAssetEvent = new ManualResetEvent(false);
-                        bool succeeded = false;
                         byte[] assetData = null;
-                        switch (assetType)
+                        switch (!Client.Assets.Cache.HasAsset(itemUUID))
                         {
-                            case AssetType.Mesh:
-                                Client.Assets.RequestMesh(itemUUID, delegate(bool completed, AssetMesh asset)
+                            case true:
+                                FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
+                                                                                       BindingFlags.Static)
+                                    .AsParallel().FirstOrDefault(
+                                        o =>
+                                            o.Name.Equals(
+                                                wasInput(
+                                                    wasKeyValueGet(
+                                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                                        message)),
+                                                StringComparison.Ordinal));
+                                if (assetTypeInfo == null)
                                 {
-                                    if (!asset.AssetID.Equals(itemUUID)) return;
-                                    succeeded = completed;
-                                    if (succeeded)
-                                    {
-                                        assetData = asset.MeshData.AsBinary();
-                                    }
-                                    RequestAssetEvent.Set();
-                                });
-                                if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                                {
-                                    throw new Exception(
-                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ASSET_TYPE));
                                 }
-                                break;
-                            // All of these can only be fetched if they exist locally.
-                            case AssetType.LSLText:
-                            case AssetType.Notecard:
-                                if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                                AssetType assetType = (AssetType) assetTypeInfo.GetValue(null);
+                                ManualResetEvent RequestAssetEvent = new ManualResetEvent(false);
+                                bool succeeded = false;
+                                switch (assetType)
                                 {
-                                    throw new Exception(
-                                        wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
-                                }
-                                Client.Assets.RequestInventoryAsset(inventoryItem, true,
-                                    delegate(AssetDownload transfer, Asset asset)
-                                    {
-                                        succeeded = transfer.Success;
-                                        if (transfer.Success)
+                                    case AssetType.Mesh:
+                                        Client.Assets.RequestMesh(itemUUID, delegate(bool completed, AssetMesh asset)
                                         {
-                                            assetData = asset.AssetData;
-                                        }
-                                        RequestAssetEvent.Set();
-                                    });
-                                if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                                {
-                                    throw new Exception(
-                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
-                                }
-                                break;
-                            // All images go through RequestImage and can be fetched directly from the asset server.
-                            case AssetType.Texture:
-                                Client.Assets.RequestImage(itemUUID, ImageType.Normal,
-                                    delegate(TextureRequestState state, AssetTexture asset)
-                                    {
-                                        if (!asset.AssetID.Equals(itemUUID)) return;
-                                        if (!state.Equals(TextureRequestState.Finished)) return;
-                                        assetData = asset.AssetData;
-                                        succeeded = true;
-                                        RequestAssetEvent.Set();
-                                    });
-                                if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                                {
-                                    throw new Exception(
-                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
-                                }
-                                // Convert to desired format if specified.
-                                string format =
-                                    wasInput(wasKeyValueGet(
-                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FORMAT)),
-                                        message));
-                                if (!string.IsNullOrEmpty(format))
-                                {
-                                    PropertyInfo formatProperty = typeof (ImageFormat).GetProperties(
-                                        BindingFlags.Public |
-                                        BindingFlags.Static)
-                                        .AsParallel().FirstOrDefault(
-                                            o =>
-                                                string.Equals(o.Name, format, StringComparison.Ordinal));
-                                    if (formatProperty == null)
-                                    {
-                                        throw new Exception(
-                                            wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED));
-                                    }
-                                    ManagedImage managedImage;
-                                    if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
-                                    {
-                                        throw new Exception(
-                                            wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_DECODE_ASSET_DATA));
-                                    }
-                                    using (MemoryStream imageStream = new MemoryStream())
-                                    {
-                                        try
-                                        {
-                                            using (Bitmap bitmapImage = managedImage.ExportBitmap())
+                                            if (!asset.AssetID.Equals(itemUUID)) return;
+                                            succeeded = completed;
+                                            if (succeeded)
                                             {
-                                                EncoderParameters encoderParameters = new EncoderParameters(1);
-                                                encoderParameters.Param[0] =
-                                                    new EncoderParameter(Encoder.Quality, 100L);
-                                                bitmapImage.Save(imageStream,
-                                                    ImageCodecInfo.GetImageDecoders()
-                                                        .AsParallel()
-                                                        .FirstOrDefault(
-                                                            o =>
-                                                                o.FormatID.Equals(
-                                                                    ((ImageFormat)
-                                                                        formatProperty.GetValue(
-                                                                            new ImageFormat(Guid.Empty))).Guid)),
-                                                    encoderParameters);
+                                                assetData = asset.MeshData.AsBinary();
                                             }
-                                        }
-                                        catch (Exception)
+                                            RequestAssetEvent.Set();
+                                        });
+                                        if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                         {
                                             throw new Exception(
-                                                wasGetDescriptionFromEnumValue(
-                                                    ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT));
+                                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
                                         }
-                                        assetData = imageStream.ToArray();
-                                    }
-                                }
-                                break;
-                            // All of these can be fetched directly from the asset server.
-                            case AssetType.Landmark:
-                            case AssetType.Gesture:
-                            case AssetType.Animation: // Animatn
-                            case AssetType.Sound: // Ogg Vorbis
-                            case AssetType.Clothing:
-                            case AssetType.Bodypart:
-                                Client.Assets.RequestAsset(itemUUID, assetType, true,
-                                    delegate(AssetDownload transfer, Asset asset)
-                                    {
-                                        if (!transfer.AssetID.Equals(itemUUID)) return;
-                                        succeeded = transfer.Success;
-                                        if (transfer.Success)
+                                        break;
+                                    // All of these can only be fetched if they exist locally.
+                                    case AssetType.LSLText:
+                                    case AssetType.Notecard:
+                                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
                                         {
-                                            assetData = asset.AssetData;
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                                         }
-                                        RequestAssetEvent.Set();
-                                    });
-                                if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                        Client.Assets.RequestInventoryAsset(inventoryItem, true,
+                                            delegate(AssetDownload transfer, Asset asset)
+                                            {
+                                                succeeded = transfer.Success;
+                                                if (transfer.Success)
+                                                {
+                                                    assetData = asset.AssetData;
+                                                }
+                                                RequestAssetEvent.Set();
+                                            });
+                                        if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
+                                        }
+                                        break;
+                                    // All images go through RequestImage and can be fetched directly from the asset server.
+                                    case AssetType.Texture:
+                                        Client.Assets.RequestImage(itemUUID, ImageType.Normal,
+                                            delegate(TextureRequestState state, AssetTexture asset)
+                                            {
+                                                if (!asset.AssetID.Equals(itemUUID)) return;
+                                                if (!state.Equals(TextureRequestState.Finished)) return;
+                                                assetData = asset.AssetData;
+                                                succeeded = true;
+                                                RequestAssetEvent.Set();
+                                            });
+                                        if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
+                                        }
+                                        // Convert to desired format if specified.
+                                        string format =
+                                            wasInput(wasKeyValueGet(
+                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FORMAT)),
+                                                message));
+                                        if (!string.IsNullOrEmpty(format))
+                                        {
+                                            PropertyInfo formatProperty = typeof (ImageFormat).GetProperties(
+                                                BindingFlags.Public |
+                                                BindingFlags.Static)
+                                                .AsParallel().FirstOrDefault(
+                                                    o =>
+                                                        string.Equals(o.Name, format, StringComparison.Ordinal));
+                                            if (formatProperty == null)
+                                            {
+                                                throw new Exception(
+                                                    wasGetDescriptionFromEnumValue(
+                                                        ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED));
+                                            }
+                                            ManagedImage managedImage;
+                                            if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
+                                            {
+                                                throw new Exception(
+                                                    wasGetDescriptionFromEnumValue(
+                                                        ScriptError.UNABLE_TO_DECODE_ASSET_DATA));
+                                            }
+                                            using (MemoryStream imageStream = new MemoryStream())
+                                            {
+                                                try
+                                                {
+                                                    using (Bitmap bitmapImage = managedImage.ExportBitmap())
+                                                    {
+                                                        EncoderParameters encoderParameters = new EncoderParameters(1);
+                                                        encoderParameters.Param[0] =
+                                                            new EncoderParameter(Encoder.Quality, 100L);
+                                                        bitmapImage.Save(imageStream,
+                                                            ImageCodecInfo.GetImageDecoders()
+                                                                .AsParallel()
+                                                                .FirstOrDefault(
+                                                                    o =>
+                                                                        o.FormatID.Equals(
+                                                                            ((ImageFormat)
+                                                                                formatProperty.GetValue(
+                                                                                    new ImageFormat(Guid.Empty))).Guid)),
+                                                            encoderParameters);
+                                                    }
+                                                }
+                                                catch (Exception)
+                                                {
+                                                    throw new Exception(
+                                                        wasGetDescriptionFromEnumValue(
+                                                            ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT));
+                                                }
+                                                assetData = imageStream.ToArray();
+                                            }
+                                        }
+                                        break;
+                                    // All of these can be fetched directly from the asset server.
+                                    case AssetType.Landmark:
+                                    case AssetType.Gesture:
+                                    case AssetType.Animation: // Animatn
+                                    case AssetType.Sound: // Ogg Vorbis
+                                    case AssetType.Clothing:
+                                    case AssetType.Bodypart:
+                                        Client.Assets.RequestAsset(itemUUID, assetType, true,
+                                            delegate(AssetDownload transfer, Asset asset)
+                                            {
+                                                if (!transfer.AssetID.Equals(itemUUID)) return;
+                                                succeeded = transfer.Success;
+                                                if (transfer.Success)
+                                                {
+                                                    assetData = asset.AssetData;
+                                                }
+                                                RequestAssetEvent.Set();
+                                            });
+                                        if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
+                                        }
+                                        break;
+                                    default:
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ASSET_TYPE));
+                                }
+                                if (!succeeded)
                                 {
                                     throw new Exception(
-                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
+                                        wasGetDescriptionFromEnumValue(ScriptError.FAILED_TO_DOWNLOAD_ASSET));
                                 }
+                                Client.Assets.Cache.SaveAssetToCache(itemUUID, assetData);
                                 break;
                             default:
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ASSET_TYPE));
-                        }
-                        if (!succeeded)
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FAILED_TO_DOWNLOAD_ASSET));
+                                assetData = Client.Assets.Cache.GetCachedAssetBytes(itemUUID);
+                                break;
                         }
                         // If no path was specificed, then send the data.
                         string path =
@@ -16979,77 +17002,88 @@ namespace Corrade
                         Dictionary<string, byte[]> exportTextureSetFiles = new Dictionary<string, byte[]>();
                         Parallel.ForEach(exportTexturesSet, o =>
                         {
-                            ManualResetEvent RequestAssetEvent = new ManualResetEvent(false);
-                            lock (ClientInstanceAssetsLock)
+                            byte[] assetData = null;
+                            switch (!Client.Assets.Cache.HasAsset(o))
                             {
-                                Client.Assets.RequestImage(o, ImageType.Normal,
-                                    delegate(TextureRequestState state, AssetTexture asset)
+                                case true:
+                                    lock (ClientInstanceAssetsLock)
                                     {
-                                        if (!asset.AssetID.Equals(o)) return;
-                                        if (!state.Equals(TextureRequestState.Finished)) return;
-                                        switch (formatProperty != null)
+                                        ManualResetEvent RequestAssetEvent = new ManualResetEvent(false);
+                                        Client.Assets.RequestImage(o, ImageType.Normal,
+                                            delegate(TextureRequestState state, AssetTexture asset)
+                                            {
+                                                if (!asset.AssetID.Equals(o)) return;
+                                                if (!state.Equals(TextureRequestState.Finished)) return;
+                                                assetData = asset.AssetData;
+                                                RequestAssetEvent.Set();
+                                            });
+                                        if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                         {
-                                            case true:
-                                                ManagedImage managedImage;
-                                                if (!OpenJPEG.DecodeToImage(asset.AssetData, out managedImage))
-                                                {
-                                                    throw new Exception(
-                                                        wasGetDescriptionFromEnumValue(
-                                                            ScriptError.UNABLE_TO_DECODE_ASSET_DATA));
-                                                }
-                                                using (MemoryStream imageStream = new MemoryStream())
-                                                {
-                                                    try
-                                                    {
-                                                        using (Bitmap bitmapImage = managedImage.ExportBitmap())
-                                                        {
-                                                            EncoderParameters encoderParameters =
-                                                                new EncoderParameters(1);
-                                                            encoderParameters.Param[0] =
-                                                                new EncoderParameter(Encoder.Quality, 100L);
-                                                            bitmapImage.Save(imageStream,
-                                                                ImageCodecInfo.GetImageDecoders()
-                                                                    .AsParallel()
-                                                                    .FirstOrDefault(
-                                                                        p =>
-                                                                            p.FormatID.Equals(
-                                                                                ((ImageFormat)
-                                                                                    formatProperty.GetValue(
-                                                                                        new ImageFormat(Guid.Empty)))
-                                                                                    .Guid)),
-                                                                encoderParameters);
-                                                        }
-                                                    }
-                                                    catch (Exception)
-                                                    {
-                                                        throw new Exception(
-                                                            wasGetDescriptionFromEnumValue(
-                                                                ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT));
-                                                    }
-                                                    lock (LockObject)
-                                                    {
-                                                        exportTextureSetFiles.Add(
-                                                            asset.AssetID + "." + format.ToLower(),
-                                                            imageStream.ToArray());
-                                                    }
-                                                }
-                                                break;
-                                            default:
-                                                format = "j2c";
-                                                lock (LockObject)
-                                                {
-                                                    exportTextureSetFiles.Add(asset.AssetID + "." + "j2c",
-                                                        asset.AssetData);
-                                                }
-                                                break;
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
                                         }
-                                        RequestAssetEvent.Set();
-                                    });
-                                if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                                {
-                                    throw new Exception(
-                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
-                                }
+                                    }
+                                    Client.Assets.Cache.SaveAssetToCache(o, assetData);
+                                    break;
+                                default:
+                                    assetData = Client.Assets.Cache.GetCachedAssetBytes(o);
+                                    break;
+                            }
+                            switch (formatProperty != null)
+                            {
+                                case true:
+                                    ManagedImage managedImage;
+                                    if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
+                                    {
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(
+                                                ScriptError.UNABLE_TO_DECODE_ASSET_DATA));
+                                    }
+                                    using (MemoryStream imageStream = new MemoryStream())
+                                    {
+                                        try
+                                        {
+                                            using (Bitmap bitmapImage = managedImage.ExportBitmap())
+                                            {
+                                                EncoderParameters encoderParameters =
+                                                    new EncoderParameters(1);
+                                                encoderParameters.Param[0] =
+                                                    new EncoderParameter(Encoder.Quality, 100L);
+                                                bitmapImage.Save(imageStream,
+                                                    ImageCodecInfo.GetImageDecoders()
+                                                        .AsParallel()
+                                                        .FirstOrDefault(
+                                                            p =>
+                                                                p.FormatID.Equals(
+                                                                    ((ImageFormat)
+                                                                        formatProperty.GetValue(
+                                                                            new ImageFormat(Guid.Empty)))
+                                                                        .Guid)),
+                                                    encoderParameters);
+                                            }
+                                        }
+                                        catch (Exception)
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(
+                                                    ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT));
+                                        }
+                                        lock (LockObject)
+                                        {
+                                            exportTextureSetFiles.Add(
+                                                o + "." + format.ToLower(),
+                                                imageStream.ToArray());
+                                        }
+                                    }
+                                    break;
+                                default:
+                                    format = "j2c";
+                                    lock (LockObject)
+                                    {
+                                        exportTextureSetFiles.Add(o + "." + "j2c",
+                                            assetData);
+                                    }
+                                    break;
                             }
                         });
 
@@ -17249,81 +17283,92 @@ namespace Corrade
                         Dictionary<UUID, string> exportMeshTextures = new Dictionary<UUID, string>();
                         Parallel.ForEach(exportTexturesSet, o =>
                         {
-                            ManualResetEvent RequestAssetEvent = new ManualResetEvent(false);
-                            lock (ClientInstanceAssetsLock)
+                            byte[] assetData = null;
+                            switch (!Client.Assets.Cache.HasAsset(o))
                             {
-                                Client.Assets.RequestImage(o, ImageType.Normal,
-                                    delegate(TextureRequestState state, AssetTexture asset)
+                                case true:
+                                    lock (ClientInstanceAssetsLock)
                                     {
-                                        if (!asset.AssetID.Equals(o)) return;
-                                        if (!state.Equals(TextureRequestState.Finished)) return;
-                                        switch (formatProperty != null)
+                                        ManualResetEvent RequestAssetEvent = new ManualResetEvent(false);
+                                        Client.Assets.RequestImage(o, ImageType.Normal,
+                                            delegate(TextureRequestState state, AssetTexture asset)
+                                            {
+                                                if (!asset.AssetID.Equals(o)) return;
+                                                if (!state.Equals(TextureRequestState.Finished)) return;
+                                                assetData = asset.AssetData;
+                                                RequestAssetEvent.Set();
+                                            });
+                                        if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                         {
-                                            case true:
-                                                ManagedImage managedImage;
-                                                if (!OpenJPEG.DecodeToImage(asset.AssetData, out managedImage))
-                                                {
-                                                    throw new Exception(
-                                                        wasGetDescriptionFromEnumValue(
-                                                            ScriptError.UNABLE_TO_DECODE_ASSET_DATA));
-                                                }
-                                                using (MemoryStream imageStream = new MemoryStream())
-                                                {
-                                                    try
-                                                    {
-                                                        using (Bitmap bitmapImage = managedImage.ExportBitmap())
-                                                        {
-                                                            EncoderParameters encoderParameters =
-                                                                new EncoderParameters(1);
-                                                            encoderParameters.Param[0] =
-                                                                new EncoderParameter(Encoder.Quality, 100L);
-                                                            bitmapImage.Save(imageStream,
-                                                                ImageCodecInfo.GetImageDecoders()
-                                                                    .AsParallel()
-                                                                    .FirstOrDefault(
-                                                                        p =>
-                                                                            p.FormatID.Equals(
-                                                                                ((ImageFormat)
-                                                                                    formatProperty.GetValue(
-                                                                                        new ImageFormat(Guid.Empty)))
-                                                                                    .Guid)),
-                                                                encoderParameters);
-                                                        }
-                                                    }
-                                                    catch (Exception)
-                                                    {
-                                                        throw new Exception(
-                                                            wasGetDescriptionFromEnumValue(
-                                                                ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT));
-                                                    }
-                                                    lock (LockObject)
-                                                    {
-                                                        exportTextureSetFiles.Add(
-                                                            asset.AssetID + "." + format.ToLower(),
-                                                            imageStream.ToArray());
-                                                        exportMeshTextures.Add(asset.AssetID,
-                                                            asset.AssetID.ToString());
-                                                    }
-                                                }
-                                                break;
-                                            default:
-                                                format = "j2c";
-                                                lock (LockObject)
-                                                {
-                                                    exportTextureSetFiles.Add(asset.AssetID + "." + "j2c",
-                                                        asset.AssetData);
-                                                    exportMeshTextures.Add(asset.AssetID,
-                                                        asset.AssetID.ToString());
-                                                }
-                                                break;
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
                                         }
-                                        RequestAssetEvent.Set();
-                                    });
-                                if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
-                                {
-                                    throw new Exception(
-                                        wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
-                                }
+                                    }
+                                    Client.Assets.Cache.SaveAssetToCache(o, assetData);
+                                    break;
+                                default:
+                                    assetData = Client.Assets.Cache.GetCachedAssetBytes(o);
+                                    break;
+                            }
+                            switch (formatProperty != null)
+                            {
+                                case true:
+                                    ManagedImage managedImage;
+                                    if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
+                                    {
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(
+                                                ScriptError.UNABLE_TO_DECODE_ASSET_DATA));
+                                    }
+                                    using (MemoryStream imageStream = new MemoryStream())
+                                    {
+                                        try
+                                        {
+                                            using (Bitmap bitmapImage = managedImage.ExportBitmap())
+                                            {
+                                                EncoderParameters encoderParameters =
+                                                    new EncoderParameters(1);
+                                                encoderParameters.Param[0] =
+                                                    new EncoderParameter(Encoder.Quality, 100L);
+                                                bitmapImage.Save(imageStream,
+                                                    ImageCodecInfo.GetImageDecoders()
+                                                        .AsParallel()
+                                                        .FirstOrDefault(
+                                                            p =>
+                                                                p.FormatID.Equals(
+                                                                    ((ImageFormat)
+                                                                        formatProperty.GetValue(
+                                                                            new ImageFormat(Guid.Empty)))
+                                                                        .Guid)),
+                                                    encoderParameters);
+                                            }
+                                        }
+                                        catch (Exception)
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(
+                                                    ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT));
+                                        }
+                                        lock (LockObject)
+                                        {
+                                            exportTextureSetFiles.Add(
+                                                o + "." + format.ToLower(),
+                                                imageStream.ToArray());
+                                            exportMeshTextures.Add(o,
+                                                o.ToString());
+                                        }
+                                    }
+                                    break;
+                                default:
+                                    format = "j2c";
+                                    lock (LockObject)
+                                    {
+                                        exportTextureSetFiles.Add(o + "." + "j2c",
+                                            assetData);
+                                        exportMeshTextures.Add(o,
+                                            o.ToString());
+                                    }
+                                    break;
                             }
                         });
 
@@ -17458,16 +17503,16 @@ namespace Corrade
                         }
                         wasAdaptiveAlarm DirectorySearchResultsAlarm =
                             new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
-                        object LockObject = new object();
-                        List<string> csv = new List<string>();
-                        int handledEvents = 0;
-                        int counter = 1;
                         string name =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                 message));
                         string fields =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message));
+                        object LockObject = new object();
+                        List<string> csv = new List<string>();
+                        int handledEvents = 0;
+                        int counter = 1;
                         switch (
                             wasGetEnumValueFromDescription<Type>(
                                 wasInput(wasKeyValueGet(
@@ -17503,7 +17548,10 @@ namespace Corrade
                                             : 0;
                                         lock (LockObject)
                                         {
-                                            classifieds.Add(o, score);
+                                            if (!classifieds.ContainsKey(o))
+                                            {
+                                                classifieds.Add(o, score);
+                                            }
                                         }
                                     });
                                 lock (ClientInstanceDirectoryLock)
@@ -17561,16 +17609,19 @@ namespace Corrade
                                                 : 0;
                                             lock (LockObject)
                                             {
-                                                events.Add(o, score);
+                                                if (!events.ContainsKey(o))
+                                                {
+                                                    events.Add(o, score);
+                                                }
                                             }
                                         });
-                                        if (((handledEvents - counter)%
+                                        if (handledEvents > LINDEN_CONSTANTS.DIRECTORY.EVENT.SEARCH_RESULTS_COUNT &&
+                                            ((handledEvents - counter)%
                                              LINDEN_CONSTANTS.DIRECTORY.EVENT.SEARCH_RESULTS_COUNT).Equals(0))
                                         {
                                             ++counter;
                                             Client.Directory.StartEventsSearch(name, (uint) handledEvents);
                                         }
-                                        DirectorySearchResultsAlarm.Signal.Set();
                                     };
                                 lock (ClientInstanceDirectoryLock)
                                 {
@@ -17632,16 +17683,19 @@ namespace Corrade
                                                 : 0;
                                             lock (LockObject)
                                             {
-                                                groups.Add(o, score);
+                                                if (!groups.ContainsKey(o))
+                                                {
+                                                    groups.Add(o, score);
+                                                }
                                             }
                                         });
-                                        if (((handledEvents - counter)%
+                                        if (handledEvents > LINDEN_CONSTANTS.DIRECTORY.GROUP.SEARCH_RESULTS_COUNT &&
+                                            ((handledEvents - counter)%
                                              LINDEN_CONSTANTS.DIRECTORY.GROUP.SEARCH_RESULTS_COUNT).Equals(0))
                                         {
                                             ++counter;
                                             Client.Directory.StartGroupSearch(name, handledEvents);
                                         }
-                                        DirectorySearchResultsAlarm.Signal.Set();
                                     };
                                 lock (ClientInstanceDirectoryLock)
                                 {
@@ -17697,10 +17751,14 @@ namespace Corrade
                                                 : 0;
                                             lock (LockObject)
                                             {
-                                                lands.Add(o, score);
+                                                if (!lands.ContainsKey(o))
+                                                {
+                                                    lands.Add(o, score);
+                                                }
                                             }
                                         });
-                                        if (((handledEvents - counter)%
+                                        if (handledEvents > LINDEN_CONSTANTS.DIRECTORY.LAND.SEARCH_RESULTS_COUNT &&
+                                            ((handledEvents - counter)%
                                              LINDEN_CONSTANTS.DIRECTORY.LAND.SEARCH_RESULTS_COUNT).Equals(0))
                                         {
                                             ++counter;
@@ -17708,7 +17766,6 @@ namespace Corrade
                                                 DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue,
                                                 handledEvents);
                                         }
-                                        DirectorySearchResultsAlarm.Signal.Set();
                                     };
                                 lock (ClientInstanceDirectoryLock)
                                 {
@@ -17765,16 +17822,19 @@ namespace Corrade
                                                 : 0;
                                             lock (LockObject)
                                             {
-                                                agents.Add(o, score);
+                                                if (!agents.ContainsKey(o))
+                                                {
+                                                    agents.Add(o, score);
+                                                }
                                             }
                                         });
-                                        if (((handledEvents - counter)%
+                                        if (handledEvents > LINDEN_CONSTANTS.DIRECTORY.PEOPLE.SEARCH_RESULTS_COUNT &&
+                                            ((handledEvents - counter)%
                                              LINDEN_CONSTANTS.DIRECTORY.PEOPLE.SEARCH_RESULTS_COUNT).Equals(0))
                                         {
                                             ++counter;
                                             Client.Directory.StartPeopleSearch(name, handledEvents);
                                         }
-                                        DirectorySearchResultsAlarm.Signal.Set();
                                     };
                                 lock (ClientInstanceDirectoryLock)
                                 {
@@ -17832,7 +17892,10 @@ namespace Corrade
                                             : 0;
                                         lock (LockObject)
                                         {
-                                            places.Add(o, score);
+                                            if (!places.ContainsKey(o))
+                                            {
+                                                places.Add(o, score);
+                                            }
                                         }
                                     });
                                 lock (ClientInstanceDirectoryLock)
@@ -21596,7 +21659,7 @@ namespace Corrade
             [Description("invalid url provided")] INVALID_URL_PROVIDED,
             [Description("invalid notification types")] INVALID_NOTIFICATION_TYPES,
             [Description("notification not allowed")] NOTIFICATION_NOT_ALLOWED,
-            [Description("unknwon directory search type")] UNKNOWN_DIRECTORY_SEARCH_TYPE,
+            [Description("unknown directory search type")] UNKNOWN_DIRECTORY_SEARCH_TYPE,
             [Description("no search text provided")] NO_SEARCH_TEXT_PROVIDED,
             [Description("unknwon restart action")] UNKNOWN_RESTART_ACTION,
             [Description("unknown move action")] UNKNOWN_MOVE_ACTION,
@@ -22138,7 +22201,8 @@ namespace Corrade
                 [Description("none")] NONE = 0,
                 [Description("arithmetic")] ARITHMETIC = 1,
                 [Description("geometric")] GEOMETRIC = 2,
-                [Description("harmonic")] HARMONIC = 4
+                [Description("harmonic")] HARMONIC = 4,
+                [Description("weighted")] WEIGHTED = 5
             }
 
             private readonly DECAY_TYPE decay = DECAY_TYPE.NONE;
@@ -22208,6 +22272,11 @@ namespace Corrade
                             case DECAY_TYPE.HARMONIC:
                                 alarm.Interval = (1f + times.Count)/
                                                  (1f/deadline + times.Aggregate((a, b) => 1f/b + 1f/a));
+                                break;
+                            case DECAY_TYPE.WEIGHTED:
+                                HashSet<double> d = new HashSet<double>(times) {deadline};
+                                double total = d.Aggregate((a, b) => b + a);
+                                alarm.Interval = d.Aggregate((a, b) => Math.Pow(a, 2)/total + Math.Pow(b, 2)/total);
                                 break;
                             default:
                                 alarm.Interval = deadline;
