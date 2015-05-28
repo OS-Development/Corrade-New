@@ -18,6 +18,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Management;
 using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -90,10 +91,19 @@ namespace Corrade
         public Corrade()
         {
             if (Environment.UserInteractive) return;
-            CorradeServiceName = !string.IsNullOrEmpty(ServiceName)
-                ? ServiceName
-                : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME;
-            CorradeLog.Source = CorradeServiceName;
+            try
+            {
+                InstalledServiceName = (string)
+                    new ManagementObjectSearcher("SELECT * FROM Win32_Service where ProcessId = " +
+                                                 Process.GetCurrentProcess().Id).Get()
+                        .Cast<ManagementBaseObject>()
+                        .First()["Name"];
+            }
+            catch (Exception)
+            {
+                InstalledServiceName = CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME;
+            }
+            CorradeLog.Source = InstalledServiceName;
             CorradeLog.Log = CORRADE_CONSTANTS.LOG_FACILITY;
             ((ISupportInitialize) (CorradeLog)).BeginInit();
             if (!EventLog.SourceExists(CorradeLog.Source))
@@ -2569,7 +2579,7 @@ namespace Corrade
                             case "/NAME":
                                 if (args.Length > i + 1)
                                 {
-                                    CorradeServiceName = args[++i];
+                                    InstalledServiceName = args[++i];
                                 }
                                 break;
                         }
@@ -5934,7 +5944,7 @@ namespace Corrade
             }
             // Set literal group.
             message = wasKeyValueSet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)),
-                group, message);
+                wasOutput(group), message);
             // Get password.
             string password =
                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD)), message));
@@ -22299,7 +22309,7 @@ namespace Corrade
             {'u', new ManualResetEvent(false)}
         };
 
-        public static string CorradeServiceName;
+        public static string InstalledServiceName;
         private static Thread programThread;
         private static readonly EventLog CorradeLog = new EventLog();
         private static readonly GridClient Client = new GridClient();
