@@ -103,14 +103,14 @@ namespace Corrade
             {
                 InstalledServiceName = CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME;
             }
-            CorradeLog.Source = InstalledServiceName;
-            CorradeLog.Log = CORRADE_CONSTANTS.LOG_FACILITY;
-            ((ISupportInitialize) (CorradeLog)).BeginInit();
-            if (!EventLog.SourceExists(CorradeLog.Source))
+            CorradeEventLog.Source = InstalledServiceName;
+            CorradeEventLog.Log = CORRADE_CONSTANTS.LOG_FACILITY;
+            ((ISupportInitialize) (CorradeEventLog)).BeginInit();
+            if (!EventLog.SourceExists(CorradeEventLog.Source))
             {
-                EventLog.CreateEventSource(CorradeLog.Source, CorradeLog.Log);
+                EventLog.CreateEventSource(CorradeEventLog.Source, CorradeEventLog.Log);
             }
-            ((ISupportInitialize) (CorradeLog)).EndInit();
+            ((ISupportInitialize) (CorradeEventLog)).EndInit();
         }
 
         /// <summary>
@@ -1351,7 +1351,7 @@ namespace Corrade
         private static bool GetParcelAtPosition(Simulator simulator, Vector3 position,
             ref Parcel parcel)
         {
-            Parcel localParcel = null;
+            HashSet<Parcel> localParcels = new HashSet<Parcel>();
             ManualResetEvent RequestAllSimParcelsEvent = new ManualResetEvent(false);
             EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedDelegate =
                 (sender, args) => RequestAllSimParcelsEvent.Set();
@@ -1378,9 +1378,10 @@ namespace Corrade
                     if (!(position.X >= currentParcel.AABBMin.X) || !(position.X <= currentParcel.AABBMax.X) ||
                         !(position.Y >= currentParcel.AABBMin.Y) || !(position.Y <= currentParcel.AABBMax.Y))
                         return;
-                    localParcel = currentParcel;
+                    localParcels.Add(currentParcel);
                 });
             }
+            Parcel localParcel = localParcels.OrderBy(o => Vector3.Distance(o.AABBMin, o.AABBMax)).FirstOrDefault();
             if (localParcel == null)
                 return false;
             parcel = localParcel;
@@ -2549,7 +2550,7 @@ namespace Corrade
                 switch (Environment.OSVersion.Platform)
                 {
                     case PlatformID.Win32NT:
-                        CorradeLog.WriteEntry(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()),
+                        CorradeEventLog.WriteEntry(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()),
                             EventLogEntryType.Information);
                         break;
                 }
@@ -10419,15 +10420,12 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
-                        if (!Client.Network.CurrentSim.IsEstateManager)
+                        if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                         {
-                            if (!parcel.OwnerID.Equals(Client.Self.AgentID))
+                            if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
                             {
-                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
-                                {
-                                    throw new Exception(
-                                        wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
-                                }
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                             }
                         }
                         string fields =
@@ -22311,7 +22309,7 @@ namespace Corrade
 
         public static string InstalledServiceName;
         private static Thread programThread;
-        private static readonly EventLog CorradeLog = new EventLog();
+        private static readonly EventLog CorradeEventLog = new EventLog();
         private static readonly GridClient Client = new GridClient();
 
         private static readonly Bot AIMLBot = new Bot
