@@ -987,6 +987,24 @@ namespace Corrade
                     wasSetInfoValue(info, ref @object, dateTimeData);
                 }
             }
+            if (wasGetInfoValue(info, value) is ParcelFlags)
+            {
+                uint parcelFlags = 0;
+                switch (!uint.TryParse(setting, out parcelFlags))
+                {
+                    case true:
+                        Parallel.ForEach(wasCSVToEnumerable(setting), o =>
+                        {
+                            Parallel.ForEach(typeof (ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                p => { parcelFlags |= ((uint) p.GetValue(null)); });
+                        });
+                        break;
+                    default:
+                        break;
+                }
+                wasSetInfoValue(info, ref @object, parcelFlags);
+            }
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -10428,10 +10446,9 @@ namespace Corrade
                                     wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                             }
                         }
-                        string fields =
+                        wasCSVToStructure(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                message));
-                        wasCSVToStructure(fields, ref parcel);
+                                message)), ref parcel);
                         parcel.Update(Client.Network.CurrentSim, true);
                     };
                     break;
