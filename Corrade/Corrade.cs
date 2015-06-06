@@ -1000,8 +1000,6 @@ namespace Corrade
                                 p => { parcelFlags |= ((uint) p.GetValue(null)); });
                         });
                         break;
-                    default:
-                        break;
                 }
                 wasSetInfoValue(info, ref @object, parcelFlags);
             }
@@ -2765,7 +2763,7 @@ namespace Corrade
             if (!Configuration.TOS_ACCEPTED)
             {
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TOS_NOT_ACCEPTED));
-                Environment.Exit(1);
+                Environment.Exit(Configuration.EXIT_CODE_ABNORMAL);
             }
             // Proceed to log-in.
             LoginParams login = new LoginParams(
@@ -2794,7 +2792,7 @@ namespace Corrade
                 catch (Exception)
                 {
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNKNOWN_IP_ADDRESS));
-                    Environment.Exit(0);
+                    Environment.Exit(Configuration.EXIT_CODE_ABNORMAL);
                 }
             }
             // Set the ID0 if specified in the configuration file.
@@ -3129,7 +3127,7 @@ namespace Corrade
                 Client.Network.Shutdown(NetworkManager.DisconnectType.ClientInitiated);
             }
             // Terminate.
-            Environment.Exit(0);
+            Environment.Exit(Configuration.EXIT_CODE_EXPECTED);
         }
 
         private static void HandleAvatarUpdate(object sender, AvatarUpdateEventArgs e)
@@ -18711,6 +18709,8 @@ namespace Corrade
             private static bool _autoActivateGroup;
             private static int _activateDelay;
             private static int _groupCreateFee;
+            private static int _exitCodeExpected;
+            private static int _exitCodeAbnormal;
             private static HashSet<Group> _groups;
             private static HashSet<Master> _masters;
             private static List<Filter> _inputFilters;
@@ -19511,6 +19511,42 @@ namespace Corrade
                 }
             }
 
+            public static int EXIT_CODE_EXPECTED
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _exitCodeExpected;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _exitCodeExpected = value;
+                    }
+                }
+            }
+
+            public static int EXIT_CODE_ABNORMAL
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _exitCodeAbnormal;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _exitCodeAbnormal = value;
+                    }
+                }
+            }
+
             public static HashSet<Group> GROUPS
             {
                 get
@@ -19706,6 +19742,8 @@ namespace Corrade
                 DRIVE_IDENTIFIER_HASH = string.Empty;
                 AUTO_ACTIVATE_GROUP = false;
                 GROUP_CREATE_FEE = 100;
+                EXIT_CODE_EXPECTED = -1;
+                EXIT_CODE_ABNORMAL = -2;
                 GROUPS = new HashSet<Group>();
                 MASTERS = new HashSet<Master>();
                 INPUT_FILTERS = new List<Filter> {Filter.RFC1738};
@@ -19730,7 +19768,7 @@ namespace Corrade
                 catch (Exception ex)
                 {
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                    Environment.Exit(1);
+                    Environment.Exit(EXIT_CODE_ABNORMAL);
                 }
 
                 XmlDocument conf = new XmlDocument();
@@ -19741,14 +19779,14 @@ namespace Corrade
                 catch (XmlException ex)
                 {
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                    Environment.Exit(1);
+                    Environment.Exit(EXIT_CODE_ABNORMAL);
                 }
 
                 XmlNode root = conf.DocumentElement;
                 if (root == null)
                 {
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE));
-                    Environment.Exit(1);
+                    Environment.Exit(EXIT_CODE_ABNORMAL);
                 }
 
                 if (root != null)
@@ -19804,6 +19842,35 @@ namespace Corrade
                                         throw new Exception("error in client section");
                                     }
                                     GROUP_CREATE_FEE = groupCreateFee;
+                                    break;
+                                case ConfigurationKeys.EXIT_CODE:
+                                    XmlNodeList exitCodeNodeList = client.SelectNodes("*");
+                                    if (exitCodeNodeList == null)
+                                    {
+                                        throw new Exception("error in client section");
+                                    }
+                                    foreach (XmlNode exitCodeNode in exitCodeNodeList)
+                                    {
+                                        switch (exitCodeNode.Name.ToLowerInvariant())
+                                        {
+                                            case ConfigurationKeys.EXPECTED:
+                                                int exitCodeExpected;
+                                                if (!int.TryParse(exitCodeNode.InnerText, out exitCodeExpected))
+                                                {
+                                                    throw new Exception("error in client section");
+                                                }
+                                                EXIT_CODE_EXPECTED = exitCodeExpected;
+                                                break;
+                                            case ConfigurationKeys.ABNORMAL:
+                                                int exitCodeAbnormal;
+                                                if (!int.TryParse(exitCodeNode.InnerText, out exitCodeAbnormal))
+                                                {
+                                                    throw new Exception("error in client section");
+                                                }
+                                                EXIT_CODE_ABNORMAL = exitCodeAbnormal;
+                                                break;
+                                        }
+                                    }
                                     break;
                                 case ConfigurationKeys.AUTO_ACTIVATE_GROUP:
                                     bool autoActivateGroup;
@@ -21068,6 +21135,9 @@ namespace Corrade
             public const string BIND = @"bind";
             public const string IDLE = @"idle";
             public const string COMPRESSION = @"compression";
+            public const string EXIT_CODE = @"exitcode";
+            public const string EXPECTED = @"expected";
+            public const string ABNORMAL = @"abnormal";
         }
 
         /// <summary>
