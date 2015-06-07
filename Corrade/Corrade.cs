@@ -22,6 +22,7 @@ using System.Management;
 using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization;
 using System.ServiceProcess;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -318,13 +319,8 @@ namespace Corrade
 
         private static bool ConsoleCtrlCheck(NativeMethods.CtrlType ctrlType)
         {
-            KeyValuePair<char, ManualResetEvent> semaphore =
-                ConnectionSemaphores.AsParallel().FirstOrDefault(o => o.Key.Equals('u'));
-            if (semaphore.Value != null)
-            {
-                semaphore.Value.Set();
-            }
-
+            // Set the user disconnect semaphore.
+            ConnectionSemaphores['u'].Set();
             // Wait for threads to finish.
             Thread.Sleep(Configuration.SERVICES_TIMEOUT);
             return true;
@@ -334,10 +330,10 @@ namespace Corrade
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
-        ///     Serialize an RLV message to a CSV string.
+        ///     Serialize an RLV message to a string.
         /// </summary>
         /// <returns>in order: behaviours, options, parameters</returns>
-        private static IEnumerable<string> wasRLVToCSV(string message)
+        private static IEnumerable<string> wasRLVToString(string message)
         {
             if (string.IsNullOrEmpty(message)) yield break;
 
@@ -358,7 +354,7 @@ namespace Corrade
             yield return match.Groups["param"].ToString().ToLowerInvariant();
 
             CONTINUE:
-            foreach (string slice in wasRLVToCSV(message))
+            foreach (string slice in wasRLVToString(message))
             {
                 yield return slice;
             }
@@ -989,7 +985,7 @@ namespace Corrade
             }
             if (wasGetInfoValue(info, value) is ParcelFlags)
             {
-                uint parcelFlags = 0;
+                uint parcelFlags;
                 switch (!uint.TryParse(setting, out parcelFlags))
                 {
                     case true:
@@ -2667,7 +2663,7 @@ namespace Corrade
         protected override void OnStop()
         {
             base.OnStop();
-            ConnectionSemaphores.AsParallel().FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
+            ConnectionSemaphores['u'].Set();
         }
 
         protected override void OnStart(string[] args)
@@ -2702,8 +2698,7 @@ namespace Corrade
                         if (Environment.UserInteractive)
                         {
                             Console.CancelKeyPress +=
-                                (sender, args) =>
-                                    ConnectionSemaphores.AsParallel().FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
+                                (sender, args) => ConnectionSemaphores['u'].Set();
                         }
                     }
                     break;
@@ -3982,7 +3977,7 @@ namespace Corrade
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
                                 RLVEventArgs.Position.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.RLV),
-                                wasEnumerableToCSV(wasRLVToCSV(RLVEventArgs.Message)));
+                                wasEnumerableToCSV(wasRLVToString(RLVEventArgs.Message)));
                             break;
                         case Notifications.NOTIFICATION_DEBUG_MESSAGE:
                             ChatEventArgs DebugEventArgs = (ChatEventArgs) args;
@@ -4111,11 +4106,17 @@ namespace Corrade
                     {
                         if (NotificationQueue.Count < Configuration.NOTIFICATION_QUEUE_LENGTH)
                         {
-                            NotificationQueue.Enqueue(new NotificationQueueElement
-                            {
-                                URL = o.NotificationDestination[notification],
-                                message = wasKeyValueEscape(notificationData)
-                            });
+                            Parallel.ForEach(
+                                o.NotificationDestination.AsParallel()
+                                    .Where(p => p.Key.Equals(notification))
+                                    .SelectMany(p => p.Value), p =>
+                                    {
+                                        NotificationQueue.Enqueue(new NotificationQueueElement
+                                        {
+                                            URL = p,
+                                            message = wasKeyValueEscape(notificationData)
+                                        });
+                                    });
                         }
                     }
                 });
@@ -4394,7 +4395,7 @@ namespace Corrade
         private static void HandleDisconnected(object sender, DisconnectedEventArgs e)
         {
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.DISCONNECTED));
-            ConnectionSemaphores.AsParallel().FirstOrDefault(o => o.Key.Equals('l')).Value.Set();
+            ConnectionSemaphores['l'].Set();
         }
 
         private static void HandleEventQueueRunning(object sender, EventQueueRunningEventArgs e)
@@ -4410,9 +4411,9 @@ namespace Corrade
         private static void HandleSimulatorDisconnected(object sender, SimDisconnectedEventArgs e)
         {
             // if any simulators are still connected, we are not disconnected
-            if (Client.Network.Simulators.AsParallel().Any()) return;
+            if (Client.Network.Simulators.Any()) return;
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ALL_SIMULATORS_DISCONNECTED));
-            ConnectionSemaphores.AsParallel().FirstOrDefault(o => o.Key.Equals('s')).Value.Set();
+            ConnectionSemaphores['s'].Set();
         }
 
         private static void HandleLoginProgress(object sender, LoginProgressEventArgs e)
@@ -4465,7 +4466,7 @@ namespace Corrade
                     break;
                 case LoginStatus.Failed:
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_FAILED), e.FailReason);
-                    ConnectionSemaphores.AsParallel().FirstOrDefault(o => o.Key.Equals('l')).Value.Set();
+                    ConnectionSemaphores['l'].Set();
                     break;
             }
         }
@@ -5010,7 +5011,7 @@ namespace Corrade
                         {
                             return;
                         }
-                        Client.Groups.ActivateGroup(currentGroups.AsParallel().FirstOrDefault(o => o.Equals(groupUUID)));
+                        Client.Groups.ActivateGroup(groupUUID);
                     };
                     break;
                 case RLVBehaviour.GETSITID:
@@ -5167,11 +5168,15 @@ namespace Corrade
                         switch (!string.IsNullOrEmpty(RLVrule.Option))
                         {
                             case true:
-                                WearableType wearableType =
-                                    RLVWearables.AsParallel().FirstOrDefault(
-                                        o => o.Name.Equals(RLVrule.Option, StringComparison.InvariantCultureIgnoreCase))
-                                        .WearableType;
-                                if (!wearables.AsParallel().Any(o => o.Value.Equals(wearableType)))
+                                RLVWearable RLVwearable = RLVWearables.AsParallel()
+                                    .FirstOrDefault(
+                                        o => o.Name.Equals(RLVrule.Option, StringComparison.InvariantCultureIgnoreCase));
+                                if (RLVwearable.Equals(default(RLVWearable)))
+                                {
+                                    response.Append(RLV_CONSTANTS.FALSE_MARKER);
+                                    break;
+                                }
+                                if (!wearables.AsParallel().Any(o => o.Value.Equals(RLVwearable.WearableType)))
                                 {
                                     response.Append(RLV_CONSTANTS.FALSE_MARKER);
                                     break;
@@ -5216,11 +5221,14 @@ namespace Corrade
                         switch (!string.IsNullOrEmpty(RLVrule.Option))
                         {
                             case true:
-                                AttachmentPoint attachmentPoint =
-                                    RLVAttachments.AsParallel().FirstOrDefault(
-                                        o => o.Name.Equals(RLVrule.Option, StringComparison.InvariantCultureIgnoreCase))
-                                        .AttachmentPoint;
-                                if (!attachmentPoints.Contains(attachmentPoint))
+                                RLVAttachment RLVattachment = RLVAttachments.AsParallel().FirstOrDefault(
+                                    o => o.Name.Equals(RLVrule.Option, StringComparison.InvariantCultureIgnoreCase));
+                                if (RLVattachment.Equals(default(RLVAttachment)))
+                                {
+                                    response.Append(RLV_CONSTANTS.FALSE_MARKER);
+                                    break;
+                                }
+                                if (!attachmentPoints.Contains(RLVattachment.AttachmentPoint))
                                 {
                                     response.Append(RLV_CONSTANTS.FALSE_MARKER);
                                     break;
@@ -5309,7 +5317,7 @@ namespace Corrade
                                                     FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                                         o.Key.Properties.Name
                                                         )
-                                                        .FirstOrDefault(
+                                                        .AsParallel().FirstOrDefault(
                                                             p =>
                                                                 (p is InventoryItem) &&
                                                                 ((InventoryItem) p).AssetType.Equals(
@@ -5329,29 +5337,30 @@ namespace Corrade
                                                         FindInventory<InventoryBase>(RLVFolder,
                                                             new Regex(Regex.Escape(folder),
                                                                 RegexOptions.Compiled | RegexOptions.IgnoreCase)
-                                                            ).FirstOrDefault(o => (o is InventoryFolder))), o =>
+                                                            ).AsParallel().FirstOrDefault(o => (o is InventoryFolder))),
+                                            o =>
+                                            {
+                                                if (o != null)
+                                                {
+                                                    Client.Inventory.Store.GetContents(
+                                                        o as InventoryFolder).FindAll(CanBeWorn)
+                                                        .ForEach(
+                                                            p =>
                                                             {
-                                                                if (o != null)
+                                                                if (p is InventoryWearable)
                                                                 {
-                                                                    Client.Inventory.Store.GetContents(
-                                                                        o as InventoryFolder).FindAll(CanBeWorn)
-                                                                        .ForEach(
-                                                                            p =>
-                                                                            {
-                                                                                if (p is InventoryWearable)
-                                                                                {
-                                                                                    UnWear(p as InventoryItem);
-                                                                                    return;
-                                                                                }
-                                                                                if (p is InventoryAttachment ||
-                                                                                    p is InventoryObject)
-                                                                                {
-                                                                                    // Multiple attachment points not working in libOpenMetaverse, so just replace.
-                                                                                    Detach(p as InventoryItem);
-                                                                                }
-                                                                            });
+                                                                    UnWear(p as InventoryItem);
+                                                                    return;
+                                                                }
+                                                                if (p is InventoryAttachment ||
+                                                                    p is InventoryObject)
+                                                                {
+                                                                    // Multiple attachment points not working in libOpenMetaverse, so just replace.
+                                                                    Detach(p as InventoryItem);
                                                                 }
                                                             });
+                                                }
+                                            });
                                         break;
                                 }
                                 break;
@@ -5364,7 +5373,7 @@ namespace Corrade
                                             inventoryBase = FindInventory<InventoryBase>(
                                                 Client.Inventory.Store.RootNode, o.Key.Properties.Name
                                                 )
-                                                .FirstOrDefault(
+                                                .AsParallel().FirstOrDefault(
                                                     p =>
                                                         p is InventoryItem &&
                                                         ((InventoryItem) p).AssetType.Equals(AssetType.Object));
@@ -5403,7 +5412,7 @@ namespace Corrade
                                         FindInventory<InventoryBase>(RLVFolder,
                                             new Regex(Regex.Escape(folder),
                                                 RegexOptions.Compiled | RegexOptions.IgnoreCase)
-                                            ).FirstOrDefault(o => (o is InventoryFolder))), o =>
+                                            ).AsParallel().FirstOrDefault(o => (o is InventoryFolder))), o =>
                                             {
                                                 if (o != null)
                                                 {
@@ -5449,12 +5458,16 @@ namespace Corrade
                                 {
                                     break;
                                 }
-                                inventoryBase =
-                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                                        GetWearables(Client.Inventory.Store.RootNode)
-                                            .AsParallel().FirstOrDefault(
-                                                o => o.Value.Equals((WearableType) wearTypeInfo.GetValue(null)))
-                                            .Value).FirstOrDefault();
+                                KeyValuePair<AppearanceManager.WearableData, WearableType> wearable = GetWearables(
+                                    Client.Inventory.Store.RootNode)
+                                    .AsParallel().FirstOrDefault(
+                                        o => o.Value.Equals((WearableType) wearTypeInfo.GetValue(null)));
+                                if (wearable.Equals(default(KeyValuePair<AppearanceManager.WearableData, WearableType>)))
+                                {
+                                    break;
+                                }
+                                inventoryBase = FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
+                                    wearable.Value).FirstOrDefault();
                                 if (inventoryBase == null)
                                 {
                                     break;
@@ -6341,7 +6354,12 @@ namespace Corrade
                         int amount;
                         lock (GroupInviteLock)
                         {
-                            amount = GroupInvites.AsParallel().FirstOrDefault(o => o.Session.Equals(sessionUUID)).Fee;
+                            GroupInvite groupInvite =
+                                GroupInvites.AsParallel().FirstOrDefault(o => o.Session.Equals(sessionUUID));
+                            if (groupInvite.Equals(default(GroupInvite)))
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_GROUP_INVITE_SESSION));
+                            amount = groupInvite.Fee;
                         }
                         if (!amount.Equals(0) && action.Equals((uint) Action.ACCEPT))
                         {
@@ -6860,15 +6878,22 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID =
-                            Configuration.GROUPS.AsParallel()
-                                .FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
-                                .UUID;
-                        if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.Ordinal));
+                        UUID groupUUID = UUID.Zero;
+                        switch (!configuredGroup.Equals(default(Group)))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                            case true:
+                                groupUUID = configuredGroup.UUID;
+                                break;
+                            default:
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID,
@@ -7008,15 +7033,22 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID =
-                            Configuration.GROUPS.AsParallel()
-                                .FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
-                                .UUID;
-                        if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.Ordinal));
+                        UUID groupUUID = UUID.Zero;
+                        switch (!configuredGroup.Equals(default(Group)))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                            case true:
+                                groupUUID = configuredGroup.UUID;
+                                break;
+                            default:
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
                         }
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID,
@@ -7560,14 +7592,25 @@ namespace Corrade
                                 }
                                 break;
                             case Entity.GROUP:
-                                UUID groupUUID =
+                                Group configuredGroup =
                                     Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                        o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
-                                if (groupUUID.Equals(UUID.Zero) &&
-                                    !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                        ref groupUUID))
+                                        o => o.Name.Equals(group, StringComparison.Ordinal));
+                                UUID groupUUID = UUID.Zero;
+                                switch (!configuredGroup.Equals(default(Group)))
                                 {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                    case true:
+                                        groupUUID = configuredGroup.UUID;
+                                        break;
+                                    default:
+                                        if (
+                                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT,
+                                                Configuration.DATA_TIMEOUT,
+                                                ref groupUUID))
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                        }
+                                        break;
                                 }
                                 if (
                                     !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
@@ -7887,7 +7930,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INSUFFICIENT_FUNDS));
                         }
-                        UUID targetUUID;
+                        UUID targetUUID = UUID.Zero;
                         switch (
                             wasGetEnumValueFromDescription<Entity>(
                                 wasInput(
@@ -7895,14 +7938,24 @@ namespace Corrade
                                         message)).ToLowerInvariant()))
                         {
                             case Entity.GROUP:
-                                targetUUID =
+                                Group configuredGroup =
                                     Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                        o => o.Name.Equals(group, StringComparison.Ordinal)).UUID;
-                                if (targetUUID.Equals(UUID.Zero) &&
-                                    !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                        ref targetUUID))
+                                        o => o.Name.Equals(group, StringComparison.Ordinal));
+                                switch (!configuredGroup.Equals(default(Group)))
                                 {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                    case true:
+                                        targetUUID = configuredGroup.UUID;
+                                        break;
+                                    default:
+                                        if (
+                                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT,
+                                                Configuration.DATA_TIMEOUT,
+                                                ref targetUUID))
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                        }
+                                        break;
                                 }
                                 Client.Self.GiveGroupMoney(targetUUID, amount,
                                     wasInput(
@@ -8501,15 +8554,22 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID =
-                            Configuration.GROUPS.AsParallel()
-                                .FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
-                                .UUID;
-                        if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.Ordinal));
+                        UUID groupUUID = UUID.Zero;
+                        switch (!configuredGroup.Equals(default(Group)))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                            case true:
+                                groupUUID = configuredGroup.UUID;
+                                break;
+                            default:
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
                         }
                         Vector3 position;
                         if (
@@ -8664,15 +8724,22 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID =
-                            Configuration.GROUPS.AsParallel()
-                                .FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
-                                .UUID;
-                        if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.Ordinal));
+                        UUID groupUUID = UUID.Zero;
+                        switch (!configuredGroup.Equals(default(Group)))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                            case true:
+                                groupUUID = configuredGroup.UUID;
+                                break;
+                            default:
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
                         }
                         Vector3 position;
                         if (
@@ -8718,15 +8785,22 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID =
-                            Configuration.GROUPS.AsParallel()
-                                .FirstOrDefault(o => o.Name.Equals(group, StringComparison.Ordinal))
-                                .UUID;
-                        if (groupUUID.Equals(UUID.Zero) &&
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.Ordinal));
+                        UUID groupUUID = UUID.Zero;
+                        switch (!configuredGroup.Equals(default(Group)))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                            case true:
+                                groupUUID = configuredGroup.UUID;
+                                break;
+                            default:
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
                         }
                         Vector3 position;
                         if (
@@ -9441,9 +9515,11 @@ namespace Corrade
                         }
                         EventHandler<AvatarPicksReplyEventArgs> AvatarPicksEventHandler = (sender, args) =>
                         {
-                            pickUUID =
-                                args.Picks.AsParallel().FirstOrDefault(
-                                    o => o.Value.Equals(name, StringComparison.Ordinal)).Key;
+                            KeyValuePair<UUID, string> pick =
+                                args.Picks.AsParallel()
+                                    .FirstOrDefault(o => o.Value.Equals(name, StringComparison.Ordinal));
+                            if (!pick.Equals(default(KeyValuePair<UUID, string>)))
+                                pickUUID = pick.Key;
                             AvatarPicksReplyEvent.Set();
                         };
                         lock (ClientInstanceAvatarsLock)
@@ -9488,9 +9564,10 @@ namespace Corrade
                         UUID pickUUID = UUID.Zero;
                         EventHandler<AvatarPicksReplyEventArgs> AvatarPicksEventHandler = (sender, args) =>
                         {
-                            pickUUID =
-                                args.Picks.AsParallel().FirstOrDefault(
-                                    o => o.Value.Equals(input, StringComparison.Ordinal)).Key;
+                            KeyValuePair<UUID, string> pick = args.Picks.AsParallel().FirstOrDefault(
+                                o => o.Value.Equals(input, StringComparison.Ordinal));
+                            if (!pick.Equals(default(KeyValuePair<UUID, string>)))
+                                pickUUID = pick.Key;
                             AvatarPicksReplyEvent.Set();
                         };
                         lock (ClientInstanceAvatarsLock)
@@ -9548,10 +9625,11 @@ namespace Corrade
                         UUID classifiedUUID = UUID.Zero;
                         EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedEventHandler = (sender, args) =>
                         {
-                            classifiedUUID =
-                                args.Classifieds.AsParallel().FirstOrDefault(
-                                    o =>
-                                        o.Value.Equals(name, StringComparison.Ordinal)).Key;
+                            KeyValuePair<UUID, string> classified = args.Classifieds.AsParallel().FirstOrDefault(
+                                o =>
+                                    o.Value.Equals(name, StringComparison.Ordinal));
+                            if (!classified.Equals(default(KeyValuePair<UUID, string>)))
+                                classifiedUUID = classified.Key;
                             AvatarClassifiedReplyEvent.Set();
                         };
                         lock (ClientInstanceAvatarsLock)
@@ -9626,10 +9704,11 @@ namespace Corrade
                         UUID classifiedUUID = UUID.Zero;
                         EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedEventHandler = (sender, args) =>
                         {
-                            classifiedUUID =
-                                args.Classifieds.AsParallel().FirstOrDefault(
-                                    o =>
-                                        o.Value.Equals(name, StringComparison.Ordinal)).Key;
+                            KeyValuePair<UUID, string> classified = args.Classifieds.AsParallel().FirstOrDefault(
+                                o =>
+                                    o.Value.Equals(name, StringComparison.Ordinal));
+                            if (!classified.Equals(default(KeyValuePair<UUID, string>)))
+                                classifiedUUID = classified.Key;
                             AvatarClassifiedReplyEvent.Set();
                         };
                         lock (ClientInstanceAvatarsLock)
@@ -12046,21 +12125,19 @@ namespace Corrade
                                     }
                                     Client.Groups.GroupRoleDataReply -= Groups_GroupRoleDataReply;
                                 }
-                                UUID roleUUID =
-                                    roleData.AsParallel().FirstOrDefault(
-                                        o =>
-                                            o.Key.Equals(
-                                                wasInput(
-                                                    wasKeyValueGet(
-                                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TITLE)),
-                                                        message)),
-                                                StringComparison.Ordinal))
-                                        .Value;
-                                if (roleUUID.Equals(UUID.Zero))
+                                KeyValuePair<string, UUID> role = roleData.AsParallel().FirstOrDefault(
+                                    o =>
+                                        o.Key.Equals(
+                                            wasInput(
+                                                wasKeyValueGet(
+                                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TITLE)),
+                                                    message)),
+                                            StringComparison.Ordinal));
+                                if (role.Equals(default(KeyValuePair<string, UUID>)))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_TITLE));
                                 }
-                                Client.Groups.ActivateTitle(groupUUID, roleUUID);
+                                Client.Groups.ActivateTitle(groupUUID, role.Value);
                                 break;
                             case Action.GET:
                                 string title = string.Empty;
@@ -12934,17 +13011,32 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        string databaseFile =
+                        Group configuredGroup =
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal)).DatabaseFile;
-                        if (string.IsNullOrEmpty(databaseFile))
+                                o => o.Name.Equals(group, StringComparison.Ordinal));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                if (configuredGroup.Equals(default(Group)))
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                break;
+                        }
+                        if (string.IsNullOrEmpty(configuredGroup.DatabaseFile))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_DATABASE_FILE_CONFIGURED));
                         }
-                        if (!File.Exists(databaseFile))
+                        if (!File.Exists(configuredGroup.DatabaseFile))
                         {
                             // create the file and close it
-                            File.Create(databaseFile).Close();
+                            File.Create(configuredGroup.DatabaseFile).Close();
                         }
                         switch (
                             wasGetEnumValueFromDescription<Action>(
@@ -12964,15 +13056,15 @@ namespace Corrade
                                 }
                                 lock (DatabaseFileLock)
                                 {
-                                    if (!DatabaseLocks.ContainsKey(group))
+                                    if (!DatabaseLocks.ContainsKey(configuredGroup.Name))
                                     {
-                                        DatabaseLocks.Add(group, new object());
+                                        DatabaseLocks.Add(configuredGroup.Name, new object());
                                     }
                                 }
-                                lock (DatabaseLocks[group])
+                                lock (DatabaseLocks[configuredGroup.Name])
                                 {
                                     string databaseGetValue = wasKeyValueGet(databaseGetkey,
-                                        File.ReadAllText(databaseFile));
+                                        File.ReadAllText(configuredGroup.DatabaseFile));
                                     if (!string.IsNullOrEmpty(databaseGetValue))
                                     {
                                         result.Add(databaseGetkey,
@@ -12981,9 +13073,9 @@ namespace Corrade
                                 }
                                 lock (DatabaseFileLock)
                                 {
-                                    if (DatabaseLocks.ContainsKey(group))
+                                    if (DatabaseLocks.ContainsKey(configuredGroup.Name))
                                     {
-                                        DatabaseLocks.Remove(group);
+                                        DatabaseLocks.Remove(configuredGroup.Name);
                                     }
                                 }
                                 break;
@@ -13008,15 +13100,17 @@ namespace Corrade
                                 }
                                 lock (DatabaseFileLock)
                                 {
-                                    if (!DatabaseLocks.ContainsKey(group))
+                                    if (!DatabaseLocks.ContainsKey(configuredGroup.Name))
                                     {
-                                        DatabaseLocks.Add(group, new object());
+                                        DatabaseLocks.Add(configuredGroup.Name, new object());
                                     }
                                 }
-                                lock (DatabaseLocks[group])
+                                lock (DatabaseLocks[configuredGroup.Name])
                                 {
-                                    string contents = File.ReadAllText(databaseFile);
-                                    using (StreamWriter recreateDatabase = new StreamWriter(databaseFile, false))
+                                    string contents = File.ReadAllText(configuredGroup.DatabaseFile);
+                                    using (
+                                        StreamWriter recreateDatabase = new StreamWriter(configuredGroup.DatabaseFile,
+                                            false))
                                     {
                                         recreateDatabase.Write(wasKeyValueSet(databaseSetKey,
                                             databaseSetValue, contents));
@@ -13026,9 +13120,9 @@ namespace Corrade
                                 }
                                 lock (DatabaseFileLock)
                                 {
-                                    if (DatabaseLocks.ContainsKey(group))
+                                    if (DatabaseLocks.ContainsKey(configuredGroup.Name))
                                     {
-                                        DatabaseLocks.Remove(group);
+                                        DatabaseLocks.Remove(configuredGroup.Name);
                                     }
                                 }
                                 break;
@@ -13044,15 +13138,17 @@ namespace Corrade
                                 }
                                 lock (DatabaseFileLock)
                                 {
-                                    if (!DatabaseLocks.ContainsKey(group))
+                                    if (!DatabaseLocks.ContainsKey(configuredGroup.Name))
                                     {
-                                        DatabaseLocks.Add(group, new object());
+                                        DatabaseLocks.Add(configuredGroup.Name, new object());
                                     }
                                 }
-                                lock (DatabaseLocks[group])
+                                lock (DatabaseLocks[configuredGroup.Name])
                                 {
-                                    string contents = File.ReadAllText(databaseFile);
-                                    using (StreamWriter recreateDatabase = new StreamWriter(databaseFile, false))
+                                    string contents = File.ReadAllText(configuredGroup.DatabaseFile);
+                                    using (
+                                        StreamWriter recreateDatabase = new StreamWriter(configuredGroup.DatabaseFile,
+                                            false))
                                     {
                                         recreateDatabase.Write(wasKeyValueDelete(databaseDeleteKey, contents));
                                         recreateDatabase.Flush();
@@ -13061,9 +13157,9 @@ namespace Corrade
                                 }
                                 lock (DatabaseFileLock)
                                 {
-                                    if (DatabaseLocks.ContainsKey(group))
+                                    if (DatabaseLocks.ContainsKey(configuredGroup.Name))
                                     {
-                                        DatabaseLocks.Remove(group);
+                                        DatabaseLocks.Remove(configuredGroup.Name);
                                     }
                                 }
                                 break;
@@ -13079,17 +13175,39 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.Ordinal));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                if (configuredGroup.Equals(default(Group)))
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                break;
+                        }
+                        string url = wasInput(
+                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.URL)),
+                                message));
+                        string notificationTypes =
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                    message))
+                                .ToLowerInvariant();
                         switch (
                             wasGetEnumValueFromDescription<Action>(
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
                                         message)).ToLowerInvariant()))
                         {
-                            case Action.SET:
-                                string url =
-                                    wasInput(
-                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.URL)),
-                                            message));
+                            case Action.ADD:
                                 if (string.IsNullOrEmpty(url))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_URL_PROVIDED));
@@ -13099,11 +13217,6 @@ namespace Corrade
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_URL_PROVIDED));
                                 }
-                                string notificationTypes =
-                                    wasInput(
-                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                                            message))
-                                        .ToLowerInvariant();
                                 if (string.IsNullOrEmpty(notificationTypes))
                                 {
                                     throw new Exception(
@@ -13114,15 +13227,16 @@ namespace Corrade
                                 {
                                     notification =
                                         GroupNotifications.AsParallel().FirstOrDefault(
-                                            o => o.GroupName.Equals(group, StringComparison.Ordinal));
+                                            o => o.GroupName.Equals(configuredGroup.Name, StringComparison.Ordinal));
                                 }
                                 if (notification.Equals(default(Notification)))
                                 {
                                     notification = new Notification
                                     {
-                                        GroupName = group,
+                                        GroupName = configuredGroup.Name,
                                         NotificationMask = 0,
-                                        NotificationDestination = new SerializableDictionary<Notifications, string>()
+                                        NotificationDestination =
+                                            new SerializableDictionary<Notifications, HashSet<string>>()
                                     };
                                 }
                                 Parallel.ForEach(wasCSVToEnumerable(
@@ -13130,7 +13244,7 @@ namespace Corrade
                                     o =>
                                     {
                                         uint notificationValue = (uint) wasGetEnumValueFromDescription<Notifications>(o);
-                                        if (!GroupHasNotification(group, notificationValue))
+                                        if (!GroupHasNotification(configuredGroup.Name, notificationValue))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.NOTIFICATION_NOT_ALLOWED));
@@ -13142,11 +13256,14 @@ namespace Corrade
                                         {
                                             case true:
                                                 notification.NotificationDestination.Add(
-                                                    (Notifications) notificationValue, url);
+                                                    (Notifications) notificationValue, new HashSet<string> {url});
                                                 break;
                                             default:
+                                                // notification destination is already there
+                                                if (notification.NotificationDestination[
+                                                    (Notifications) notificationValue].Contains(url)) break;
                                                 notification.NotificationDestination[(Notifications) notificationValue]
-                                                    = url;
+                                                    .Add(url);
                                                 break;
                                         }
                                     });
@@ -13154,19 +13271,71 @@ namespace Corrade
                                 {
                                     // Replace notification.
                                     GroupNotifications.RemoveWhere(
-                                        o => o.GroupName.Equals(group, StringComparison.Ordinal));
+                                        o => o.GroupName.Equals(configuredGroup.Name, StringComparison.Ordinal));
                                     GroupNotifications.Add(notification);
                                 }
                                 break;
-                            case Action.GET:
-                                // If the group has no insalled notifications, bail
+                            case Action.REMOVE:
+                                HashSet<Notification> groupNotifications = new HashSet<Notification>();
+                                lock (GroupNotificationsLock)
+                                {
+                                    Parallel.ForEach(GroupNotifications, o =>
+                                    {
+                                        if ((!wasCSVToEnumerable(notificationTypes)
+                                            .AsParallel()
+                                            .Any(p => !(o.NotificationMask &
+                                                        (uint) wasGetEnumValueFromDescription<Notifications>(p))
+                                                .Equals(0)) &&
+                                             !o.NotificationDestination.Values.Any(p => p.Contains(url))) ||
+                                            !o.GroupName.Equals(configuredGroup.Name, StringComparison.Ordinal))
+                                        {
+                                            groupNotifications.Add(o);
+                                            return;
+                                        }
+                                        SerializableDictionary<Notifications, HashSet<string>>
+                                            notificationDestination =
+                                                new SerializableDictionary<Notifications, HashSet<string>>();
+                                        Parallel.ForEach(o.NotificationDestination, p =>
+                                        {
+                                            switch (!wasCSVToEnumerable(notificationTypes)
+                                                .AsParallel()
+                                                .Any(
+                                                    q =>
+                                                        wasGetEnumValueFromDescription<Notifications>(q)
+                                                            .Equals(p.Key)))
+                                            {
+                                                case true:
+                                                    notificationDestination.Add(p.Key, p.Value);
+                                                    break;
+                                                default:
+                                                    HashSet<string> URLs =
+                                                        new HashSet<string>(p.Value.Where(q => !q.Equals(url)));
+                                                    if (URLs.Count.Equals(0)) return;
+                                                    notificationDestination.Add(p.Key, URLs);
+                                                    break;
+                                            }
+                                        });
+                                        groupNotifications.Add(new Notification
+                                        {
+                                            GroupName = o.GroupName,
+                                            NotificationMask =
+                                                notificationDestination.Keys.Cast<uint>().Aggregate((p, q) => p |= q),
+                                            NotificationDestination = notificationDestination
+                                        });
+                                    });
+                                    // Now assign the new notifications.
+                                    GroupNotifications = groupNotifications;
+                                }
+                                break;
+                            case Action.LIST:
+                                // If the group has no installed notifications, bail
                                 List<string> csv = new List<string>();
                                 object LockObject = new object();
                                 lock (GroupNotificationsLock)
                                 {
                                     Notification groupNotification =
                                         GroupNotifications.AsParallel().FirstOrDefault(
-                                            o => o.GroupName.Equals(group, StringComparison.Ordinal));
+                                            o => o.GroupName.Equals(configuredGroup.Name, StringComparison.Ordinal));
                                     if (!groupNotification.Equals(default(Notification)))
                                     {
                                         Parallel.ForEach(wasGetEnumDescriptions<Notifications>(), o =>
@@ -13177,7 +13346,7 @@ namespace Corrade
                                             lock (LockObject)
                                             {
                                                 csv.Add(o);
-                                                csv.Add(groupNotification.NotificationDestination[
+                                                csv.AddRange(groupNotification.NotificationDestination[
                                                     wasGetEnumValueFromDescription<Notifications>(o)]);
                                             }
                                         });
@@ -13193,7 +13362,7 @@ namespace Corrade
                                 lock (GroupNotificationsLock)
                                 {
                                     GroupNotifications.RemoveWhere(
-                                        o => o.GroupName.Equals(group, StringComparison.Ordinal));
+                                        o => o.GroupName.Equals(configuredGroup.Name, StringComparison.Ordinal));
                                 }
                                 break;
                             default:
@@ -14062,10 +14231,8 @@ namespace Corrade
                         Avatar avatar =
                             GetAvatars(range, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
                                 .FirstOrDefault(o => o.ID.Equals(agentUUID));
-
                         if (avatar == null)
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AVATAR_NOT_IN_RANGE));
-
                         wasAdaptiveAlarm ProfileDataReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
                         object LockObject = new object();
                         EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
@@ -15962,7 +16129,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        ConnectionSemaphores.AsParallel().FirstOrDefault(o => o.Key.Equals('u')).Value.Set();
+                        ConnectionSemaphores['u'].Set();
                     };
                     break;
                 case ScriptKeys.RLV:
@@ -18434,7 +18601,8 @@ namespace Corrade
             [Description("mv")] MV,
             [Description("cp")] CP,
             [Description("appear")] APPEAR,
-            [Description("vanish")] VANISH
+            [Description("vanish")] VANISH,
+            [Description("list")] LIST
         }
 
         /// <summary>
@@ -19789,1281 +19957,1241 @@ namespace Corrade
                     Environment.Exit(EXIT_CODE_ABNORMAL);
                 }
 
-                if (root != null)
+                // Process client.
+                try
                 {
-                    XmlNodeList nodeList = root.SelectNodes("/config/client/*");
-                    if (nodeList == null)
-                        return;
-                    try
+                    foreach (XmlNode client in root.SelectNodes("/config/client/*"))
+                        switch (client.Name.ToLowerInvariant())
+                        {
+                            case ConfigurationKeys.FIRST_NAME:
+                                if (string.IsNullOrEmpty(client.InnerText))
+                                {
+                                    throw new Exception("error in client section");
+                                }
+                                FIRST_NAME = client.InnerText;
+                                break;
+                            case ConfigurationKeys.LAST_NAME:
+                                if (string.IsNullOrEmpty(client.InnerText))
+                                {
+                                    throw new Exception("error in client section");
+                                }
+                                LAST_NAME = client.InnerText;
+                                break;
+                            case ConfigurationKeys.PASSWORD:
+                                if (string.IsNullOrEmpty(client.InnerText))
+                                {
+                                    throw new Exception("error in client section");
+                                }
+                                PASSWORD = client.InnerText;
+                                break;
+                            case ConfigurationKeys.LOGIN_URL:
+                                if (string.IsNullOrEmpty(client.InnerText))
+                                {
+                                    throw new Exception("error in client section");
+                                }
+                                LOGIN_URL = client.InnerText;
+                                break;
+                            case ConfigurationKeys.TOS_ACCEPTED:
+                                bool accepted;
+                                if (!bool.TryParse(client.InnerText, out accepted))
+                                {
+                                    throw new Exception("error in client section");
+                                }
+                                TOS_ACCEPTED = accepted;
+                                break;
+                            case ConfigurationKeys.GROUP_CREATE_FEE:
+                                int groupCreateFee;
+                                if (!int.TryParse(client.InnerText, out groupCreateFee))
+                                {
+                                    throw new Exception("error in client section");
+                                }
+                                GROUP_CREATE_FEE = groupCreateFee;
+                                break;
+                            case ConfigurationKeys.EXIT_CODE:
+                                XmlNodeList exitCodeNodeList = client.SelectNodes("*");
+                                if (exitCodeNodeList == null)
+                                {
+                                    throw new Exception("error in client section");
+                                }
+                                foreach (XmlNode exitCodeNode in exitCodeNodeList)
+                                {
+                                    switch (exitCodeNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.EXPECTED:
+                                            int exitCodeExpected;
+                                            if (!int.TryParse(exitCodeNode.InnerText, out exitCodeExpected))
+                                            {
+                                                throw new Exception("error in client section");
+                                            }
+                                            EXIT_CODE_EXPECTED = exitCodeExpected;
+                                            break;
+                                        case ConfigurationKeys.ABNORMAL:
+                                            int exitCodeAbnormal;
+                                            if (!int.TryParse(exitCodeNode.InnerText, out exitCodeAbnormal))
+                                            {
+                                                throw new Exception("error in client section");
+                                            }
+                                            EXIT_CODE_ABNORMAL = exitCodeAbnormal;
+                                            break;
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.AUTO_ACTIVATE_GROUP:
+                                bool autoActivateGroup;
+                                if (!bool.TryParse(client.InnerText, out autoActivateGroup))
+                                {
+                                    throw new Exception("error in client section");
+                                }
+                                AUTO_ACTIVATE_GROUP = autoActivateGroup;
+                                break;
+                            case ConfigurationKeys.START_LOCATION:
+                                if (string.IsNullOrEmpty(client.InnerText))
+                                {
+                                    throw new Exception("error in client section");
+                                }
+                                START_LOCATION = client.InnerText;
+                                break;
+                        }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
+                }
+
+                // Process logs.
+                try
+                {
+                    foreach (XmlNode LogNode in root.SelectNodes("/config/logs/*"))
                     {
-                        foreach (XmlNode client in nodeList)
-                            switch (client.Name.ToLowerInvariant())
+                        switch (LogNode.Name.ToLowerInvariant())
+                        {
+                            case ConfigurationKeys.IM:
+                                XmlNodeList imLogNodeList = LogNode.SelectNodes("*");
+                                if (imLogNodeList == null)
+                                {
+                                    throw new Exception("error in logs section");
+                                }
+                                foreach (XmlNode imLogNode in imLogNodeList)
+                                {
+                                    switch (imLogNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.ENABLE:
+                                            bool enable;
+                                            if (!bool.TryParse(imLogNode.InnerText, out enable))
+                                            {
+                                                throw new Exception("error in im logs section");
+                                            }
+                                            INSTANT_MESSAGE_LOG_ENABLED = enable;
+                                            break;
+                                        case ConfigurationKeys.DIRECTORY:
+                                            if (string.IsNullOrEmpty(imLogNode.InnerText))
+                                            {
+                                                throw new Exception("error in im logs section");
+                                            }
+                                            INSTANT_MESSAGE_LOG_DIRECTORY = imLogNode.InnerText;
+                                            break;
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.CLIENT:
+                                XmlNodeList clientLogNodeList = LogNode.SelectNodes("*");
+                                if (clientLogNodeList == null)
+                                {
+                                    throw new Exception("error in logs section");
+                                }
+                                foreach (XmlNode clientLogNode in clientLogNodeList)
+                                {
+                                    switch (clientLogNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.ENABLE:
+                                            bool enable;
+                                            if (!bool.TryParse(clientLogNode.InnerText, out enable))
+                                            {
+                                                throw new Exception("error in client logs section");
+                                            }
+                                            CLIENT_LOG_ENABLED = enable;
+                                            break;
+                                        case ConfigurationKeys.FILE:
+                                            if (string.IsNullOrEmpty(clientLogNode.InnerText))
+                                            {
+                                                throw new Exception("error in client logs section");
+                                            }
+                                            CLIENT_LOG_FILE = clientLogNode.InnerText;
+                                            break;
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.LOCAL:
+                                XmlNodeList localLogNodeList = LogNode.SelectNodes("*");
+                                if (localLogNodeList == null)
+                                {
+                                    throw new Exception("error in logs section");
+                                }
+                                foreach (XmlNode localLogNode in localLogNodeList)
+                                {
+                                    switch (localLogNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.ENABLE:
+                                            bool enable;
+                                            if (!bool.TryParse(localLogNode.InnerText, out enable))
+                                            {
+                                                throw new Exception("error in local logs section");
+                                            }
+                                            LOCAL_MESSAGE_LOG_ENABLED = enable;
+                                            break;
+                                        case ConfigurationKeys.DIRECTORY:
+                                            if (string.IsNullOrEmpty(localLogNode.InnerText))
+                                            {
+                                                throw new Exception("error in local logs section");
+                                            }
+                                            LOCAL_MESSAGE_LOG_DIRECTORY = localLogNode.InnerText;
+                                            break;
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.REGION:
+                                XmlNodeList regionLogNodeList = LogNode.SelectNodes("*");
+                                if (regionLogNodeList == null)
+                                {
+                                    throw new Exception("error in logs section");
+                                }
+                                foreach (XmlNode regionLogNode in regionLogNodeList)
+                                {
+                                    switch (regionLogNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.ENABLE:
+                                            bool enable;
+                                            if (!bool.TryParse(regionLogNode.InnerText, out enable))
+                                            {
+                                                throw new Exception("error in local logs section");
+                                            }
+                                            REGION_MESSAGE_LOG_ENABLED = enable;
+                                            break;
+                                        case ConfigurationKeys.DIRECTORY:
+                                            if (string.IsNullOrEmpty(regionLogNode.InnerText))
+                                            {
+                                                throw new Exception("error in local logs section");
+                                            }
+                                            REGION_MESSAGE_LOG_DIRECTORY = regionLogNode.InnerText;
+                                            break;
+                                    }
+                                }
+                                break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
+                }
+
+
+                // Process filters.
+                try
+                {
+                    foreach (XmlNode FilterNode in root.SelectNodes("/config/filters/*"))
+                    {
+                        switch (FilterNode.Name.ToLowerInvariant())
+                        {
+                            case ConfigurationKeys.INPUT:
+                                XmlNodeList inputFilterNodeList = FilterNode.SelectNodes("*");
+                                if (inputFilterNodeList == null)
+                                {
+                                    throw new Exception("error in filters section");
+                                }
+                                INPUT_FILTERS = new List<Filter>();
+                                foreach (XmlNode inputFilterNode in inputFilterNodeList)
+                                {
+                                    switch (inputFilterNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.ENCODE:
+                                        case ConfigurationKeys.DECODE:
+                                        case ConfigurationKeys.ENCRYPT:
+                                        case ConfigurationKeys.DECRYPT:
+                                            INPUT_FILTERS.Add(wasGetEnumValueFromDescription<Filter>(
+                                                inputFilterNode.InnerText));
+                                            break;
+                                        default:
+                                            throw new Exception("error in input filters section");
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.OUTPUT:
+                                XmlNodeList outputFilterNodeList = FilterNode.SelectNodes("*");
+                                if (outputFilterNodeList == null)
+                                {
+                                    throw new Exception("error in filters section");
+                                }
+                                OUTPUT_FILTERS = new List<Filter>();
+                                foreach (XmlNode outputFilterNode in outputFilterNodeList)
+                                {
+                                    switch (outputFilterNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.ENCODE:
+                                        case ConfigurationKeys.DECODE:
+                                        case ConfigurationKeys.ENCRYPT:
+                                        case ConfigurationKeys.DECRYPT:
+                                            OUTPUT_FILTERS.Add(wasGetEnumValueFromDescription<Filter>(
+                                                outputFilterNode.InnerText));
+                                            break;
+                                        default:
+                                            throw new Exception("error in output filters section");
+                                    }
+                                }
+                                break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
+                }
+
+                // Process cryptography.
+                try
+                {
+                    foreach (XmlNode FilterNode in root.SelectNodes("/config/cryptography/*"))
+                    {
+                        switch (FilterNode.Name.ToLowerInvariant())
+                        {
+                            case ConfigurationKeys.ENIGMA:
+                                XmlNodeList ENIGMANodeList = FilterNode.SelectNodes("*");
+                                if (ENIGMANodeList == null)
+                                {
+                                    throw new Exception("error in cryptography section");
+                                }
+                                ENIGMA enigma = new ENIGMA();
+                                foreach (XmlNode ENIGMANode in ENIGMANodeList)
+                                {
+                                    switch (ENIGMANode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.ROTORS:
+                                            enigma.rotors = ENIGMANode.InnerText.ToArray();
+                                            break;
+                                        case ConfigurationKeys.PLUGS:
+                                            enigma.plugs = ENIGMANode.InnerText.ToArray();
+                                            break;
+                                        case ConfigurationKeys.REFLECTOR:
+                                            enigma.reflector = ENIGMANode.InnerText.SingleOrDefault();
+                                            break;
+                                    }
+                                }
+                                ENIGMA = enigma;
+                                break;
+                            case ConfigurationKeys.VIGENERE:
+                                XmlNodeList VIGENERENodeList = FilterNode.SelectNodes("*");
+                                if (VIGENERENodeList == null)
+                                {
+                                    throw new Exception("error in cryptography section");
+                                }
+                                foreach (XmlNode VIGENERENode in VIGENERENodeList)
+                                {
+                                    switch (VIGENERENode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.SECRET:
+                                            VIGENERE_SECRET = VIGENERENode.InnerText;
+                                            break;
+                                    }
+                                }
+                                break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
+                }
+
+
+                // Process AIML.
+                try
+                {
+                    foreach (XmlNode AIMLNode in root.SelectNodes("/config/aiml/*"))
+                    {
+                        switch (AIMLNode.Name.ToLowerInvariant())
+                        {
+                            case ConfigurationKeys.ENABLE:
+                                bool enable;
+                                if (!bool.TryParse(AIMLNode.InnerText, out enable))
+                                {
+                                    throw new Exception("error in AIML section");
+                                }
+                                EnableAIML = enable;
+                                break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
+                }
+
+                // Process RLV.
+                try
+                {
+                    foreach (XmlNode RLVNode in root.SelectNodes("/config/rlv/*"))
+                    {
+                        switch (RLVNode.Name.ToLowerInvariant())
+                        {
+                            case ConfigurationKeys.ENABLE:
+                                bool enable;
+                                if (!bool.TryParse(RLVNode.InnerText, out enable))
+                                {
+                                    throw new Exception("error in RLV section");
+                                }
+                                EnableRLV = enable;
+                                break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
+                }
+
+                // Process server.
+                try
+                {
+                    foreach (XmlNode serverNode in root.SelectNodes("/config/server/*"))
+                    {
+                        switch (serverNode.Name.ToLowerInvariant())
+                        {
+                            case ConfigurationKeys.HTTP:
+                                bool enableHTTPServer;
+                                if (!bool.TryParse(serverNode.InnerText, out enableHTTPServer))
+                                {
+                                    throw new Exception("error in server section");
+                                }
+                                ENABLE_HTTP_SERVER = enableHTTPServer;
+                                break;
+                            case ConfigurationKeys.PREFIX:
+                                if (string.IsNullOrEmpty(serverNode.InnerText))
+                                {
+                                    throw new Exception("error in server section");
+                                }
+                                HTTP_SERVER_PREFIX = serverNode.InnerText;
+                                break;
+                            case ConfigurationKeys.COMPRESSION:
+                                HTTP_SERVER_COMPRESSION = wasGetEnumValueFromDescription<HTTPCompressionMethod>(
+                                    serverNode.InnerText);
+                                break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
+                }
+
+                // Process network.
+                try
+                {
+                    foreach (XmlNode networkNode in root.SelectNodes("/config/network/*"))
+                    {
+                        switch (networkNode.Name.ToLowerInvariant())
+                        {
+                            case ConfigurationKeys.BIND:
+                                if (!string.IsNullOrEmpty(networkNode.InnerText))
+                                {
+                                    BIND_IP_ADDRESS = networkNode.InnerText;
+                                }
+                                break;
+                            case ConfigurationKeys.MAC:
+                                if (!string.IsNullOrEmpty(networkNode.InnerText))
+                                {
+                                    NETWORK_CARD_MAC = networkNode.InnerText;
+                                }
+                                break;
+                            case ConfigurationKeys.ID0:
+                                if (!string.IsNullOrEmpty(networkNode.InnerText))
+                                {
+                                    DRIVE_IDENTIFIER_HASH = networkNode.InnerText;
+                                }
+                                break;
+                            case ConfigurationKeys.NAGGLE:
+                                bool useNaggle;
+                                if (!bool.TryParse(networkNode.InnerText, out useNaggle))
+                                {
+                                    throw new Exception("error in network section");
+                                }
+                                USE_NAGGLE = useNaggle;
+                                break;
+                            case ConfigurationKeys.EXPECT100CONTINUE:
+                                bool useExpect100Continue;
+                                if (!bool.TryParse(networkNode.InnerText, out useExpect100Continue))
+                                {
+                                    throw new Exception("error in network section");
+                                }
+                                USE_EXPECT100CONTINUE = useExpect100Continue;
+                                break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
+                }
+
+                // Process limits.
+                try
+                {
+                    foreach (XmlNode limitsNode in root.SelectNodes("/config/limits/*"))
+                    {
+                        switch (limitsNode.Name.ToLowerInvariant())
+                        {
+                            case ConfigurationKeys.RANGE:
+                                float range;
+                                if (!float.TryParse(limitsNode.InnerText,
+                                    out range))
+                                {
+                                    throw new Exception("error in range limits section");
+                                }
+                                RANGE = range;
+                                break;
+                            case ConfigurationKeys.RLV:
+                                XmlNodeList rlvLimitNodeList = limitsNode.SelectNodes("*");
+                                if (rlvLimitNodeList == null)
+                                {
+                                    throw new Exception("error in RLV limits section");
+                                }
+                                foreach (XmlNode rlvLimitNode in rlvLimitNodeList)
+                                {
+                                    switch (rlvLimitNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.THREADS:
+                                            int maximumRLVThreads;
+                                            if (
+                                                !int.TryParse(rlvLimitNode.InnerText,
+                                                    out maximumRLVThreads))
+                                            {
+                                                throw new Exception("error in RLV limits section");
+                                            }
+                                            MAXIMUM_RLV_THREADS = maximumRLVThreads;
+                                            break;
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.COMMANDS:
+                                XmlNodeList commandsLimitNodeList = limitsNode.SelectNodes("*");
+                                if (commandsLimitNodeList == null)
+                                {
+                                    throw new Exception("error in commands limits section");
+                                }
+                                foreach (XmlNode commandsLimitNode in commandsLimitNodeList)
+                                {
+                                    switch (commandsLimitNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.THREADS:
+                                            int maximumCommandThreads;
+                                            if (
+                                                !int.TryParse(commandsLimitNode.InnerText,
+                                                    out maximumCommandThreads))
+                                            {
+                                                throw new Exception("error in commands limits section");
+                                            }
+                                            MAXIMUM_COMMAND_THREADS = maximumCommandThreads;
+                                            break;
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.IM:
+                                XmlNodeList instantMessageLimitNodeList = limitsNode.SelectNodes("*");
+                                if (instantMessageLimitNodeList == null)
+                                {
+                                    throw new Exception("error in instant message limits section");
+                                }
+                                foreach (XmlNode instantMessageLimitNode in instantMessageLimitNodeList)
+                                {
+                                    switch (instantMessageLimitNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.THREADS:
+                                            int maximumInstantMessageThreads;
+                                            if (
+                                                !int.TryParse(instantMessageLimitNode.InnerText,
+                                                    out maximumInstantMessageThreads))
+                                            {
+                                                throw new Exception("error in instant message limits section");
+                                            }
+                                            MAXIMUM_INSTANT_MESSAGE_THREADS = maximumInstantMessageThreads;
+                                            break;
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.CLIENT:
+                                XmlNodeList clientLimitNodeList = limitsNode.SelectNodes("*");
+                                if (clientLimitNodeList == null)
+                                {
+                                    throw new Exception("error in client limits section");
+                                }
+                                foreach (XmlNode clientLimitNode in clientLimitNodeList)
+                                {
+                                    switch (clientLimitNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.CONNECTIONS:
+                                            int connectionLimit;
+                                            if (
+                                                !int.TryParse(clientLimitNode.InnerText,
+                                                    out connectionLimit))
+                                            {
+                                                throw new Exception("error in client limits section");
+                                            }
+                                            CONNECTION_LIMIT = connectionLimit;
+                                            break;
+                                        case ConfigurationKeys.IDLE:
+                                            int connectionIdleTime;
+                                            if (
+                                                !int.TryParse(clientLimitNode.InnerText,
+                                                    out connectionIdleTime))
+                                            {
+                                                throw new Exception("error in client limits section");
+                                            }
+                                            CONNECTION_IDLE_TIME = connectionIdleTime;
+                                            break;
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.CALLBACKS:
+                                XmlNodeList callbackLimitNodeList = limitsNode.SelectNodes("*");
+                                if (callbackLimitNodeList == null)
+                                {
+                                    throw new Exception("error in callback limits section");
+                                }
+                                foreach (XmlNode callbackLimitNode in callbackLimitNodeList)
+                                {
+                                    switch (callbackLimitNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.TIMEOUT:
+                                            int callbackTimeout;
+                                            if (!int.TryParse(callbackLimitNode.InnerText, out callbackTimeout))
+                                            {
+                                                throw new Exception("error in callback limits section");
+                                            }
+                                            CALLBACK_TIMEOUT = callbackTimeout;
+                                            break;
+                                        case ConfigurationKeys.THROTTLE:
+                                            int callbackThrottle;
+                                            if (
+                                                !int.TryParse(callbackLimitNode.InnerText, out callbackThrottle))
+                                            {
+                                                throw new Exception("error in callback limits section");
+                                            }
+                                            CALLBACK_THROTTLE = callbackThrottle;
+                                            break;
+                                        case ConfigurationKeys.QUEUE_LENGTH:
+                                            int callbackQueueLength;
+                                            if (
+                                                !int.TryParse(callbackLimitNode.InnerText,
+                                                    out callbackQueueLength))
+                                            {
+                                                throw new Exception("error in callback limits section");
+                                            }
+                                            CALLBACK_QUEUE_LENGTH = callbackQueueLength;
+                                            break;
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.NOTIFICATIONS:
+                                XmlNodeList notificationLimitNodeList = limitsNode.SelectNodes("*");
+                                if (notificationLimitNodeList == null)
+                                {
+                                    throw new Exception("error in notification limits section");
+                                }
+                                foreach (XmlNode notificationLimitNode in notificationLimitNodeList)
+                                {
+                                    switch (notificationLimitNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.TIMEOUT:
+                                            int notificationTimeout;
+                                            if (
+                                                !int.TryParse(notificationLimitNode.InnerText,
+                                                    out notificationTimeout))
+                                            {
+                                                throw new Exception("error in notification limits section");
+                                            }
+                                            NOTIFICATION_TIMEOUT = notificationTimeout;
+                                            break;
+                                        case ConfigurationKeys.THROTTLE:
+                                            int notificationThrottle;
+                                            if (
+                                                !int.TryParse(notificationLimitNode.InnerText,
+                                                    out notificationThrottle))
+                                            {
+                                                throw new Exception("error in notification limits section");
+                                            }
+                                            NOTIFICATION_THROTTLE = notificationThrottle;
+                                            break;
+                                        case ConfigurationKeys.QUEUE_LENGTH:
+                                            int notificationQueueLength;
+                                            if (
+                                                !int.TryParse(notificationLimitNode.InnerText,
+                                                    out notificationQueueLength))
+                                            {
+                                                throw new Exception("error in notification limits section");
+                                            }
+                                            NOTIFICATION_QUEUE_LENGTH = notificationQueueLength;
+                                            break;
+                                        case ConfigurationKeys.THREADS:
+                                            int maximumNotificationThreads;
+                                            if (
+                                                !int.TryParse(notificationLimitNode.InnerText,
+                                                    out maximumNotificationThreads))
+                                            {
+                                                throw new Exception("error in notification limits section");
+                                            }
+                                            MAXIMUM_NOTIFICATION_THREADS = maximumNotificationThreads;
+                                            break;
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.SERVER:
+                                XmlNodeList HTTPServerLimitNodeList = limitsNode.SelectNodes("*");
+                                if (HTTPServerLimitNodeList == null)
+                                {
+                                    throw new Exception("error in server limits section");
+                                }
+                                foreach (XmlNode HTTPServerLimitNode in HTTPServerLimitNodeList)
+                                {
+                                    switch (HTTPServerLimitNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.TIMEOUT:
+                                            int HTTPServerTimeout;
+                                            if (
+                                                !int.TryParse(HTTPServerLimitNode.InnerText,
+                                                    out HTTPServerTimeout))
+                                            {
+                                                throw new Exception("error in server limits section");
+                                            }
+                                            HTTP_SERVER_TIMEOUT = HTTPServerTimeout;
+                                            break;
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.SERVICES:
+                                XmlNodeList servicesLimitNodeList = limitsNode.SelectNodes("*");
+                                if (servicesLimitNodeList == null)
+                                {
+                                    throw new Exception("error in services limits section");
+                                }
+                                foreach (XmlNode servicesLimitNode in servicesLimitNodeList)
+                                {
+                                    switch (servicesLimitNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.TIMEOUT:
+                                            int servicesTimeout;
+                                            if (
+                                                !int.TryParse(servicesLimitNode.InnerText,
+                                                    out servicesTimeout))
+                                            {
+                                                throw new Exception("error in services limits section");
+                                            }
+                                            SERVICES_TIMEOUT = servicesTimeout;
+                                            break;
+                                        case ConfigurationKeys.REBAKE:
+                                            int rebakeDelay;
+                                            if (!int.TryParse(servicesLimitNode.InnerText, out rebakeDelay))
+                                            {
+                                                throw new Exception("error in services limits section");
+                                            }
+                                            REBAKE_DELAY = rebakeDelay;
+                                            break;
+                                        case ConfigurationKeys.ACTIVATE:
+                                            int activateDelay;
+                                            if (
+                                                !int.TryParse(servicesLimitNode.InnerText,
+                                                    out activateDelay))
+                                            {
+                                                throw new Exception("error in services limits section");
+                                            }
+                                            ACTIVATE_DELAY = activateDelay;
+                                            break;
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.DATA:
+                                XmlNodeList dataLimitNodeList = limitsNode.SelectNodes("*");
+                                if (dataLimitNodeList == null)
+                                {
+                                    throw new Exception("error in data limits section");
+                                }
+                                foreach (XmlNode dataLimitNode in dataLimitNodeList)
+                                {
+                                    switch (dataLimitNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.TIMEOUT:
+                                            int dataTimeout;
+                                            if (
+                                                !int.TryParse(dataLimitNode.InnerText,
+                                                    out dataTimeout))
+                                            {
+                                                throw new Exception("error in data limits section");
+                                            }
+                                            DATA_TIMEOUT = dataTimeout;
+                                            break;
+                                        case ConfigurationKeys.DECAY:
+                                            DATA_DECAY_TYPE =
+                                                wasGetEnumValueFromDescription<wasAdaptiveAlarm.DECAY_TYPE>(
+                                                    dataLimitNode.InnerText);
+                                            break;
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.MEMBERSHIP:
+                                XmlNodeList membershipLimitNodeList = limitsNode.SelectNodes("*");
+                                if (membershipLimitNodeList == null)
+                                {
+                                    throw new Exception("error in membership limits section");
+                                }
+                                foreach (XmlNode servicesLimitNode in membershipLimitNodeList)
+                                {
+                                    switch (servicesLimitNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.SWEEP:
+                                            int membershipSweepInterval;
+                                            if (
+                                                !int.TryParse(servicesLimitNode.InnerText,
+                                                    out membershipSweepInterval))
+                                            {
+                                                throw new Exception("error in membership limits section");
+                                            }
+                                            MEMBERSHIP_SWEEP_INTERVAL = membershipSweepInterval;
+                                            break;
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.LOGOUT:
+                                XmlNodeList logoutLimitNodeList = limitsNode.SelectNodes("*");
+                                if (logoutLimitNodeList == null)
+                                {
+                                    throw new Exception("error in logout limits section");
+                                }
+                                foreach (XmlNode logoutLimitNode in logoutLimitNodeList)
+                                {
+                                    switch (logoutLimitNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.TIMEOUT:
+                                            int logoutGrace;
+                                            if (
+                                                !int.TryParse(logoutLimitNode.InnerText,
+                                                    out logoutGrace))
+                                            {
+                                                throw new Exception("error in logout limits section");
+                                            }
+                                            LOGOUT_GRACE = logoutGrace;
+                                            break;
+                                    }
+                                }
+                                break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
+                }
+
+
+                // Process masters.
+                try
+                {
+                    foreach (XmlNode mastersNode in root.SelectNodes("/config/masters/*"))
+                    {
+                        Master configMaster = new Master();
+                        foreach (XmlNode masterNode in mastersNode.ChildNodes)
+                        {
+                            switch (masterNode.Name.ToLowerInvariant())
                             {
                                 case ConfigurationKeys.FIRST_NAME:
-                                    if (string.IsNullOrEmpty(client.InnerText))
+                                    if (string.IsNullOrEmpty(masterNode.InnerText))
                                     {
-                                        throw new Exception("error in client section");
+                                        throw new Exception("error in masters section");
                                     }
-                                    FIRST_NAME = client.InnerText;
+                                    configMaster.FirstName = masterNode.InnerText;
                                     break;
                                 case ConfigurationKeys.LAST_NAME:
-                                    if (string.IsNullOrEmpty(client.InnerText))
+                                    if (string.IsNullOrEmpty(masterNode.InnerText))
                                     {
-                                        throw new Exception("error in client section");
+                                        throw new Exception("error in masters section");
                                     }
-                                    LAST_NAME = client.InnerText;
+                                    configMaster.LastName = masterNode.InnerText;
+                                    break;
+                            }
+                        }
+                        MASTERS.Add(configMaster);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
+                }
+
+                // Process groups.
+                try
+                {
+                    foreach (XmlNode groupsNode in root.SelectNodes("/config/groups/*"))
+                    {
+                        Group configGroup = new Group
+                        {
+                            ChatLog = string.Empty,
+                            ChatLogEnabled = false,
+                            DatabaseFile = string.Empty,
+                            Name = string.Empty,
+                            NotificationMask = 0,
+                            Password = string.Empty,
+                            PermissionMask = 0,
+                            UUID = UUID.Zero,
+                            Workers = 5
+                        };
+                        foreach (XmlNode groupNode in groupsNode.ChildNodes)
+                        {
+                            switch (groupNode.Name.ToLowerInvariant())
+                            {
+                                case ConfigurationKeys.NAME:
+                                    if (string.IsNullOrEmpty(groupNode.InnerText))
+                                    {
+                                        throw new Exception("error in group section");
+                                    }
+                                    configGroup.Name = groupNode.InnerText;
+                                    break;
+                                case ConfigurationKeys.UUID:
+                                    if (!UUID.TryParse(groupNode.InnerText, out configGroup.UUID))
+                                    {
+                                        throw new Exception("error in group section");
+                                    }
                                     break;
                                 case ConfigurationKeys.PASSWORD:
-                                    if (string.IsNullOrEmpty(client.InnerText))
+                                    if (string.IsNullOrEmpty(groupNode.InnerText))
                                     {
-                                        throw new Exception("error in client section");
+                                        throw new Exception("error in group section");
                                     }
-                                    PASSWORD = client.InnerText;
+                                    configGroup.Password = groupNode.InnerText;
                                     break;
-                                case ConfigurationKeys.LOGIN_URL:
-                                    if (string.IsNullOrEmpty(client.InnerText))
+                                case ConfigurationKeys.WORKERS:
+                                    if (!uint.TryParse(groupNode.InnerText, out configGroup.Workers))
                                     {
-                                        throw new Exception("error in client section");
+                                        throw new Exception("error in group section");
                                     }
-                                    LOGIN_URL = client.InnerText;
                                     break;
-                                case ConfigurationKeys.TOS_ACCEPTED:
-                                    bool accepted;
-                                    if (!bool.TryParse(client.InnerText, out accepted))
+                                case ConfigurationKeys.CHATLOG:
+                                    XmlNodeList groupChatLogNodeList = groupNode.SelectNodes("*");
+                                    if (groupChatLogNodeList == null)
                                     {
-                                        throw new Exception("error in client section");
+                                        throw new Exception("error in group section");
                                     }
-                                    TOS_ACCEPTED = accepted;
-                                    break;
-                                case ConfigurationKeys.GROUP_CREATE_FEE:
-                                    int groupCreateFee;
-                                    if (!int.TryParse(client.InnerText, out groupCreateFee))
+                                    foreach (XmlNode groupChatLogNode in groupChatLogNodeList)
                                     {
-                                        throw new Exception("error in client section");
-                                    }
-                                    GROUP_CREATE_FEE = groupCreateFee;
-                                    break;
-                                case ConfigurationKeys.EXIT_CODE:
-                                    XmlNodeList exitCodeNodeList = client.SelectNodes("*");
-                                    if (exitCodeNodeList == null)
-                                    {
-                                        throw new Exception("error in client section");
-                                    }
-                                    foreach (XmlNode exitCodeNode in exitCodeNodeList)
-                                    {
-                                        switch (exitCodeNode.Name.ToLowerInvariant())
+                                        switch (groupChatLogNode.Name.ToLowerInvariant())
                                         {
-                                            case ConfigurationKeys.EXPECTED:
-                                                int exitCodeExpected;
-                                                if (!int.TryParse(exitCodeNode.InnerText, out exitCodeExpected))
+                                            case ConfigurationKeys.ENABLE:
+                                                bool enable;
+                                                if (!bool.TryParse(groupChatLogNode.InnerText, out enable))
                                                 {
-                                                    throw new Exception("error in client section");
+                                                    throw new Exception("error in group chat logs section");
                                                 }
-                                                EXIT_CODE_EXPECTED = exitCodeExpected;
+                                                configGroup.ChatLogEnabled = enable;
                                                 break;
-                                            case ConfigurationKeys.ABNORMAL:
-                                                int exitCodeAbnormal;
-                                                if (!int.TryParse(exitCodeNode.InnerText, out exitCodeAbnormal))
+                                            case ConfigurationKeys.FILE:
+                                                if (string.IsNullOrEmpty(groupChatLogNode.InnerText))
                                                 {
-                                                    throw new Exception("error in client section");
+                                                    throw new Exception("error in group chat logs section");
                                                 }
-                                                EXIT_CODE_ABNORMAL = exitCodeAbnormal;
+                                                configGroup.ChatLog = groupChatLogNode.InnerText;
                                                 break;
                                         }
                                     }
                                     break;
-                                case ConfigurationKeys.AUTO_ACTIVATE_GROUP:
-                                    bool autoActivateGroup;
-                                    if (!bool.TryParse(client.InnerText, out autoActivateGroup))
+                                case ConfigurationKeys.DATABASE:
+                                    if (string.IsNullOrEmpty(groupNode.InnerText))
                                     {
-                                        throw new Exception("error in client section");
+                                        throw new Exception("error in group section");
                                     }
-                                    AUTO_ACTIVATE_GROUP = autoActivateGroup;
+                                    configGroup.DatabaseFile = groupNode.InnerText;
                                     break;
-                                case ConfigurationKeys.START_LOCATION:
-                                    if (string.IsNullOrEmpty(client.InnerText))
+                                case ConfigurationKeys.PERMISSIONS:
+                                    XmlNodeList permissionNodeList = groupNode.SelectNodes("*");
+                                    if (permissionNodeList == null)
                                     {
-                                        throw new Exception("error in client section");
+                                        throw new Exception("error in group permission section");
                                     }
-                                    START_LOCATION = client.InnerText;
-                                    break;
-                            }
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                    }
-
-                    // Process logs.
-                    nodeList = root.SelectNodes("/config/logs/*");
-                    if (nodeList != null)
-                    {
-                        try
-                        {
-                            foreach (XmlNode LogNode in nodeList)
-                            {
-                                switch (LogNode.Name.ToLowerInvariant())
-                                {
-                                    case ConfigurationKeys.IM:
-                                        XmlNodeList imLogNodeList = LogNode.SelectNodes("*");
-                                        if (imLogNodeList == null)
-                                        {
-                                            throw new Exception("error in logs section");
-                                        }
-                                        foreach (XmlNode imLogNode in imLogNodeList)
-                                        {
-                                            switch (imLogNode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.ENABLE:
-                                                    bool enable;
-                                                    if (!bool.TryParse(imLogNode.InnerText, out enable))
-                                                    {
-                                                        throw new Exception("error in im logs section");
-                                                    }
-                                                    INSTANT_MESSAGE_LOG_ENABLED = enable;
-                                                    break;
-                                                case ConfigurationKeys.DIRECTORY:
-                                                    if (string.IsNullOrEmpty(imLogNode.InnerText))
-                                                    {
-                                                        throw new Exception("error in im logs section");
-                                                    }
-                                                    INSTANT_MESSAGE_LOG_DIRECTORY = imLogNode.InnerText;
-                                                    break;
-                                            }
-                                        }
-                                        break;
-                                    case ConfigurationKeys.CLIENT:
-                                        XmlNodeList clientLogNodeList = LogNode.SelectNodes("*");
-                                        if (clientLogNodeList == null)
-                                        {
-                                            throw new Exception("error in logs section");
-                                        }
-                                        foreach (XmlNode clientLogNode in clientLogNodeList)
-                                        {
-                                            switch (clientLogNode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.ENABLE:
-                                                    bool enable;
-                                                    if (!bool.TryParse(clientLogNode.InnerText, out enable))
-                                                    {
-                                                        throw new Exception("error in client logs section");
-                                                    }
-                                                    CLIENT_LOG_ENABLED = enable;
-                                                    break;
-                                                case ConfigurationKeys.FILE:
-                                                    if (string.IsNullOrEmpty(clientLogNode.InnerText))
-                                                    {
-                                                        throw new Exception("error in client logs section");
-                                                    }
-                                                    CLIENT_LOG_FILE = clientLogNode.InnerText;
-                                                    break;
-                                            }
-                                        }
-                                        break;
-                                    case ConfigurationKeys.LOCAL:
-                                        XmlNodeList localLogNodeList = LogNode.SelectNodes("*");
-                                        if (localLogNodeList == null)
-                                        {
-                                            throw new Exception("error in logs section");
-                                        }
-                                        foreach (XmlNode localLogNode in localLogNodeList)
-                                        {
-                                            switch (localLogNode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.ENABLE:
-                                                    bool enable;
-                                                    if (!bool.TryParse(localLogNode.InnerText, out enable))
-                                                    {
-                                                        throw new Exception("error in local logs section");
-                                                    }
-                                                    LOCAL_MESSAGE_LOG_ENABLED = enable;
-                                                    break;
-                                                case ConfigurationKeys.DIRECTORY:
-                                                    if (string.IsNullOrEmpty(localLogNode.InnerText))
-                                                    {
-                                                        throw new Exception("error in local logs section");
-                                                    }
-                                                    LOCAL_MESSAGE_LOG_DIRECTORY = localLogNode.InnerText;
-                                                    break;
-                                            }
-                                        }
-                                        break;
-                                    case ConfigurationKeys.REGION:
-                                        XmlNodeList regionLogNodeList = LogNode.SelectNodes("*");
-                                        if (regionLogNodeList == null)
-                                        {
-                                            throw new Exception("error in logs section");
-                                        }
-                                        foreach (XmlNode regionLogNode in regionLogNodeList)
-                                        {
-                                            switch (regionLogNode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.ENABLE:
-                                                    bool enable;
-                                                    if (!bool.TryParse(regionLogNode.InnerText, out enable))
-                                                    {
-                                                        throw new Exception("error in local logs section");
-                                                    }
-                                                    REGION_MESSAGE_LOG_ENABLED = enable;
-                                                    break;
-                                                case ConfigurationKeys.DIRECTORY:
-                                                    if (string.IsNullOrEmpty(regionLogNode.InnerText))
-                                                    {
-                                                        throw new Exception("error in local logs section");
-                                                    }
-                                                    REGION_MESSAGE_LOG_DIRECTORY = regionLogNode.InnerText;
-                                                    break;
-                                            }
-                                        }
-                                        break;
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                        }
-                    }
-
-                    // Process filters.
-                    nodeList = root.SelectNodes("/config/filters/*");
-                    if (nodeList != null)
-                    {
-                        try
-                        {
-                            foreach (XmlNode FilterNode in nodeList)
-                            {
-                                switch (FilterNode.Name.ToLowerInvariant())
-                                {
-                                    case ConfigurationKeys.INPUT:
-                                        XmlNodeList inputFilterNodeList = FilterNode.SelectNodes("*");
-                                        if (inputFilterNodeList == null)
-                                        {
-                                            throw new Exception("error in filters section");
-                                        }
-                                        INPUT_FILTERS = new List<Filter>();
-                                        foreach (XmlNode inputFilterNode in inputFilterNodeList)
-                                        {
-                                            switch (inputFilterNode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.ENCODE:
-                                                case ConfigurationKeys.DECODE:
-                                                case ConfigurationKeys.ENCRYPT:
-                                                case ConfigurationKeys.DECRYPT:
-                                                    INPUT_FILTERS.Add(wasGetEnumValueFromDescription<Filter>(
-                                                        inputFilterNode.InnerText));
-                                                    break;
-                                                default:
-                                                    throw new Exception("error in input filters section");
-                                            }
-                                        }
-                                        break;
-                                    case ConfigurationKeys.OUTPUT:
-                                        XmlNodeList outputFilterNodeList = FilterNode.SelectNodes("*");
-                                        if (outputFilterNodeList == null)
-                                        {
-                                            throw new Exception("error in filters section");
-                                        }
-                                        OUTPUT_FILTERS = new List<Filter>();
-                                        foreach (XmlNode outputFilterNode in outputFilterNodeList)
-                                        {
-                                            switch (outputFilterNode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.ENCODE:
-                                                case ConfigurationKeys.DECODE:
-                                                case ConfigurationKeys.ENCRYPT:
-                                                case ConfigurationKeys.DECRYPT:
-                                                    OUTPUT_FILTERS.Add(wasGetEnumValueFromDescription<Filter>(
-                                                        outputFilterNode.InnerText));
-                                                    break;
-                                                default:
-                                                    throw new Exception("error in output filters section");
-                                            }
-                                        }
-                                        break;
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                        }
-                    }
-
-                    // Process cryptography.
-                    nodeList = root.SelectNodes("/config/cryptography/*");
-                    if (nodeList != null)
-                    {
-                        try
-                        {
-                            foreach (XmlNode FilterNode in nodeList)
-                            {
-                                switch (FilterNode.Name.ToLowerInvariant())
-                                {
-                                    case ConfigurationKeys.ENIGMA:
-                                        XmlNodeList ENIGMANodeList = FilterNode.SelectNodes("*");
-                                        if (ENIGMANodeList == null)
-                                        {
-                                            throw new Exception("error in cryptography section");
-                                        }
-                                        ENIGMA enigma = new ENIGMA();
-                                        foreach (XmlNode ENIGMANode in ENIGMANodeList)
-                                        {
-                                            switch (ENIGMANode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.ROTORS:
-                                                    enigma.rotors = ENIGMANode.InnerText.ToArray();
-                                                    break;
-                                                case ConfigurationKeys.PLUGS:
-                                                    enigma.plugs = ENIGMANode.InnerText.ToArray();
-                                                    break;
-                                                case ConfigurationKeys.REFLECTOR:
-                                                    enigma.reflector = ENIGMANode.InnerText.SingleOrDefault();
-                                                    break;
-                                            }
-                                        }
-                                        ENIGMA = enigma;
-                                        break;
-                                    case ConfigurationKeys.VIGENERE:
-                                        XmlNodeList VIGENERENodeList = FilterNode.SelectNodes("*");
-                                        if (VIGENERENodeList == null)
-                                        {
-                                            throw new Exception("error in cryptography section");
-                                        }
-                                        foreach (XmlNode VIGENERENode in VIGENERENodeList)
-                                        {
-                                            switch (VIGENERENode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.SECRET:
-                                                    VIGENERE_SECRET = VIGENERENode.InnerText;
-                                                    break;
-                                            }
-                                        }
-                                        break;
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                        }
-                    }
-
-                    // Process AIML.
-                    nodeList = root.SelectNodes("/config/aiml/*");
-                    if (nodeList != null)
-                    {
-                        try
-                        {
-                            foreach (XmlNode AIMLNode in nodeList)
-                            {
-                                switch (AIMLNode.Name.ToLowerInvariant())
-                                {
-                                    case ConfigurationKeys.ENABLE:
-                                        bool enable;
-                                        if (!bool.TryParse(AIMLNode.InnerText, out enable))
-                                        {
-                                            throw new Exception("error in AIML section");
-                                        }
-                                        EnableAIML = enable;
-                                        break;
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                        }
-                    }
-
-                    // Process RLV.
-                    nodeList = root.SelectNodes("/config/rlv/*");
-                    if (nodeList != null)
-                    {
-                        try
-                        {
-                            foreach (XmlNode RLVNode in nodeList)
-                            {
-                                switch (RLVNode.Name.ToLowerInvariant())
-                                {
-                                    case ConfigurationKeys.ENABLE:
-                                        bool enable;
-                                        if (!bool.TryParse(RLVNode.InnerText, out enable))
-                                        {
-                                            throw new Exception("error in RLV section");
-                                        }
-                                        EnableRLV = enable;
-                                        break;
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                        }
-                    }
-
-                    // Process server.
-                    nodeList = root.SelectNodes("/config/server/*");
-                    if (nodeList != null)
-                    {
-                        try
-                        {
-                            foreach (XmlNode serverNode in nodeList)
-                            {
-                                switch (serverNode.Name.ToLowerInvariant())
-                                {
-                                    case ConfigurationKeys.HTTP:
-                                        bool enableHTTPServer;
-                                        if (!bool.TryParse(serverNode.InnerText, out enableHTTPServer))
-                                        {
-                                            throw new Exception("error in server section");
-                                        }
-                                        ENABLE_HTTP_SERVER = enableHTTPServer;
-                                        break;
-                                    case ConfigurationKeys.PREFIX:
-                                        if (string.IsNullOrEmpty(serverNode.InnerText))
-                                        {
-                                            throw new Exception("error in server section");
-                                        }
-                                        HTTP_SERVER_PREFIX = serverNode.InnerText;
-                                        break;
-                                    case ConfigurationKeys.COMPRESSION:
-                                        HTTP_SERVER_COMPRESSION = wasGetEnumValueFromDescription<HTTPCompressionMethod>(
-                                            serverNode.InnerText);
-                                        break;
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                        }
-                    }
-
-                    // Process network.
-                    nodeList = root.SelectNodes("/config/network/*");
-                    if (nodeList != null)
-                    {
-                        try
-                        {
-                            foreach (XmlNode networkNode in nodeList)
-                            {
-                                switch (networkNode.Name.ToLowerInvariant())
-                                {
-                                    case ConfigurationKeys.BIND:
-                                        if (!string.IsNullOrEmpty(networkNode.InnerText))
-                                        {
-                                            BIND_IP_ADDRESS = networkNode.InnerText;
-                                        }
-                                        break;
-                                    case ConfigurationKeys.MAC:
-                                        if (!string.IsNullOrEmpty(networkNode.InnerText))
-                                        {
-                                            NETWORK_CARD_MAC = networkNode.InnerText;
-                                        }
-                                        break;
-                                    case ConfigurationKeys.ID0:
-                                        if (!string.IsNullOrEmpty(networkNode.InnerText))
-                                        {
-                                            DRIVE_IDENTIFIER_HASH = networkNode.InnerText;
-                                        }
-                                        break;
-                                    case ConfigurationKeys.NAGGLE:
-                                        bool useNaggle;
-                                        if (!bool.TryParse(networkNode.InnerText, out useNaggle))
-                                        {
-                                            throw new Exception("error in network section");
-                                        }
-                                        USE_NAGGLE = useNaggle;
-                                        break;
-                                    case ConfigurationKeys.EXPECT100CONTINUE:
-                                        bool useExpect100Continue;
-                                        if (!bool.TryParse(networkNode.InnerText, out useExpect100Continue))
-                                        {
-                                            throw new Exception("error in network section");
-                                        }
-                                        USE_EXPECT100CONTINUE = useExpect100Continue;
-                                        break;
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                        }
-                    }
-
-                    // Process limits.
-                    nodeList = root.SelectNodes("/config/limits/*");
-                    if (nodeList != null)
-                    {
-                        try
-                        {
-                            foreach (XmlNode limitsNode in nodeList)
-                            {
-                                switch (limitsNode.Name.ToLowerInvariant())
-                                {
-                                    case ConfigurationKeys.RANGE:
-                                        float range;
-                                        if (!float.TryParse(limitsNode.InnerText,
-                                            out range))
-                                        {
-                                            throw new Exception("error in range limits section");
-                                        }
-                                        RANGE = range;
-                                        break;
-                                    case ConfigurationKeys.RLV:
-                                        XmlNodeList rlvLimitNodeList = limitsNode.SelectNodes("*");
-                                        if (rlvLimitNodeList == null)
-                                        {
-                                            throw new Exception("error in RLV limits section");
-                                        }
-                                        foreach (XmlNode rlvLimitNode in rlvLimitNodeList)
-                                        {
-                                            switch (rlvLimitNode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.THREADS:
-                                                    int maximumRLVThreads;
-                                                    if (
-                                                        !int.TryParse(rlvLimitNode.InnerText,
-                                                            out maximumRLVThreads))
-                                                    {
-                                                        throw new Exception("error in RLV limits section");
-                                                    }
-                                                    MAXIMUM_RLV_THREADS = maximumRLVThreads;
-                                                    break;
-                                            }
-                                        }
-                                        break;
-                                    case ConfigurationKeys.COMMANDS:
-                                        XmlNodeList commandsLimitNodeList = limitsNode.SelectNodes("*");
-                                        if (commandsLimitNodeList == null)
-                                        {
-                                            throw new Exception("error in commands limits section");
-                                        }
-                                        foreach (XmlNode commandsLimitNode in commandsLimitNodeList)
-                                        {
-                                            switch (commandsLimitNode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.THREADS:
-                                                    int maximumCommandThreads;
-                                                    if (
-                                                        !int.TryParse(commandsLimitNode.InnerText,
-                                                            out maximumCommandThreads))
-                                                    {
-                                                        throw new Exception("error in commands limits section");
-                                                    }
-                                                    MAXIMUM_COMMAND_THREADS = maximumCommandThreads;
-                                                    break;
-                                            }
-                                        }
-                                        break;
-                                    case ConfigurationKeys.IM:
-                                        XmlNodeList instantMessageLimitNodeList = limitsNode.SelectNodes("*");
-                                        if (instantMessageLimitNodeList == null)
-                                        {
-                                            throw new Exception("error in instant message limits section");
-                                        }
-                                        foreach (XmlNode instantMessageLimitNode in instantMessageLimitNodeList)
-                                        {
-                                            switch (instantMessageLimitNode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.THREADS:
-                                                    int maximumInstantMessageThreads;
-                                                    if (
-                                                        !int.TryParse(instantMessageLimitNode.InnerText,
-                                                            out maximumInstantMessageThreads))
-                                                    {
-                                                        throw new Exception("error in instant message limits section");
-                                                    }
-                                                    MAXIMUM_INSTANT_MESSAGE_THREADS = maximumInstantMessageThreads;
-                                                    break;
-                                            }
-                                        }
-                                        break;
-                                    case ConfigurationKeys.CLIENT:
-                                        XmlNodeList clientLimitNodeList = limitsNode.SelectNodes("*");
-                                        if (clientLimitNodeList == null)
-                                        {
-                                            throw new Exception("error in client limits section");
-                                        }
-                                        foreach (XmlNode clientLimitNode in clientLimitNodeList)
-                                        {
-                                            switch (clientLimitNode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.CONNECTIONS:
-                                                    int connectionLimit;
-                                                    if (
-                                                        !int.TryParse(clientLimitNode.InnerText,
-                                                            out connectionLimit))
-                                                    {
-                                                        throw new Exception("error in client limits section");
-                                                    }
-                                                    CONNECTION_LIMIT = connectionLimit;
-                                                    break;
-                                                case ConfigurationKeys.IDLE:
-                                                    int connectionIdleTime;
-                                                    if (
-                                                        !int.TryParse(clientLimitNode.InnerText,
-                                                            out connectionIdleTime))
-                                                    {
-                                                        throw new Exception("error in client limits section");
-                                                    }
-                                                    CONNECTION_IDLE_TIME = connectionIdleTime;
-                                                    break;
-                                            }
-                                        }
-                                        break;
-                                    case ConfigurationKeys.CALLBACKS:
-                                        XmlNodeList callbackLimitNodeList = limitsNode.SelectNodes("*");
-                                        if (callbackLimitNodeList == null)
-                                        {
-                                            throw new Exception("error in callback limits section");
-                                        }
-                                        foreach (XmlNode callbackLimitNode in callbackLimitNodeList)
-                                        {
-                                            switch (callbackLimitNode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.TIMEOUT:
-                                                    int callbackTimeout;
-                                                    if (!int.TryParse(callbackLimitNode.InnerText, out callbackTimeout))
-                                                    {
-                                                        throw new Exception("error in callback limits section");
-                                                    }
-                                                    CALLBACK_TIMEOUT = callbackTimeout;
-                                                    break;
-                                                case ConfigurationKeys.THROTTLE:
-                                                    int callbackThrottle;
-                                                    if (
-                                                        !int.TryParse(callbackLimitNode.InnerText, out callbackThrottle))
-                                                    {
-                                                        throw new Exception("error in callback limits section");
-                                                    }
-                                                    CALLBACK_THROTTLE = callbackThrottle;
-                                                    break;
-                                                case ConfigurationKeys.QUEUE_LENGTH:
-                                                    int callbackQueueLength;
-                                                    if (
-                                                        !int.TryParse(callbackLimitNode.InnerText,
-                                                            out callbackQueueLength))
-                                                    {
-                                                        throw new Exception("error in callback limits section");
-                                                    }
-                                                    CALLBACK_QUEUE_LENGTH = callbackQueueLength;
-                                                    break;
-                                            }
-                                        }
-                                        break;
-                                    case ConfigurationKeys.NOTIFICATIONS:
-                                        XmlNodeList notificationLimitNodeList = limitsNode.SelectNodes("*");
-                                        if (notificationLimitNodeList == null)
-                                        {
-                                            throw new Exception("error in notification limits section");
-                                        }
-                                        foreach (XmlNode notificationLimitNode in notificationLimitNodeList)
-                                        {
-                                            switch (notificationLimitNode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.TIMEOUT:
-                                                    int notificationTimeout;
-                                                    if (
-                                                        !int.TryParse(notificationLimitNode.InnerText,
-                                                            out notificationTimeout))
-                                                    {
-                                                        throw new Exception("error in notification limits section");
-                                                    }
-                                                    NOTIFICATION_TIMEOUT = notificationTimeout;
-                                                    break;
-                                                case ConfigurationKeys.THROTTLE:
-                                                    int notificationThrottle;
-                                                    if (
-                                                        !int.TryParse(notificationLimitNode.InnerText,
-                                                            out notificationThrottle))
-                                                    {
-                                                        throw new Exception("error in notification limits section");
-                                                    }
-                                                    NOTIFICATION_THROTTLE = notificationThrottle;
-                                                    break;
-                                                case ConfigurationKeys.QUEUE_LENGTH:
-                                                    int notificationQueueLength;
-                                                    if (
-                                                        !int.TryParse(notificationLimitNode.InnerText,
-                                                            out notificationQueueLength))
-                                                    {
-                                                        throw new Exception("error in notification limits section");
-                                                    }
-                                                    NOTIFICATION_QUEUE_LENGTH = notificationQueueLength;
-                                                    break;
-                                                case ConfigurationKeys.THREADS:
-                                                    int maximumNotificationThreads;
-                                                    if (
-                                                        !int.TryParse(notificationLimitNode.InnerText,
-                                                            out maximumNotificationThreads))
-                                                    {
-                                                        throw new Exception("error in notification limits section");
-                                                    }
-                                                    MAXIMUM_NOTIFICATION_THREADS = maximumNotificationThreads;
-                                                    break;
-                                            }
-                                        }
-                                        break;
-                                    case ConfigurationKeys.SERVER:
-                                        XmlNodeList HTTPServerLimitNodeList = limitsNode.SelectNodes("*");
-                                        if (HTTPServerLimitNodeList == null)
-                                        {
-                                            throw new Exception("error in server limits section");
-                                        }
-                                        foreach (XmlNode HTTPServerLimitNode in HTTPServerLimitNodeList)
-                                        {
-                                            switch (HTTPServerLimitNode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.TIMEOUT:
-                                                    int HTTPServerTimeout;
-                                                    if (
-                                                        !int.TryParse(HTTPServerLimitNode.InnerText,
-                                                            out HTTPServerTimeout))
-                                                    {
-                                                        throw new Exception("error in server limits section");
-                                                    }
-                                                    HTTP_SERVER_TIMEOUT = HTTPServerTimeout;
-                                                    break;
-                                            }
-                                        }
-                                        break;
-                                    case ConfigurationKeys.SERVICES:
-                                        XmlNodeList servicesLimitNodeList = limitsNode.SelectNodes("*");
-                                        if (servicesLimitNodeList == null)
-                                        {
-                                            throw new Exception("error in services limits section");
-                                        }
-                                        foreach (XmlNode servicesLimitNode in servicesLimitNodeList)
-                                        {
-                                            switch (servicesLimitNode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.TIMEOUT:
-                                                    int servicesTimeout;
-                                                    if (
-                                                        !int.TryParse(servicesLimitNode.InnerText,
-                                                            out servicesTimeout))
-                                                    {
-                                                        throw new Exception("error in services limits section");
-                                                    }
-                                                    SERVICES_TIMEOUT = servicesTimeout;
-                                                    break;
-                                                case ConfigurationKeys.REBAKE:
-                                                    int rebakeDelay;
-                                                    if (!int.TryParse(servicesLimitNode.InnerText, out rebakeDelay))
-                                                    {
-                                                        throw new Exception("error in services limits section");
-                                                    }
-                                                    REBAKE_DELAY = rebakeDelay;
-                                                    break;
-                                                case ConfigurationKeys.ACTIVATE:
-                                                    int activateDelay;
-                                                    if (
-                                                        !int.TryParse(servicesLimitNode.InnerText,
-                                                            out activateDelay))
-                                                    {
-                                                        throw new Exception("error in services limits section");
-                                                    }
-                                                    ACTIVATE_DELAY = activateDelay;
-                                                    break;
-                                            }
-                                        }
-                                        break;
-                                    case ConfigurationKeys.DATA:
-                                        XmlNodeList dataLimitNodeList = limitsNode.SelectNodes("*");
-                                        if (dataLimitNodeList == null)
-                                        {
-                                            throw new Exception("error in data limits section");
-                                        }
-                                        foreach (XmlNode dataLimitNode in dataLimitNodeList)
-                                        {
-                                            switch (dataLimitNode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.TIMEOUT:
-                                                    int dataTimeout;
-                                                    if (
-                                                        !int.TryParse(dataLimitNode.InnerText,
-                                                            out dataTimeout))
-                                                    {
-                                                        throw new Exception("error in data limits section");
-                                                    }
-                                                    DATA_TIMEOUT = dataTimeout;
-                                                    break;
-                                                case ConfigurationKeys.DECAY:
-                                                    DATA_DECAY_TYPE =
-                                                        wasGetEnumValueFromDescription<wasAdaptiveAlarm.DECAY_TYPE>(
-                                                            dataLimitNode.InnerText);
-                                                    break;
-                                            }
-                                        }
-                                        break;
-                                    case ConfigurationKeys.MEMBERSHIP:
-                                        XmlNodeList membershipLimitNodeList = limitsNode.SelectNodes("*");
-                                        if (membershipLimitNodeList == null)
-                                        {
-                                            throw new Exception("error in membership limits section");
-                                        }
-                                        foreach (XmlNode servicesLimitNode in membershipLimitNodeList)
-                                        {
-                                            switch (servicesLimitNode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.SWEEP:
-                                                    int membershipSweepInterval;
-                                                    if (
-                                                        !int.TryParse(servicesLimitNode.InnerText,
-                                                            out membershipSweepInterval))
-                                                    {
-                                                        throw new Exception("error in membership limits section");
-                                                    }
-                                                    MEMBERSHIP_SWEEP_INTERVAL = membershipSweepInterval;
-                                                    break;
-                                            }
-                                        }
-                                        break;
-                                    case ConfigurationKeys.LOGOUT:
-                                        XmlNodeList logoutLimitNodeList = limitsNode.SelectNodes("*");
-                                        if (logoutLimitNodeList == null)
-                                        {
-                                            throw new Exception("error in logout limits section");
-                                        }
-                                        foreach (XmlNode logoutLimitNode in logoutLimitNodeList)
-                                        {
-                                            switch (logoutLimitNode.Name.ToLowerInvariant())
-                                            {
-                                                case ConfigurationKeys.TIMEOUT:
-                                                    int logoutGrace;
-                                                    if (
-                                                        !int.TryParse(logoutLimitNode.InnerText,
-                                                            out logoutGrace))
-                                                    {
-                                                        throw new Exception("error in logout limits section");
-                                                    }
-                                                    LOGOUT_GRACE = logoutGrace;
-                                                    break;
-                                            }
-                                        }
-                                        break;
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                        }
-                    }
-
-                    // Process masters.
-                    nodeList = root.SelectNodes("/config/masters/*");
-                    if (nodeList != null)
-                    {
-                        try
-                        {
-                            foreach (XmlNode mastersNode in nodeList)
-                            {
-                                Master configMaster = new Master();
-                                foreach (XmlNode masterNode in mastersNode.ChildNodes)
-                                {
-                                    switch (masterNode.Name.ToLowerInvariant())
+                                    uint permissionMask = 0;
+                                    foreach (XmlNode permissioNode in permissionNodeList)
                                     {
-                                        case ConfigurationKeys.FIRST_NAME:
-                                            if (string.IsNullOrEmpty(masterNode.InnerText))
-                                            {
-                                                throw new Exception("error in masters section");
-                                            }
-                                            configMaster.FirstName = masterNode.InnerText;
-                                            break;
-                                        case ConfigurationKeys.LAST_NAME:
-                                            if (string.IsNullOrEmpty(masterNode.InnerText))
-                                            {
-                                                throw new Exception("error in masters section");
-                                            }
-                                            configMaster.LastName = masterNode.InnerText;
-                                            break;
-                                    }
-                                }
-                                MASTERS.Add(configMaster);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                        }
-                    }
-
-                    // Process groups.
-                    nodeList = root.SelectNodes("/config/groups/*");
-                    if (nodeList != null)
-                    {
-                        try
-                        {
-                            foreach (XmlNode groupsNode in nodeList)
-                            {
-                                Group configGroup = new Group
-                                {
-                                    ChatLog = string.Empty,
-                                    ChatLogEnabled = false,
-                                    DatabaseFile = string.Empty,
-                                    Name = string.Empty,
-                                    NotificationMask = 0,
-                                    Password = string.Empty,
-                                    PermissionMask = 0,
-                                    UUID = UUID.Zero,
-                                    Workers = 5
-                                };
-                                foreach (XmlNode groupNode in groupsNode.ChildNodes)
-                                {
-                                    switch (groupNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.NAME:
-                                            if (string.IsNullOrEmpty(groupNode.InnerText))
-                                            {
-                                                throw new Exception("error in group section");
-                                            }
-                                            configGroup.Name = groupNode.InnerText;
-                                            break;
-                                        case ConfigurationKeys.UUID:
-                                            if (!UUID.TryParse(groupNode.InnerText, out configGroup.UUID))
-                                            {
-                                                throw new Exception("error in group section");
-                                            }
-                                            break;
-                                        case ConfigurationKeys.PASSWORD:
-                                            if (string.IsNullOrEmpty(groupNode.InnerText))
-                                            {
-                                                throw new Exception("error in group section");
-                                            }
-                                            configGroup.Password = groupNode.InnerText;
-                                            break;
-                                        case ConfigurationKeys.WORKERS:
-                                            if (!uint.TryParse(groupNode.InnerText, out configGroup.Workers))
-                                            {
-                                                throw new Exception("error in group section");
-                                            }
-                                            break;
-                                        case ConfigurationKeys.CHATLOG:
-                                            XmlNodeList groupChatLogNodeList = groupNode.SelectNodes("*");
-                                            if (groupChatLogNodeList == null)
-                                            {
-                                                throw new Exception("error in group section");
-                                            }
-                                            foreach (XmlNode groupChatLogNode in groupChatLogNodeList)
-                                            {
-                                                switch (groupChatLogNode.Name.ToLowerInvariant())
-                                                {
-                                                    case ConfigurationKeys.ENABLE:
-                                                        bool enable;
-                                                        if (!bool.TryParse(groupChatLogNode.InnerText, out enable))
+                                        XmlNode node = permissioNode;
+                                        Parallel.ForEach(
+                                            wasGetEnumDescriptions<Permissions>()
+                                                .AsParallel().Where(name => name.Equals(node.Name,
+                                                    StringComparison.Ordinal)), name =>
+                                                    {
+                                                        bool granted;
+                                                        if (!bool.TryParse(node.InnerText, out granted))
                                                         {
-                                                            throw new Exception("error in group chat logs section");
+                                                            throw new Exception(
+                                                                "error in group permission section");
                                                         }
-                                                        configGroup.ChatLogEnabled = enable;
-                                                        break;
-                                                    case ConfigurationKeys.FILE:
-                                                        if (string.IsNullOrEmpty(groupChatLogNode.InnerText))
+                                                        if (granted)
                                                         {
-                                                            throw new Exception("error in group chat logs section");
+                                                            permissionMask = permissionMask |
+                                                                             (uint)
+                                                                                 wasGetEnumValueFromDescription
+                                                                                     <Permissions>(name);
                                                         }
-                                                        configGroup.ChatLog = groupChatLogNode.InnerText;
-                                                        break;
-                                                }
-                                            }
-                                            break;
-                                        case ConfigurationKeys.DATABASE:
-                                            if (string.IsNullOrEmpty(groupNode.InnerText))
-                                            {
-                                                throw new Exception("error in group section");
-                                            }
-                                            configGroup.DatabaseFile = groupNode.InnerText;
-                                            break;
-                                        case ConfigurationKeys.PERMISSIONS:
-                                            XmlNodeList permissionNodeList = groupNode.SelectNodes("*");
-                                            if (permissionNodeList == null)
-                                            {
-                                                throw new Exception("error in group permission section");
-                                            }
-                                            uint permissionMask = 0;
-                                            foreach (XmlNode permissioNode in permissionNodeList)
-                                            {
-                                                XmlNode node = permissioNode;
-                                                Parallel.ForEach(
-                                                    wasGetEnumDescriptions<Permissions>()
-                                                        .AsParallel().Where(name => name.Equals(node.Name,
-                                                            StringComparison.Ordinal)), name =>
-                                                            {
-                                                                bool granted;
-                                                                if (!bool.TryParse(node.InnerText, out granted))
-                                                                {
-                                                                    throw new Exception(
-                                                                        "error in group permission section");
-                                                                }
-                                                                if (granted)
-                                                                {
-                                                                    permissionMask = permissionMask |
-                                                                                     (uint)
-                                                                                         wasGetEnumValueFromDescription
-                                                                                             <Permissions>(name);
-                                                                }
-                                                            });
-                                            }
-                                            configGroup.PermissionMask = permissionMask;
-                                            break;
-                                        case ConfigurationKeys.NOTIFICATIONS:
-                                            XmlNodeList notificationNodeList = groupNode.SelectNodes("*");
-                                            if (notificationNodeList == null)
-                                            {
-                                                throw new Exception("error in group notification section");
-                                            }
-                                            uint notificationMask = 0;
-                                            foreach (XmlNode notificationNode in notificationNodeList)
-                                            {
-                                                XmlNode node = notificationNode;
-                                                Parallel.ForEach(
-                                                    wasGetEnumDescriptions<Notifications>()
-                                                        .AsParallel().Where(name => name.Equals(node.Name,
-                                                            StringComparison.Ordinal)), name =>
-                                                            {
-                                                                bool granted;
-                                                                if (!bool.TryParse(node.InnerText, out granted))
-                                                                {
-                                                                    throw new Exception(
-                                                                        "error in group notification section");
-                                                                }
-                                                                if (granted)
-                                                                {
-                                                                    notificationMask = notificationMask |
-                                                                                       (uint)
-                                                                                           wasGetEnumValueFromDescription
-                                                                                               <Notifications>(name);
-                                                                }
-                                                            });
-                                            }
-                                            configGroup.NotificationMask = notificationMask;
-                                            break;
+                                                    });
                                     }
-                                }
-                                GROUPS.Add(configGroup);
+                                    configGroup.PermissionMask = permissionMask;
+                                    break;
+                                case ConfigurationKeys.NOTIFICATIONS:
+                                    XmlNodeList notificationNodeList = groupNode.SelectNodes("*");
+                                    if (notificationNodeList == null)
+                                    {
+                                        throw new Exception("error in group notification section");
+                                    }
+                                    uint notificationMask = 0;
+                                    foreach (XmlNode notificationNode in notificationNodeList)
+                                    {
+                                        XmlNode node = notificationNode;
+                                        Parallel.ForEach(
+                                            wasGetEnumDescriptions<Notifications>()
+                                                .AsParallel().Where(name => name.Equals(node.Name,
+                                                    StringComparison.Ordinal)), name =>
+                                                    {
+                                                        bool granted;
+                                                        if (!bool.TryParse(node.InnerText, out granted))
+                                                        {
+                                                            throw new Exception(
+                                                                "error in group notification section");
+                                                        }
+                                                        if (granted)
+                                                        {
+                                                            notificationMask = notificationMask |
+                                                                               (uint)
+                                                                                   wasGetEnumValueFromDescription
+                                                                                       <Notifications>(name);
+                                                        }
+                                                    });
+                                    }
+                                    configGroup.NotificationMask = notificationMask;
+                                    break;
                             }
                         }
-                        catch (Exception ex)
-                        {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                        }
+                        GROUPS.Add(configGroup);
                     }
-                    // Enable AIML in case it was enabled in the configuration file.
-                    switch (EnableAIML)
-                    {
-                        case true:
-                            switch (!AIMLBotBrainCompiled)
-                            {
-                                case true:
-                                    new Thread(
-                                        () =>
-                                        {
-                                            lock (AIMLBotLock)
-                                            {
-                                                LoadChatBotFiles.Invoke();
-                                                AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
-                                            }
-                                        }) {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
-                                    break;
-                                default:
-                                    AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
-                                    AIMLBot.isAcceptingUserInput = true;
-                                    break;
-                            }
-                            break;
-                        default:
-                            AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
-                            AIMLBot.isAcceptingUserInput = false;
-                            break;
-                    }
-                    // Dynamically disable or enable notifications.
-                    Parallel.ForEach(wasGetEnumDescriptions<Notifications>().AsParallel().Select(
-                        wasGetEnumValueFromDescription<Notifications>), o =>
-                        {
-                            bool enabled = GROUPS.AsParallel().Any(
-                                p =>
-                                    !(p.NotificationMask & (uint) o).Equals(0));
-                            switch (o)
-                            {
-                                case Notifications.NOTIFICATION_GROUP_MEMBERSHIP:
-                                    switch (enabled)
-                                    {
-                                        case true:
-                                            // Start the group membership thread.
-                                            StartGroupMembershipSweepThread.Invoke();
-                                            break;
-                                        default:
-                                            // Stop the group sweep thread.
-                                            StopGroupMembershipSweepThread.Invoke();
-                                            break;
-                                    }
-                                    break;
-                                case Notifications.NOTIFICATION_FRIENDSHIP:
-                                    switch (enabled)
-                                    {
-                                        case true:
-                                            Client.Friends.FriendshipOffered += HandleFriendshipOffered;
-                                            Client.Friends.FriendshipResponse += HandleFriendShipResponse;
-                                            Client.Friends.FriendOnline += HandleFriendOnlineStatus;
-                                            Client.Friends.FriendOffline += HandleFriendOnlineStatus;
-                                            Client.Friends.FriendRightsUpdate += HandleFriendRightsUpdate;
-                                            break;
-                                        default:
-                                            Client.Friends.FriendshipOffered -= HandleFriendshipOffered;
-                                            Client.Friends.FriendshipResponse -= HandleFriendShipResponse;
-                                            Client.Friends.FriendOnline -= HandleFriendOnlineStatus;
-                                            Client.Friends.FriendOffline -= HandleFriendOnlineStatus;
-                                            Client.Friends.FriendRightsUpdate -= HandleFriendRightsUpdate;
-                                            break;
-                                    }
-                                    break;
-                                case Notifications.NOTIFICATION_SCRIPT_PERMISSION:
-                                    switch (enabled)
-                                    {
-                                        case true:
-                                            Client.Self.ScriptQuestion += HandleScriptQuestion;
-                                            break;
-                                        default:
-                                            Client.Self.ScriptQuestion -= HandleScriptQuestion;
-                                            break;
-                                    }
-                                    break;
-                                case Notifications.NOTIFICATION_ALERT_MESSAGE:
-                                    switch (enabled)
-                                    {
-                                        case true:
-                                            Client.Self.AlertMessage += HandleAlertMessage;
-                                            break;
-                                        default:
-                                            Client.Self.AlertMessage -= HandleAlertMessage;
-                                            break;
-                                    }
-                                    break;
-                                case Notifications.NOTIFICATION_BALANCE:
-                                    switch (enabled)
-                                    {
-                                        case true:
-                                            Client.Self.MoneyBalance += HandleMoneyBalance;
-                                            break;
-                                        default:
-                                            Client.Self.MoneyBalance -= HandleMoneyBalance;
-                                            break;
-                                    }
-                                    break;
-                                case Notifications.NOTIFICATION_ECONOMY:
-                                    switch (enabled)
-                                    {
-                                        case true:
-                                            Client.Self.MoneyBalanceReply += HandleMoneyBalance;
-                                            break;
-                                        default:
-                                            Client.Self.MoneyBalanceReply -= HandleMoneyBalance;
-                                            break;
-                                    }
-                                    break;
-                                case Notifications.NOTIFICATION_SCRIPT_DIALOG:
-                                    switch (enabled)
-                                    {
-                                        case true:
-                                            Client.Self.ScriptDialog += HandleScriptDialog;
-                                            break;
-                                        default:
-                                            Client.Self.ScriptDialog -= HandleScriptDialog;
-                                            break;
-                                    }
-                                    break;
-                                case Notifications.NOTIFICATION_TERSE_UPDATES:
-                                    switch (enabled)
-                                    {
-                                        case true:
-                                            Client.Objects.TerseObjectUpdate += HandleTerseObjectUpdate;
-                                            break;
-                                        default:
-                                            Client.Objects.TerseObjectUpdate -= HandleTerseObjectUpdate;
-                                            break;
-                                    }
-                                    break;
-                                case Notifications.NOTIFICATION_VIEWER_EFFECT:
-                                    switch (enabled)
-                                    {
-                                        case true:
-                                            Client.Avatars.ViewerEffect += HandleViewerEffect;
-                                            Client.Avatars.ViewerEffectPointAt += HandleViewerEffect;
-                                            Client.Avatars.ViewerEffectLookAt += HandleViewerEffect;
-                                            break;
-                                        default:
-                                            Client.Avatars.ViewerEffect -= HandleViewerEffect;
-                                            Client.Avatars.ViewerEffectPointAt -= HandleViewerEffect;
-                                            Client.Avatars.ViewerEffectLookAt -= HandleViewerEffect;
-                                            break;
-                                    }
-                                    break;
-                                case Notifications.NOTIFICATION_MEAN_COLLISION:
-                                    switch (enabled)
-                                    {
-                                        case true:
-                                            Client.Self.MeanCollision += HandleMeanCollision;
-                                            break;
-                                        default:
-                                            Client.Self.MeanCollision -= HandleMeanCollision;
-                                            break;
-                                    }
-                                    break;
-                                case Notifications.NOTIFICATION_REGION_CROSSED:
-                                    switch (enabled)
-                                    {
-                                        case true:
-                                            Client.Self.RegionCrossed += HandleRegionCrossed;
-                                            Client.Network.SimChanged += HandleSimChanged;
-                                            break;
-                                        default:
-                                            Client.Self.RegionCrossed -= HandleRegionCrossed;
-                                            Client.Network.SimChanged -= HandleSimChanged;
-                                            break;
-                                    }
-                                    break;
-                                case Notifications.NOTIFICATION_LOAD_URL:
-                                    switch (enabled)
-                                    {
-                                        case true:
-                                            Client.Self.LoadURL += HandleLoadURL;
-                                            break;
-                                        default:
-                                            Client.Self.LoadURL -= HandleLoadURL;
-                                            break;
-                                    }
-                                    break;
-                            }
-                        });
-                    // If any group has either the avatar radar notification or the primitive radar notification then install the listeners.
-                    switch (
-                        GROUPS.AsParallel().Any(
-                            o => !(o.NotificationMask & (uint) Notifications.NOTIFICATION_RADAR_AVATARS).Equals(0)) ||
-                        GROUPS.AsParallel().Any(
-                            o => !(o.NotificationMask & (uint) Notifications.NOTIFICATION_RADAR_PRIMITIVES).Equals(0)))
-                    {
-                        case true:
-                            Client.Network.SimChanged += HandleRadarObjects;
-                            Client.Objects.AvatarUpdate += HandleAvatarUpdate;
-                            Client.Objects.ObjectUpdate += HandleObjectUpdate;
-                            Client.Objects.KillObject += HandleKillObject;
-                            break;
-                        default:
-                            Client.Network.SimChanged -= HandleRadarObjects;
-                            Client.Objects.AvatarUpdate -= HandleAvatarUpdate;
-                            Client.Objects.ObjectUpdate -= HandleObjectUpdate;
-                            Client.Objects.KillObject -= HandleKillObject;
-                            break;
-                    }
-                    // Apply settings to the instance.
-                    Client.Self.Movement.Camera.Far = RANGE;
-                    Client.Settings.LOGIN_TIMEOUT = SERVICES_TIMEOUT;
-                    Client.Settings.LOGOUT_TIMEOUT = SERVICES_TIMEOUT;
                 }
+                catch (Exception ex)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
+                }
+
+                // Enable AIML in case it was enabled in the configuration file.
+                switch (EnableAIML)
+                {
+                    case true:
+                        switch (!AIMLBotBrainCompiled)
+                        {
+                            case true:
+                                new Thread(
+                                    () =>
+                                    {
+                                        lock (AIMLBotLock)
+                                        {
+                                            LoadChatBotFiles.Invoke();
+                                            AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
+                                        }
+                                    }) {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
+                                break;
+                            default:
+                                AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
+                                AIMLBot.isAcceptingUserInput = true;
+                                break;
+                        }
+                        break;
+                    default:
+                        AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
+                        AIMLBot.isAcceptingUserInput = false;
+                        break;
+                }
+
+                // Dynamically disable or enable notifications.
+                Parallel.ForEach(wasGetEnumDescriptions<Notifications>().AsParallel().Select(
+                    wasGetEnumValueFromDescription<Notifications>), o =>
+                    {
+                        bool enabled = GROUPS.AsParallel().Any(
+                            p =>
+                                !(p.NotificationMask & (uint) o).Equals(0));
+                        switch (o)
+                        {
+                            case Notifications.NOTIFICATION_GROUP_MEMBERSHIP:
+                                switch (enabled)
+                                {
+                                    case true:
+                                        // Start the group membership thread.
+                                        StartGroupMembershipSweepThread.Invoke();
+                                        break;
+                                    default:
+                                        // Stop the group sweep thread.
+                                        StopGroupMembershipSweepThread.Invoke();
+                                        break;
+                                }
+                                break;
+                            case Notifications.NOTIFICATION_FRIENDSHIP:
+                                switch (enabled)
+                                {
+                                    case true:
+                                        Client.Friends.FriendshipOffered += HandleFriendshipOffered;
+                                        Client.Friends.FriendshipResponse += HandleFriendShipResponse;
+                                        Client.Friends.FriendOnline += HandleFriendOnlineStatus;
+                                        Client.Friends.FriendOffline += HandleFriendOnlineStatus;
+                                        Client.Friends.FriendRightsUpdate += HandleFriendRightsUpdate;
+                                        break;
+                                    default:
+                                        Client.Friends.FriendshipOffered -= HandleFriendshipOffered;
+                                        Client.Friends.FriendshipResponse -= HandleFriendShipResponse;
+                                        Client.Friends.FriendOnline -= HandleFriendOnlineStatus;
+                                        Client.Friends.FriendOffline -= HandleFriendOnlineStatus;
+                                        Client.Friends.FriendRightsUpdate -= HandleFriendRightsUpdate;
+                                        break;
+                                }
+                                break;
+                            case Notifications.NOTIFICATION_SCRIPT_PERMISSION:
+                                switch (enabled)
+                                {
+                                    case true:
+                                        Client.Self.ScriptQuestion += HandleScriptQuestion;
+                                        break;
+                                    default:
+                                        Client.Self.ScriptQuestion -= HandleScriptQuestion;
+                                        break;
+                                }
+                                break;
+                            case Notifications.NOTIFICATION_ALERT_MESSAGE:
+                                switch (enabled)
+                                {
+                                    case true:
+                                        Client.Self.AlertMessage += HandleAlertMessage;
+                                        break;
+                                    default:
+                                        Client.Self.AlertMessage -= HandleAlertMessage;
+                                        break;
+                                }
+                                break;
+                            case Notifications.NOTIFICATION_BALANCE:
+                                switch (enabled)
+                                {
+                                    case true:
+                                        Client.Self.MoneyBalance += HandleMoneyBalance;
+                                        break;
+                                    default:
+                                        Client.Self.MoneyBalance -= HandleMoneyBalance;
+                                        break;
+                                }
+                                break;
+                            case Notifications.NOTIFICATION_ECONOMY:
+                                switch (enabled)
+                                {
+                                    case true:
+                                        Client.Self.MoneyBalanceReply += HandleMoneyBalance;
+                                        break;
+                                    default:
+                                        Client.Self.MoneyBalanceReply -= HandleMoneyBalance;
+                                        break;
+                                }
+                                break;
+                            case Notifications.NOTIFICATION_SCRIPT_DIALOG:
+                                switch (enabled)
+                                {
+                                    case true:
+                                        Client.Self.ScriptDialog += HandleScriptDialog;
+                                        break;
+                                    default:
+                                        Client.Self.ScriptDialog -= HandleScriptDialog;
+                                        break;
+                                }
+                                break;
+                            case Notifications.NOTIFICATION_TERSE_UPDATES:
+                                switch (enabled)
+                                {
+                                    case true:
+                                        Client.Objects.TerseObjectUpdate += HandleTerseObjectUpdate;
+                                        break;
+                                    default:
+                                        Client.Objects.TerseObjectUpdate -= HandleTerseObjectUpdate;
+                                        break;
+                                }
+                                break;
+                            case Notifications.NOTIFICATION_VIEWER_EFFECT:
+                                switch (enabled)
+                                {
+                                    case true:
+                                        Client.Avatars.ViewerEffect += HandleViewerEffect;
+                                        Client.Avatars.ViewerEffectPointAt += HandleViewerEffect;
+                                        Client.Avatars.ViewerEffectLookAt += HandleViewerEffect;
+                                        break;
+                                    default:
+                                        Client.Avatars.ViewerEffect -= HandleViewerEffect;
+                                        Client.Avatars.ViewerEffectPointAt -= HandleViewerEffect;
+                                        Client.Avatars.ViewerEffectLookAt -= HandleViewerEffect;
+                                        break;
+                                }
+                                break;
+                            case Notifications.NOTIFICATION_MEAN_COLLISION:
+                                switch (enabled)
+                                {
+                                    case true:
+                                        Client.Self.MeanCollision += HandleMeanCollision;
+                                        break;
+                                    default:
+                                        Client.Self.MeanCollision -= HandleMeanCollision;
+                                        break;
+                                }
+                                break;
+                            case Notifications.NOTIFICATION_REGION_CROSSED:
+                                switch (enabled)
+                                {
+                                    case true:
+                                        Client.Self.RegionCrossed += HandleRegionCrossed;
+                                        Client.Network.SimChanged += HandleSimChanged;
+                                        break;
+                                    default:
+                                        Client.Self.RegionCrossed -= HandleRegionCrossed;
+                                        Client.Network.SimChanged -= HandleSimChanged;
+                                        break;
+                                }
+                                break;
+                            case Notifications.NOTIFICATION_LOAD_URL:
+                                switch (enabled)
+                                {
+                                    case true:
+                                        Client.Self.LoadURL += HandleLoadURL;
+                                        break;
+                                    default:
+                                        Client.Self.LoadURL -= HandleLoadURL;
+                                        break;
+                                }
+                                break;
+                        }
+                    });
+                // If any group has either the avatar radar notification or the primitive radar notification then install the listeners.
+                switch (
+                    GROUPS.AsParallel().Any(
+                        o => !(o.NotificationMask & (uint) Notifications.NOTIFICATION_RADAR_AVATARS).Equals(0)) ||
+                    GROUPS.AsParallel().Any(
+                        o => !(o.NotificationMask & (uint) Notifications.NOTIFICATION_RADAR_PRIMITIVES).Equals(0)))
+                {
+                    case true:
+                        Client.Network.SimChanged += HandleRadarObjects;
+                        Client.Objects.AvatarUpdate += HandleAvatarUpdate;
+                        Client.Objects.ObjectUpdate += HandleObjectUpdate;
+                        Client.Objects.KillObject += HandleKillObject;
+                        break;
+                    default:
+                        Client.Network.SimChanged -= HandleRadarObjects;
+                        Client.Objects.AvatarUpdate -= HandleAvatarUpdate;
+                        Client.Objects.ObjectUpdate -= HandleObjectUpdate;
+                        Client.Objects.KillObject -= HandleKillObject;
+                        break;
+                }
+                // Apply settings to the instance.
+                Client.Self.Movement.Camera.Far = RANGE;
+                Client.Settings.LOGIN_TIMEOUT = SERVICES_TIMEOUT;
+                Client.Settings.LOGOUT_TIMEOUT = SERVICES_TIMEOUT;
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
             }
         }
@@ -21616,7 +21744,7 @@ namespace Corrade
         public struct Notification
         {
             public string GroupName;
-            public SerializableDictionary<Notifications, string> NotificationDestination;
+            public SerializableDictionary<Notifications, HashSet<string>> NotificationDestination;
             public uint NotificationMask;
         }
 
@@ -22152,71 +22280,174 @@ namespace Corrade
             [Description("task")] public UUID Task;
         }
 
+        /// <summary>
+        ///     A serializable dictionary implementation.
+        /// </summary>
+        /// <typeparam name="TKey">the key</typeparam>
+        /// <typeparam name="TVal">the value</typeparam>
+        /// <remarks>Copyright (c) Dacris Software Inc. MIT license</remarks>
         [Serializable]
-        [XmlRoot("Dictionary")]
-        public class SerializableDictionary<TKey, TValue>
-            : Dictionary<TKey, TValue>, IXmlSerializable
+        public class SerializableDictionary<TKey, TVal> : Dictionary<TKey, TVal>, IXmlSerializable, ISerializable
         {
-            [XmlRoot("Item")]
-            public class SerializableKeyValuePair<TK, TV>
+            #region Constants
+
+            private const string DictionaryNodeName = "Dictionary";
+            private const string ItemNodeName = "Item";
+            private const string KeyNodeName = "Key";
+            private const string ValueNodeName = "Value";
+
+            #endregion
+
+            #region Constructors
+
+            public SerializableDictionary()
             {
-                [XmlAttribute("Key")] public TK Key;
-                [XmlAttribute("Value")] public TV Value;
+            }
 
-                /// <summary>
-                ///     Default constructor
-                /// </summary>
-                public SerializableKeyValuePair()
-                {
-                }
+            public SerializableDictionary(IDictionary<TKey, TVal> dictionary)
+                : base(dictionary)
+            {
+            }
 
-                public SerializableKeyValuePair(TK key, TV value)
+            public SerializableDictionary(IEqualityComparer<TKey> comparer)
+                : base(comparer)
+            {
+            }
+
+            public SerializableDictionary(int capacity)
+                : base(capacity)
+            {
+            }
+
+            public SerializableDictionary(IDictionary<TKey, TVal> dictionary, IEqualityComparer<TKey> comparer)
+                : base(dictionary, comparer)
+            {
+            }
+
+            public SerializableDictionary(int capacity, IEqualityComparer<TKey> comparer)
+                : base(capacity, comparer)
+            {
+            }
+
+            #endregion
+
+            #region ISerializable Members
+
+            protected SerializableDictionary(SerializationInfo info, StreamingContext context)
+            {
+                int itemCount = info.GetInt32("ItemCount");
+                for (int i = 0; i < itemCount; i++)
                 {
-                    Key = key;
-                    Value = value;
+                    KeyValuePair<TKey, TVal> kvp =
+                        (KeyValuePair<TKey, TVal>)
+                            info.GetValue(String.Format("Item{0}", i), typeof (KeyValuePair<TKey, TVal>));
+                    Add(kvp.Key, kvp.Value);
                 }
             }
 
+            void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context)
+            {
+                info.AddValue("ItemCount", Count);
+                int itemIdx = 0;
+                foreach (KeyValuePair<TKey, TVal> kvp in this)
+                {
+                    info.AddValue(String.Format("Item{0}", itemIdx), kvp, typeof (KeyValuePair<TKey, TVal>));
+                    itemIdx++;
+                }
+            }
+
+            #endregion
+
             #region IXmlSerializable Members
 
-            public XmlSchema GetSchema()
+            void IXmlSerializable.WriteXml(XmlWriter writer)
+            {
+                //writer.WriteStartElement(DictionaryNodeName);
+                foreach (KeyValuePair<TKey, TVal> kvp in this)
+                {
+                    writer.WriteStartElement(ItemNodeName);
+                    writer.WriteStartElement(KeyNodeName);
+                    KeySerializer.Serialize(writer, kvp.Key);
+                    writer.WriteEndElement();
+                    writer.WriteStartElement(ValueNodeName);
+                    ValueSerializer.Serialize(writer, kvp.Value);
+                    writer.WriteEndElement();
+                    writer.WriteEndElement();
+                }
+                //writer.WriteEndElement();
+            }
+
+            void IXmlSerializable.ReadXml(XmlReader reader)
+            {
+                if (reader.IsEmptyElement)
+                {
+                    return;
+                }
+
+                // Move past container
+                if (!reader.Read())
+                {
+                    throw new XmlException("Error in Deserialization of Dictionary");
+                }
+
+                //reader.ReadStartElement(DictionaryNodeName);
+                while (reader.NodeType != XmlNodeType.EndElement)
+                {
+                    reader.ReadStartElement(ItemNodeName);
+                    reader.ReadStartElement(KeyNodeName);
+                    TKey key = (TKey) KeySerializer.Deserialize(reader);
+                    reader.ReadEndElement();
+                    reader.ReadStartElement(ValueNodeName);
+                    TVal value = (TVal) ValueSerializer.Deserialize(reader);
+                    reader.ReadEndElement();
+                    reader.ReadEndElement();
+                    Add(key, value);
+                    reader.MoveToContent();
+                }
+                //reader.ReadEndElement();
+
+                reader.ReadEndElement(); // Read End Element to close Read of containing node
+            }
+
+            XmlSchema IXmlSerializable.GetSchema()
             {
                 return null;
             }
 
-            public void ReadXml(XmlReader reader)
+            #endregion
+
+            #region Private Properties
+
+            protected XmlSerializer ValueSerializer
             {
-                XDocument doc;
-                using (XmlReader subtreeReader = reader.ReadSubtree())
+                get
                 {
-                    doc = XDocument.Load(subtreeReader);
-                }
-                XmlSerializer serializer = new XmlSerializer(typeof (SerializableKeyValuePair<TKey, TValue>));
-                foreach (XElement item in doc.Descendants(XName.Get("Item")))
-                {
-                    using (XmlReader itemReader = item.CreateReader())
+                    if (valueSerializer == null)
                     {
-                        SerializableKeyValuePair<TKey, TValue> kvp =
-                            serializer.Deserialize(itemReader) as SerializableKeyValuePair<TKey, TValue>;
-                        if (kvp == null || kvp.Equals(default(SerializableKeyValuePair<TKey, TValue>))) continue;
-                        Add(kvp.Key, kvp.Value);
+                        valueSerializer = new XmlSerializer(typeof (TVal));
                     }
+                    return valueSerializer;
                 }
-                reader.ReadEndElement();
             }
 
-            public void WriteXml(XmlWriter writer)
+            private XmlSerializer KeySerializer
             {
-                XmlSerializer serializer = new XmlSerializer(typeof (SerializableKeyValuePair<TKey, TValue>));
-                XmlSerializerNamespaces ns = new XmlSerializerNamespaces();
-                ns.Add("", "");
-                foreach (SerializableKeyValuePair<TKey, TValue> kvp in
-                    Keys.AsParallel().Select(key => new {key, value = this[key]})
-                        .Select(@t => new SerializableKeyValuePair<TKey, TValue>(@t.key, @t.value)))
+                get
                 {
-                    serializer.Serialize(writer, kvp, ns);
+                    if (keySerializer == null)
+                    {
+                        keySerializer = new XmlSerializer(typeof (TKey));
+                    }
+                    return keySerializer;
                 }
             }
+
+            #endregion
+
+            #region Private Members
+
+            private XmlSerializer keySerializer;
+            private XmlSerializer valueSerializer;
 
             #endregion
         }
@@ -22587,13 +22818,10 @@ namespace Corrade
             {
                 Parcel parcel = null;
                 if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel)) return;
-                UUID groupUUID =
-                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(parcel.GroupID)).UUID;
-                if (groupUUID.Equals(UUID.Zero)) return;
-                lock (ClientInstanceGroupsLock)
-                {
-                    Client.Groups.ActivateGroup(groupUUID);
-                }
+                Group landGroup =
+                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(parcel.GroupID));
+                if (landGroup.UUID.Equals(UUID.Zero)) return;
+                Client.Groups.ActivateGroup(landGroup.UUID);
             });
 
         public static EventHandler ConsoleEventHandler;
@@ -23173,7 +23401,7 @@ namespace Corrade
         /// <returns>a key-value data encoded string</returns>
         private static string wasKeyValueEncode(Dictionary<string, string> data)
         {
-            return string.Join("&", data.Select(o => string.Join("=", o.Key, o.Value)));
+            return string.Join("&", data.AsParallel().Select(o => string.Join("=", o.Key, o.Value)));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -23919,11 +24147,13 @@ namespace Corrade
             EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyDelegate = (sender, args) =>
             {
                 DirPeopleReceivedAlarm.Alarm(dataTimeout);
-                localAgentUUID =
+                DirectoryManager.AgentSearchData agentSearchData =
                     args.MatchedPeople.AsParallel().FirstOrDefault(
                         o =>
                             o.FirstName.Equals(agentFirstName, StringComparison.OrdinalIgnoreCase) &&
-                            o.LastName.Equals(agentLastName, StringComparison.OrdinalIgnoreCase)).AgentID;
+                            o.LastName.Equals(agentLastName, StringComparison.OrdinalIgnoreCase));
+                if (agentSearchData.Equals(default(DirectoryManager.AgentSearchData))) return;
+                localAgentUUID = agentSearchData.AgentID;
             };
             Client.Directory.DirPeopleReply += DirPeopleReplyDelegate;
             Client.Directory.StartPeopleSearch(
@@ -24004,7 +24234,10 @@ namespace Corrade
             ManualResetEvent UUIDNameReplyEvent = new ManualResetEvent(false);
             EventHandler<UUIDNameReplyEventArgs> UUIDNameReplyDelegate = (sender, args) =>
             {
-                localAgentName = args.Names.AsParallel().FirstOrDefault(o => o.Key.Equals(agentUUID)).Value;
+                KeyValuePair<UUID, string> UUIDNameReply =
+                    args.Names.AsParallel().FirstOrDefault(o => o.Key.Equals(agentUUID));
+                if (!UUIDNameReply.Equals(default(KeyValuePair<UUID, string>)))
+                    localAgentName = UUIDNameReply.Value;
                 UUIDNameReplyEvent.Set();
             };
             Client.Avatars.UUIDNameReply += UUIDNameReplyDelegate;
@@ -24083,10 +24316,11 @@ namespace Corrade
             EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
             {
                 GroupRoleDataReceivedAlarm.Alarm(dataTimeout);
-                localRoleUUID =
+                KeyValuePair<UUID, GroupRole> groupRole =
                     args.Roles.AsParallel()
-                        .FirstOrDefault(o => o.Value.Name.Equals(roleName, StringComparison.Ordinal))
-                        .Key;
+                        .FirstOrDefault(o => o.Value.Name.Equals(roleName, StringComparison.Ordinal));
+                if (groupRole.Equals(default(KeyValuePair<UUID, GroupRole>))) return;
+                localRoleUUID = groupRole.Key;
             };
             lock (ClientInstanceGroupsLock)
             {
@@ -24125,7 +24359,10 @@ namespace Corrade
             EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
             {
                 GroupRoleDataReceivedAlarm.Alarm(dataTimeout);
-                localRoleName = args.Roles.AsParallel().FirstOrDefault(o => o.Key.Equals(RoleUUID)).Value.Name;
+                KeyValuePair<UUID, GroupRole> groupRole =
+                    args.Roles.AsParallel().FirstOrDefault(o => o.Key.Equals(RoleUUID));
+                if (groupRole.Equals(default(KeyValuePair<UUID, GroupRole>))) return;
+                localRoleName = groupRole.Value.Name;
             };
             lock (ClientInstanceGroupsLock)
             {
