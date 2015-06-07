@@ -1,11 +1,14 @@
-﻿namespace Corrade
+﻿using System.ComponentModel;
+using System.ServiceProcess;
+
+namespace Corrade
 {
     partial class ProjectInstaller
     {
         /// <summary>
         /// Required designer variable.
         /// </summary>
-        private System.ComponentModel.IContainer components = null;
+        private IContainer components = null;
 
         /// <summary> 
         /// Clean up any resources being used.
@@ -55,7 +58,7 @@
 
         #endregion
 
-        private System.ServiceProcess.ServiceProcessInstaller CorradeProcessInstaller;
-        private System.ServiceProcess.ServiceInstaller CorradeInstaller;
+        private ServiceProcessInstaller CorradeProcessInstaller;
+        private ServiceInstaller CorradeInstaller;
     }
 }

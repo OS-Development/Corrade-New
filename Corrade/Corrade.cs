@@ -30,7 +30,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using System.Xml;
-using System.Xml.Linq;
 using System.Xml.Schema;
 using System.Xml.Serialization;
 using AIMLbot;
@@ -377,6 +376,47 @@ namespace Corrade
         }
 
         ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Retrives all the attributes of type T from an enumeration.
+        /// </summary>
+        /// <returns>a list of type T attributes</returns>
+        private static IEnumerable<T> wasGetEnumAttributes<T>()
+        {
+            return typeof (T).GetFields(BindingFlags.Static | BindingFlags.Public)
+                .AsParallel().Select(o => wasGetAttributeFromEnumValue<T>((Enum) o.GetValue(null)));
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Retrieves an attribute of type T from an enumeration.
+        /// </summary>
+        /// <returns>an attribute of type T</returns>
+        private static T wasGetAttributeFromEnumValue<T>(Enum value)
+        {
+            return (T) value.GetType()
+                .GetField(value.ToString())
+                .GetCustomAttributes(typeof (T), false)
+                .SingleOrDefault();
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Returns all the field descriptions of an enumeration.
+        /// </summary>
+        /// <returns>the field descriptions</returns>
+        private static IEnumerable<string> wasGetEnumDescriptions<T>()
+        {
+            return typeof (T).GetFields(BindingFlags.Static | BindingFlags.Public)
+                .AsParallel().Select(o => wasGetDescriptionFromEnumValue((Enum) o.GetValue(null)));
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
@@ -611,19 +651,6 @@ namespace Corrade
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
         /// <summary>
-        ///     Returns all the field descriptions of an enumeration.
-        /// </summary>
-        /// <returns>the field descriptions</returns>
-        private static IEnumerable<string> wasGetEnumDescriptions<T>()
-        {
-            return typeof (T).GetFields(BindingFlags.Static | BindingFlags.Public)
-                .AsParallel().Select(o => wasGetDescriptionFromEnumValue((Enum) o.GetValue(null)));
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
         ///     Enumerates the fields of an object along with the child objects,
         ///     provided that all child objects are part of a specified namespace.
         /// </summary>
@@ -747,12 +774,13 @@ namespace Corrade
         {
             if (info == null) yield break;
             object data = wasGetInfoValue(info, value);
+            if (data == null) yield break;
             // Handle arrays and lists
             if (data is Array || data is IList)
             {
                 IList iList = (IList) data;
                 if (iList.Count.Equals(0)) yield break;
-                foreach (object item in iList.Cast<object>())
+                foreach (object item in iList.Cast<object>().Where(o => o != null))
                 {
                     foreach (KeyValuePair<FieldInfo, object> fi in wasGetFields(item, item.GetType().Name))
                     {
@@ -1385,7 +1413,7 @@ namespace Corrade
                     return false;
                 }
                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;
-                Client.Network.CurrentSim.Parcels.ForEach(currentParcel =>
+                simulator.Parcels.ForEach(currentParcel =>
                 {
                     if (!(position.X >= currentParcel.AABBMin.X) || !(position.X <= currentParcel.AABBMax.X) ||
                         !(position.Y >= currentParcel.AABBMin.Y) || !(position.Y <= currentParcel.AABBMax.Y))
@@ -2047,7 +2075,10 @@ namespace Corrade
                             Client.Self.Movement.Camera.Far = range;
                             RangeUpdateAlarm.Alarm(dataTimeout);
                             RangeUpdateAlarm.Signal.WaitOne(millisecondsTimeout, false);
-                            avatars = Client.Network.CurrentSim.ObjectsAvatars.Copy().Values;
+                            avatars =
+                                Client.Network.Simulators.Select(o => o.ObjectsAvatars)
+                                    .Select(o => o.Copy().Values)
+                                    .SelectMany(o => o);
                             Client.Self.Movement.Camera.Far = Configuration.RANGE;
                         }
                         Client.Objects.AvatarUpdate -= AvatarUpdateEventHandler;
@@ -2085,7 +2116,10 @@ namespace Corrade
                             Client.Self.Movement.Camera.Far = range;
                             RangeUpdateAlarm.Alarm(dataTimeout);
                             RangeUpdateAlarm.Signal.WaitOne(millisecondsTimeout, false);
-                            primitives = Client.Network.CurrentSim.ObjectsPrimitives.Copy().Values;
+                            primitives =
+                                Client.Network.Simulators.Select(o => o.ObjectsPrimitives)
+                                    .Select(o => o.Copy().Values)
+                                    .SelectMany(o => o);
                             Client.Self.Movement.Camera.Far = Configuration.RANGE;
                         }
                         Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
@@ -2145,7 +2179,8 @@ namespace Corrade
                         if (queryPrimitive == null) return;
                         stopWatch[queryPrimitive.ID].Start();
                         Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
-                        Client.Objects.SelectObject(Client.Network.CurrentSim,
+                        Client.Objects.SelectObject(
+                            Client.Network.Simulators.FirstOrDefault(p => p.Handle.Equals(queryPrimitive.RegionHandle)),
                             queryPrimitive.LocalID,
                             true);
                         int average = (int) times.Average();
@@ -3552,6 +3587,8 @@ namespace Corrade
                                             !(((int) p.GetValue(null) &
                                                (int) scriptQuestionEventArgs.Questions)).Equals(0))
                                     .Select(p => p.Name)));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.REGION),
+                                scriptQuestionEventArgs.Simulator.Name);
                             break;
                         case Notifications.NOTIFICATION_FRIENDSHIP:
                             System.Type friendshipNotificationType = args.GetType();
@@ -4371,7 +4408,8 @@ namespace Corrade
                     },
                     Item = e.ItemID,
                     Task = e.TaskID,
-                    Permission = e.Questions
+                    Permission = e.Questions,
+                    Region = e.Simulator.Name
                 });
             }
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
@@ -4387,7 +4425,7 @@ namespace Corrade
                     return;
                 lock (ClientInstanceSelfLock)
                 {
-                    Client.Self.ScriptQuestionReply(Client.Network.CurrentSim, e.ItemID, e.TaskID, e.Questions);
+                    Client.Self.ScriptQuestionReply(e.Simulator, e.ItemID, e.TaskID, e.Questions);
                 }
             }
         }
@@ -6138,6 +6176,22 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_OPEN));
                         }
+                        if (!Client.Network.MaxAgentGroups.Equals(-1))
+                        {
+                            HashSet<UUID> currentGroups = new HashSet<UUID>();
+                            if (
+                                !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref currentGroups))
+                            {
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                            }
+                            if (currentGroups.Count >= Client.Network.MaxAgentGroups)
+                            {
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.MAXIMUM_NUMBER_OF_GROUPS_REACHED));
+                            }
+                        }
                         ManualResetEvent GroupJoinedReplyEvent = new ManualResetEvent(false);
                         EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
                             (sender, args) => GroupJoinedReplyEvent.Set();
@@ -6167,11 +6221,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        if (
-                            !HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
-                        }
                         if (!UpdateBalance(Configuration.SERVICES_TIMEOUT))
                         {
                             throw new Exception(
@@ -6180,6 +6229,11 @@ namespace Corrade
                         if (Client.Self.Balance < Configuration.GROUP_CREATE_FEE)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INSUFFICIENT_FUNDS));
+                        }
+                        if (!Configuration.GROUP_CREATE_FEE.Equals(0) &&
+                            !HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         OpenMetaverse.Group commandGroup = new OpenMetaverse.Group
                         {
@@ -8058,9 +8112,13 @@ namespace Corrade
                             if (!GridRegionEvent.WaitOne(Client.Settings.MAP_REQUEST_TIMEOUT, false))
                             {
                                 Client.Grid.GridRegion -= GridRegionEventHandler;
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_REGION));
                             }
                             Client.Grid.GridRegion -= GridRegionEventHandler;
+                        }
+                        if (regionHandle.Equals(0))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
                         }
                         Vector3 position;
                         if (
@@ -8241,7 +8299,20 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        List<string> data = new List<string>(GetStructuredData(Client.Network.CurrentSim,
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
+                        List<string> data = new List<string>(GetStructuredData(simulator,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message)))
                             );
@@ -8286,6 +8357,10 @@ namespace Corrade
                             }
                             Client.Grid.GridRegion -= GridRegionEventHandler;
                         }
+                        if (gridRegion.Equals(default(GridRegion)))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
                         List<string> data = new List<string>(GetStructuredData(gridRegion,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
@@ -8293,6 +8368,152 @@ namespace Corrade
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
+                        }
+                    };
+                    break;
+                case ScriptKeys.GETNETWORKDATA:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        List<string> data = new List<string>(GetStructuredData(Client.Network,
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                message))));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                wasEnumerableToCSV(data));
+                        }
+                    };
+                    break;
+                case ScriptKeys.GETCONNECTEDREGIONS:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                            wasEnumerableToCSV(Client.Network.Simulators.Select(o => o.Name)));
+                    };
+                    break;
+                case ScriptKeys.LISTCOMMANDS:
+                    execute = () =>
+                    {
+                        HashSet<string> data = new HashSet<string>();
+                        object LockObject = new object();
+                        Parallel.ForEach(wasGetEnumDescriptions<ScriptKeys>(), o =>
+                        {
+                            ScriptKeys scriptKey = wasGetEnumValueFromDescription<ScriptKeys>(o);
+                            IsCommandAttribute isCommandAttribute =
+                                wasGetAttributeFromEnumValue<IsCommandAttribute>(scriptKey);
+                            if (isCommandAttribute == null || !isCommandAttribute.IsCommand)
+                                return;
+                            CommandPermissionMaskAttribute commandPermissionMaskAttribute =
+                                wasGetAttributeFromEnumValue<CommandPermissionMaskAttribute>(scriptKey);
+                            if (commandPermissionMaskAttribute == null) return;
+                            Group commandGroup =
+                                Configuration.GROUPS.AsParallel()
+                                    .FirstOrDefault(
+                                        p => p.Name.Equals(group, StringComparison.InvariantCultureIgnoreCase));
+                            if (commandGroup.Equals(default(Group)) ||
+                                (commandGroup.PermissionMask & commandPermissionMaskAttribute.PermissionMask).Equals(0))
+                                return;
+                            lock (LockObject)
+                            {
+                                data.Add(o);
+                            }
+                        });
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), wasEnumerableToCSV(data));
+                        }
+                    };
+                    break;
+                case ScriptKeys.GETCOMMAND:
+                    execute = () =>
+                    {
+                        string name =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
+                                message));
+                        if (string.IsNullOrEmpty(name))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_NAME_PROVIDED));
+                        }
+                        IsCommandAttribute isCommandAttribute =
+                            wasGetAttributeFromEnumValue<IsCommandAttribute>(
+                                wasGetEnumValueFromDescription<ScriptKeys>(name));
+                        if (isCommandAttribute == null || isCommandAttribute.IsCommand.Equals(false))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COMMAND_NOT_FOUND));
+                        }
+                        CommandPermissionMaskAttribute commandPermissionMaskAttribute =
+                            wasGetAttributeFromEnumValue<CommandPermissionMaskAttribute>(
+                                wasGetEnumValueFromDescription<ScriptKeys>(name));
+                        if (commandPermissionMaskAttribute == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        Group commandGroup =
+                            Configuration.GROUPS.AsParallel()
+                                .FirstOrDefault(
+                                    p => p.Name.Equals(group, StringComparison.InvariantCultureIgnoreCase));
+                        if (commandGroup.Equals(default(Group)) ||
+                            (commandGroup.PermissionMask & commandPermissionMaskAttribute.PermissionMask).Equals(0))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        switch (
+                            wasGetEnumValueFromDescription<Entity>(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
+                                        message)).ToLowerInvariant()))
+                        {
+                            case Entity.SYNTAX:
+                                switch (
+                                    wasGetEnumValueFromDescription<Type>(
+                                        wasInput(
+                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                                message)).ToLowerInvariant()))
+                                {
+                                    case Type.INPUT:
+                                        CommandInputSyntaxAttribute commandInputSyntaxAttribute = wasGetAttributeFromEnumValue
+                                            <CommandInputSyntaxAttribute>(
+                                                wasGetEnumValueFromDescription<ScriptKeys>(name));
+                                        if (commandInputSyntaxAttribute != null &&
+                                            !string.IsNullOrEmpty(commandInputSyntaxAttribute.Syntax))
+                                        {
+                                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                                commandInputSyntaxAttribute.Syntax);
+                                        }
+                                        break;
+                                    default:
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_SYNTAX_TYPE));
+                                }
+                                break;
+                            case Entity.PERMISSION:
+                                HashSet<string> data = new HashSet<string>();
+                                object LockObject = new object();
+                                Parallel.ForEach(wasGetEnumDescriptions<Permissions>(), o =>
+                                {
+                                    Permissions permission = wasGetEnumValueFromDescription<Permissions>(o);
+                                    if ((commandPermissionMaskAttribute.PermissionMask & (uint) permission).Equals(0))
+                                        return;
+                                    lock (LockObject)
+                                    {
+                                        data.Add(o);
+                                    }
+                                });
+                                if (!data.Count.Equals(0))
+                                {
+                                    result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), wasEnumerableToCSV(data));
+                                }
+                                break;
+                            default:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
                         }
                     };
                     break;
@@ -8581,9 +8802,21 @@ namespace Corrade
                         {
                             position = Client.Self.SimPosition;
                         }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
                         Parcel parcel = null;
-                        if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                        if (!GetParcelAtPosition(simulator, position, ref parcel))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
@@ -8601,7 +8834,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACCESS_LIST_TYPE));
                         }
                         AccessList accessType = (AccessList) accessField.GetValue(null);
-                        if (!Client.Network.CurrentSim.IsEstateManager)
+                        if (!simulator.IsEstateManager)
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
@@ -8671,8 +8904,7 @@ namespace Corrade
                         lock (ClientInstanceParcelsLock)
                         {
                             Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
-                            Client.Parcels.RequestParcelAccessList(Client.Network.CurrentSim, parcel.LocalID, accessType,
-                                0);
+                            Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, 0);
                             if (!ParcelAccessListEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
@@ -8704,17 +8936,29 @@ namespace Corrade
                         {
                             position = Client.Self.SimPosition;
                         }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
                         Parcel parcel = null;
-                        if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                        if (!GetParcelAtPosition(simulator, position, ref parcel))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
-                        if (!Client.Network.CurrentSim.IsEstateManager)
+                        if (!simulator.IsEstateManager)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_LAND_RIGHTS));
                         }
-                        Client.Parcels.Reclaim(Client.Network.CurrentSim, parcel.LocalID);
+                        Client.Parcels.Reclaim(simulator, parcel.LocalID);
                     };
                     break;
                 case ScriptKeys.PARCELRELEASE:
@@ -8751,13 +8995,25 @@ namespace Corrade
                         {
                             position = Client.Self.SimPosition;
                         }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
                         Parcel parcel = null;
-                        if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                        if (!GetParcelAtPosition(simulator, position, ref parcel))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
-                        if (!Client.Network.CurrentSim.IsEstateManager)
+                        if (!simulator.IsEstateManager)
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
@@ -8775,7 +9031,7 @@ namespace Corrade
                                 }
                             }
                         }
-                        Client.Parcels.ReleaseParcel(Client.Network.CurrentSim, parcel.LocalID);
+                        Client.Parcels.ReleaseParcel(simulator, parcel.LocalID);
                     };
                     break;
                 case ScriptKeys.PARCELDEED:
@@ -8812,13 +9068,25 @@ namespace Corrade
                         {
                             position = Client.Self.SimPosition;
                         }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
                         Parcel parcel = null;
-                        if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                        if (!GetParcelAtPosition(simulator, position, ref parcel))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
-                        if (!Client.Network.CurrentSim.IsEstateManager)
+                        if (!simulator.IsEstateManager)
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
@@ -8835,7 +9103,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
-                        Client.Parcels.DeedToGroup(Client.Network.CurrentSim, parcel.LocalID, groupUUID);
+                        Client.Parcels.DeedToGroup(simulator, parcel.LocalID, groupUUID);
                     };
                     break;
                 case ScriptKeys.PARCELBUY:
@@ -8872,9 +9140,21 @@ namespace Corrade
                         {
                             position = Client.Self.SimPosition;
                         }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
                         Parcel parcel = null;
-                        if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                        if (!GetParcelAtPosition(simulator, position, ref parcel))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
@@ -8973,7 +9253,12 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INSUFFICIENT_FUNDS));
                         }
-                        Client.Parcels.Buy(Client.Network.CurrentSim, parcel.LocalID, forGroup, groupUUID,
+                        if (!parcel.SalePrice.Equals(0) &&
+                            !HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        Client.Parcels.Buy(simulator, parcel.LocalID, forGroup, groupUUID,
                             removeContribution, parcel.Area, parcel.SalePrice);
                     };
                     break;
@@ -9011,13 +9296,25 @@ namespace Corrade
                         {
                             position = Client.Self.SimPosition;
                         }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
                         Parcel parcel = null;
-                        if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                        if (!GetParcelAtPosition(simulator, position, ref parcel))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
-                        if (!Client.Network.CurrentSim.IsEstateManager)
+                        if (!simulator.IsEstateManager)
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
@@ -9096,13 +9393,25 @@ namespace Corrade
                         {
                             position = Client.Self.SimPosition;
                         }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
                         Parcel parcel = null;
-                        if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                        if (!GetParcelAtPosition(simulator, position, ref parcel))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
-                        if (!Client.Network.CurrentSim.IsEstateManager)
+                        if (!simulator.IsEstateManager)
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
@@ -9591,7 +9900,8 @@ namespace Corrade
                 case ScriptKeys.ADDCLASSIFIED:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING) ||
+                            !HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -10087,6 +10397,19 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
                         string type =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
                                 message));
@@ -10113,8 +10436,8 @@ namespace Corrade
                                         lock (ClientInstanceParcelsLock)
                                         {
                                             Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
-                                            Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim);
-                                            if (Client.Network.CurrentSim.IsParcelMapFull())
+                                            Client.Parcels.RequestAllSimParcels(simulator);
+                                            if (simulator.IsParcelMapFull())
                                             {
                                                 SimParcelsDownloadedEvent.Set();
                                             }
@@ -10127,11 +10450,11 @@ namespace Corrade
                                             }
                                             Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                         }
-                                        Client.Network.CurrentSim.Parcels.ForEach(o => parcels.Add(o));
+                                        simulator.Parcels.ForEach(o => parcels.Add(o));
                                         break;
                                     case true:
                                         Parcel parcel = null;
-                                        if (!GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                                        if (!GetParcelAtPosition(simulator, position, ref parcel))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
@@ -10152,7 +10475,7 @@ namespace Corrade
                                         objectReturnTypeField
                                             .GetValue(null)
                                     : ObjectReturnType.Other;
-                                if (!Client.Network.CurrentSim.IsEstateManager)
+                                if (!simulator.IsEstateManager)
                                 {
                                     Parallel.ForEach(
                                         parcels.AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)), o =>
@@ -10187,13 +10510,13 @@ namespace Corrade
                                 }
                                 Parallel.ForEach(parcels,
                                     o =>
-                                        Client.Parcels.ReturnObjects(Client.Network.CurrentSim, o.LocalID,
+                                        Client.Parcels.ReturnObjects(simulator, o.LocalID,
                                             returnType
                                             , new List<UUID> {agentUUID}));
 
                                 break;
                             case Entity.ESTATE:
-                                if (!Client.Network.CurrentSim.IsEstateManager)
+                                if (!simulator.IsEstateManager)
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_LAND_RIGHTS));
                                 }
@@ -10248,6 +10571,19 @@ namespace Corrade
                                 }
                                 break;
                         }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
                         Vector3 position;
                         HashSet<Parcel> parcels = new HashSet<Parcel>();
                         switch (Vector3.TryParse(
@@ -10257,7 +10593,7 @@ namespace Corrade
                         {
                             case true:
                                 Parcel parcel = null;
-                                if (!GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                                if (!GetParcelAtPosition(simulator, position, ref parcel))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                                 }
@@ -10271,8 +10607,8 @@ namespace Corrade
                                 lock (ClientInstanceParcelsLock)
                                 {
                                     Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
-                                    Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim);
-                                    if (Client.Network.CurrentSim.IsParcelMapFull())
+                                    Client.Parcels.RequestAllSimParcels(simulator);
+                                    if (simulator.IsParcelMapFull())
                                     {
                                         SimParcelsDownloadedEvent.Set();
                                     }
@@ -10284,7 +10620,7 @@ namespace Corrade
                                     }
                                     Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                 }
-                                Client.Network.CurrentSim.Parcels.ForEach(o => parcels.Add(o));
+                                simulator.Parcels.ForEach(o => parcels.Add(o));
                                 break;
                         }
                         Parallel.ForEach(parcels.AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)),
@@ -10342,7 +10678,7 @@ namespace Corrade
                             lock (ClientInstanceParcelsLock)
                             {
                                 Client.Parcels.ParcelObjectOwnersReply += ParcelObjectOwnersEventHandler;
-                                Client.Parcels.RequestObjectOwners(Client.Network.CurrentSim, parcel.LocalID);
+                                Client.Parcels.RequestObjectOwners(simulator, parcel.LocalID);
                                 if (!ParcelObjectOwnersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                 {
                                     Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
@@ -10459,9 +10795,21 @@ namespace Corrade
                         {
                             position = Client.Self.SimPosition;
                         }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
                         Parcel parcel = null;
-                        if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                        if (!GetParcelAtPosition(simulator, position, ref parcel))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
@@ -10509,9 +10857,21 @@ namespace Corrade
                         {
                             position = Client.Self.SimPosition;
                         }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
                         Parcel parcel = null;
-                        if (
-                            !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                        if (!GetParcelAtPosition(simulator, position, ref parcel))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
@@ -10526,7 +10886,7 @@ namespace Corrade
                         wasCSVToStructure(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message)), ref parcel);
-                        parcel.Update(Client.Network.CurrentSim, true);
+                        parcel.Update(simulator, true);
                     };
                     break;
                 case ScriptKeys.GETREGIONPARCELSBOUNDINGBOX:
@@ -10536,6 +10896,19 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
                         // Get all sim parcels
                         ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
                         EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
@@ -10543,8 +10916,8 @@ namespace Corrade
                         lock (ClientInstanceParcelsLock)
                         {
                             Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
-                            Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim);
-                            if (Client.Network.CurrentSim.IsParcelMapFull())
+                            Client.Parcels.RequestAllSimParcels(simulator);
+                            if (simulator.IsParcelMapFull())
                             {
                                 SimParcelsDownloadedEvent.Set();
                             }
@@ -10556,7 +10929,7 @@ namespace Corrade
                             Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                         }
                         List<Vector3> csv = new List<Vector3>();
-                        Client.Network.CurrentSim.Parcels.ForEach(o => csv.AddRange(new[] {o.AABBMin, o.AABBMax}));
+                        simulator.Parcels.ForEach(o => csv.AddRange(new[] {o.AABBMin, o.AABBMax}));
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -11168,14 +11541,27 @@ namespace Corrade
                         {
                             rotation = Quaternion.CreateFromEulers(0, 0, 0);
                         }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
                         Parcel parcel = null;
-                        if (!GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                        if (!GetParcelAtPosition(simulator, position, ref parcel))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                         }
                         if (((uint) parcel.Flags & (uint) ParcelFlags.CreateObjects).Equals(0))
                         {
-                            if (!Client.Network.CurrentSim.IsEstateManager)
+                            if (!simulator.IsEstateManager)
                             {
                                 if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                                 {
@@ -11193,7 +11579,7 @@ namespace Corrade
                                 }
                             }
                         }
-                        Client.Inventory.RequestRezFromInventory(Client.Network.CurrentSim, rotation, position,
+                        Client.Inventory.RequestRezFromInventory(simulator, rotation, position,
                             inventoryBaseItem as InventoryItem,
                             groupUUID);
                     };
@@ -11625,7 +12011,8 @@ namespace Corrade
                                     entityUUID = inventoryBaseItem.UUID;
                                 }
                                 Client.Inventory.RemoveTaskInventory(primitive.LocalID, entityUUID,
-                                    Client.Network.CurrentSim);
+                                    Client.Network.Simulators.FirstOrDefault(
+                                        o => o.Handle.Equals(primitive.RegionHandle)));
                                 break;
                             case Action.TAKE:
                                 inventoryBaseItem = !entityUUID.Equals(UUID.Zero)
@@ -11656,7 +12043,8 @@ namespace Corrade
                                             .UUID;
                                 }
                                 Client.Inventory.MoveTaskInventory(primitive.LocalID, inventoryItem.UUID, folderUUID,
-                                    Client.Network.CurrentSim);
+                                    Client.Network.Simulators.FirstOrDefault(
+                                        o => o.Handle.Equals(primitive.RegionHandle)));
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
@@ -13483,7 +13871,15 @@ namespace Corrade
                                     typeof (ScriptPermission).GetFields(BindingFlags.Public | BindingFlags.Static)
                                         .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                     q => { permissionMask |= ((int) q.GetValue(null)); }));
-                        Client.Self.ScriptQuestionReply(Client.Network.CurrentSim, itemUUID, taskUUID,
+                        Simulator simulator = Client.Network.Simulators.FirstOrDefault(
+                            o => o.Name.Equals(wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                    message)), StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
+                        Client.Self.ScriptQuestionReply(simulator, itemUUID, taskUUID,
                             (ScriptPermission) permissionMask);
                     };
                     break;
@@ -13519,6 +13915,7 @@ namespace Corrade
                                                 !(((int) p.GetValue(null) &
                                                    (int) o.Permission)).Equals(0))
                                         .Select(p => p.Name).ToArray());
+                                    csv.AddRange(new[] {wasGetStructureMemberDescription(o, o.Region), o.Region});
                                 }
                             });
                         }
@@ -14315,6 +14712,19 @@ namespace Corrade
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)), message))
                                 .ToLowerInvariant());
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
                         Parcel parcel = null;
                         switch (entity)
                         {
@@ -14322,7 +14732,7 @@ namespace Corrade
                                 break;
                             case Entity.PARCEL:
                                 if (
-                                    !GetParcelAtPosition(Client.Network.CurrentSim, position, ref parcel))
+                                    !GetParcelAtPosition(simulator, position, ref parcel))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
                                 }
@@ -14332,7 +14742,7 @@ namespace Corrade
                         }
                         List<string> csv = new List<string>();
                         Dictionary<UUID, Vector3> avatarPositions = new Dictionary<UUID, Vector3>();
-                        Client.Network.CurrentSim.AvatarPositions.ForEach(o => avatarPositions.Add(o.Key, o.Value));
+                        simulator.AvatarPositions.ForEach(o => avatarPositions.Add(o.Key, o.Value));
                         foreach (KeyValuePair<UUID, Vector3> p in avatarPositions)
                         {
                             string name = string.Empty;
@@ -14346,7 +14756,7 @@ namespace Corrade
                                 case Entity.PARCEL:
                                     if (parcel == null) return;
                                     Parcel avatarParcel = null;
-                                    if (!GetParcelAtPosition(Client.Network.CurrentSim, p.Value, ref avatarParcel))
+                                    if (!GetParcelAtPosition(simulator, p.Value, ref avatarParcel))
                                         continue;
                                     if (!avatarParcel.LocalID.Equals(parcel.LocalID)) continue;
                                     break;
@@ -14376,8 +14786,8 @@ namespace Corrade
                         {
                             region = Client.Network.CurrentSim.Name;
                         }
-                        ManualResetEvent GridRegionEvent = new ManualResetEvent(false);
                         ulong regionHandle = 0;
+                        ManualResetEvent GridRegionEvent = new ManualResetEvent(false);
                         EventHandler<GridRegionEventArgs> GridRegionEventHandler = (sender, args) =>
                         {
                             if (!args.Region.Name.Equals(region, StringComparison.InvariantCultureIgnoreCase))
@@ -15042,15 +15452,25 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_PERMISSIONS_PROVIDED));
                         }
                         OpenMetaverse.Permissions permissions = wasStringToPermissions(itemPermissions);
-                        Client.Objects.SetPermissions(Client.Network.CurrentSim, new List<uint> {primitive.LocalID},
+                        Client.Objects.SetPermissions(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            new List<uint> {primitive.LocalID},
                             PermissionWho.Base, permissions.BaseMask, true);
-                        Client.Objects.SetPermissions(Client.Network.CurrentSim, new List<uint> {primitive.LocalID},
+                        Client.Objects.SetPermissions(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            new List<uint> {primitive.LocalID},
                             PermissionWho.Owner, permissions.OwnerMask, true);
-                        Client.Objects.SetPermissions(Client.Network.CurrentSim, new List<uint> {primitive.LocalID},
+                        Client.Objects.SetPermissions(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            new List<uint> {primitive.LocalID},
                             PermissionWho.Group, permissions.GroupMask, true);
-                        Client.Objects.SetPermissions(Client.Network.CurrentSim, new List<uint> {primitive.LocalID},
+                        Client.Objects.SetPermissions(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            new List<uint> {primitive.LocalID},
                             PermissionWho.Everyone, permissions.EveryoneMask, true);
-                        Client.Objects.SetPermissions(Client.Network.CurrentSim, new List<uint> {primitive.LocalID},
+                        Client.Objects.SetPermissions(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            new List<uint> {primitive.LocalID},
                             PermissionWho.NextOwner, permissions.NextOwnerMask, true);
                     };
                     break;
@@ -15103,7 +15523,9 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ITEM_IS_NOT_AN_OBJECT));
                         }
-                        Client.Objects.DeedObject(Client.Network.CurrentSim, primitive.LocalID, groupUUID);
+                        Client.Objects.DeedObject(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, groupUUID);
                     };
                     break;
                 case ScriptKeys.SETOBJECTGROUP:
@@ -15155,7 +15577,9 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ITEM_IS_NOT_AN_OBJECT));
                         }
-                        Client.Objects.SetObjectsGroup(Client.Network.CurrentSim, new List<uint> {primitive.LocalID},
+                        Client.Objects.SetObjectsGroup(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            new List<uint> {primitive.LocalID},
                             groupUUID);
                     };
                     break;
@@ -15212,10 +15636,12 @@ namespace Corrade
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
                                             message)),
                                     StringComparison.Ordinal));
-                        Client.Objects.SetSaleInfo(Client.Network.CurrentSim, primitive.LocalID, saleTypeInfo != null
-                            ? (SaleType)
-                                saleTypeInfo.GetValue(null)
-                            : SaleType.Copy, price);
+                        Client.Objects.SetSaleInfo(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, saleTypeInfo != null
+                                ? (SaleType)
+                                    saleTypeInfo.GetValue(null)
+                                : SaleType.Copy, price);
                     };
                     break;
                 case ScriptKeys.SETOBJECTPOSITION:
@@ -15260,7 +15686,9 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
                         }
-                        Client.Objects.SetPosition(Client.Network.CurrentSim, primitive.LocalID, position);
+                        Client.Objects.SetPosition(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, position);
                     };
                     break;
                 case ScriptKeys.SETPRIMITIVEPOSITION:
@@ -15299,7 +15727,9 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
                         }
-                        Client.Objects.SetPosition(Client.Network.CurrentSim, primitive.LocalID, position, true);
+                        Client.Objects.SetPosition(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, position, true);
                     };
                     break;
                 case ScriptKeys.SETOBJECTROTATION:
@@ -15344,7 +15774,9 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_ROTATION));
                         }
-                        Client.Objects.SetRotation(Client.Network.CurrentSim, primitive.LocalID, rotation);
+                        Client.Objects.SetRotation(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, rotation);
                     };
                     break;
                 case ScriptKeys.SETPRIMITIVEROTATION:
@@ -15383,7 +15815,9 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_ROTATION));
                         }
-                        Client.Objects.SetRotation(Client.Network.CurrentSim, primitive.LocalID, rotation, true);
+                        Client.Objects.SetRotation(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, rotation, true);
                     };
                     break;
                 case ScriptKeys.SETOBJECTSCALE:
@@ -15437,7 +15871,9 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_SCALE));
                         }
-                        Client.Objects.SetScale(Client.Network.CurrentSim, primitive.LocalID, scale, false, uniform);
+                        Client.Objects.SetScale(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, scale, false, uniform);
                     };
                     break;
                 case ScriptKeys.SETPRIMITIVESCALE:
@@ -15485,7 +15921,9 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_SCALE));
                         }
-                        Client.Objects.SetScale(Client.Network.CurrentSim, primitive.LocalID, scale, true, uniform);
+                        Client.Objects.SetScale(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, scale, true, uniform);
                     };
                     break;
                 case ScriptKeys.SETPRIMITIVENAME:
@@ -15521,7 +15959,9 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_NAME_PROVIDED));
                         }
-                        Client.Objects.SetName(Client.Network.CurrentSim, primitive.LocalID, name);
+                        Client.Objects.SetName(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, name);
                     };
                     break;
                 case ScriptKeys.SETPRIMITIVEDESCRIPTION:
@@ -15558,7 +15998,9 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_DESCRIPTION_PROVIDED));
                         }
-                        Client.Objects.SetDescription(Client.Network.CurrentSim, primitive.LocalID, description);
+                        Client.Objects.SetDescription(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, description);
                     };
                     break;
                 case ScriptKeys.CHANGEAPPEARANCE:
@@ -15679,6 +16121,19 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
                         byte[] data = null;
                         switch (wasGetEnumValueFromDescription<Action>(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
@@ -15710,7 +16165,7 @@ namespace Corrade
                                     Client.Estate.EstateOwnerMessage("terrain", new List<string>
                                     {
                                         "download filename",
-                                        Client.Network.CurrentSim.Name
+                                        simulator.Name
                                     });
                                     if (!WaitHandle.WaitAll(DownloadTerrainEvents.Select(o => (WaitHandle) o).ToArray(),
                                         Configuration.SERVICES_TIMEOUT, false))
@@ -15756,7 +16211,7 @@ namespace Corrade
                                 lock (ClientInstanceAssetsLock)
                                 {
                                     Client.Assets.UploadProgress += AssetUploadEventHandler;
-                                    Client.Estate.UploadTerrain(data, Client.Network.CurrentSim.Name);
+                                    Client.Estate.UploadTerrain(data, simulator.Name);
                                     if (!AssetUploadEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Assets.UploadProgress -= AssetUploadEventHandler;
@@ -15777,6 +16232,19 @@ namespace Corrade
                         if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
                         }
                         Vector3 southwest;
                         if (
@@ -15820,7 +16288,7 @@ namespace Corrade
                         Parallel.ForEach(Enumerable.Range(x1, sx), x => Parallel.ForEach(Enumerable.Range(y1, sy), y =>
                         {
                             float height;
-                            csv[sx*x + y] = Client.Network.CurrentSim.TerrainHeightAtPoint(x, y, out height)
+                            csv[sx*x + y] = simulator.TerrainHeightAtPoint(x, y, out height)
                                 ? height
                                 : -1;
                         }));
@@ -18206,8 +18674,7 @@ namespace Corrade
             object LockObject = new object();
             Parallel.ForEach(wasCSVToEnumerable(query), name =>
             {
-                KeyValuePair<FieldInfo, object> fi = wasGetFields(structure,
-                    structure.GetType().Name)
+                KeyValuePair<FieldInfo, object> fi = wasGetFields(structure, structure.GetType().Name)
                     .AsParallel().FirstOrDefault(o => o.Key.Name.Equals(name, StringComparison.Ordinal));
 
                 lock (LockObject)
@@ -21563,7 +22030,9 @@ namespace Corrade
             [Description("region")] REGION,
             [Description("object")] OBJECT,
             [Description("parcel")] PARCEL,
-            [Description("range")] RANGE
+            [Description("range")] RANGE,
+            [Description("syntax")] SYNTAX,
+            [Description("permission")] PERMISSION
         }
 
         /// <summary>
@@ -21763,6 +22232,7 @@ namespace Corrade
         [Flags]
         private enum Permissions : uint
         {
+            [Description("none")] PERMISSION_NONE = 0,
             [Description("movement")] PERMISSION_MOVEMENT = 1,
             [Description("economy")] PERMISSION_ECONOMY = 2,
             [Description("land")] PERMISSION_LAND = 4,
@@ -22002,7 +22472,10 @@ namespace Corrade
             [Description("timeout meshmerizing object")] COULD_NOT_MESHMERIZE_OBJECT,
             [Description("could not get primitive properties")] COULD_NOT_GET_PRIMITIVE_PROPERTIES,
             [Description("avatar not in range")] AVATAR_NOT_IN_RANGE,
-            [Description("invalid scale")] INVALID_SCALE
+            [Description("invalid scale")] INVALID_SCALE,
+            [Description("could not get current groups")] COULD_NOT_GET_CURRENT_GROUPS,
+            [Description("maximum number of groups reached")] MAXIMUM_NUMBER_OF_GROUPS_REACHED,
+            [Description("unknown syntax type")] UNKNOWN_SYNTAX_TYPE
         }
 
         /// <summary>
@@ -22011,189 +22484,523 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
-            [Description("typing")] TYPING,
-            [Description("busy")] BUSY,
-            [Description("away")] AWAY,
-            [Description("getobjectpermissions")] GETOBJECTPERMISSIONS,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getcommand>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<syntax|permission>>&entity=syntax:<type=<input>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_NONE)] [Description("getcommand")] GETCOMMAND,
+            [IsCommand(true)] [CommandInputSyntax("<command=listcommands>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_NONE)] [Description("listcommands")] LISTCOMMANDS,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getconnectedregions>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getconnectedregions")] GETCONNECTEDREGIONS,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getnetworkdata>&<group=<UUID|STRING>>&<password=<STRING>>&[data=<NetworkManager>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("getnetworkdata")] GETNETWORKDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=typing>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable|get>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("typing")] TYPING,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=busy>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable|get>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("busy")] BUSY,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=away>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable|get>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("away")] AWAY,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getobjectpermissions>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getobjectpermissions")] GETOBJECTPERMISSIONS,
             [Description("scale")] SCALE,
             [Description("uniform")] UNIFORM,
-            [Description("setobjectscale")] SETOBJECTSCALE,
-            [Description("setprimitivescale")] SETPRIMITIVESCALE,
-            [Description("setprimitiverotation")] SETPRIMITIVEROTATION,
-            [Description("setprimitiveposition")] SETPRIMITIVEPOSITION,
-            [Description("exportdae")] EXPORTDAE,
-            [Description("exportxml")] EXPORTXML,
-            [Description("getprimitivesdata")] GETPRIMITIVESDATA,
-            [Description("getavatarsdata")] GETAVATARSDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setobjectscale>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&<scale=<FLOAT>>&[uniform=<BOOL>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setobjectscale")] SETOBJECTSCALE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setprimitivescale>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&<scale=<FLOAT>>&[uniform=<BOOL>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitivescale")] SETPRIMITIVESCALE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setprimitiverotation>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&<rotation=<QUATERNION>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitiverotation")] SETPRIMITIVEROTATION,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setprimitiveposition>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&<position=<VECTOR3>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitiveposition")] SETPRIMITIVEPOSITION,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=exportdae>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&[format=<ImageFormat>]&[path=<STRING>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("exportdae")] EXPORTDAE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=exportxml>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&[format=<ImageFormat>]&[path=<STRING>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("exportxml")] EXPORTXML,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getprimitivesdata>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<range|parcel|region|avatar>>&entity=range:[range=<FLOAT>]&entity=parcel:[position=<VECTOR2>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[data=<Primitive>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivesdata")] GETPRIMITIVESDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getavatarsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<range|parcel|region|avatar>>&entity=range:[range=<FLOAT>]&entity=parcel:[position=<VECTOR2>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[data=<Avatar>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getavatarsdata")] GETAVATARSDATA,
             [Description("format")] FORMAT,
             [Description("volume")] VOLUME,
             [Description("audible")] AUDIBLE,
             [Description("path")] PATH,
-            [Description("inventory")] INVENTORY,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=inventory>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<ls|cwd|cd|mkdir|chmod|rm|cp|mv|ln>>&action=<ls,mkdir,chmod>:[path=<STRING>]&action=cd:<path=<STRING>>&action=<mkdir>:<name=<STRING>>&action=<chmod>:<permissions=<STRING>>&action=rm:<path=<STRING>>&action=<cp,mv,ln>:<source=<STRING>>&action=<cp,mv,ln>:<target=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("inventory")] INVENTORY,
             [Description("offset")] OFFSET,
             [Description("alpha")] ALPHA,
             [Description("color")] COLOR,
-            [Description("deleteviewereffect")] DELETEVIEWEREFFECT,
-            [Description("getviewereffects")] GETVIEWEREFFECTS,
-            [Description("setviewereffect")] SETVIEWEREFFECT,
-            [Description("ai")] AI,
-            [Description("gettitles")] GETTITLES,
-            [Description("tag")] TAG,
-            [Description("filter")] FILTER,
-            [Description("run")] RUN,
-            [Description("relax")] RELAX,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=deleteviewereffect>&<group=<UUID|STRING>>&<password=<STRING>>&<effect=<Look|Point>>&<id=<UUID>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("deleteviewereffect")] DELETEVIEWEREFFECT,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getviewereffects>&<group=<UUID|STRING>>&<password=<STRING>>&<effect=<Look|Point|Sphere|Beam>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getviewereffects")] GETVIEWEREFFECTS,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setviewereffect>&<group=<UUID|STRING>>&<password=<STRING>>&<effect=<Look|Point|Sphere|Beam>>&effect=Look:<item=<UUID|STRING>&<range=<FLOAT>>>|<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&effect=Look:<offset=<VECTOR3>>&effect=Look:<type=LookAt>&effect=Point:<item=<UUID|STRING>&<range=<FLOAT>>>|<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&effect=Point:<offset=<VECTOR3>>&effect=Point:<type=PointAt>&effect=Beam:<item=<UUID|STRING>&<range=<FLOAT>>>|<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&effect=Beam:<color=<VECTOR3>>&effect=Beam:<alpha=<FLOAT>>&effect=Beam:<duration=<FLOAT>>&effect=Beam:<offset=<VECTOR3>>&effect=Sphere:<color=<VECTOR3>>&effect=Sphere:<alpha=<FLOAT>>&effect=Sphere:<duration=<FLOAT>>&effect=Sphere:<offset=<VECTOR3>>&[id=<UUID>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setviewereffect")] SETVIEWEREFFECT,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=ai>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<process|enable|disable|rebuild>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_TALK)] [Description("ai")] AI,
+            [IsCommand(true)] [CommandInputSyntax("<command=gettitles>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("gettitles")] GETTITLES,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=tag>&<group=<UUID|STRING>>&<password=<STRING>>&action=<set|get>&action=set:<title=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("tag")] TAG,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=filter>&<group=<UUID|STRING>>&<password=<STRING>>&action=<set|get>&action=get:<type=<input|output>>&action=set:<input=<STRING>>&action=set:<output=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_FILTER)] [Description("filter")] FILTER,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=run>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable|get>>&[callback=<STRING>]"
+                )
+                              ] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("run")] RUN,
+            [IsCommand(true)] [CommandInputSyntax("<command=relax>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("relax")] RELAX,
             [Description("sift")] SIFT,
-            [Description("rlv")] RLV,
-            [Description("getinventorypath")] GETINVENTORYPATH,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=rlv>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable>>&[callback=<STRING>]")
+                              ] [CommandPermissionMask((uint) Permissions.PERMISSION_SYSTEM)] [Description("rlv")] RLV,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getinventorypath>&<group=<UUID|STRING>>&<password=<STRING>>&<pattern=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("getinventorypath")] GETINVENTORYPATH,
             [Description("committed")] COMMITTED,
             [Description("credit")] CREDIT,
             [Description("success")] SUCCESS,
             [Description("transaction")] TRANSACTION,
-            [Description("getscriptdialogs")] GETSCRIPTDIALOGS,
-            [Description("getscriptpermissionrequests")] GETSCRIPTPERMISSIONREQUESTS,
-            [Description("getteleportlures")] GETTELEPORTLURES,
-            [Description("replytogroupinvite")] REPLYTOGROUPINVITE,
-            [Description("getgroupinvites")] GETGROUPINVITES,
-            [Description("getmemberroles")] GETMEMBERROLES,
-            [Description("execute")] EXECUTE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getscriptdialogs>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getscriptdialogs")] GETSCRIPTDIALOGS,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getscriptpermissionrequests>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getscriptpermissionrequests")] GETSCRIPTPERMISSIONREQUESTS,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getteleportlures>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("getteleportlures")] GETTELEPORTLURES,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=replytogroupinvite>&<group=<UUID|STRING>>&<password=<STRING>>&[action=<accept|decline>]&<session=<UUID>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP | (uint) Permissions.PERMISSION_ECONOMY)] [Description("replytogroupinvite")] REPLYTOGROUPINVITE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getgroupinvites>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getgroupinvites")] GETGROUPINVITES,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getmemberroles>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getmemberroles")] GETMEMBERROLES,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=execute>&<group=<UUID|STRING>>&<password=<STRING>>&<file=<STRING>>&[parameter=<STRING>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_EXECUTE)] [Description("execute")] EXECUTE,
             [Description("parameter")] PARAMETER,
             [Description("file")] FILE,
-            [Description("cache")] CACHE,
-            [Description("getgridregiondata")] GETGRIDREGIONDATA,
-            [Description("getregionparcelsboundingbox")] GETREGIONPARCELSBOUNDINGBOX,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=cache>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<purge|load|save>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_SYSTEM)] [Description("cache")] CACHE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getgridregiondata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<GridRegion>>&[region=<STRING>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getgridregiondata")] GETGRIDREGIONDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getregionparcelsboundingbox>&<group=<UUID|STRING>>&<password=<STRING>>&[region=<STRING>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getregionparcelsboundingbox")] GETREGIONPARCELSBOUNDINGBOX,
             [Description("pattern")] PATTERN,
-            [Description("searchinventory")] SEARCHINVENTORY,
-            [Description("getterrainheight")] GETTERRAINHEIGHT,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=searchinventory>&<group=<UUID|STRING>>&<password=<STRING>>&<pattern=<STRING>>&[type=<AssetType>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("searchinventory")] SEARCHINVENTORY,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getterrainheight>&<group=<UUID|STRING>>&<password=<STRING>>&[southwest=<VECTOR>]&[northwest=<VECTOR>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getterrainheight")] GETTERRAINHEIGHT,
             [Description("northeast")] NORTHEAST,
             [Description("southwest")] SOUTHWEST,
-            [Description("configuration")] CONFIGURATION,
-            [Description("upload")] UPLOAD,
-            [Description("download")] DOWNLOAD,
-            [Description("setparceldata")] SETPARCELDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=configuration>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<read|write|get|set>>&action=write:<data=<STRING>>&action=get:<path=<STRING>>&action=set:<path=<STRING>>&action=set:<data=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_SYSTEM)] [Description("configuration")] CONFIGURATION,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=upload>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<type=<Texture|Sound|Animation|Clothing|Bodypart|Landmark|Gesture|Notecard|LSLText>>&type=Clothing:[wear=<WearableType>]&type=Bodypart:[wear=<WearableType>]&<data=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY | (uint) Permissions.PERMISSION_ECONOMY)] [Description("upload")] UPLOAD,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=download>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<type=<Texture|Sound|Animation|Clothing|Bodypart|Landmark|Gesture|Notecard|LSLText>>&type=Texture:[format=<ImageFormat>]&[path=<STRING>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT | (uint) Permissions.PERMISSION_SYSTEM)] [Description("download")] DOWNLOAD,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setparceldata>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR>]&[data=<Parcel>]&[callback=<STRING>]"
+                )
+                              ] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("setparceldata")] SETPARCELDATA,
             [Description("new")] NEW,
             [Description("old")] OLD,
             [Description("aggressor")] AGGRESSOR,
             [Description("magnitude")] MAGNITUDE,
             [Description("time")] TIME,
             [Description("victim")] VICTIM,
-            [Description("playgesture")] PLAYGESTURE,
-            [Description("jump")] JUMP,
-            [Description("crouch")] CROUCH,
-            [Description("turnto")] TURNTO,
-            [Description("nudge")] NUDGE,
-            [Description("createnotecard")] CREATENOTECARD,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=playgesture>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("playgesture")] PLAYGESTURE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=jump>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("jump")] JUMP,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=crouch>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("crouch")] CROUCH,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=turnto>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR3>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("turnto")] TURNTO,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=nudge>&<group=<UUID|STRING>>&<password=<STRING>>&<direction=<left|right|up|down|back|forward>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("nudge")] NUDGE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=createnotecard>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[text=<STRING>]&[description=<STRING>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("createnotecard")] CREATENOTECARD,
             [Description("direction")] DIRECTION,
             [Description("agent")] AGENT,
-            [Description("replytoinventoryoffer")] REPLYTOINVENTORYOFFER,
-            [Description("getinventoryoffers")] GETINVENTORYOFFERS,
-            [Description("updateprimitiveinventory")] UPDATEPRIMITIVEINVENTORY,
-            [Description("version")] VERSION,
-            [Description("playsound")] PLAYSOUND,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=replytoinventoryoffer>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<accept|decline>>&<session=<UUID>>&[folder=<STRING>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("replytoinventoryoffer")] REPLYTOINVENTORYOFFER,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getinventoryoffers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("getinventoryoffers")] GETINVENTORYOFFERS,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=updateprimitiveinventory>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<add|remove|take>>&action=add:<entity=<UUID|STRING>>&action=remove:<entity=<UUID|STRING>>&action=take:<entity=<UUID|STRING>>&action=take:<folder=<UUID|STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("updateprimitiveinventory")] UPDATEPRIMITIVEINVENTORY,
+            [IsCommand(true)] [CommandInputSyntax("<command=version>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_NONE)] [Description("version")] VERSION,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=playsound>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[gain=<FLOAT>]&[position=<VECTOR3>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("playsound")] PLAYSOUND,
             [Description("gain")] GAIN,
-            [Description("getrolemembers")] GETROLEMEMBERS,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getrolemembers>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<UUID|STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getrolemembers")] GETROLEMEMBERS,
             [Description("status")] STATUS,
-            [Description("getmembers")] GETMEMBERS,
-            [Description("replytoteleportlure")] REPLYTOTELEPORTLURE,
+            [IsCommand(true)] [CommandInputSyntax("<command=getmembers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getmembers")] GETMEMBERS,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=replytoteleportlure>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<session=<UUID>>&<action=<accept|decline>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("replytoteleportlure")] REPLYTOTELEPORTLURE,
             [Description("session")] SESSION,
-            [Description("replytoscriptpermissionrequest")] REPLYTOSCRIPTPERMISSIONREQUEST,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=replytoscriptpermissionrequest>&<group=<UUID|STRING>>&<password=<STRING>>&<task=<UUID>>&<item=<UUID>>&<permissions=<ScriptPermission>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("replytoscriptpermissionrequest")] REPLYTOSCRIPTPERMISSIONREQUEST,
             [Description("task")] TASK,
-            [Description("getparcellist")] GETPARCELLIST,
-            [Description("parcelrelease")] PARCELRELEASE,
-            [Description("parcelbuy")] PARCELBUY,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getparcellist>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getparcellist")] GETPARCELLIST,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=parcelrelease>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("parcelrelease")] PARCELRELEASE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=parcelbuy>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[forgroup=<BOOL>]&[removecontribution=<BOOL>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND | (uint) Permissions.PERMISSION_ECONOMY)] [Description("parcelbuy")] PARCELBUY,
             [Description("removecontribution")] REMOVECONTRIBUTION,
             [Description("forgroup")] FORGROUP,
-            [Description("parceldeed")] PARCELDEED,
-            [Description("parcelreclaim")] PARCELRECLAIM,
-            [Description("unwear")] UNWEAR,
-            [Description("wear")] WEAR,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=parceldeed>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("parceldeed")] PARCELDEED,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=parcelreclaim>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("parcelreclaim")] PARCELRECLAIM,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=unwear>&<group=<UUID|STRING>>&<password=<STRING>>&<wearables=<STRING[,STRING...]|UUID[,UUID...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("unwear")] UNWEAR,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=wear>&<group=<UUID|STRING>>&<password=<STRING>>&<wearables=<STRING[,STRING...]|UUID[,UUID...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("wear")] WEAR,
             [Description("wearables")] WEARABLES,
-            [Description("getwearables")] GETWEARABLES,
-            [Description("changeappearance")] CHANGEAPPEARANCE,
+            [IsCommand(true)] [CommandInputSyntax("<command=getwearables>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("getwearables")] GETWEARABLES,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=changeappearance>&<group=<UUID|STRING>>&<password=<STRING>>&<folder=<UUID|STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("changeappearance")] CHANGEAPPEARANCE,
             [Description("folder")] FOLDER,
             [Description("replace")] REPLACE,
-            [Description("setobjectrotation")] SETOBJECTROTATION,
-            [Description("setprimitivedescription")] SETPRIMITIVEDESCRIPTION,
-            [Description("setprimitivename")] SETPRIMITIVENAME,
-            [Description("setobjectposition")] SETOBJECTPOSITION,
-            [Description("setobjectsaleinfo")] SETOBJECTSALEINFO,
-            [Description("setobjectgroup")] SETOBJECTGROUP,
-            [Description("objectdeed")] OBJECTDEED,
-            [Description("setobjectpermissions")] SETOBJECTPERMISSIONS,
-            [Description("who")] WHO,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setobjectrotation>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<rotation=<QUARTERNION>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setobjectrotation")] SETOBJECTROTATION,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setprimitivedescription>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<description=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitivedescription")] SETPRIMITIVEDESCRIPTION,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setprimitivename>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<name=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitivename")] SETPRIMITIVENAME,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setobjectposition>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<position=<VECTOR3>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setobjectposition")] SETOBJECTPOSITION,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setobjectsaleinfo>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<price=<INTEGER>>&<type=<SaleType>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setobjectsaleinfo")] SETOBJECTSALEINFO,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setobjectgroup>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setobjectgroup")] SETOBJECTGROUP,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=objectdeed>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("objectdeed")] OBJECTDEED,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setobjectpermissions>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<permissions=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setobjectpermissions")] SETOBJECTPERMISSIONS,
             [Description("permissions")] PERMISSIONS,
-            [Description("getavatarpositions")] GETAVATARPOSITIONS,
-            [Description("getprimitives")] GETPRIMITIVES,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getavatarpositions>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<region|parcel>>&entity=parcel:<position=<VECTOR2>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getavatarpositions")] GETAVATARPOSITIONS,
             [Description("delay")] DELAY,
             [Description("asset")] ASSET,
-            [Description("setregiondebug")] SETREGIONDEBUG,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setregiondebug>&<group=<UUID|STRING>>&<password=<STRING>>&<scripts=<BOOL>>&<collisions=<BOOL>>&<physics=<BOOL>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("setregiondebug")] SETREGIONDEBUG,
             [Description("scripts")] SCRIPTS,
             [Description("collisions")] COLLISIONS,
             [Description("physics")] PHYSICS,
-            [Description("getmapavatarpositions")] GETMAPAVATARPOSITIONS,
-            [Description("mapfriend")] MAPFRIEND,
-            [Description("replytofriendshiprequest")] REPLYTOFRIENDSHIPREQUEST,
-            [Description("getfriendshiprequests")] GETFRIENDSHIPREQUESTS,
-            [Description("grantfriendrights")] GRANTFRIENDRIGHTS,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getmapavatarpositions>&<group=<UUID|STRING>>&<password=<STRING>>&<region=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getmapavatarpositions")] GETMAPAVATARPOSITIONS,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=mapfriend>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("mapfriend")] MAPFRIEND,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=replytofriendshiprequest>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<action=<accept|decline>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("replytofriendshiprequest")] REPLYTOFRIENDSHIPREQUEST,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getfriendshiprequests>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("getfriendshiprequests")] GETFRIENDSHIPREQUESTS,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=grantfriendrights>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<rights=<FriendRights>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("grantfriendrights")] GRANTFRIENDRIGHTS,
             [Description("rights")] RIGHTS,
-            [Description("getfriendslist")] GETFRIENDSLIST,
-            [Description("terminatefriendship")] TERMINATEFRIENDSHIP,
-            [Description("offerfriendship")] OFFERFRIENDSHIP,
-            [Description("getfrienddata")] GETFRIENDDATA,
+
+            [IsCommand(true)] [CommandInputSyntax("<command=getfriendslist>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("getfriendslist")] GETFRIENDSLIST,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=terminatefriendship>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("terminatefriendship")] TERMINATEFRIENDSHIP,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=offerfriendship>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("offerfriendship")] OFFERFRIENDSHIP,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getfrienddata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<FriendInfo>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("getfrienddata")] GETFRIENDDATA,
             [Description("days")] DAYS,
             [Description("interval")] INTERVAL,
-            [Description("getgroupaccountsummarydata")] GETGROUPACCOUNTSUMMARYDATA,
-            [Description("getselfdata")] GETSELFDATA,
-            [Description("deleteclassified")] DELETECLASSIFIED,
-            [Description("addclassified")] ADDCLASSIFIED,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getgroupaccountsummarydata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<GroupAccountSummary>>&<days=<INTEGER>>&<interval=<INTEGER>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getgroupaccountsummarydata")] GETGROUPACCOUNTSUMMARYDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getselfdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager>>&[callback=<STRING>]"
+                )
+                              ] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("getselfdata")] GETSELFDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=deleteclassified>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("deleteclassified")] DELETECLASSIFIED,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=addclassified>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<price=<INTEGER>>&<type=<Any|Shopping|LandRental|PropertyRental|SpecialAttraction|NewProducts|Employment|Wanted|Service|Personal>>&[item=<UUID|STRING>]&[description=<STRING>]&[renew=<BOOL>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING | (uint) Permissions.PERMISSION_ECONOMY)] [Description("addclassified")] ADDCLASSIFIED,
             [Description("price")] PRICE,
             [Description("renew")] RENEW,
-            [Description("logout")] LOGOUT,
-            [Description("displayname")] DISPLAYNAME,
-            [Description("returnprimitives")] RETURNPRIMITIVES,
-            [Description("getgroupdata")] GETGROUPDATA,
-            [Description("getavatardata")] GETAVATARDATA,
-            [Description("getprimitiveinventory")] GETPRIMITIVEINVENTORY,
-            [Description("getinventorydata")] GETINVENTORYDATA,
-            [Description("getprimitiveinventorydata")] GETPRIMITIVEINVENTORYDATA,
-            [Description("getscriptrunning")] GETSCRIPTRUNNING,
-            [Description("setscriptrunning")] SETSCRIPTRUNNING,
-            [Description("derez")] DEREZ,
-            [Description("getparceldata")] GETPARCELDATA,
-            [Description("rez")] REZ,
+            [IsCommand(true)] [CommandInputSyntax("<command=logout>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_SYSTEM)] [Description("logout")] LOGOUT,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=displayname>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<get|set>>&action=set:<name=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("displayname")] DISPLAYNAME,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=returnprimitives>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<entity=<parcel|estate>>&<type=<Owner|Group|Other|Sell|ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers>>&type=<Owner|Group|Other|Sell>:[position=<VECTOR2>]&type=<ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers>:[all=<BOOL>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("returnprimitives")] RETURNPRIMITIVES,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getgroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getgroupdata")] GETGROUPDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getavatardata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<Avatar>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getavatardata")] GETAVATARDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getprimitiveinventory>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitiveinventory")] GETPRIMITIVEINVENTORY,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<InventoryItem>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("getinventorydata")] GETINVENTORYDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getprimitiveinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<InventoryItem>>&<entity=<STRING|UUID>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitiveinventorydata")] GETPRIMITIVEINVENTORYDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getscriptrunning>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<InventoryItem>>&<entity=<STRING|UUID>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getscriptrunning")] GETSCRIPTRUNNING,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setscriptrunning>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<entity=<STRING|UUID>>&<action=<start|stop>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setscriptrunning")] SETSCRIPTRUNNING,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=derez>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[folder=<STRING|UUID>]&[type=<DeRezDestination>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("derez")] DEREZ,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getparceldata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Parcel>>&[position=<VECTOR2>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getparceldata")] GETPARCELDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=rez>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR2>>&<item=<UUID|STRING>&[rotation=<QUARTERNION>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("rez")] REZ,
             [Description("rotation")] ROTATION,
             [Description("index")] INDEX,
-            [Description("replytoscriptdialog")] REPLYTOSCRIPTDIALOG,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=replytoscriptdialog>&<group=<UUID|STRING>>&<password=<STRING>>&<channel=<INTEGER>>&<index=<INTEGER>&<button=<STRING>>&<item=<UUID>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("replytoscriptdialog")] REPLYTOSCRIPTDIALOG,
             [Description("owner")] OWNER,
             [Description("button")] BUTTON,
-            [Description("getanimations")] GETANIMATIONS,
-            [Description("animation")] ANIMATION,
-            [Description("setestatelist")] SETESTATELIST,
-            [Description("getestatelist")] GETESTATELIST,
+
+            [IsCommand(true)] [CommandInputSyntax("<command=getanimations>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")
+                              ] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("getanimations")] GETANIMATIONS,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=animation>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&<action=<start|stop>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("animation")] ANIMATION,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setestatelist>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<ban|group|manager|user>>&<action=<add|remove>>&type=<ban|manager|user>,action=<add|remove>:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&type=group,action=<add|remove>:<target=<STRING|UUID>>&[all=<BOOL>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("setestatelist")] SETESTATELIST,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getestatelist>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<ban|group|manager|user>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getestatelist")] GETESTATELIST,
             [Description("all")] ALL,
-            [Description("getregiontop")] GETREGIONTOP,
-            [Description("restartregion")] RESTARTREGION,
-            [Description("directorysearch")] DIRECTORYSEARCH,
-            [Description("getprofiledata")] GETPROFILEDATA,
-            [Description("getparticlesystem")] GETPARTICLESYSTEM,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getregiontop>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<scripts|colliders>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getregiontop")] GETREGIONTOP,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=restartregion>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<scripts|colliders>>&[delay=<INTEGER>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("restartregion")] RESTARTREGION,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=directorysearch>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<classified|event|group|land|people|places>>&type=classified:<data=<Classified>>&type=classified:<name=<STRING>>&type=event:<data=<EventsSearchData>>&type=event:<name=<STRING>>&type=group:<data=<GroupSearchData>>&type=land:<data=<DirectoryParcel>>&type=people:<data=<AgentSearchData>>&type=places:<data=<DirectoryParcel>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_DIRECTORY)] [Description("directorysearch")] DIRECTORYSEARCH,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getprofiledata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<AvatarProperties>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprofiledata")] GETPROFILEDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getparticlesystem>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getparticlesystem")] GETPARTICLESYSTEM,
             [Description("data")] DATA,
             [Description("range")] RANGE,
             [Description("balance")] BALANCE,
             [Description("key")] KEY,
             [Description("value")] VALUE,
-            [Description("database")] DATABASE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=database>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<get|set|delete>>&action=<get|delete>:<key=<STRING>>&action=set:<key=<STRING>>&action=set:<value=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_DATABASE)] [Description("database")] DATABASE,
             [Description("text")] TEXT,
             [Description("quorum")] QUORUM,
             [Description("majority")] MAJORITY,
-            [Description("startproposal")] STARTPROPOSAL,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=startproposal>&<group=<UUID|STRING>>&<password=<STRING>>&<duration=<INTEGER>>&<majority=<FLOAT>>&<quorum=<INTEGER>>&<text=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("startproposal")] STARTPROPOSAL,
             [Description("duration")] DURATION,
             [Description("action")] ACTION,
-            [Description("deletefromrole")] DELETEFROMROLE,
-            [Description("addtorole")] ADDTOROLE,
-            [Description("leave")] LEAVE,
-            [Description("updategroupdata")] UPDATEGROUPDATA,
-            [Description("eject")] EJECT,
-            [Description("invite")] INVITE,
-            [Description("join")] JOIN,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=deletefromrole>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<role=<UUID|STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("deletefromrole")] DELETEFROMROLE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=addtorole>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<role=<UUID|STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("addtorole")] ADDTOROLE,
+            [IsCommand(true)] [CommandInputSyntax("<command=leave>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("leave")] LEAVE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=updategroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Charter<,STRING>|ListInProfile<,BOOL>|MembershipFee<,INTEGER>|OpenEnrollment<,BOOL>|ShowInList<,BOOL>>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("updategroupdata")] UPDATEGROUPDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=eject>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("eject")] EJECT,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=invite>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[role=<UUID[,UUID...]|STRING[,STRING...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("invite")] INVITE,
+            [IsCommand(true)] [CommandInputSyntax("<command=join>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP | (uint) Permissions.PERMISSION_ECONOMY)] [Description("join")] JOIN,
             [Description("callback")] CALLBACK,
             [Description("group")] GROUP,
             [Description("password")] PASSWORD,
@@ -22202,70 +23009,209 @@ namespace Corrade
             [Description("command")] COMMAND,
             [Description("role")] ROLE,
             [Description("title")] TITLE,
-            [Description("tell")] TELL,
-            [Description("notice")] NOTICE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=tell>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<local|group|avatar|estate|region>>&entity=local:<type=<Normal|Whisper|Shout>>&entity=local,type=<Normal|Whisper|Shout>:[channel=<INTEGER>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_TALK)] [Description("tell")] TELL,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=notice>&<group=<UUID|STRING>>&<password=<STRING>>&<message=<STRING>>&[subject=<STRING>]&[item=<UUID|STRING>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("notice")] NOTICE,
             [Description("message")] MESSAGE,
             [Description("subject")] SUBJECT,
             [Description("item")] ITEM,
-            [Description("pay")] PAY,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=pay>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<avatar|object|group>>&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&entity=object:<target=<UUID>>&[reason=<STRING>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_ECONOMY)] [Description("pay")] PAY,
             [Description("amount")] AMOUNT,
             [Description("target")] TARGET,
             [Description("reason")] REASON,
-            [Description("getbalance")] GETBALANCE,
-            [Description("teleport")] TELEPORT,
+            [IsCommand(true)] [CommandInputSyntax("<command=getbalance>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_ECONOMY)] [Description("getbalance")] GETBALANCE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=teleport>&<group=<UUID|STRING>>&<password=<STRING>>&<region=<STRING>>&[position=<VECTOR3>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("teleport")] TELEPORT,
             [Description("region")] REGION,
             [Description("position")] POSITION,
-            [Description("getregiondata")] GETREGIONDATA,
-            [Description("sit")] SIT,
-            [Description("stand")] STAND,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getregiondata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Simulator>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getregiondata")] GETREGIONDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=sit>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("sit")] SIT,
+            [IsCommand(true)] [CommandInputSyntax("<command=stand>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("stand")] STAND,
             [Description("ban")] BAN,
-            [Description("parceleject")] PARCELEJECT,
-            [Description("creategroup")] CREATEGROUP,
-            [Description("parcelfreeze")] PARCELFREEZE,
-            [Description("createrole")] CREATEROLE,
-            [Description("deleterole")] DELETEROLE,
-            [Description("getrolesmembers")] GETROLESMEMBERS,
-            [Description("getroles")] GETROLES,
-            [Description("getrolepowers")] GETROLEPOWERS,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=parceleject>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[ban=<BOOL>]&[position=<VECTOR2>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("parceleject")] PARCELEJECT,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=creategroup>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP | (uint) Permissions.PERMISSION_ECONOMY)] [Description("creategroup")] CREATEGROUP,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=parcelfreeze>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[freeze=<BOOL>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("parcelfreeze")] PARCELFREEZE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=createrole>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<STRING>>&[powers=<GroupPowers[,GroupPowers...]>]&[title=<STRING>]&[description=<STRING>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("createrole")] CREATEROLE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=deleterole>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<STRING|UUID>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("deleterole")] DELETEROLE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getrolesmembers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getrolesmembers")] GETROLESMEMBERS,
+            [IsCommand(true)] [CommandInputSyntax("<command=getroles>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getroles")] GETROLES,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getrolepowers>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<UUID|STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getrolepowers")] GETROLEPOWERS,
             [Description("powers")] POWERS,
-            [Description("lure")] LURE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=lure>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("lure")] LURE,
             [Description("URL")] URL,
-            [Description("sethome")] SETHOME,
-            [Description("gohome")] GOHOME,
-            [Description("setprofiledata")] SETPROFILEDATA,
-            [Description("give")] GIVE,
-            [Description("deleteitem")] DELETEITEM,
-            [Description("emptytrash")] EMPTYTRASH,
-            [Description("fly")] FLY,
-            [Description("addpick")] ADDPICK,
-            [Description("deltepick")] DELETEPICK,
-            [Description("touch")] TOUCH,
-            [Description("moderate")] MODERATE,
+            [IsCommand(true)] [CommandInputSyntax("<command=sethome>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("sethome")] SETHOME,
+            [IsCommand(true)] [CommandInputSyntax("<command=gohome>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("gohome")] GOHOME,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setprofiledata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AvatarProperties>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("setprofiledata")] SETPROFILEDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=give>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<avatar|object>>&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&entity=avatar:<item=<UUID|STRING>&entity=object:<item=<UUID|STRING>&entity=object:[range=<FLOAT>]&entity=object:<target=<UUID|STRING>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("give")] GIVE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=deleteitem>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("deleteitem")] DELETEITEM,
+            [IsCommand(true)] [CommandInputSyntax("<command=emptytrash>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("emptytrash")] EMPTYTRASH,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=fly>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("fly")] FLY,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=addpick>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[description=<STRING>]&[item=<STRING|UUID>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("addpick")] ADDPICK,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=deletepick>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("deltepick")] DELETEPICK,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=touch>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("touch")] TOUCH,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=moderate>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<type=<voice|text>>&<silence=<BOOL>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("moderate")] MODERATE,
             [Description("type")] TYPE,
             [Description("silence")] SILENCE,
             [Description("freeze")] FREEZE,
-            [Description("rebake")] REBAKE,
-            [Description("getattachments")] GETATTACHMENTS,
-            [Description("attach")] ATTACH,
+            [IsCommand(true)] [CommandInputSyntax("<command=rebake>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("rebake")] REBAKE,
+
+            [IsCommand(true)] [CommandInputSyntax("<command=getattachments>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("getattachments")] GETATTACHMENTS,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=attach>&<group=<UUID|STRING>>&<password=<STRING>>&<attachments=<AttachmentPoint<,<UUID|STRING>>[,AttachmentPoint<,<UUID|STRING>>...]>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("attach")] ATTACH,
             [Description("attachments")] ATTACHMENTS,
-            [Description("detach")] DETACH,
-            [Description("getprimitiveowners")] GETPRIMITIVEOWNERS,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=detach>&<group=<UUID|STRING>>&<password=<STRING>>&<attachments=<STRING[,STRING...]|UUID[,UUID...]>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("detach")] DETACH,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getprimitiveowners>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getprimitiveowners")] GETPRIMITIVEOWNERS,
             [Description("entity")] ENTITY,
             [Description("channel")] CHANNEL,
             [Description("name")] NAME,
             [Description("description")] DESCRIPTION,
-            [Description("getprimitivedata")] GETPRIMITIVEDATA,
-            [Description("activate")] ACTIVATE,
-            [Description("autopilot")] AUTOPILOT,
-            [Description("mute")] MUTE,
-            [Description("getmutes")] GETMUTES,
-            [Description("notify")] NOTIFY,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getprimitivedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<Primitive>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivedata")] GETPRIMITIVEDATA,
+            [IsCommand(true)] [CommandInputSyntax("<command=activate>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("activate")] ACTIVATE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=autopilot>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR2>>&<action=<start|stop>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("autopilot")] AUTOPILOT,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=mute>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<target=<UUID>>&<action=<mute|unmute>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_MUTE)] [Description("mute")] MUTE,
+            [IsCommand(true)] [CommandInputSyntax("<command=getmutes>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MUTE)] [Description("getmutes")] GETMUTES,
+            [IsCommand(true)] [CommandInputSyntax("<command=getmutes>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_NOTIFICATIONS)] [Description("notify")] NOTIFY,
             [Description("source")] SOURCE,
             [Description("effect")] EFFECT,
             [Description("id")] ID,
-            [Description("terrain")] TERRAIN,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=terrain>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<set|get>>&action=set:<data=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("terrain")] TERRAIN,
             [Description("output")] OUTPUT,
             [Description("input")] INPUT
+        }
+
+        /// <summary>
+        ///     The permission mask of a command.
+        /// </summary>
+        private class CommandPermissionMaskAttribute : Attribute
+        {
+            protected readonly uint permissionMask;
+
+            public CommandPermissionMaskAttribute(uint permissionMask)
+            {
+                this.permissionMask = permissionMask;
+            }
+
+            public uint PermissionMask
+            {
+                get { return permissionMask; }
+            }
+        }
+
+        /// <summary>
+        ///     Whether this is a command or not.
+        /// </summary>
+        private class IsCommandAttribute : Attribute
+        {
+            protected readonly bool isCommand;
+
+            public IsCommandAttribute(bool isCommand)
+            {
+                this.isCommand = isCommand;
+            }
+
+            public bool IsCommand
+            {
+                get { return isCommand; }
+            }
+        }
+
+        /// <summary>
+        ///     The syntax for a command.
+        /// </summary>
+        private class CommandInputSyntaxAttribute : Attribute
+        {
+            protected readonly string syntax;
+
+            public CommandInputSyntaxAttribute(string syntax)
+            {
+                this.syntax = syntax;
+            }
+
+            public string Syntax
+            {
+                get { return syntax; }
+            }
         }
 
         /// <summary>
@@ -22277,6 +23223,7 @@ namespace Corrade
             [Description("item")] public UUID Item;
             [Description("name")] public string Name;
             [Description("permission")] public ScriptPermission Permission;
+            [Description("region")] public string Region;
             [Description("task")] public UUID Task;
         }
 
@@ -23995,7 +24942,8 @@ namespace Corrade
             {
                 DirGroupsReceivedAlarm.Alarm(dataTimeout);
                 DirectoryManager.GroupSearchData groupSearchData =
-                    args.MatchedGroups.AsParallel().FirstOrDefault(o => o.GroupName.Equals(groupName));
+                    args.MatchedGroups.AsParallel()
+                        .FirstOrDefault(o => o.GroupName.Equals(groupName, StringComparison.Ordinal));
                 if (groupSearchData.Equals(default(DirectoryManager.GroupSearchData))) return;
                 localGroupUUID = groupSearchData.GroupID;
             };
