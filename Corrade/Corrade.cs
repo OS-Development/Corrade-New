@@ -8460,10 +8460,9 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel()
                                 .FirstOrDefault(
                                     p => p.Name.Equals(group, StringComparison.InvariantCultureIgnoreCase));
-                        if (commandGroup.Equals(default(Group)) ||
-                            (commandGroup.PermissionMask & commandPermissionMaskAttribute.PermissionMask).Equals(0))
+                        if (commandGroup.Equals(default(Group)))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         switch (
                             wasGetEnumValueFromDescription<Entity>(
@@ -22637,7 +22636,7 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getgridregiondata")] GETGRIDREGIONDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getregionparcelsboundingbox>&<group=<UUID|STRING>>&<password=<STRING>>&[region=<STRING>]&[callback=<STRING>]"
+                "<command=getregionparcelsboundingbox>&<group=<UUID|STRING>>&<password=<STRING>>&[region=<STRING>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getregionparcelsboundingbox")] GETREGIONPARCELSBOUNDINGBOX,
             [Description("pattern")] PATTERN,
 
@@ -22646,7 +22645,7 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("searchinventory")] SEARCHINVENTORY,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getterrainheight>&<group=<UUID|STRING>>&<password=<STRING>>&[southwest=<VECTOR>]&[northwest=<VECTOR>]&[callback=<STRING>]"
+                "<command=getterrainheight>&<group=<UUID|STRING>>&<password=<STRING>>&[southwest=<VECTOR>]&[northwest=<VECTOR>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getterrainheight")] GETTERRAINHEIGHT,
             [Description("northeast")] NORTHEAST,
             [Description("southwest")] SOUTHWEST,
@@ -22664,7 +22663,7 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT | (uint) Permissions.PERMISSION_SYSTEM)] [Description("download")] DOWNLOAD,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=setparceldata>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR>]&[data=<Parcel>]&[callback=<STRING>]"
+                "<command=setparceldata>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR>]&[data=<Parcel>]&[region=<STRING>]&[callback=<STRING>]"
                 )
                               ] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("setparceldata")] SETPARCELDATA,
             [Description("new")] NEW,
@@ -22731,25 +22730,25 @@ namespace Corrade
             [Description("task")] TASK,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getparcellist>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[callback=<STRING>]"
+                "<command=getparcellist>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getparcellist")] GETPARCELLIST,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=parcelrelease>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[callback=<STRING>]"
+                "<command=parcelrelease>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("parcelrelease")] PARCELRELEASE,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=parcelbuy>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[forgroup=<BOOL>]&[removecontribution=<BOOL>]&[callback=<STRING>]"
+                "<command=parcelbuy>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[forgroup=<BOOL>]&[removecontribution=<BOOL>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND | (uint) Permissions.PERMISSION_ECONOMY)] [Description("parcelbuy")] PARCELBUY,
             [Description("removecontribution")] REMOVECONTRIBUTION,
             [Description("forgroup")] FORGROUP,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=parceldeed>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[callback=<STRING>]"
+                "<command=parceldeed>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("parceldeed")] PARCELDEED,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=parcelreclaim>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[callback=<STRING>]"
+                "<command=parcelreclaim>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("parcelreclaim")] PARCELRECLAIM,
 
             [IsCommand(true)] [CommandInputSyntax(
@@ -22802,7 +22801,7 @@ namespace Corrade
             [Description("permissions")] PERMISSIONS,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getavatarpositions>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<region|parcel>>&entity=parcel:<position=<VECTOR2>>&[callback=<STRING>]"
+                "<command=getavatarpositions>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<region|parcel>>&entity=parcel:<position=<VECTOR2>>&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getavatarpositions")] GETAVATARPOSITIONS,
             [Description("delay")] DELAY,
             [Description("asset")] ASSET,
@@ -22876,7 +22875,7 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("displayname")] DISPLAYNAME,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=returnprimitives>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<entity=<parcel|estate>>&<type=<Owner|Group|Other|Sell|ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers>>&type=<Owner|Group|Other|Sell>:[position=<VECTOR2>]&type=<ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers>:[all=<BOOL>]&[callback=<STRING>]"
+                "<command=returnprimitives>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<entity=<parcel|estate>>&<type=<Owner|Group|Other|Sell|ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers>>&type=<Owner|Group|Other|Sell>:[position=<VECTOR2>]&type=<ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers>:[all=<BOOL>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("returnprimitives")] RETURNPRIMITIVES,
 
             [IsCommand(true)] [CommandInputSyntax(
@@ -22911,11 +22910,11 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("derez")] DEREZ,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getparceldata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Parcel>>&[position=<VECTOR2>]&[callback=<STRING>]"
+                "<command=getparceldata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Parcel>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getparceldata")] GETPARCELDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=rez>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR2>>&<item=<UUID|STRING>&[rotation=<QUARTERNION>]&[callback=<STRING>]"
+                "<command=rez>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR2>>&<item=<UUID|STRING>&[rotation=<QUARTERNION>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("rez")] REZ,
             [Description("rotation")] ROTATION,
             [Description("index")] INDEX,
@@ -23036,7 +23035,7 @@ namespace Corrade
             [Description("position")] POSITION,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getregiondata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Simulator>>&[callback=<STRING>]"
+                "<command=getregiondata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Simulator>>&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getregiondata")] GETREGIONDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
@@ -23046,14 +23045,14 @@ namespace Corrade
             [Description("ban")] BAN,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=parceleject>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[ban=<BOOL>]&[position=<VECTOR2>]&[callback=<STRING>]"
+                "<command=parceleject>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[ban=<BOOL>]&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("parceleject")] PARCELEJECT,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=creategroup>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP | (uint) Permissions.PERMISSION_ECONOMY)] [Description("creategroup")] CREATEGROUP,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=parcelfreeze>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[freeze=<BOOL>]&[callback=<STRING>]"
+                "<command=parcelfreeze>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[freeze=<BOOL>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("parcelfreeze")] PARCELFREEZE,
 
             [IsCommand(true)] [CommandInputSyntax(
@@ -23128,7 +23127,7 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("detach")] DETACH,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getprimitiveowners>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[callback=<STRING>]"
+                "<command=getprimitiveowners>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getprimitiveowners")] GETPRIMITIVEOWNERS,
             [Description("entity")] ENTITY,
             [Description("channel")] CHANNEL,
@@ -23154,7 +23153,7 @@ namespace Corrade
             [Description("id")] ID,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=terrain>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<set|get>>&action=set:<data=<STRING>>&[callback=<STRING>]"
+                "<command=terrain>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<set|get>>&action=set:<data=<STRING>>&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("terrain")] TERRAIN,
             [Description("output")] OUTPUT,
             [Description("input")] INPUT
