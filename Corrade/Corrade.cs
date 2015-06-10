@@ -22493,7 +22493,7 @@ namespace Corrade
                 "<command=getconnectedregions>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getconnectedregions")] GETCONNECTEDREGIONS,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getnetworkdata>&<group=<UUID|STRING>>&<password=<STRING>>&[data=<NetworkManager>]&[callback=<STRING>]"
+                "<command=getnetworkdata>&<group=<UUID|STRING>>&<password=<STRING>>&[data=<NetworkManager[,NetworkManager...]>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("getnetworkdata")] GETNETWORKDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
@@ -22539,11 +22539,11 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("exportxml")] EXPORTXML,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getprimitivesdata>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<range|parcel|region|avatar>>&entity=range:[range=<FLOAT>]&entity=parcel:[position=<VECTOR2>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[data=<Primitive>]&[callback=<STRING>]"
+                "<command=getprimitivesdata>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<range|parcel|region|avatar>>&entity=range:[range=<FLOAT>]&entity=parcel:[position=<VECTOR2>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[data=<Primitive[,Primitive...]>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivesdata")] GETPRIMITIVESDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getavatarsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<range|parcel|region|avatar>>&entity=range:[range=<FLOAT>]&entity=parcel:[position=<VECTOR2>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[data=<Avatar>]&[callback=<STRING>]"
+                "<command=getavatarsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<range|parcel|region|avatar>>&entity=range:[range=<FLOAT>]&entity=parcel:[position=<VECTOR2>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[data=<Avatar[,Avatar...]>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getavatarsdata")] GETAVATARSDATA,
             [Description("format")] FORMAT,
             [Description("volume")] VOLUME,
@@ -22551,7 +22551,7 @@ namespace Corrade
             [Description("path")] PATH,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=inventory>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<ls|cwd|cd|mkdir|chmod|rm|cp|mv|ln>>&action=<ls,mkdir,chmod>:[path=<STRING>]&action=cd:<path=<STRING>>&action=<mkdir>:<name=<STRING>>&action=<chmod>:<permissions=<STRING>>&action=rm:<path=<STRING>>&action=<cp,mv,ln>:<source=<STRING>>&action=<cp,mv,ln>:<target=<STRING>>&[callback=<STRING>]"
+                "<command=inventory>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<ls|cwd|cd|mkdir|chmod|rm|cp|mv|ln>>&action=ls|mkdir|chmod:[path=<STRING>]&action=cd,action=rm:<path=<STRING>>&action=mkdir:<name=<STRING>>&action=chmod:<permissions=<STRING>>&action=cp|mv|ln:<source=<STRING>>&action=cp|mv|ln:<target=<STRING>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("inventory")] INVENTORY,
             [Description("offset")] OFFSET,
             [Description("alpha")] ALPHA,
@@ -22632,7 +22632,7 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_SYSTEM)] [Description("cache")] CACHE,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getgridregiondata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<GridRegion>>&[region=<STRING>]&[callback=<STRING>]"
+                "<command=getgridregiondata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<GridRegion[,GridRegion...]>>&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getgridregiondata")] GETGRIDREGIONDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
@@ -22663,7 +22663,7 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT | (uint) Permissions.PERMISSION_SYSTEM)] [Description("download")] DOWNLOAD,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=setparceldata>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR>]&[data=<Parcel>]&[region=<STRING>]&[callback=<STRING>]"
+                "<command=setparceldata>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR>]&[data=<Parcel[,Parcel...]>]&[region=<STRING>]&[callback=<STRING>]"
                 )
                               ] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("setparceldata")] SETPARCELDATA,
             [Description("new")] NEW,
@@ -22752,11 +22752,11 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("parcelreclaim")] PARCELRECLAIM,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=unwear>&<group=<UUID|STRING>>&<password=<STRING>>&<wearables=<STRING[,STRING...]|UUID[,UUID...]>>&[callback=<STRING>]"
+                "<command=unwear>&<group=<UUID|STRING>>&<password=<STRING>>&<wearables=<STRING[,UUID...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("unwear")] UNWEAR,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=wear>&<group=<UUID|STRING>>&<password=<STRING>>&<wearables=<STRING[,STRING...]|UUID[,UUID...]>>&[callback=<STRING>]"
+                "<command=wear>&<group=<UUID|STRING>>&<password=<STRING>>&<wearables=<STRING[,UUID...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("wear")] WEAR,
             [Description("wearables")] WEARABLES,
             [IsCommand(true)] [CommandInputSyntax("<command=getwearables>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("getwearables")] GETWEARABLES,
@@ -22845,17 +22845,17 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("offerfriendship")] OFFERFRIENDSHIP,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getfrienddata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<FriendInfo>>&[callback=<STRING>]"
+                "<command=getfrienddata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<FriendInfo[,FriendInfo...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("getfrienddata")] GETFRIENDDATA,
             [Description("days")] DAYS,
             [Description("interval")] INTERVAL,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getgroupaccountsummarydata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<GroupAccountSummary>>&<days=<INTEGER>>&<interval=<INTEGER>>&[callback=<STRING>]"
+                "<command=getgroupaccountsummarydata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<GroupAccountSummary[,GroupAccountSummary...]>>&<days=<INTEGER>>&<interval=<INTEGER>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getgroupaccountsummarydata")] GETGROUPACCOUNTSUMMARYDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getselfdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager>>&[callback=<STRING>]"
+                "<command=getselfdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager[,AgentManager...]>>&[callback=<STRING>]"
                 )
                               ] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("getselfdata")] GETSELFDATA,
 
@@ -22875,14 +22875,15 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("displayname")] DISPLAYNAME,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=returnprimitives>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<entity=<parcel|estate>>&<type=<Owner|Group|Other|Sell|ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers>>&type=<Owner|Group|Other|Sell>:[position=<VECTOR2>]&type=<ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers>:[all=<BOOL>]&[region=<STRING>]&[callback=<STRING>]"
+                "<command=returnprimitives>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<entity=<parcel|estate>>&<type=<Owner|Group|Other|Sell|ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers>>&type=Owner|Group|Other|Sell:[position=<VECTOR2>]&type=ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers:[all=<BOOL>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("returnprimitives")] RETURNPRIMITIVES,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getgroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getgroupdata")] GETGROUPDATA,
+                "<command=getgroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,Group...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getgroupdata")] GETGROUPDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getavatardata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<Avatar>>&[callback=<STRING>]"
+                "<command=getavatardata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<Avatar[,Avatar...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getavatardata")] GETAVATARDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
@@ -22890,15 +22891,15 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitiveinventory")] GETPRIMITIVEINVENTORY,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<InventoryItem>>&[callback=<STRING>]"
+                "<command=getinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<InventoryItem[,InventoryItem...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("getinventorydata")] GETINVENTORYDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getprimitiveinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<InventoryItem>>&<entity=<STRING|UUID>>&[callback=<STRING>]"
+                "<command=getprimitiveinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<InventoryItem[,InventoryItem...]>>&<entity=<STRING|UUID>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitiveinventorydata")] GETPRIMITIVEINVENTORYDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getscriptrunning>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<InventoryItem>>&<entity=<STRING|UUID>>&[callback=<STRING>]"
+                "<command=getscriptrunning>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<entity=<STRING|UUID>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getscriptrunning")] GETSCRIPTRUNNING,
 
             [IsCommand(true)] [CommandInputSyntax(
@@ -22910,7 +22911,7 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("derez")] DEREZ,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getparceldata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Parcel>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
+                "<command=getparceldata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Parcel[,Parcel...]>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getparceldata")] GETPARCELDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
@@ -22933,7 +22934,7 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("animation")] ANIMATION,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=setestatelist>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<ban|group|manager|user>>&<action=<add|remove>>&type=<ban|manager|user>,action=<add|remove>:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&type=group,action=<add|remove>:<target=<STRING|UUID>>&[all=<BOOL>]&[callback=<STRING>]"
+                "<command=setestatelist>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<ban|group|manager|user>>&<action=<add|remove>>&type=ban|manager|user,action=add|remove:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&type=group,action=add|remove:<target=<STRING|UUID>>&[all=<BOOL>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("setestatelist")] SETESTATELIST,
 
             [IsCommand(true)] [CommandInputSyntax(
@@ -22950,11 +22951,11 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("restartregion")] RESTARTREGION,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=directorysearch>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<classified|event|group|land|people|places>>&type=classified:<data=<Classified>>&type=classified:<name=<STRING>>&type=event:<data=<EventsSearchData>>&type=event:<name=<STRING>>&type=group:<data=<GroupSearchData>>&type=land:<data=<DirectoryParcel>>&type=people:<data=<AgentSearchData>>&type=places:<data=<DirectoryParcel>>&[callback=<STRING>]"
+                "<command=directorysearch>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<classified|event|group|land|people|places>>&type=classified:<data=<Classified[,Classified...]>>&type=classified:<name=<STRING>>&type=event:<data=<EventsSearchData[,EventSearchData...]>>&type=event:<name=<STRING>>&type=group:<data=<GroupSearchData[,GroupSearchData...]>>&type=land:<data=<DirectoryParcel[,DirectoryParcel...]>>&type=people:<data=<AgentSearchData[,AgentSearchData...]>>&type=places:<data=<DirectoryParcel[,DirectoryParcel...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_DIRECTORY)] [Description("directorysearch")] DIRECTORYSEARCH,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getprofiledata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<AvatarProperties>>&[callback=<STRING>]"
+                "<command=getprofiledata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<AvatarProperties[,AvatarProperties...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprofiledata")] GETPROFILEDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
@@ -22967,7 +22968,7 @@ namespace Corrade
             [Description("value")] VALUE,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=database>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<get|set|delete>>&action=<get|delete>:<key=<STRING>>&action=set:<key=<STRING>>&action=set:<value=<STRING>>&[callback=<STRING>]"
+                "<command=database>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<get|set|delete>>&action=get|delete:<key=<STRING>>&action=set:<key=<STRING>>&action=set:<value=<STRING>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_DATABASE)] [Description("database")] DATABASE,
             [Description("text")] TEXT,
             [Description("quorum")] QUORUM,
@@ -22989,7 +22990,7 @@ namespace Corrade
             [IsCommand(true)] [CommandInputSyntax("<command=leave>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("leave")] LEAVE,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=updategroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Charter<,STRING>|ListInProfile<,BOOL>|MembershipFee<,INTEGER>|OpenEnrollment<,BOOL>|ShowInList<,BOOL>>>&[callback=<STRING>]"
+                "<command=updategroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<[Charter<,STRING>][,ListInProfile<,BOOL>][,MembershipFee<,INTEGER>][,OpenEnrollment<,BOOL>][,ShowInList<,BOOL>]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("updategroupdata")] UPDATEGROUPDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
@@ -22997,7 +22998,7 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("eject")] EJECT,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=invite>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[role=<UUID[,UUID...]|STRING[,STRING...]>]&[callback=<STRING>]"
+                "<command=invite>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[role=<UUID[,STRING...]>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("invite")] INVITE,
             [IsCommand(true)] [CommandInputSyntax("<command=join>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP | (uint) Permissions.PERMISSION_ECONOMY)] [Description("join")] JOIN,
             [Description("callback")] CALLBACK,
@@ -23010,7 +23011,7 @@ namespace Corrade
             [Description("title")] TITLE,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=tell>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<local|group|avatar|estate|region>>&entity=local:<type=<Normal|Whisper|Shout>>&entity=local,type=<Normal|Whisper|Shout>:[channel=<INTEGER>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
+                "<command=tell>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<local|group|avatar|estate|region>>&entity=local:<type=<Normal|Whisper|Shout>>&entity=local,type=Normal|Whisper|Shout:[channel=<INTEGER>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_TALK)] [Description("tell")] TELL,
 
             [IsCommand(true)] [CommandInputSyntax(
@@ -23035,7 +23036,7 @@ namespace Corrade
             [Description("position")] POSITION,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getregiondata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Simulator>>&[region=<STRING>]&[callback=<STRING>]"
+                "<command=getregiondata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Simulator[,Simulator...]>>&[region=<STRING>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getregiondata")] GETREGIONDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
@@ -23049,7 +23050,8 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("parceleject")] PARCELEJECT,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=creategroup>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP | (uint) Permissions.PERMISSION_ECONOMY)] [Description("creategroup")] CREATEGROUP,
+                "<command=creategroup>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,Group...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP | (uint) Permissions.PERMISSION_ECONOMY)] [Description("creategroup")] CREATEGROUP,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=parcelfreeze>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[freeze=<BOOL>]&[region=<STRING>]&[callback=<STRING>]"
@@ -23080,7 +23082,7 @@ namespace Corrade
             [IsCommand(true)] [CommandInputSyntax("<command=gohome>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("gohome")] GOHOME,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=setprofiledata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AvatarProperties>>&[callback=<STRING>]"
+                "<command=setprofiledata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AvatarProperties[,AvatarProperties...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("setprofiledata")] SETPROFILEDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
@@ -23123,7 +23125,7 @@ namespace Corrade
             [Description("attachments")] ATTACHMENTS,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=detach>&<group=<UUID|STRING>>&<password=<STRING>>&<attachments=<STRING[,STRING...]|UUID[,UUID...]>&[callback=<STRING>]"
+                "<command=detach>&<group=<UUID|STRING>>&<password=<STRING>>&<attachments=<STRING[,UUID...]>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("detach")] DETACH,
 
             [IsCommand(true)] [CommandInputSyntax(
@@ -23135,7 +23137,7 @@ namespace Corrade
             [Description("description")] DESCRIPTION,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getprimitivedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<Primitive>>&[callback=<STRING>]"
+                "<command=getprimitivedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<Primitive[,Primitive...]>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivedata")] GETPRIMITIVEDATA,
             [IsCommand(true)] [CommandInputSyntax("<command=activate>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("activate")] ACTIVATE,
 
