@@ -1034,6 +1034,22 @@ namespace Corrade
                 }
                 wasSetInfoValue(info, ref @object, parcelFlags);
             }
+            if (wasGetInfoValue(info, value) is GroupPowers)
+            {
+                uint groupPowers;
+                switch (!uint.TryParse(setting, out groupPowers))
+                {
+                    case true:
+                        Parallel.ForEach(wasCSVToEnumerable(setting), o =>
+                        {
+                            Parallel.ForEach(typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                p => { groupPowers |= ((uint) p.GetValue(null)); });
+                        });
+                        break;
+                }
+                wasSetInfoValue(info, ref @object, groupPowers);
+            }
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -2484,7 +2500,10 @@ namespace Corrade
             if ((criteria is Regex && (criteria as Regex).IsMatch(root.Data.Name)) ||
                 (criteria is string &&
                  (criteria as string).Equals(root.Data.Name, StringComparison.Ordinal)) ||
-                (criteria is UUID && criteria.Equals(root.Data.UUID)))
+                (criteria is UUID &&
+                 (criteria.Equals(root.Data.UUID) ||
+                  (Client.Inventory.Store[root.Data.UUID] is InventoryItem &&
+                   (Client.Inventory.Store[root.Data.UUID] as InventoryItem).AssetUUID.Equals(criteria)))))
             {
                 if (typeof (T) == typeof (InventoryNode))
                 {
@@ -2522,7 +2541,10 @@ namespace Corrade
             if ((criteria is Regex && (criteria as Regex).IsMatch(root.Data.Name)) ||
                 (criteria is string &&
                  (criteria as string).Equals(root.Data.Name, StringComparison.Ordinal)) ||
-                (criteria is UUID && criteria.Equals(root.Data.UUID)))
+                (criteria is UUID &&
+                 (criteria.Equals(root.Data.UUID) ||
+                  (Client.Inventory.Store[root.Data.UUID] is InventoryItem &&
+                   (Client.Inventory.Store[root.Data.UUID] as InventoryItem).AssetUUID.Equals(criteria)))))
             {
                 if (typeof (T) == typeof (InventoryBase))
                 {
@@ -6213,19 +6235,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
                             Configuration.DATA_TIMEOUT))
                         {
@@ -6342,19 +6355,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.Invite,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
@@ -6433,19 +6437,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
                             Configuration.DATA_TIMEOUT))
                         {
@@ -6554,19 +6549,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.Eject,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT) ||
@@ -6665,19 +6651,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         int days;
                         if (
                             !int.TryParse(
@@ -6739,19 +6716,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
@@ -6787,19 +6755,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
@@ -6841,19 +6800,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
@@ -6945,19 +6895,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
@@ -7007,19 +6948,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
@@ -7078,19 +7010,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
@@ -7175,19 +7098,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
@@ -7263,19 +7177,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
@@ -7357,19 +7262,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RoleProperties,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
@@ -7436,19 +7332,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
@@ -7520,19 +7407,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
@@ -7591,19 +7469,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
@@ -8003,19 +7872,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
@@ -8040,10 +7900,11 @@ namespace Corrade
                                         message)),
                             OwnerID = Client.Self.AgentID
                         };
-                        string item =
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
-                                message));
-                        if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out notice.AttachmentID))
+                        object item =
+                            StringOrUUID(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                                    message)));
+                        if (item != null)
                         {
                             InventoryBase inventoryBaseItem =
                                 FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
@@ -8884,19 +8745,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -9077,19 +8929,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -9150,19 +8993,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -9222,19 +9056,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -9378,19 +9203,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -9475,19 +9291,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -9732,14 +9539,27 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        InventoryBase item =
-                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                                wasInput(wasKeyValueGet(
-                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))
-                                ).FirstOrDefault();
-                        if (item == null)
+                        object item =
+                            StringOrUUID(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                                    message)));
+                        InventoryItem inventoryItem;
+                        switch (item != null)
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                            case true:
+                                InventoryBase inventoryBaseItem =
+                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
+                                        ).FirstOrDefault();
+                                if (inventoryBaseItem == null)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                }
+                                inventoryItem = inventoryBaseItem as InventoryItem;
+                                break;
+                            default:
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
                         }
                         switch (
                             wasGetEnumValueFromDescription<Entity>(
@@ -9768,12 +9588,8 @@ namespace Corrade
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
-                                InventoryItem inventoryItem = item as InventoryItem;
-                                if (inventoryItem != null)
-                                {
-                                    Client.Inventory.GiveItem(item.UUID, item.Name,
-                                        inventoryItem.AssetType, agentUUID, true);
-                                }
+                                Client.Inventory.GiveItem(inventoryItem.UUID, inventoryItem.Name,
+                                    inventoryItem.AssetType, agentUUID, true);
                                 break;
                             case Entity.OBJECT:
                                 float range;
@@ -9797,8 +9613,7 @@ namespace Corrade
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                                 }
-                                Client.Inventory.UpdateTaskInventory(primitive.LocalID,
-                                    item as InventoryItem);
+                                Client.Inventory.UpdateTaskInventory(primitive.LocalID, inventoryItem);
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ENTITY));
@@ -9816,8 +9631,8 @@ namespace Corrade
                         }
                         HashSet<InventoryItem> items =
                             new HashSet<InventoryItem>(FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                                wasInput(wasKeyValueGet(
-                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message)))
                                 ).Cast<InventoryItem>());
                         if (items.Count.Equals(0))
                         {
@@ -9903,18 +9718,19 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        string item =
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
-                                message));
+                        object item =
+                            StringOrUUID(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                                    message)));
                         UUID textureUUID = UUID.Zero;
-                        if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out textureUUID))
+                        if (item != null)
                         {
                             InventoryBase inventoryBaseItem =
                                 FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
                                     ).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TEXTURE_NOT_FOUND));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                             }
                             textureUUID = inventoryBaseItem.UUID;
                         }
@@ -10010,18 +9826,19 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        string item =
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
-                                message));
+                        object item =
+                            StringOrUUID(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                                    message)));
                         UUID textureUUID = UUID.Zero;
-                        if (!string.IsNullOrEmpty(item) && !UUID.TryParse(item, out textureUUID))
+                        if (item != null)
                         {
                             InventoryBase inventoryBaseItem =
                                 FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
                                     ).FirstOrDefault();
                             if (inventoryBaseItem == null)
                             {
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TEXTURE_NOT_FOUND));
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                             }
                             textureUUID = inventoryBaseItem.UUID;
                         }
@@ -10186,19 +10003,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ModerateChat,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
@@ -10317,7 +10125,7 @@ namespace Corrade
                             wearables), o =>
                             {
                                 InventoryBase inventoryBaseItem =
-                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
+                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, StringOrUUID(o)
                                         ).AsParallel().FirstOrDefault(p => p is InventoryWearable);
                                 if (inventoryBaseItem == null)
                                     return;
@@ -10344,7 +10152,7 @@ namespace Corrade
                             wearables), o =>
                             {
                                 InventoryBase inventoryBaseItem =
-                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
+                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, StringOrUUID(o)
                                         ).AsParallel().FirstOrDefault(p => p is InventoryWearable);
                                 if (inventoryBaseItem == null)
                                     return;
@@ -10417,7 +10225,8 @@ namespace Corrade
                                     q =>
                                     {
                                         InventoryBase inventoryBaseItem =
-                                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o.Value
+                                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
+                                                StringOrUUID(o.Value)
                                                 )
                                                 .AsParallel().FirstOrDefault(
                                                     r => r is InventoryObject || r is InventoryAttachment);
@@ -10450,7 +10259,7 @@ namespace Corrade
                             attachments), o =>
                             {
                                 InventoryBase inventoryBaseItem =
-                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o
+                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, StringOrUUID(o)
                                         )
                                         .AsParallel().FirstOrDefault(
                                             p =>
@@ -10473,19 +10282,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
@@ -10663,19 +10463,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         string region =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
                                 message));
@@ -10817,25 +10608,76 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         OpenMetaverse.Group dataGroup = new OpenMetaverse.Group();
                         if (!RequestGroup(groupUUID, Configuration.SERVICES_TIMEOUT, ref dataGroup))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         List<string> data = new List<string>(GetStructuredData(dataGroup,
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                message))));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                wasEnumerableToCSV(data));
+                        }
+                    };
+                    break;
+                case ScriptKeys.GETGROUPMEMBERDATA:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.Ordinal));
+                        UUID groupUUID = UUID.Zero;
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        UUID agentUUID;
+                        if (
+                            !UUID.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
+                                out agentUUID) && !AgentNameToUUID(
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                            message)),
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
+                                            message)),
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
+                        }
+                        AvatarGroup avatarGroup = new AvatarGroup();
+                        wasAdaptiveAlarm AvatarGroupsReceivedEvent = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+                        EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
+                        {
+                            AvatarGroupsReceivedEvent.Alarm(Configuration.DATA_TIMEOUT);
+                            avatarGroup = args.Groups.FirstOrDefault(o => o.GroupID.Equals(groupUUID));
+                        };
+                        lock (ClientInstanceAvatarsLock)
+                        {
+                            Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
+                            Client.Avatars.RequestAvatarProperties(agentUUID);
+                            if (!AvatarGroupsReceivedEvent.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            {
+                                Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_AVATAR_DATA));
+                            }
+                            Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
+                        }
+                        List<string> data = new List<string>(GetStructuredData(avatarGroup,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
                         if (!data.Count.Equals(0))
@@ -10939,19 +10781,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -11050,33 +10883,29 @@ namespace Corrade
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        string item =
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
-                                message));
-                        if (string.IsNullOrEmpty(item))
+                        object item =
+                            StringOrUUID(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                                    message)));
+                        InventoryItem inventoryItem;
+                        switch (item != null)
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
-                        }
-                        UUID itemUUID;
-                        InventoryItem inventoryItem = null;
-                        if (!UUID.TryParse(item, out itemUUID))
-                        {
-                            InventoryBase inventoryBase =
-                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
-                                    ).FirstOrDefault();
-                            if (inventoryBase == null)
-                            {
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
-                            }
-                            inventoryItem = inventoryBase as InventoryItem;
-                            if (inventoryItem == null)
-                            {
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
-                            }
-                            itemUUID = inventoryItem.AssetUUID;
+                            case true:
+                                InventoryBase inventoryBaseItem =
+                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
+                                        ).FirstOrDefault();
+                                if (inventoryBaseItem == null)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                }
+                                inventoryItem = inventoryBaseItem as InventoryItem;
+                                break;
+                            default:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
                         }
                         byte[] assetData = null;
-                        switch (!Client.Assets.Cache.HasAsset(itemUUID))
+                        switch (!Client.Assets.Cache.HasAsset(inventoryItem.AssetUUID))
                         {
                             case true:
                                 FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
@@ -11099,16 +10928,17 @@ namespace Corrade
                                 switch (assetType)
                                 {
                                     case AssetType.Mesh:
-                                        Client.Assets.RequestMesh(itemUUID, delegate(bool completed, AssetMesh asset)
-                                        {
-                                            if (!asset.AssetID.Equals(itemUUID)) return;
-                                            succeeded = completed;
-                                            if (succeeded)
+                                        Client.Assets.RequestMesh(inventoryItem.AssetUUID,
+                                            delegate(bool completed, AssetMesh asset)
                                             {
-                                                assetData = asset.MeshData.AsBinary();
-                                            }
-                                            RequestAssetEvent.Set();
-                                        });
+                                                if (!asset.AssetID.Equals(inventoryItem.AssetUUID)) return;
+                                                succeeded = completed;
+                                                if (succeeded)
+                                                {
+                                                    assetData = asset.MeshData.AsBinary();
+                                                }
+                                                RequestAssetEvent.Set();
+                                            });
                                         if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                         {
                                             throw new Exception(
@@ -11141,10 +10971,10 @@ namespace Corrade
                                         break;
                                     // All images go through RequestImage and can be fetched directly from the asset server.
                                     case AssetType.Texture:
-                                        Client.Assets.RequestImage(itemUUID, ImageType.Normal,
+                                        Client.Assets.RequestImage(inventoryItem.AssetUUID, ImageType.Normal,
                                             delegate(TextureRequestState state, AssetTexture asset)
                                             {
-                                                if (!asset.AssetID.Equals(itemUUID)) return;
+                                                if (!asset.AssetID.Equals(inventoryItem.AssetUUID)) return;
                                                 if (!state.Equals(TextureRequestState.Finished)) return;
                                                 assetData = asset.AssetData;
                                                 succeeded = true;
@@ -11219,10 +11049,10 @@ namespace Corrade
                                     case AssetType.Sound: // Ogg Vorbis
                                     case AssetType.Clothing:
                                     case AssetType.Bodypart:
-                                        Client.Assets.RequestAsset(itemUUID, assetType, true,
+                                        Client.Assets.RequestAsset(inventoryItem.AssetUUID, assetType, true,
                                             delegate(AssetDownload transfer, Asset asset)
                                             {
-                                                if (!transfer.AssetID.Equals(itemUUID)) return;
+                                                if (!transfer.AssetID.Equals(inventoryItem.AssetUUID)) return;
                                                 succeeded = transfer.Success;
                                                 if (transfer.Success)
                                                 {
@@ -11245,10 +11075,10 @@ namespace Corrade
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.FAILED_TO_DOWNLOAD_ASSET));
                                 }
-                                Client.Assets.Cache.SaveAssetToCache(itemUUID, assetData);
+                                Client.Assets.Cache.SaveAssetToCache(inventoryItem.AssetUUID, assetData);
                                 break;
                             default:
-                                assetData = Client.Assets.Cache.GetCachedAssetBytes(itemUUID);
+                                assetData = Client.Assets.Cache.GetCachedAssetBytes(inventoryItem.AssetUUID);
                                 break;
                         }
                         // If no path was specificed, then send the data.
@@ -11604,23 +11434,14 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         InventoryBase inventoryBaseItem =
                             FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                                wasInput(wasKeyValueGet(
-                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message)))
                                 ).FirstOrDefault();
                         if (inventoryBaseItem == null)
                         {
@@ -11706,30 +11527,29 @@ namespace Corrade
                         {
                             range = Configuration.RANGE;
                         }
-                        UUID folderUUID;
-                        string folder =
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER)),
-                                message));
-                        if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
+                        object folder =
+                            StringOrUUID(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER)),
+                                    message)));
+                        InventoryFolder inventoryFolder;
+                        switch (folder != null)
                         {
-                            folderUUID =
-                                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.Object)].Data
-                                    .UUID;
-                        }
-                        if (folderUUID.Equals(UUID.Zero))
-                        {
-                            InventoryBase inventoryBaseItem =
-                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, folder
-                                    ).FirstOrDefault();
-                            if (inventoryBaseItem != null)
-                            {
-                                InventoryItem item = inventoryBaseItem as InventoryItem;
-                                if (item == null || !item.AssetType.Equals(AssetType.Folder))
+                            case true:
+                                InventoryBase inventoryBaseItem =
+                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, folder
+                                        ).FirstOrDefault();
+                                if (inventoryBaseItem == null)
                                 {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.FOLDER_NOT_FOUND));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.FOLDER_NOT_FOUND));
                                 }
-                                folderUUID = inventoryBaseItem.UUID;
-                            }
+                                inventoryFolder = inventoryBaseItem as InventoryFolder;
+                                break;
+                            default:
+                                inventoryFolder =
+                                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(AssetType.Object)]
+                                        .Data as InventoryFolder;
+                                break;
                         }
                         FieldInfo deRezDestionationTypeInfo = typeof (DeRezDestination).GetFields(BindingFlags.Public |
                                                                                                   BindingFlags.Static)
@@ -11754,7 +11574,7 @@ namespace Corrade
                             ? (DeRezDestination)
                                 deRezDestionationTypeInfo
                                     .GetValue(null)
-                            : DeRezDestination.AgentInventoryTake, folderUUID, UUID.Random());
+                            : DeRezDestination.AgentInventoryTake, inventoryFolder.UUID, UUID.Random());
                     };
                     break;
                 case ScriptKeys.SETSCRIPTRUNNING:
@@ -12166,8 +11986,8 @@ namespace Corrade
                         }
                         InventoryBase inventoryBaseItem =
                             FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                                wasInput(wasKeyValueGet(
-                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message)))
                                 ).FirstOrDefault();
                         if (inventoryBaseItem == null)
                         {
@@ -12539,19 +12359,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
@@ -12574,19 +12385,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
@@ -12680,19 +12482,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
@@ -13347,19 +13140,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         if (
                             !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
@@ -14139,29 +13923,26 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        string item =
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
-                                message));
-                        if (string.IsNullOrEmpty(item))
+                        object item =
+                            StringOrUUID(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                                    message)));
+                        InventoryItem inventoryItem = null;
+                        switch (item != null)
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
-                        }
-                        UUID itemUUID;
-                        if (!UUID.TryParse(item, out itemUUID))
-                        {
-                            InventoryBase inventoryBaseItem =
-                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
-                                    ).FirstOrDefault();
-                            if (inventoryBaseItem == null)
-                            {
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
-                            }
-                            InventoryItem inventoryItem = inventoryBaseItem as InventoryItem;
-                            if (inventoryItem == null)
-                            {
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
-                            }
-                            itemUUID = inventoryItem.AssetUUID;
+                            case true:
+                                InventoryBase inventoryBaseItem =
+                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
+                                        ).FirstOrDefault();
+                                if (inventoryBaseItem == null)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                }
+                                inventoryItem = inventoryBaseItem as InventoryItem;
+                                break;
+                            default:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
                         }
                         switch (
                             wasGetEnumValueFromDescription<Action>(
@@ -14170,10 +13951,10 @@ namespace Corrade
                                         message)).ToLowerInvariant()))
                         {
                             case Action.START:
-                                Client.Self.AnimationStart(itemUUID, true);
+                                Client.Self.AnimationStart(inventoryItem.AssetUUID, true);
                                 break;
                             case Action.STOP:
-                                Client.Self.AnimationStop(itemUUID, true);
+                                Client.Self.AnimationStop(inventoryItem.AssetUUID, true);
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ANIMATION_ACTION));
@@ -14187,26 +13968,28 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        string item =
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
-                                message));
-                        if (string.IsNullOrEmpty(item))
+                        object item =
+                            StringOrUUID(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                                    message)));
+                        InventoryItem inventoryItem = null;
+                        switch (item != null)
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
+                            case true:
+                                InventoryBase inventoryBaseItem =
+                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
+                                        ).FirstOrDefault();
+                                if (inventoryBaseItem == null)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                }
+                                inventoryItem = inventoryBaseItem as InventoryItem;
+                                break;
+                            default:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
                         }
-                        UUID itemUUID;
-                        if (!UUID.TryParse(item, out itemUUID))
-                        {
-                            InventoryBase inventoryBaseItem =
-                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
-                                    ).FirstOrDefault();
-                            if (inventoryBaseItem == null)
-                            {
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
-                            }
-                            itemUUID = inventoryBaseItem.UUID;
-                        }
-                        Client.Self.PlayGesture(itemUUID);
+                        Client.Self.PlayGesture(inventoryItem.UUID);
                     };
                     break;
                 case ScriptKeys.GETANIMATIONS:
@@ -15123,26 +14906,30 @@ namespace Corrade
                                 InventoryOffers.AsParallel()
                                     .FirstOrDefault(o => o.Key.Offer.IMSessionID.Equals(session));
                         }
-                        UUID folderUUID;
-                        string folder =
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER)),
-                                message));
-                        if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
+                        object folder =
+                            StringOrUUID(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER)),
+                                    message)));
+                        InventoryFolder inventoryFolder = null;
+                        switch (folder != null)
                         {
-                            folderUUID =
-                                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(offer.Key.AssetType)]
-                                    .Data.UUID;
-                        }
-                        if (folderUUID.Equals(UUID.Zero))
-                        {
-                            InventoryBase inventoryBaseItem =
-                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, folder
-                                    ).FirstOrDefault();
-                            InventoryItem item = inventoryBaseItem as InventoryItem;
-                            if (item != null && item.AssetType.Equals(AssetType.Folder))
-                            {
-                                folderUUID = inventoryBaseItem.UUID;
-                            }
+                            case true:
+                                InventoryBase inventoryBaseItem =
+                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, folder
+                                        ).FirstOrDefault();
+                                if (inventoryBaseItem == null)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.FOLDER_NOT_FOUND));
+                                }
+                                inventoryFolder = inventoryBaseItem as InventoryFolder;
+                                break;
+                            default:
+                                inventoryFolder =
+                                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(offer.Key.AssetType)
+                                        ]
+                                        .Data as InventoryFolder;
+                                break;
                         }
                         switch (
                             wasGetEnumValueFromDescription<Action>(
@@ -15153,9 +14940,9 @@ namespace Corrade
                             case Action.ACCEPT:
                                 lock (InventoryOffersLock)
                                 {
-                                    if (!folderUUID.Equals(UUID.Zero))
+                                    if (!inventoryFolder.UUID.Equals(UUID.Zero))
                                     {
-                                        offer.Key.FolderID = folderUUID;
+                                        offer.Key.FolderID = inventoryFolder.UUID;
                                     }
                                     offer.Key.Accept = true;
                                     offer.Value.Set();
@@ -15617,19 +15404,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         float range;
                         if (
                             !float.TryParse(
@@ -15671,19 +15449,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         float range;
                         if (
                             !float.TryParse(
@@ -16228,22 +15997,28 @@ namespace Corrade
                         {
                             gain = 1;
                         }
-                        UUID itemUUID;
-                        string item =
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
-                                message));
-                        if (!UUID.TryParse(item, out itemUUID))
+                        object item =
+                            StringOrUUID(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                                    message)));
+                        InventoryItem inventoryItem = null;
+                        switch (item != null)
                         {
-                            InventoryBase inventoryBaseItem =
-                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
-                                    ).FirstOrDefault();
-                            if (inventoryBaseItem == null)
-                            {
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
-                            }
-                            itemUUID = inventoryBaseItem.UUID;
+                            case true:
+                                InventoryBase inventoryBaseItem =
+                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
+                                        ).FirstOrDefault();
+                                if (inventoryBaseItem == null)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                }
+                                inventoryItem = inventoryBaseItem as InventoryItem;
+                                break;
+                            default:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
                         }
-                        Client.Sound.SendSoundTrigger(itemUUID, position, gain);
+                        Client.Sound.SendSoundTrigger(inventoryItem.UUID, position, gain);
                     };
                     break;
                 case ScriptKeys.TERRAIN:
@@ -16860,19 +16635,10 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
                                 o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case true:
-                                groupUUID = configuredGroup.UUID;
-                                break;
-                            default:
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         lock (GroupDirectoryTrackersLock)
                         {
                             if (!GroupDirectoryTrackers.Contains(groupUUID))
@@ -22621,6 +22387,10 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getgroupmemberdata>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<AvatarGroup[,AvatarGroup...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getgroupmemberdata")] GETGROUPMEMBERDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getcommand>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<syntax|permission>>&entity=syntax:<type=<input>>&[callback=<STRING>]"
