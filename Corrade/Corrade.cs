@@ -2895,10 +2895,6 @@ namespace Corrade
             {
                 LoadNotificationState.Invoke();
             }
-            lock (InventoryOffersLock)
-            {
-                LoadInventoryOffersState.Invoke();
-            }
             // Start the HTTP Server if it is supported
             Thread HTTPListenerThread = null;
             HttpListener HTTPListener = null;
@@ -3074,10 +3070,6 @@ namespace Corrade
             Client.Network.LoginProgress -= HandleLoginProgress;
             Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
             // Save Corrade states.
-            lock (InventoryOffersLock)
-            {
-                SaveInventoryOffersState.Invoke();
-            }
             lock (GroupNotificationsLock)
             {
                 SaveNotificationState.Invoke();
@@ -3173,8 +3165,6 @@ namespace Corrade
                     o.Key.Accept = false;
                     o.Value.Set();
                 });
-
-                SaveInventoryOffersState.Invoke();
             }
             // Disable the configuration watcher.
             configurationWatcher.EnableRaisingEvents = false;
@@ -4373,7 +4363,6 @@ namespace Corrade
             lock (InventoryOffersLock)
             {
                 InventoryOffers.Add(e, wait);
-                SaveInventoryOffersState.Invoke();
             }
 
             UpdateInventoryRecursive.Invoke(
@@ -6140,7 +6129,6 @@ namespace Corrade
                 }
             }
 
-
             // Log the command.
             Feedback(string.Format(CultureInfo.InvariantCulture, "{0} ({1}) : {2}", sender,
                 identifier,
@@ -6231,9 +6219,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -6351,9 +6336,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -6433,9 +6415,6 @@ namespace Corrade
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                                     .ToLowerInvariant());
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -6545,9 +6524,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -6647,9 +6623,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -6712,9 +6685,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -6751,9 +6721,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -6796,9 +6763,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -6891,9 +6855,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -6944,9 +6905,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -7006,9 +6964,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -7094,9 +7049,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -7173,9 +7125,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -7258,9 +7207,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -7328,9 +7274,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -7403,9 +7346,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -7465,9 +7405,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -7618,26 +7555,11 @@ namespace Corrade
                                 }
                                 break;
                             case Entity.GROUP:
-                                Group configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                        o => o.Name.Equals(group, StringComparison.Ordinal));
                                 UUID groupUUID = UUID.Zero;
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case true:
-                                        groupUUID = configuredGroup.UUID;
-                                        break;
-                                    default:
-                                        if (
-                                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT,
-                                                Configuration.DATA_TIMEOUT,
-                                                ref groupUUID))
-                                        {
-                                            throw new Exception(
-                                                wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                        }
-                                        break;
-                                }
+                                if (
+                                    !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                        ref groupUUID))
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                                 if (
                                     !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
                                         Configuration.DATA_TIMEOUT))
@@ -7868,9 +7790,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -7956,25 +7875,10 @@ namespace Corrade
                                         message)).ToLowerInvariant()))
                         {
                             case Entity.GROUP:
-                                Group configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                        o => o.Name.Equals(group, StringComparison.Ordinal));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case true:
-                                        targetUUID = configuredGroup.UUID;
-                                        break;
-                                    default:
-                                        if (
-                                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT,
-                                                Configuration.DATA_TIMEOUT,
-                                                ref targetUUID))
-                                        {
-                                            throw new Exception(
-                                                wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                        }
-                                        break;
-                                }
+                                if (
+                                    !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                        ref targetUUID))
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                                 Client.Self.GiveGroupMoney(targetUUID, amount,
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REASON)),
@@ -8741,9 +8645,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -8925,9 +8826,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -8989,9 +8887,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -9052,9 +8947,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -9199,9 +9091,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -9287,9 +9176,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -9999,9 +9885,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -10278,9 +10161,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -10459,9 +10339,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -10604,9 +10481,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -10634,9 +10508,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -10777,9 +10648,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -11430,9 +11298,6 @@ namespace Corrade
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -12355,9 +12220,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -12381,9 +12243,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -12478,9 +12337,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -13136,9 +12992,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -14946,7 +14799,6 @@ namespace Corrade
                                     }
                                     offer.Key.Accept = true;
                                     offer.Value.Set();
-                                    SaveInventoryOffersState.Invoke();
                                 }
                                 break;
                             case Action.DECLINE:
@@ -14954,7 +14806,6 @@ namespace Corrade
                                 {
                                     offer.Key.Accept = false;
                                     offer.Value.Set();
-                                    SaveInventoryOffersState.Invoke();
                                 }
                                 break;
                             default:
@@ -15400,9 +15251,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -15445,9 +15293,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -16631,9 +16476,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
                         UUID groupUUID = UUID.Zero;
                         if (
                             !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -19038,7 +18880,6 @@ namespace Corrade
             public const string LOG_FILE_EXTENSION = @"log";
             public const string STATE_DIRECTORY = @"state";
             public const string NOTIFICATIONS_STATE_FILE = @"Notifications.state";
-            public const string INVENTORY_OFFERS_STATE_FILE = @"InventoryOffers.state";
 
             public static readonly Regex AvatarFullNameRegex = new Regex(@"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$",
                 RegexOptions.Compiled);
@@ -20431,7 +20272,6 @@ namespace Corrade
                 try
                 {
                     foreach (XmlNode LogNode in root.SelectNodes("/config/logs/*"))
-                    {
                         switch (LogNode.Name.ToLowerInvariant())
                         {
                             case ConfigurationKeys.IM:
@@ -20547,7 +20387,6 @@ namespace Corrade
                                 }
                                 break;
                         }
-                    }
                 }
                 catch (Exception ex)
                 {
@@ -20559,7 +20398,6 @@ namespace Corrade
                 try
                 {
                     foreach (XmlNode FilterNode in root.SelectNodes("/config/filters/*"))
-                    {
                         switch (FilterNode.Name.ToLowerInvariant())
                         {
                             case ConfigurationKeys.INPUT:
@@ -20609,7 +20447,6 @@ namespace Corrade
                                 }
                                 break;
                         }
-                    }
                 }
                 catch (Exception ex)
                 {
@@ -20620,7 +20457,6 @@ namespace Corrade
                 try
                 {
                     foreach (XmlNode FilterNode in root.SelectNodes("/config/cryptography/*"))
-                    {
                         switch (FilterNode.Name.ToLowerInvariant())
                         {
                             case ConfigurationKeys.ENIGMA:
@@ -20664,7 +20500,6 @@ namespace Corrade
                                 }
                                 break;
                         }
-                    }
                 }
                 catch (Exception ex)
                 {
@@ -20676,7 +20511,6 @@ namespace Corrade
                 try
                 {
                     foreach (XmlNode AIMLNode in root.SelectNodes("/config/aiml/*"))
-                    {
                         switch (AIMLNode.Name.ToLowerInvariant())
                         {
                             case ConfigurationKeys.ENABLE:
@@ -20688,7 +20522,6 @@ namespace Corrade
                                 EnableAIML = enable;
                                 break;
                         }
-                    }
                 }
                 catch (Exception ex)
                 {
@@ -20699,7 +20532,6 @@ namespace Corrade
                 try
                 {
                     foreach (XmlNode RLVNode in root.SelectNodes("/config/rlv/*"))
-                    {
                         switch (RLVNode.Name.ToLowerInvariant())
                         {
                             case ConfigurationKeys.ENABLE:
@@ -20711,7 +20543,6 @@ namespace Corrade
                                 EnableRLV = enable;
                                 break;
                         }
-                    }
                 }
                 catch (Exception ex)
                 {
@@ -20722,7 +20553,6 @@ namespace Corrade
                 try
                 {
                     foreach (XmlNode serverNode in root.SelectNodes("/config/server/*"))
-                    {
                         switch (serverNode.Name.ToLowerInvariant())
                         {
                             case ConfigurationKeys.HTTP:
@@ -20745,7 +20575,6 @@ namespace Corrade
                                     serverNode.InnerText);
                                 break;
                         }
-                    }
                 }
                 catch (Exception ex)
                 {
@@ -20756,7 +20585,6 @@ namespace Corrade
                 try
                 {
                     foreach (XmlNode networkNode in root.SelectNodes("/config/network/*"))
-                    {
                         switch (networkNode.Name.ToLowerInvariant())
                         {
                             case ConfigurationKeys.BIND:
@@ -20794,7 +20622,6 @@ namespace Corrade
                                 USE_EXPECT100CONTINUE = useExpect100Continue;
                                 break;
                         }
-                    }
                 }
                 catch (Exception ex)
                 {
@@ -20805,7 +20632,6 @@ namespace Corrade
                 try
                 {
                     foreach (XmlNode limitsNode in root.SelectNodes("/config/limits/*"))
-                    {
                         switch (limitsNode.Name.ToLowerInvariant())
                         {
                             case ConfigurationKeys.RANGE:
@@ -21151,7 +20977,6 @@ namespace Corrade
                                 }
                                 break;
                         }
-                    }
                 }
                 catch (Exception ex)
                 {
@@ -21695,9 +21520,7 @@ namespace Corrade
             [Description("could not write to region message log file")] COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE,
             [Description("unknown IP address")] UNKNOWN_IP_ADDRESS,
             [Description("unable to save Corrade notifications state")] UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE,
-            [Description("unable to load Corrade notifications state")] UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE,
-            [Description("unable to save Corrade inventory offers state")] UNABLE_TO_SAVE_CORRADE_INVENTORY_OFFERS_STATE,
-            [Description("unable to load Corrade inventory offers state")] UNABLE_TO_LOAD_CORRADE_INVENTORY_OFFERS_STATE
+            [Description("unable to load Corrade notifications state")] UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE
         }
 
         /// <summary>
@@ -23978,33 +23801,6 @@ namespace Corrade
         };
 
         /// <summary>
-        ///     Saves inventory offers.
-        /// </summary>
-        private static readonly System.Action SaveInventoryOffersState = () =>
-        {
-            if (!InventoryOffers.Count.Equals(0))
-            {
-                try
-                {
-                    using (
-                        StreamWriter writer =
-                            new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                                CORRADE_CONSTANTS.INVENTORY_OFFERS_STATE_FILE)))
-                    {
-                        XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
-                        serializer.Serialize(writer, InventoryOffers);
-                        writer.Flush();
-                    }
-                }
-                catch (Exception e)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_INVENTORY_OFFERS_STATE),
-                        e.Message);
-                }
-            }
-        };
-
-        /// <summary>
         ///     Loads Corrade notifications.
         /// </summary>
         private static readonly System.Action LoadNotificationState = () =>
@@ -24031,35 +23827,6 @@ namespace Corrade
                 {
                     Feedback(
                         wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE),
-                        ex.Message);
-                }
-            }
-        };
-
-        /// <summary>
-        ///     Loads inventory offers.
-        /// </summary>
-        private static readonly System.Action LoadInventoryOffersState = () =>
-        {
-            string inventoryOffersStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                CORRADE_CONSTANTS.INVENTORY_OFFERS_STATE_FILE);
-            if (File.Exists(inventoryOffersStateFile))
-            {
-                try
-                {
-                    using (FileStream stream = File.OpenRead(inventoryOffersStateFile))
-                    {
-                        XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
-                        Parallel.ForEach(
-                            (SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>)
-                                serializer.Deserialize(stream),
-                            o => { InventoryOffers.Add(o.Key, o.Value); });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(
-                        wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_INVENTORY_OFFERS_STATE),
                         ex.Message);
                 }
             }
