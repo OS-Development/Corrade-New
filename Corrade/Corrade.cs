@@ -10755,28 +10755,9 @@ namespace Corrade
                             StringOrUUID(
                                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
                                     message)));
-                        InventoryItem inventoryItem;
-                        switch (item != null)
-                        {
-                            case true:
-                                InventoryBase inventoryBaseItem =
-                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item
-                                        ).FirstOrDefault();
-                                if (inventoryBaseItem == null)
-                                {
-                                    throw new Exception(
-                                        wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
-                                }
-                                inventoryItem = inventoryBaseItem as InventoryItem;
-                                break;
-                            default:
-                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
-                        }
-                        byte[] assetData = null;
-                        switch (!Client.Assets.Cache.HasAsset(inventoryItem.AssetUUID))
-                        {
-                            case true:
-                                FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
+                        if (item == null)
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
+                        FieldInfo assetTypeInfo = typeof(AssetType).GetFields(BindingFlags.Public |
                                                                                        BindingFlags.Static)
                                     .AsParallel().FirstOrDefault(
                                         o =>
@@ -10786,20 +10767,48 @@ namespace Corrade
                                                         wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
                                                         message)),
                                                 StringComparison.Ordinal));
-                                if (assetTypeInfo == null)
+                        switch (assetTypeInfo != null)
+                        {
+                            case false:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ASSET_TYPE));
+                        }
+                        AssetType assetType = (AssetType)assetTypeInfo.GetValue(null);
+                        InventoryItem inventoryItem = null;
+                        UUID itemUUID;
+                        // If the asset is of an asset type that can only be retrieved locally or the item is a string
+                        // then attempt to resolve the item to an inventory item or else the item cannot be found.
+                        switch (
+                            assetType.Equals(AssetType.LSLText) || assetType.Equals(AssetType.Notecard) ||
+                            item is string)
+                        {
+                            case true:
+                                InventoryBase inventoryBaseItem =
+                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, item).FirstOrDefault();
+                                if (inventoryBaseItem == null)
                                 {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ASSET_TYPE));
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                                 }
-                                AssetType assetType = (AssetType) assetTypeInfo.GetValue(null);
+                                inventoryItem = inventoryBaseItem as InventoryItem;
+                                itemUUID = inventoryItem.AssetUUID;
+                                break;
+                            default: // otherwise, just set the the item UUID to the item
+                                itemUUID = (UUID) item;
+                                break;
+                        }
+                        byte[] assetData = null;
+                        switch (!Client.Assets.Cache.HasAsset(itemUUID))
+                        {
+                            case true:
                                 ManualResetEvent RequestAssetEvent = new ManualResetEvent(false);
                                 bool succeeded = false;
                                 switch (assetType)
                                 {
                                     case AssetType.Mesh:
-                                        Client.Assets.RequestMesh(inventoryItem.AssetUUID,
+                                        Client.Assets.RequestMesh(itemUUID,
                                             delegate(bool completed, AssetMesh asset)
                                             {
-                                                if (!asset.AssetID.Equals(inventoryItem.AssetUUID)) return;
+                                                if (!asset.AssetID.Equals(itemUUID)) return;
                                                 succeeded = completed;
                                                 if (succeeded)
                                                 {
@@ -10839,10 +10848,10 @@ namespace Corrade
                                         break;
                                     // All images go through RequestImage and can be fetched directly from the asset server.
                                     case AssetType.Texture:
-                                        Client.Assets.RequestImage(inventoryItem.AssetUUID, ImageType.Normal,
+                                        Client.Assets.RequestImage(itemUUID, ImageType.Normal,
                                             delegate(TextureRequestState state, AssetTexture asset)
                                             {
-                                                if (!asset.AssetID.Equals(inventoryItem.AssetUUID)) return;
+                                                if (!asset.AssetID.Equals(itemUUID)) return;
                                                 if (!state.Equals(TextureRequestState.Finished)) return;
                                                 assetData = asset.AssetData;
                                                 succeeded = true;
@@ -10917,10 +10926,10 @@ namespace Corrade
                                     case AssetType.Sound: // Ogg Vorbis
                                     case AssetType.Clothing:
                                     case AssetType.Bodypart:
-                                        Client.Assets.RequestAsset(inventoryItem.AssetUUID, assetType, true,
+                                        Client.Assets.RequestAsset(itemUUID, assetType, true,
                                             delegate(AssetDownload transfer, Asset asset)
                                             {
-                                                if (!transfer.AssetID.Equals(inventoryItem.AssetUUID)) return;
+                                                if (!transfer.AssetID.Equals(itemUUID)) return;
                                                 succeeded = transfer.Success;
                                                 if (transfer.Success)
                                                 {
@@ -10943,10 +10952,10 @@ namespace Corrade
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.FAILED_TO_DOWNLOAD_ASSET));
                                 }
-                                Client.Assets.Cache.SaveAssetToCache(inventoryItem.AssetUUID, assetData);
+                                Client.Assets.Cache.SaveAssetToCache(itemUUID, assetData);
                                 break;
                             default:
-                                assetData = Client.Assets.Cache.GetCachedAssetBytes(inventoryItem.AssetUUID);
+                                assetData = Client.Assets.Cache.GetCachedAssetBytes(itemUUID);
                                 break;
                         }
                         // If no path was specificed, then send the data.
