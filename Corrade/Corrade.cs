@@ -700,6 +700,16 @@ namespace Corrade
                 if (pi.PropertyType.FullName.Split('.', '+')
                     .Contains(@namespace, StringComparer.InvariantCultureIgnoreCase))
                 {
+                    MethodInfo getMethod = pi.GetGetMethod();
+                    if (getMethod.ReturnType.IsArray)
+                    {
+                        var array = (Array) getMethod.Invoke(@object, null);
+                        foreach (KeyValuePair<PropertyInfo, object> sp in
+                            array.Cast<object>().SelectMany(element => wasGetProperties(element, @namespace)))
+                        {
+                            yield return sp;
+                        }
+                    }
                     foreach (
                         KeyValuePair<PropertyInfo, object> sp in
                             wasGetProperties(pi.GetValue(@object, null), @namespace))
@@ -3420,782 +3430,899 @@ namespace Corrade
                             wasGetDescriptionFromEnumValue(notification)
                         }
                     };
+
+                    System.Action execute;
+
                     // Build the notification data
                     switch (notification)
                     {
                         case Notifications.NOTIFICATION_SCRIPT_DIALOG:
-                            ScriptDialogEventArgs scriptDialogEventArgs = (ScriptDialogEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                scriptDialogEventArgs.Message);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                scriptDialogEventArgs.FirstName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                scriptDialogEventArgs.LastName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CHANNEL),
-                                scriptDialogEventArgs.Channel.ToString(CultureInfo.InvariantCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                scriptDialogEventArgs.ObjectName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                scriptDialogEventArgs.ObjectID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
-                                scriptDialogEventArgs.OwnerID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BUTTON),
-                                wasEnumerableToCSV(scriptDialogEventArgs.ButtonLabels));
+                            execute = () =>
+                            {
+                                ScriptDialogEventArgs scriptDialogEventArgs = (ScriptDialogEventArgs) args;
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                    scriptDialogEventArgs.Message);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    scriptDialogEventArgs.FirstName);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    scriptDialogEventArgs.LastName);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CHANNEL),
+                                    scriptDialogEventArgs.Channel.ToString(CultureInfo.InvariantCulture));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                    scriptDialogEventArgs.ObjectName);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                    scriptDialogEventArgs.ObjectID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                                    scriptDialogEventArgs.OwnerID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BUTTON),
+                                    wasEnumerableToCSV(scriptDialogEventArgs.ButtonLabels));
+                            };
                             break;
                         case Notifications.NOTIFICATION_LOCAL_CHAT:
-                            ChatEventArgs localChatEventArgs = (ChatEventArgs) args;
-                            List<string> chatName =
-                                new List<string>(GetAvatarNames(localChatEventArgs.FromName));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                localChatEventArgs.Message);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME), chatName.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), chatName.Last());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
-                                localChatEventArgs.OwnerID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                localChatEventArgs.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                localChatEventArgs.Position.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                Enum.GetName(typeof (ChatSourceType), localChatEventArgs.SourceType));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AUDIBLE),
-                                Enum.GetName(typeof (ChatAudibleLevel), localChatEventArgs.AudibleLevel));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.VOLUME),
-                                Enum.GetName(typeof (ChatType), localChatEventArgs.Type));
+                            execute = () =>
+                            {
+                                ChatEventArgs localChatEventArgs = (ChatEventArgs) args;
+                                List<string> chatName =
+                                    new List<string>(GetAvatarNames(localChatEventArgs.FromName));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                    localChatEventArgs.Message);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    chatName.First());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    chatName.Last());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                                    localChatEventArgs.OwnerID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                    localChatEventArgs.SourceID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                    localChatEventArgs.Position.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                    Enum.GetName(typeof (ChatSourceType), localChatEventArgs.SourceType));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AUDIBLE),
+                                    Enum.GetName(typeof (ChatAudibleLevel), localChatEventArgs.AudibleLevel));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.VOLUME),
+                                    Enum.GetName(typeof (ChatType), localChatEventArgs.Type));
+                            };
                             break;
                         case Notifications.NOTIFICATION_BALANCE:
-                            BalanceEventArgs balanceEventArgs = (BalanceEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BALANCE),
-                                balanceEventArgs.Balance.ToString(CultureInfo.InvariantCulture));
+                            execute = () =>
+                            {
+                                BalanceEventArgs balanceEventArgs = (BalanceEventArgs) args;
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BALANCE),
+                                    balanceEventArgs.Balance.ToString(CultureInfo.InvariantCulture));
+                            };
                             break;
                         case Notifications.NOTIFICATION_ALERT_MESSAGE:
-                            AlertMessageEventArgs alertMessageEventArgs = (AlertMessageEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                alertMessageEventArgs.Message);
+                            execute = () =>
+                            {
+                                AlertMessageEventArgs alertMessageEventArgs = (AlertMessageEventArgs) args;
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                    alertMessageEventArgs.Message);
+                            };
                             break;
                         case Notifications.NOTIFICATION_INVENTORY:
-                            System.Type inventoryOfferedType = args.GetType();
-                            if (inventoryOfferedType == typeof (InstantMessageEventArgs))
+                            execute = () =>
                             {
-                                InstantMessageEventArgs inventoryOfferEventArgs = (InstantMessageEventArgs) args;
-                                List<string> inventoryObjectOfferedName =
-                                    new List<string>(CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(
-                                        inventoryOfferEventArgs.IM.FromAgentName)
-                                        .Cast<Match>()
-                                        .ToDictionary(p => new[]
-                                        {
-                                            p.Groups["first"].Value,
-                                            p.Groups["last"].Value
-                                        })
-                                        .SelectMany(
-                                            p =>
-                                                new[]
-                                                {
-                                                    p.Key[0].Trim(),
-                                                    !string.IsNullOrEmpty(p.Key[1])
-                                                        ? p.Key[1].Trim()
-                                                        : string.Empty
-                                                }));
-                                switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
+                                System.Type inventoryOfferedType = args.GetType();
+                                if (inventoryOfferedType == typeof (InstantMessageEventArgs))
                                 {
-                                    case true:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                            inventoryObjectOfferedName.First());
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                            inventoryObjectOfferedName.Last());
-                                        break;
-                                    default:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                            inventoryObjectOfferedName.First());
-                                        break;
-                                }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                    inventoryOfferEventArgs.IM.FromAgentID.ToString());
-                                switch (inventoryOfferEventArgs.IM.Dialog)
-                                {
-                                    case InstantMessageDialog.InventoryAccepted:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                            wasGetDescriptionFromEnumValue(Action.ACCEPT));
-                                        break;
-                                    case InstantMessageDialog.InventoryDeclined:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                            wasGetDescriptionFromEnumValue(Action.DECLINE));
-                                        break;
-                                    case InstantMessageDialog.TaskInventoryOffered:
-                                    case InstantMessageDialog.InventoryOffered:
-                                        lock (InventoryOffersLock)
-                                        {
-                                            KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>
-                                                inventoryObjectOfferedEventArgs =
-                                                    InventoryOffers.AsParallel().FirstOrDefault(p =>
-                                                        p.Key.Offer.IMSessionID.Equals(
-                                                            inventoryOfferEventArgs.IM.IMSessionID));
-                                            if (
-                                                !inventoryObjectOfferedEventArgs.Equals(
-                                                    default(
-                                                        KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>)))
+                                    InstantMessageEventArgs inventoryOfferEventArgs = (InstantMessageEventArgs) args;
+                                    List<string> inventoryObjectOfferedName =
+                                        new List<string>(CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(
+                                            inventoryOfferEventArgs.IM.FromAgentName)
+                                            .Cast<Match>()
+                                            .ToDictionary(p => new[]
                                             {
-                                                switch (inventoryObjectOfferedEventArgs.Key.Accept)
+                                                p.Groups["first"].Value,
+                                                p.Groups["last"].Value
+                                            })
+                                            .SelectMany(
+                                                p =>
+                                                    new[]
+                                                    {
+                                                        p.Key[0].Trim(),
+                                                        !string.IsNullOrEmpty(p.Key[1])
+                                                            ? p.Key[1].Trim()
+                                                            : string.Empty
+                                                    }));
+                                    switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
+                                    {
+                                        case true:
+                                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                inventoryObjectOfferedName.First());
+                                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                                inventoryObjectOfferedName.Last());
+                                            break;
+                                        default:
+                                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                                inventoryObjectOfferedName.First());
+                                            break;
+                                    }
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                        inventoryOfferEventArgs.IM.FromAgentID.ToString());
+                                    switch (inventoryOfferEventArgs.IM.Dialog)
+                                    {
+                                        case InstantMessageDialog.InventoryAccepted:
+                                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                                wasGetDescriptionFromEnumValue(Action.ACCEPT));
+                                            break;
+                                        case InstantMessageDialog.InventoryDeclined:
+                                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                                wasGetDescriptionFromEnumValue(Action.DECLINE));
+                                            break;
+                                        case InstantMessageDialog.TaskInventoryOffered:
+                                        case InstantMessageDialog.InventoryOffered:
+                                            lock (InventoryOffersLock)
+                                            {
+                                                KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>
+                                                    inventoryObjectOfferedEventArgs =
+                                                        InventoryOffers.AsParallel().FirstOrDefault(p =>
+                                                            p.Key.Offer.IMSessionID.Equals(
+                                                                inventoryOfferEventArgs.IM.IMSessionID));
+                                                if (
+                                                    !inventoryObjectOfferedEventArgs.Equals(
+                                                        default(
+                                                            KeyValuePair
+                                                                <InventoryObjectOfferedEventArgs, ManualResetEvent>)))
                                                 {
-                                                    case true:
-                                                        notificationData.Add(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                                            wasGetDescriptionFromEnumValue(Action.ACCEPT));
-                                                        break;
-                                                    default:
-                                                        notificationData.Add(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                                            wasGetDescriptionFromEnumValue(Action.DECLINE));
-                                                        break;
+                                                    switch (inventoryObjectOfferedEventArgs.Key.Accept)
+                                                    {
+                                                        case true:
+                                                            notificationData.Add(
+                                                                wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                                                wasGetDescriptionFromEnumValue(Action.ACCEPT));
+                                                            break;
+                                                        default:
+                                                            notificationData.Add(
+                                                                wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                                                wasGetDescriptionFromEnumValue(Action.DECLINE));
+                                                            break;
+                                                    }
                                                 }
-                                            }
-                                            GroupCollection groups =
-                                                CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
-                                                    inventoryObjectOfferedEventArgs.Key.Offer.Message).Groups;
-                                            if (groups.Count > 0)
-                                            {
-                                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                                    groups[1].Value);
-                                            }
-                                            InventoryOffers.Remove(inventoryObjectOfferedEventArgs.Key);
-                                        }
-                                        break;
-                                }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DIRECTION),
-                                    wasGetDescriptionFromEnumValue(Action.REPLY));
-                                break;
-                            }
-                            if (inventoryOfferedType == typeof (InventoryObjectOfferedEventArgs))
-                            {
-                                InventoryObjectOfferedEventArgs inventoryObjectOfferedEventArgs =
-                                    (InventoryObjectOfferedEventArgs) args;
-                                List<string> inventoryObjectOfferedName =
-                                    new List<string>(CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(
-                                        inventoryObjectOfferedEventArgs.Offer.FromAgentName)
-                                        .Cast<Match>()
-                                        .ToDictionary(p => new[]
-                                        {
-                                            p.Groups["first"].Value,
-                                            p.Groups["last"].Value
-                                        })
-                                        .SelectMany(
-                                            p =>
-                                                new[]
+                                                GroupCollection groups =
+                                                    CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
+                                                        inventoryObjectOfferedEventArgs.Key.Offer.Message).Groups;
+                                                if (groups.Count > 0)
                                                 {
-                                                    p.Key[0],
-                                                    !string.IsNullOrEmpty(p.Key[1])
-                                                        ? p.Key[1]
-                                                        : string.Empty
-                                                }));
-                                switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
-                                {
-                                    case true:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                            inventoryObjectOfferedName.First());
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                            inventoryObjectOfferedName.Last());
-                                        break;
-                                    default:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                            inventoryObjectOfferedName.First());
-                                        break;
+                                                    notificationData.Add(
+                                                        wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                                        groups[1].Value);
+                                                }
+                                                InventoryOffers.Remove(inventoryObjectOfferedEventArgs.Key);
+                                            }
+                                            break;
+                                    }
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DIRECTION),
+                                        wasGetDescriptionFromEnumValue(Action.REPLY));
+                                    return;
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                    inventoryObjectOfferedEventArgs.Offer.FromAgentID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ASSET),
-                                    inventoryObjectOfferedEventArgs.AssetType.ToString());
-                                GroupCollection groups =
-                                    CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
-                                        inventoryObjectOfferedEventArgs.Offer.Message).Groups;
-                                if (groups.Count > 0)
+                                if (inventoryOfferedType == typeof (InventoryObjectOfferedEventArgs))
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                        groups[1].Value);
+                                    InventoryObjectOfferedEventArgs inventoryObjectOfferedEventArgs =
+                                        (InventoryObjectOfferedEventArgs) args;
+                                    List<string> inventoryObjectOfferedName =
+                                        new List<string>(CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(
+                                            inventoryObjectOfferedEventArgs.Offer.FromAgentName)
+                                            .Cast<Match>()
+                                            .ToDictionary(p => new[]
+                                            {
+                                                p.Groups["first"].Value,
+                                                p.Groups["last"].Value
+                                            })
+                                            .SelectMany(
+                                                p =>
+                                                    new[]
+                                                    {
+                                                        p.Key[0],
+                                                        !string.IsNullOrEmpty(p.Key[1])
+                                                            ? p.Key[1]
+                                                            : string.Empty
+                                                    }));
+                                    switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
+                                    {
+                                        case true:
+                                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                                inventoryObjectOfferedName.First());
+                                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                                inventoryObjectOfferedName.Last());
+                                            break;
+                                        default:
+                                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                                inventoryObjectOfferedName.First());
+                                            break;
+                                    }
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                        inventoryObjectOfferedEventArgs.Offer.FromAgentID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ASSET),
+                                        inventoryObjectOfferedEventArgs.AssetType.ToString());
+                                    GroupCollection groups =
+                                        CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
+                                            inventoryObjectOfferedEventArgs.Offer.Message).Groups;
+                                    if (groups.Count > 0)
+                                    {
+                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                            groups[1].Value);
+                                    }
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
+                                        inventoryObjectOfferedEventArgs.Offer.IMSessionID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DIRECTION),
+                                        wasGetDescriptionFromEnumValue(Action.OFFER));
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
-                                    inventoryObjectOfferedEventArgs.Offer.IMSessionID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DIRECTION),
-                                    wasGetDescriptionFromEnumValue(Action.OFFER));
-                            }
+                            };
                             break;
                         case Notifications.NOTIFICATION_SCRIPT_PERMISSION:
-                            ScriptQuestionEventArgs scriptQuestionEventArgs = (ScriptQuestionEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                scriptQuestionEventArgs.ItemID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TASK),
-                                scriptQuestionEventArgs.TaskID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS),
-                                wasEnumerableToCSV(typeof (ScriptPermission).GetFields(BindingFlags.Public |
-                                                                                       BindingFlags.Static)
-                                    .AsParallel().Where(
-                                        p =>
-                                            !(((int) p.GetValue(null) &
-                                               (int) scriptQuestionEventArgs.Questions)).Equals(0))
-                                    .Select(p => p.Name)));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.REGION),
-                                scriptQuestionEventArgs.Simulator.Name);
-                            break;
-                        case Notifications.NOTIFICATION_FRIENDSHIP:
-                            System.Type friendshipNotificationType = args.GetType();
-                            if (friendshipNotificationType == typeof (FriendInfoEventArgs))
+                            execute = () =>
                             {
-                                FriendInfoEventArgs friendInfoEventArgs = (FriendInfoEventArgs) args;
-                                List<string> name =
-                                    new List<string>(GetAvatarNames(friendInfoEventArgs.Friend.Name));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME), name.First());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME), name.Last());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                    friendInfoEventArgs.Friend.UUID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.STATUS),
-                                    friendInfoEventArgs.Friend.IsOnline
-                                        ? wasGetDescriptionFromEnumValue(Action.ONLINE)
-                                        : wasGetDescriptionFromEnumValue(Action.OFFLINE));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.RIGHTS),
-                                    // Return the friend rights as a nice CSV string.
-                                    wasEnumerableToCSV(typeof (FriendRights).GetFields(BindingFlags.Public |
-                                                                                       BindingFlags.Static)
+                                ScriptQuestionEventArgs scriptQuestionEventArgs = (ScriptQuestionEventArgs) args;
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                    scriptQuestionEventArgs.ItemID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TASK),
+                                    scriptQuestionEventArgs.TaskID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS),
+                                    wasEnumerableToCSV(typeof (ScriptPermission).GetFields(BindingFlags.Public |
+                                                                                           BindingFlags.Static)
                                         .AsParallel().Where(
                                             p =>
                                                 !(((int) p.GetValue(null) &
-                                                   (int) friendInfoEventArgs.Friend.MyFriendRights))
-                                                    .Equals(
-                                                        0))
+                                                   (int) scriptQuestionEventArgs.Questions)).Equals(0))
                                         .Select(p => p.Name)));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.UPDATE));
-                                break;
-                            }
-                            if (friendshipNotificationType == typeof (FriendshipResponseEventArgs))
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.REGION),
+                                    scriptQuestionEventArgs.Simulator.Name);
+                            };
+                            break;
+                        case Notifications.NOTIFICATION_FRIENDSHIP:
+                            execute = () =>
                             {
-                                FriendshipResponseEventArgs friendshipResponseEventArgs =
-                                    (FriendshipResponseEventArgs) args;
-                                List<string> friendshipResponseName =
-                                    new List<string>(
-                                        GetAvatarNames(friendshipResponseEventArgs.AgentName));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                    friendshipResponseName.First());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                    friendshipResponseName.Last());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                    friendshipResponseEventArgs.AgentID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.RESPONSE));
-                                break;
-                            }
-                            if (friendshipNotificationType == typeof (FriendshipOfferedEventArgs))
-                            {
-                                FriendshipOfferedEventArgs friendshipOfferedEventArgs =
-                                    (FriendshipOfferedEventArgs) args;
-                                List<string> friendshipOfferedName =
-                                    new List<string>(GetAvatarNames(friendshipOfferedEventArgs.AgentName));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                    friendshipOfferedName.First());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                    friendshipOfferedName.Last());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                    friendshipOfferedEventArgs.AgentID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.REQUEST));
-                            }
+                                System.Type friendshipNotificationType = args.GetType();
+                                if (friendshipNotificationType == typeof (FriendInfoEventArgs))
+                                {
+                                    FriendInfoEventArgs friendInfoEventArgs = (FriendInfoEventArgs) args;
+                                    List<string> name =
+                                        new List<string>(GetAvatarNames(friendInfoEventArgs.Friend.Name));
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                        name.First());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                        name.Last());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                        friendInfoEventArgs.Friend.UUID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.STATUS),
+                                        friendInfoEventArgs.Friend.IsOnline
+                                            ? wasGetDescriptionFromEnumValue(Action.ONLINE)
+                                            : wasGetDescriptionFromEnumValue(Action.OFFLINE));
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.RIGHTS),
+                                        // Return the friend rights as a nice CSV string.
+                                        wasEnumerableToCSV(typeof (FriendRights).GetFields(BindingFlags.Public |
+                                                                                           BindingFlags.Static)
+                                            .AsParallel().Where(
+                                                p =>
+                                                    !(((int) p.GetValue(null) &
+                                                       (int) friendInfoEventArgs.Friend.MyFriendRights))
+                                                        .Equals(
+                                                            0))
+                                            .Select(p => p.Name)));
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                        wasGetDescriptionFromEnumValue(Action.UPDATE));
+                                    return;
+                                }
+                                if (friendshipNotificationType == typeof (FriendshipResponseEventArgs))
+                                {
+                                    FriendshipResponseEventArgs friendshipResponseEventArgs =
+                                        (FriendshipResponseEventArgs) args;
+                                    List<string> friendshipResponseName =
+                                        new List<string>(
+                                            GetAvatarNames(friendshipResponseEventArgs.AgentName));
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                        friendshipResponseName.First());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                        friendshipResponseName.Last());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                        friendshipResponseEventArgs.AgentID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                        wasGetDescriptionFromEnumValue(Action.RESPONSE));
+                                    return;
+                                }
+                                if (friendshipNotificationType == typeof (FriendshipOfferedEventArgs))
+                                {
+                                    FriendshipOfferedEventArgs friendshipOfferedEventArgs =
+                                        (FriendshipOfferedEventArgs) args;
+                                    List<string> friendshipOfferedName =
+                                        new List<string>(GetAvatarNames(friendshipOfferedEventArgs.AgentName));
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                        friendshipOfferedName.First());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                        friendshipOfferedName.Last());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                        friendshipOfferedEventArgs.AgentID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                        wasGetDescriptionFromEnumValue(Action.REQUEST));
+                                }
+                            };
                             break;
                         case Notifications.NOTIFICATION_TELEPORT_LURE:
-                            InstantMessageEventArgs teleportLureEventArgs = (InstantMessageEventArgs) args;
-                            List<string> teleportLureName =
-                                new List<string>(
-                                    GetAvatarNames(teleportLureEventArgs.IM.FromAgentName));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                teleportLureName.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                teleportLureName.Last());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                teleportLureEventArgs.IM.FromAgentID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
-                                teleportLureEventArgs.IM.IMSessionID.ToString());
+                            execute = () =>
+                            {
+                                InstantMessageEventArgs teleportLureEventArgs = (InstantMessageEventArgs) args;
+                                List<string> teleportLureName =
+                                    new List<string>(
+                                        GetAvatarNames(teleportLureEventArgs.IM.FromAgentName));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    teleportLureName.First());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    teleportLureName.Last());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                    teleportLureEventArgs.IM.FromAgentID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
+                                    teleportLureEventArgs.IM.IMSessionID.ToString());
+                            };
                             break;
                         case Notifications.NOTIFICATION_GROUP_NOTICE:
-                            InstantMessageEventArgs notificationGroupNoticeEventArgs =
-                                (InstantMessageEventArgs) args;
-                            List<string> notificationGroupNoticeName =
-                                new List<string>(
-                                    GetAvatarNames(notificationGroupNoticeEventArgs.IM.FromAgentName));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                notificationGroupNoticeName.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                notificationGroupNoticeName.Last());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                notificationGroupNoticeEventArgs.IM.FromAgentID.ToString());
-                            string[] noticeData = notificationGroupNoticeEventArgs.IM.Message.Split('|');
-                            if (noticeData.Length > 0 && !string.IsNullOrEmpty(noticeData[0]))
+                            execute = () =>
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SUBJECT), noticeData[0]);
-                            }
-                            if (noticeData.Length > 1 && !string.IsNullOrEmpty(noticeData[1]))
-                            {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE), noticeData[1]);
-                            }
-                            switch (notificationGroupNoticeEventArgs.IM.Dialog)
-                            {
-                                case InstantMessageDialog.GroupNoticeInventoryAccepted:
-                                case InstantMessageDialog.GroupNoticeInventoryDeclined:
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        !notificationGroupNoticeEventArgs.IM.Dialog.Equals(
-                                            InstantMessageDialog.GroupNoticeInventoryAccepted)
-                                            ? wasGetDescriptionFromEnumValue(Action.DECLINE)
-                                            : wasGetDescriptionFromEnumValue(Action.ACCEPT));
-                                    break;
-                                case InstantMessageDialog.GroupNotice:
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        wasGetDescriptionFromEnumValue(Action.RECEIVED));
-                                    break;
-                            }
+                                InstantMessageEventArgs notificationGroupNoticeEventArgs =
+                                    (InstantMessageEventArgs) args;
+                                List<string> notificationGroupNoticeName =
+                                    new List<string>(
+                                        GetAvatarNames(notificationGroupNoticeEventArgs.IM.FromAgentName));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationGroupNoticeName.First());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationGroupNoticeName.Last());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                    notificationGroupNoticeEventArgs.IM.FromAgentID.ToString());
+                                string[] noticeData = notificationGroupNoticeEventArgs.IM.Message.Split('|');
+                                if (noticeData.Length > 0 && !string.IsNullOrEmpty(noticeData[0]))
+                                {
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SUBJECT),
+                                        noticeData[0]);
+                                }
+                                if (noticeData.Length > 1 && !string.IsNullOrEmpty(noticeData[1]))
+                                {
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                        noticeData[1]);
+                                }
+                                switch (notificationGroupNoticeEventArgs.IM.Dialog)
+                                {
+                                    case InstantMessageDialog.GroupNoticeInventoryAccepted:
+                                    case InstantMessageDialog.GroupNoticeInventoryDeclined:
+                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                            !notificationGroupNoticeEventArgs.IM.Dialog.Equals(
+                                                InstantMessageDialog.GroupNoticeInventoryAccepted)
+                                                ? wasGetDescriptionFromEnumValue(Action.DECLINE)
+                                                : wasGetDescriptionFromEnumValue(Action.ACCEPT));
+                                        break;
+                                    case InstantMessageDialog.GroupNotice:
+                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                            wasGetDescriptionFromEnumValue(Action.RECEIVED));
+                                        break;
+                                }
+                            };
                             break;
                         case Notifications.NOTIFICATION_INSTANT_MESSAGE:
-                            InstantMessageEventArgs notificationInstantMessage =
-                                (InstantMessageEventArgs) args;
-                            List<string> notificationInstantMessageName =
-                                new List<string>(
-                                    GetAvatarNames(notificationInstantMessage.IM.FromAgentName));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                notificationInstantMessageName.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                notificationInstantMessageName.Last());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                notificationInstantMessage.IM.FromAgentID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                notificationInstantMessage.IM.Message);
+                            execute = () =>
+                            {
+                                InstantMessageEventArgs notificationInstantMessage =
+                                    (InstantMessageEventArgs) args;
+                                List<string> notificationInstantMessageName =
+                                    new List<string>(
+                                        GetAvatarNames(notificationInstantMessage.IM.FromAgentName));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationInstantMessageName.First());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationInstantMessageName.Last());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                    notificationInstantMessage.IM.FromAgentID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                    notificationInstantMessage.IM.Message);
+                            };
                             break;
                         case Notifications.NOTIFICATION_REGION_MESSAGE:
-                            InstantMessageEventArgs notificationRegionMessage =
-                                (InstantMessageEventArgs) args;
-                            List<string> notificationRegionMessageName =
-                                new List<string>(
-                                    GetAvatarNames(notificationRegionMessage.IM.FromAgentName));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                notificationRegionMessageName.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                notificationRegionMessageName.Last());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                notificationRegionMessage.IM.FromAgentID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                notificationRegionMessage.IM.Message);
+                            execute = () =>
+                            {
+                                InstantMessageEventArgs notificationRegionMessage =
+                                    (InstantMessageEventArgs) args;
+                                List<string> notificationRegionMessageName =
+                                    new List<string>(
+                                        GetAvatarNames(notificationRegionMessage.IM.FromAgentName));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationRegionMessageName.First());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationRegionMessageName.Last());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                    notificationRegionMessage.IM.FromAgentID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                    notificationRegionMessage.IM.Message);
+                            };
                             break;
                         case Notifications.NOTIFICATION_GROUP_MESSAGE:
-                            InstantMessageEventArgs notificationGroupMessage =
-                                (InstantMessageEventArgs) args;
-                            List<string> notificationGroupMessageName =
-                                new List<string>(
-                                    GetAvatarNames(notificationGroupMessage.IM.FromAgentName));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                notificationGroupMessageName.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                notificationGroupMessageName.Last());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                notificationGroupMessage.IM.FromAgentID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP), o.GroupName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                notificationGroupMessage.IM.Message);
+                            execute = () =>
+                            {
+                                InstantMessageEventArgs notificationGroupMessage =
+                                    (InstantMessageEventArgs) args;
+                                List<string> notificationGroupMessageName =
+                                    new List<string>(
+                                        GetAvatarNames(notificationGroupMessage.IM.FromAgentName));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationGroupMessageName.First());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationGroupMessageName.Last());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                    notificationGroupMessage.IM.FromAgentID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP), o.GroupName);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                    notificationGroupMessage.IM.Message);
+                            };
                             break;
                         case Notifications.NOTIFICATION_VIEWER_EFFECT:
-                            System.Type viewerEffectType = args.GetType();
-                            if (viewerEffectType == typeof (ViewerEffectEventArgs))
+                            execute = () =>
                             {
-                                ViewerEffectEventArgs notificationViewerEffectEventArgs =
-                                    (ViewerEffectEventArgs) args;
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.EFFECT),
-                                    notificationViewerEffectEventArgs.Type.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
-                                    notificationViewerEffectEventArgs.SourceID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
-                                    notificationViewerEffectEventArgs.TargetID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                    notificationViewerEffectEventArgs.TargetPosition.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
-                                    notificationViewerEffectEventArgs.Duration.ToString(
-                                        CultureInfo.InvariantCulture));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                    notificationViewerEffectEventArgs.EffectID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.GENERIC));
-                                break;
-                            }
-                            if (viewerEffectType == typeof (ViewerEffectPointAtEventArgs))
-                            {
-                                ViewerEffectPointAtEventArgs notificationViewerPointAtEventArgs =
-                                    (ViewerEffectPointAtEventArgs) args;
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
-                                    notificationViewerPointAtEventArgs.SourceID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
-                                    notificationViewerPointAtEventArgs.TargetID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                    notificationViewerPointAtEventArgs.TargetPosition.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
-                                    notificationViewerPointAtEventArgs.Duration.ToString(
-                                        CultureInfo.InvariantCulture));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                    notificationViewerPointAtEventArgs.EffectID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.POINT));
-                                break;
-                            }
-                            if (viewerEffectType == typeof (ViewerEffectLookAtEventArgs))
-                            {
-                                ViewerEffectLookAtEventArgs notificationViewerLookAtEventArgs =
-                                    (ViewerEffectLookAtEventArgs) args;
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
-                                    notificationViewerLookAtEventArgs.SourceID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
-                                    notificationViewerLookAtEventArgs.TargetID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                    notificationViewerLookAtEventArgs.TargetPosition.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
-                                    notificationViewerLookAtEventArgs.Duration.ToString(
-                                        CultureInfo.InvariantCulture));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                    notificationViewerLookAtEventArgs.EffectID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.LOOK));
-                            }
+                                System.Type viewerEffectType = args.GetType();
+                                if (viewerEffectType == typeof (ViewerEffectEventArgs))
+                                {
+                                    ViewerEffectEventArgs notificationViewerEffectEventArgs =
+                                        (ViewerEffectEventArgs) args;
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.EFFECT),
+                                        notificationViewerEffectEventArgs.Type.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
+                                        notificationViewerEffectEventArgs.SourceID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                        notificationViewerEffectEventArgs.TargetID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                        notificationViewerEffectEventArgs.TargetPosition.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
+                                        notificationViewerEffectEventArgs.Duration.ToString(
+                                            CultureInfo.InvariantCulture));
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                        notificationViewerEffectEventArgs.EffectID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                        wasGetDescriptionFromEnumValue(Action.GENERIC));
+                                    return;
+                                }
+                                if (viewerEffectType == typeof (ViewerEffectPointAtEventArgs))
+                                {
+                                    ViewerEffectPointAtEventArgs notificationViewerPointAtEventArgs =
+                                        (ViewerEffectPointAtEventArgs) args;
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
+                                        notificationViewerPointAtEventArgs.SourceID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                        notificationViewerPointAtEventArgs.TargetID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                        notificationViewerPointAtEventArgs.TargetPosition.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
+                                        notificationViewerPointAtEventArgs.Duration.ToString(
+                                            CultureInfo.InvariantCulture));
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                        notificationViewerPointAtEventArgs.EffectID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                        wasGetDescriptionFromEnumValue(Action.POINT));
+                                    return;
+                                }
+                                if (viewerEffectType == typeof (ViewerEffectLookAtEventArgs))
+                                {
+                                    ViewerEffectLookAtEventArgs notificationViewerLookAtEventArgs =
+                                        (ViewerEffectLookAtEventArgs) args;
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
+                                        notificationViewerLookAtEventArgs.SourceID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                        notificationViewerLookAtEventArgs.TargetID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                        notificationViewerLookAtEventArgs.TargetPosition.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
+                                        notificationViewerLookAtEventArgs.Duration.ToString(
+                                            CultureInfo.InvariantCulture));
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                        notificationViewerLookAtEventArgs.EffectID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                        wasGetDescriptionFromEnumValue(Action.LOOK));
+                                }
+                            };
                             break;
                         case Notifications.NOTIFICATION_MEAN_COLLISION:
-                            MeanCollisionEventArgs meanCollisionEventArgs =
-                                (MeanCollisionEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGGRESSOR),
-                                meanCollisionEventArgs.Aggressor.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MAGNITUDE),
-                                meanCollisionEventArgs.Magnitude.ToString(CultureInfo.InvariantCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TIME),
-                                meanCollisionEventArgs.Time.ToLongDateString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                meanCollisionEventArgs.Type.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.VICTIM),
-                                meanCollisionEventArgs.Victim.ToString());
+                            execute = () =>
+                            {
+                                MeanCollisionEventArgs meanCollisionEventArgs =
+                                    (MeanCollisionEventArgs) args;
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGGRESSOR),
+                                    meanCollisionEventArgs.Aggressor.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MAGNITUDE),
+                                    meanCollisionEventArgs.Magnitude.ToString(CultureInfo.InvariantCulture));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TIME),
+                                    meanCollisionEventArgs.Time.ToLongDateString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                    meanCollisionEventArgs.Type.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.VICTIM),
+                                    meanCollisionEventArgs.Victim.ToString());
+                            };
                             break;
                         case Notifications.NOTIFICATION_REGION_CROSSED:
-                            System.Type regionChangeType = args.GetType();
-                            if (regionChangeType == typeof (SimChangedEventArgs))
+                            execute = () =>
                             {
-                                SimChangedEventArgs simChangedEventArgs = (SimChangedEventArgs) args;
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OLD),
-                                    simChangedEventArgs.PreviousSimulator.Name);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NEW),
-                                    Client.Network.CurrentSim.Name);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.CHANGED));
-                                break;
-                            }
-                            if (regionChangeType == typeof (RegionCrossedEventArgs))
-                            {
-                                RegionCrossedEventArgs regionCrossedEventArgs =
-                                    (RegionCrossedEventArgs) args;
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OLD),
-                                    regionCrossedEventArgs.OldSimulator.Name);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NEW),
-                                    regionCrossedEventArgs.NewSimulator.Name);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.CROSSED));
-                            }
+                                System.Type regionChangeType = args.GetType();
+                                if (regionChangeType == typeof (SimChangedEventArgs))
+                                {
+                                    SimChangedEventArgs simChangedEventArgs = (SimChangedEventArgs) args;
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OLD),
+                                        simChangedEventArgs.PreviousSimulator.Name);
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NEW),
+                                        Client.Network.CurrentSim.Name);
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                        wasGetDescriptionFromEnumValue(Action.CHANGED));
+                                    return;
+                                }
+                                if (regionChangeType == typeof (RegionCrossedEventArgs))
+                                {
+                                    RegionCrossedEventArgs regionCrossedEventArgs =
+                                        (RegionCrossedEventArgs) args;
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OLD),
+                                        regionCrossedEventArgs.OldSimulator.Name);
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NEW),
+                                        regionCrossedEventArgs.NewSimulator.Name);
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                        wasGetDescriptionFromEnumValue(Action.CROSSED));
+                                }
+                            };
                             break;
                         case Notifications.NOTIFICATION_TERSE_UPDATES:
-                            TerseObjectUpdateEventArgs terseObjectUpdateEventArgs =
-                                (TerseObjectUpdateEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                terseObjectUpdateEventArgs.Prim.ID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                terseObjectUpdateEventArgs.Prim.Position.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
-                                terseObjectUpdateEventArgs.Prim.Rotation.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                terseObjectUpdateEventArgs.Prim.PrimData.PCode.ToString());
+                            execute = () =>
+                            {
+                                TerseObjectUpdateEventArgs terseObjectUpdateEventArgs =
+                                    (TerseObjectUpdateEventArgs) args;
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                    terseObjectUpdateEventArgs.Prim.ID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                    terseObjectUpdateEventArgs.Prim.Position.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                    terseObjectUpdateEventArgs.Prim.Rotation.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                    terseObjectUpdateEventArgs.Prim.PrimData.PCode.ToString());
+                            };
                             break;
                         case Notifications.NOTIFICATION_TYPING:
-                            InstantMessageEventArgs notificationTypingMessageEventArgs = (InstantMessageEventArgs) args;
-                            List<string> notificationTypingMessageName =
-                                new List<string>(
-                                    GetAvatarNames(notificationTypingMessageEventArgs.IM.FromAgentName));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                notificationTypingMessageName.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                notificationTypingMessageName.Last());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                notificationTypingMessageEventArgs.IM.FromAgentID.ToString());
-                            switch (notificationTypingMessageEventArgs.IM.Dialog)
+                            execute = () =>
                             {
-                                case InstantMessageDialog.StartTyping:
-                                case InstantMessageDialog.StopTyping:
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        !notificationTypingMessageEventArgs.IM.Dialog.Equals(
-                                            InstantMessageDialog.StartTyping)
-                                            ? wasGetDescriptionFromEnumValue(Action.STOP)
-                                            : wasGetDescriptionFromEnumValue(Action.START));
-                                    break;
-                            }
+                                InstantMessageEventArgs notificationTypingMessageEventArgs =
+                                    (InstantMessageEventArgs) args;
+                                List<string> notificationTypingMessageName =
+                                    new List<string>(
+                                        GetAvatarNames(notificationTypingMessageEventArgs.IM.FromAgentName));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationTypingMessageName.First());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationTypingMessageName.Last());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                    notificationTypingMessageEventArgs.IM.FromAgentID.ToString());
+                                switch (notificationTypingMessageEventArgs.IM.Dialog)
+                                {
+                                    case InstantMessageDialog.StartTyping:
+                                    case InstantMessageDialog.StopTyping:
+                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                            !notificationTypingMessageEventArgs.IM.Dialog.Equals(
+                                                InstantMessageDialog.StartTyping)
+                                                ? wasGetDescriptionFromEnumValue(Action.STOP)
+                                                : wasGetDescriptionFromEnumValue(Action.START));
+                                        break;
+                                }
+                            };
                             break;
                         case Notifications.NOTIFICATION_GROUP_INVITE:
-                            InstantMessageEventArgs notificationGroupInviteEventArgs = (InstantMessageEventArgs) args;
-                            List<string> notificationGroupInviteName =
-                                new List<string>(
-                                    GetAvatarNames(notificationGroupInviteEventArgs.IM.FromAgentName));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                notificationGroupInviteName.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                notificationGroupInviteName.Last());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                notificationGroupInviteEventArgs.IM.FromAgentID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
-                                GroupInvites.AsParallel().FirstOrDefault(
-                                    p => p.Session.Equals(notificationGroupInviteEventArgs.IM.IMSessionID))
-                                    .Group);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
-                                notificationGroupInviteEventArgs.IM.IMSessionID.ToString());
+                            execute = () =>
+                            {
+                                InstantMessageEventArgs notificationGroupInviteEventArgs =
+                                    (InstantMessageEventArgs) args;
+                                List<string> notificationGroupInviteName =
+                                    new List<string>(
+                                        GetAvatarNames(notificationGroupInviteEventArgs.IM.FromAgentName));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationGroupInviteName.First());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationGroupInviteName.Last());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                    notificationGroupInviteEventArgs.IM.FromAgentID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
+                                    GroupInvites.AsParallel().FirstOrDefault(
+                                        p => p.Session.Equals(notificationGroupInviteEventArgs.IM.IMSessionID))
+                                        .Group);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
+                                    notificationGroupInviteEventArgs.IM.IMSessionID.ToString());
+                            };
                             break;
                         case Notifications.NOTIFICATION_ECONOMY:
-                            MoneyBalanceReplyEventArgs notificationMoneyBalanceEventArgs =
-                                (MoneyBalanceReplyEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BALANCE),
-                                notificationMoneyBalanceEventArgs.Balance.ToString(CultureInfo.InvariantCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
-                                notificationMoneyBalanceEventArgs.Description);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.COMMITTED),
-                                notificationMoneyBalanceEventArgs.MetersCommitted.ToString(CultureInfo.InvariantCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CREDIT),
-                                notificationMoneyBalanceEventArgs.MetersCredit.ToString(CultureInfo.InvariantCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SUCCESS),
-                                notificationMoneyBalanceEventArgs.Success.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                notificationMoneyBalanceEventArgs.TransactionID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT),
-                                notificationMoneyBalanceEventArgs.TransactionInfo.Amount.ToString(
-                                    CultureInfo.InvariantCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
-                                notificationMoneyBalanceEventArgs.TransactionInfo.DestID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
-                                notificationMoneyBalanceEventArgs.TransactionInfo.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TRANSACTION),
-                                Enum.GetName(typeof (MoneyTransactionType),
-                                    notificationMoneyBalanceEventArgs.TransactionInfo.TransactionType));
+                            execute = () =>
+                            {
+                                MoneyBalanceReplyEventArgs notificationMoneyBalanceEventArgs =
+                                    (MoneyBalanceReplyEventArgs) args;
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BALANCE),
+                                    notificationMoneyBalanceEventArgs.Balance.ToString(CultureInfo.InvariantCulture));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
+                                    notificationMoneyBalanceEventArgs.Description);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.COMMITTED),
+                                    notificationMoneyBalanceEventArgs.MetersCommitted.ToString(
+                                        CultureInfo.InvariantCulture));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CREDIT),
+                                    notificationMoneyBalanceEventArgs.MetersCredit.ToString(CultureInfo.InvariantCulture));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SUCCESS),
+                                    notificationMoneyBalanceEventArgs.Success.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                    notificationMoneyBalanceEventArgs.TransactionID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT),
+                                    notificationMoneyBalanceEventArgs.TransactionInfo.Amount.ToString(
+                                        CultureInfo.InvariantCulture));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                    notificationMoneyBalanceEventArgs.TransactionInfo.DestID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
+                                    notificationMoneyBalanceEventArgs.TransactionInfo.SourceID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TRANSACTION),
+                                    Enum.GetName(typeof (MoneyTransactionType),
+                                        notificationMoneyBalanceEventArgs.TransactionInfo.TransactionType));
+                            };
                             break;
                         case Notifications.NOTIFICATION_GROUP_MEMBERSHIP:
-                            GroupMembershipEventArgs groupMembershipEventArgs = (GroupMembershipEventArgs) args;
-                            List<string> groupMembershipName =
-                                new List<string>(
-                                    GetAvatarNames(groupMembershipEventArgs.AgentName));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                groupMembershipName.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                groupMembershipName.Last());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                groupMembershipEventArgs.AgentUUID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
-                                o.GroupName);
-                            switch (groupMembershipEventArgs.Action)
+                            execute = () =>
                             {
-                                case Action.JOINED:
-                                case Action.PARTED:
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        !groupMembershipEventArgs.Action.Equals(
-                                            Action.JOINED)
-                                            ? wasGetDescriptionFromEnumValue(Action.PARTED)
-                                            : wasGetDescriptionFromEnumValue(Action.JOINED));
-                                    break;
-                            }
+                                GroupMembershipEventArgs groupMembershipEventArgs = (GroupMembershipEventArgs) args;
+                                List<string> groupMembershipName =
+                                    new List<string>(
+                                        GetAvatarNames(groupMembershipEventArgs.AgentName));
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    groupMembershipName.First());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    groupMembershipName.Last());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                    groupMembershipEventArgs.AgentUUID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
+                                    o.GroupName);
+                                switch (groupMembershipEventArgs.Action)
+                                {
+                                    case Action.JOINED:
+                                    case Action.PARTED:
+                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                            !groupMembershipEventArgs.Action.Equals(
+                                                Action.JOINED)
+                                                ? wasGetDescriptionFromEnumValue(Action.PARTED)
+                                                : wasGetDescriptionFromEnumValue(Action.JOINED));
+                                        break;
+                                }
+                            };
                             break;
                         case Notifications.NOTIFICATION_LOAD_URL:
-                            LoadUrlEventArgs loadURLEventArgs = (LoadUrlEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                loadURLEventArgs.ObjectName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                loadURLEventArgs.ObjectID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
-                                loadURLEventArgs.OwnerID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
-                                loadURLEventArgs.OwnerIsGroup.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                loadURLEventArgs.Message);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.URL),
-                                loadURLEventArgs.URL);
+                            execute = () =>
+                            {
+                                LoadUrlEventArgs loadURLEventArgs = (LoadUrlEventArgs) args;
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                    loadURLEventArgs.ObjectName);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                    loadURLEventArgs.ObjectID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                                    loadURLEventArgs.OwnerID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
+                                    loadURLEventArgs.OwnerIsGroup.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                    loadURLEventArgs.Message);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.URL),
+                                    loadURLEventArgs.URL);
+                            };
                             break;
                         case Notifications.NOTIFICATION_OWNER_SAY:
-                            ChatEventArgs ownerSayEventArgs = (ChatEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                ownerSayEventArgs.Message);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                ownerSayEventArgs.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                ownerSayEventArgs.FromName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                ownerSayEventArgs.Position.ToString());
+                            execute = () =>
+                            {
+                                ChatEventArgs ownerSayEventArgs = (ChatEventArgs) args;
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                    ownerSayEventArgs.Message);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                    ownerSayEventArgs.SourceID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                    ownerSayEventArgs.FromName);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                    ownerSayEventArgs.Position.ToString());
+                            };
                             break;
                         case Notifications.NOTIFICATION_REGION_SAY_TO:
-                            ChatEventArgs regionSayToEventArgs = (ChatEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                regionSayToEventArgs.Message);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
-                                regionSayToEventArgs.OwnerID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                regionSayToEventArgs.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                regionSayToEventArgs.FromName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                regionSayToEventArgs.Position.ToString());
+                            execute = () =>
+                            {
+                                ChatEventArgs regionSayToEventArgs = (ChatEventArgs) args;
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                    regionSayToEventArgs.Message);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                                    regionSayToEventArgs.OwnerID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                    regionSayToEventArgs.SourceID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                    regionSayToEventArgs.FromName);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                    regionSayToEventArgs.Position.ToString());
+                            };
                             break;
                         case Notifications.NOTIFICATION_OBJECT_INSTANT_MESSAGE:
-                            InstantMessageEventArgs notificationObjectInstantMessage =
-                                (InstantMessageEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
-                                notificationObjectInstantMessage.IM.FromAgentID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                notificationObjectInstantMessage.IM.IMSessionID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                notificationObjectInstantMessage.IM.FromAgentName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                notificationObjectInstantMessage.IM.Message);
+                            execute = () =>
+                            {
+                                InstantMessageEventArgs notificationObjectInstantMessage =
+                                    (InstantMessageEventArgs) args;
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                                    notificationObjectInstantMessage.IM.FromAgentID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                    notificationObjectInstantMessage.IM.IMSessionID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                    notificationObjectInstantMessage.IM.FromAgentName);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                    notificationObjectInstantMessage.IM.Message);
+                            };
                             break;
                         case Notifications.NOTIFICATION_RLV_MESSAGE:
-                            ChatEventArgs RLVEventArgs = (ChatEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                RLVEventArgs.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                RLVEventArgs.FromName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                RLVEventArgs.Position.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.RLV),
-                                wasEnumerableToCSV(wasRLVToString(RLVEventArgs.Message)));
+                            execute = () =>
+                            {
+                                ChatEventArgs RLVEventArgs = (ChatEventArgs) args;
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                    RLVEventArgs.SourceID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                    RLVEventArgs.FromName);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                    RLVEventArgs.Position.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.RLV),
+                                    wasEnumerableToCSV(wasRLVToString(RLVEventArgs.Message)));
+                            };
                             break;
                         case Notifications.NOTIFICATION_DEBUG_MESSAGE:
-                            ChatEventArgs DebugEventArgs = (ChatEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                DebugEventArgs.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                DebugEventArgs.FromName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                DebugEventArgs.Position.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                DebugEventArgs.Message);
+                            execute = () =>
+                            {
+                                ChatEventArgs DebugEventArgs = (ChatEventArgs) args;
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                    DebugEventArgs.SourceID.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                    DebugEventArgs.FromName);
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                    DebugEventArgs.Position.ToString());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                    DebugEventArgs.Message);
+                            };
                             break;
                         case Notifications.NOTIFICATION_RADAR_AVATARS:
-                            System.Type radarAvatarsType = args.GetType();
-                            if (radarAvatarsType == typeof (AvatarUpdateEventArgs))
+                            execute = () =>
                             {
-                                AvatarUpdateEventArgs avatarUpdateEventArgs =
-                                    (AvatarUpdateEventArgs) args;
-                                lock (RadarObjectsLock)
+                                System.Type radarAvatarsType = args.GetType();
+                                if (radarAvatarsType == typeof (AvatarUpdateEventArgs))
                                 {
-                                    if (RadarObjects.ContainsKey(avatarUpdateEventArgs.Avatar.ID)) return;
-                                    RadarObjects.Add(avatarUpdateEventArgs.Avatar.ID, avatarUpdateEventArgs.Avatar);
-                                }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                    avatarUpdateEventArgs.Avatar.FirstName);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                    avatarUpdateEventArgs.Avatar.LastName);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                    avatarUpdateEventArgs.Avatar.ID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                    avatarUpdateEventArgs.Avatar.Position.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
-                                    avatarUpdateEventArgs.Avatar.Rotation.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                    avatarUpdateEventArgs.Avatar.PrimData.PCode.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.APPEAR));
-                                break;
-                            }
-                            if (radarAvatarsType == typeof (KillObjectEventArgs))
-                            {
-                                KillObjectEventArgs killObjectEventArgs =
-                                    (KillObjectEventArgs) args;
-                                Avatar avatar;
-                                lock (RadarObjectsLock)
-                                {
-                                    KeyValuePair<UUID, Primitive> tracked =
-                                        RadarObjects.AsParallel().FirstOrDefault(
-                                            p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
-                                    switch (!tracked.Equals(default(KeyValuePair<UUID, Primitive>)))
+                                    AvatarUpdateEventArgs avatarUpdateEventArgs =
+                                        (AvatarUpdateEventArgs) args;
+                                    lock (RadarObjectsLock)
                                     {
-                                        case true:
-                                            RadarObjects.Remove(tracked.Key);
-                                            break;
-                                        default:
-                                            return;
+                                        if (RadarObjects.ContainsKey(avatarUpdateEventArgs.Avatar.ID)) return;
+                                        RadarObjects.Add(avatarUpdateEventArgs.Avatar.ID, avatarUpdateEventArgs.Avatar);
                                     }
-                                    if (!(tracked.Value is Avatar)) return;
-                                    avatar = tracked.Value as Avatar;
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                        avatarUpdateEventArgs.Avatar.FirstName);
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                        avatarUpdateEventArgs.Avatar.LastName);
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                        avatarUpdateEventArgs.Avatar.ID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                        avatarUpdateEventArgs.Avatar.Position.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                        avatarUpdateEventArgs.Avatar.Rotation.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                        avatarUpdateEventArgs.Avatar.PrimData.PCode.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                        wasGetDescriptionFromEnumValue(Action.APPEAR));
+                                    return;
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                    avatar.FirstName);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                    avatar.LastName);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                    avatar.ID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                    avatar.Position.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
-                                    avatar.Rotation.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                    avatar.PrimData.PCode.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.VANISH));
-                            }
+                                if (radarAvatarsType == typeof (KillObjectEventArgs))
+                                {
+                                    KillObjectEventArgs killObjectEventArgs =
+                                        (KillObjectEventArgs) args;
+                                    Avatar avatar;
+                                    lock (RadarObjectsLock)
+                                    {
+                                        KeyValuePair<UUID, Primitive> tracked =
+                                            RadarObjects.AsParallel().FirstOrDefault(
+                                                p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
+                                        switch (!tracked.Equals(default(KeyValuePair<UUID, Primitive>)))
+                                        {
+                                            case true:
+                                                RadarObjects.Remove(tracked.Key);
+                                                break;
+                                            default:
+                                                return;
+                                        }
+                                        if (!(tracked.Value is Avatar)) return;
+                                        avatar = tracked.Value as Avatar;
+                                    }
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                        avatar.FirstName);
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                        avatar.LastName);
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                        avatar.ID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                        avatar.Position.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                        avatar.Rotation.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                        avatar.PrimData.PCode.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                        wasGetDescriptionFromEnumValue(Action.VANISH));
+                                }
+                            };
                             break;
                         case Notifications.NOTIFICATION_RADAR_PRIMITIVES:
-                            System.Type radarPrimitivesType = args.GetType();
-                            if (radarPrimitivesType == typeof (PrimEventArgs))
+                            execute = () =>
                             {
-                                PrimEventArgs primEventArgs =
-                                    (PrimEventArgs) args;
-                                lock (RadarObjectsLock)
+                                System.Type radarPrimitivesType = args.GetType();
+                                if (radarPrimitivesType == typeof (PrimEventArgs))
                                 {
-                                    if (RadarObjects.ContainsKey(primEventArgs.Prim.ID)) return;
-                                    RadarObjects.Add(primEventArgs.Prim.ID, primEventArgs.Prim);
-                                }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
-                                    primEventArgs.Prim.OwnerID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                    primEventArgs.Prim.ID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                    primEventArgs.Prim.Position.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
-                                    primEventArgs.Prim.Rotation.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                    primEventArgs.Prim.PrimData.PCode.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.APPEAR));
-                                break;
-                            }
-                            if (radarPrimitivesType == typeof (KillObjectEventArgs))
-                            {
-                                KillObjectEventArgs killObjectEventArgs =
-                                    (KillObjectEventArgs) args;
-                                Primitive prim;
-                                lock (RadarObjectsLock)
-                                {
-                                    KeyValuePair<UUID, Primitive> tracked =
-                                        RadarObjects.AsParallel().FirstOrDefault(
-                                            p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
-                                    switch (!tracked.Equals(default(KeyValuePair<UUID, Primitive>)))
+                                    PrimEventArgs primEventArgs =
+                                        (PrimEventArgs) args;
+                                    lock (RadarObjectsLock)
                                     {
-                                        case true:
-                                            RadarObjects.Remove(tracked.Key);
-                                            prim = tracked.Value;
-                                            break;
-                                        default:
-                                            return;
+                                        if (RadarObjects.ContainsKey(primEventArgs.Prim.ID)) return;
+                                        RadarObjects.Add(primEventArgs.Prim.ID, primEventArgs.Prim);
                                     }
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                                        primEventArgs.Prim.OwnerID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                        primEventArgs.Prim.ID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                        primEventArgs.Prim.Position.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                        primEventArgs.Prim.Rotation.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                        primEventArgs.Prim.PrimData.PCode.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                        wasGetDescriptionFromEnumValue(Action.APPEAR));
+                                    return;
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
-                                    prim.OwnerID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                    prim.ID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                    prim.Position.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
-                                    prim.Rotation.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                    prim.PrimData.PCode.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.VANISH));
-                            }
+                                if (radarPrimitivesType == typeof (KillObjectEventArgs))
+                                {
+                                    KillObjectEventArgs killObjectEventArgs =
+                                        (KillObjectEventArgs) args;
+                                    Primitive prim;
+                                    lock (RadarObjectsLock)
+                                    {
+                                        KeyValuePair<UUID, Primitive> tracked =
+                                            RadarObjects.AsParallel().FirstOrDefault(
+                                                p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
+                                        switch (!tracked.Equals(default(KeyValuePair<UUID, Primitive>)))
+                                        {
+                                            case true:
+                                                RadarObjects.Remove(tracked.Key);
+                                                prim = tracked.Value;
+                                                break;
+                                            default:
+                                                return;
+                                        }
+                                    }
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                                        prim.OwnerID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                        prim.ID.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                        prim.Position.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                        prim.Rotation.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                        prim.PrimData.PCode.ToString());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                        wasGetDescriptionFromEnumValue(Action.VANISH));
+                                }
+                            };
+                            break;
+                        default:
+                            execute =
+                                () =>
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ConsoleError.UNKNOWN_NOTIFICATION_TYPE));
+                                };
                             break;
                     }
+
+                    try
+                    {
+                        execute.Invoke();
+                    }
+                    catch (Exception ex)
+                    {
+                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_ERROR), ex.Message);
+                        return;
+                    }
+
                     lock (NotificationQueueLock)
                     {
                         if (NotificationQueue.Count < Configuration.NOTIFICATION_QUEUE_LENGTH)
@@ -10757,22 +10884,22 @@ namespace Corrade
                                     message)));
                         if (item == null)
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
-                        FieldInfo assetTypeInfo = typeof(AssetType).GetFields(BindingFlags.Public |
-                                                                                       BindingFlags.Static)
-                                    .AsParallel().FirstOrDefault(
-                                        o =>
-                                            o.Name.Equals(
-                                                wasInput(
-                                                    wasKeyValueGet(
-                                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                                                        message)),
-                                                StringComparison.Ordinal));
+                        FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
+                                                                               BindingFlags.Static)
+                            .AsParallel().FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        wasInput(
+                                            wasKeyValueGet(
+                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                                message)),
+                                        StringComparison.Ordinal));
                         switch (assetTypeInfo != null)
                         {
                             case false:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ASSET_TYPE));
                         }
-                        AssetType assetType = (AssetType)assetTypeInfo.GetValue(null);
+                        AssetType assetType = (AssetType) assetTypeInfo.GetValue(null);
                         InventoryItem inventoryItem = null;
                         UUID itemUUID;
                         // If the asset is of an asset type that can only be retrieved locally or the item is a string
@@ -21529,7 +21656,8 @@ namespace Corrade
             [Description("could not write to region message log file")] COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE,
             [Description("unknown IP address")] UNKNOWN_IP_ADDRESS,
             [Description("unable to save Corrade notifications state")] UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE,
-            [Description("unable to load Corrade notifications state")] UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE
+            [Description("unable to load Corrade notifications state")] UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE,
+            [Description("unknwon notification type")] UNKNOWN_NOTIFICATION_TYPE
         }
 
         /// <summary>
