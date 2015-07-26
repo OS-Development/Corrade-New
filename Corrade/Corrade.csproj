@@ -696,7 +696,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="AIMLBot\logs\" />
-    <Folder Include="cache\" />
+    <Folder Include="cache\assets\" />
     <Folder Include="databases\" />
     <Folder Include="libs\" />
     <Folder Include="logs\groupchat\" />

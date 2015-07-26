@@ -2839,6 +2839,9 @@ namespace Corrade
             // Smoother movement for autopilot.
             Client.Settings.DISABLE_AGENT_UPDATE_DUPLICATE_CHECK = true;
             Client.Settings.ENABLE_CAPS = true;
+            // Set the asset cache directory.
+            Client.Settings.ASSET_CACHE_DIR = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                CORRADE_CONSTANTS.ASSET_CACHE_DIRECTORY);
             Client.Settings.USE_ASSET_CACHE = true;
             // More precision for object and avatar tracking updates.
             Client.Settings.USE_INTERPOLATION_TIMER = true;
@@ -10917,6 +10920,11 @@ namespace Corrade
                                         wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                                 }
                                 inventoryItem = inventoryBaseItem as InventoryItem;
+                                if (inventoryItem == null)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                }
                                 itemUUID = inventoryItem.AssetUUID;
                                 break;
                             default: // otherwise, just set the the item UUID to the item
@@ -10989,62 +10997,6 @@ namespace Corrade
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
                                         }
-                                        // Convert to desired format if specified.
-                                        string format =
-                                            wasInput(wasKeyValueGet(
-                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FORMAT)),
-                                                message));
-                                        if (!string.IsNullOrEmpty(format))
-                                        {
-                                            PropertyInfo formatProperty = typeof (ImageFormat).GetProperties(
-                                                BindingFlags.Public |
-                                                BindingFlags.Static)
-                                                .AsParallel().FirstOrDefault(
-                                                    o =>
-                                                        string.Equals(o.Name, format, StringComparison.Ordinal));
-                                            if (formatProperty == null)
-                                            {
-                                                throw new Exception(
-                                                    wasGetDescriptionFromEnumValue(
-                                                        ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED));
-                                            }
-                                            ManagedImage managedImage;
-                                            if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
-                                            {
-                                                throw new Exception(
-                                                    wasGetDescriptionFromEnumValue(
-                                                        ScriptError.UNABLE_TO_DECODE_ASSET_DATA));
-                                            }
-                                            using (MemoryStream imageStream = new MemoryStream())
-                                            {
-                                                try
-                                                {
-                                                    using (Bitmap bitmapImage = managedImage.ExportBitmap())
-                                                    {
-                                                        EncoderParameters encoderParameters = new EncoderParameters(1);
-                                                        encoderParameters.Param[0] =
-                                                            new EncoderParameter(Encoder.Quality, 100L);
-                                                        bitmapImage.Save(imageStream,
-                                                            ImageCodecInfo.GetImageDecoders()
-                                                                .AsParallel()
-                                                                .FirstOrDefault(
-                                                                    o =>
-                                                                        o.FormatID.Equals(
-                                                                            ((ImageFormat)
-                                                                                formatProperty.GetValue(
-                                                                                    new ImageFormat(Guid.Empty))).Guid)),
-                                                            encoderParameters);
-                                                    }
-                                                }
-                                                catch (Exception)
-                                                {
-                                                    throw new Exception(
-                                                        wasGetDescriptionFromEnumValue(
-                                                            ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT));
-                                                }
-                                                assetData = imageStream.ToArray();
-                                            }
-                                        }
                                         break;
                                     // All of these can be fetched directly from the asset server.
                                     case AssetType.Landmark:
@@ -11083,6 +11035,67 @@ namespace Corrade
                                 break;
                             default:
                                 assetData = Client.Assets.Cache.GetCachedAssetBytes(itemUUID);
+                                break;
+                        }
+                        // If the asset type was a texture, convert it to the desired format.
+                        switch (assetType.Equals(AssetType.Texture))
+                        {
+                            case true:
+                                string format =
+                                    wasInput(wasKeyValueGet(
+                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FORMAT)),
+                                        message));
+                                if (!string.IsNullOrEmpty(format))
+                                {
+                                    PropertyInfo formatProperty = typeof (ImageFormat).GetProperties(
+                                        BindingFlags.Public |
+                                        BindingFlags.Static)
+                                        .AsParallel().FirstOrDefault(
+                                            o =>
+                                                string.Equals(o.Name, format, StringComparison.Ordinal));
+                                    if (formatProperty == null)
+                                    {
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(
+                                                ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED));
+                                    }
+                                    ManagedImage managedImage;
+                                    if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
+                                    {
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(
+                                                ScriptError.UNABLE_TO_DECODE_ASSET_DATA));
+                                    }
+                                    using (MemoryStream imageStream = new MemoryStream())
+                                    {
+                                        try
+                                        {
+                                            using (Bitmap bitmapImage = managedImage.ExportBitmap())
+                                            {
+                                                EncoderParameters encoderParameters = new EncoderParameters(1);
+                                                encoderParameters.Param[0] =
+                                                    new EncoderParameter(Encoder.Quality, 100L);
+                                                bitmapImage.Save(imageStream,
+                                                    ImageCodecInfo.GetImageDecoders()
+                                                        .AsParallel()
+                                                        .FirstOrDefault(
+                                                            o =>
+                                                                o.FormatID.Equals(
+                                                                    ((ImageFormat)
+                                                                        formatProperty.GetValue(
+                                                                            new ImageFormat(Guid.Empty))).Guid)),
+                                                    encoderParameters);
+                                            }
+                                        }
+                                        catch (Exception)
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(
+                                                    ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT));
+                                        }
+                                        assetData = imageStream.ToArray();
+                                    }
+                                }
                                 break;
                         }
                         // If no path was specificed, then send the data.
@@ -14899,7 +14912,7 @@ namespace Corrade
                             StringOrUUID(
                                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER)),
                                     message)));
-                        InventoryFolder inventoryFolder = null;
+                        InventoryFolder inventoryFolder;
                         switch (folder != null)
                         {
                             case true:
@@ -16465,6 +16478,7 @@ namespace Corrade
                             .ToLowerInvariant()))
                         {
                             case Action.PURGE:
+                                Client.Assets.Cache.BeginPrune();
                                 Cache.Purge();
                                 break;
                             case Action.SAVE:
@@ -19013,6 +19027,7 @@ namespace Corrade
             public const string PATH_SEPARATOR = @"/";
             public const string ERROR_SEPARATOR = @" : ";
             public const string CACHE_DIRECTORY = @"cache";
+            public const string ASSET_CACHE_DIRECTORY = @"assets";
             public const string LOG_FILE_EXTENSION = @"log";
             public const string STATE_DIRECTORY = @"state";
             public const string NOTIFICATIONS_STATE_FILE = @"Notifications.state";
