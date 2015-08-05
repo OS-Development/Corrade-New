@@ -893,7 +893,9 @@ namespace Corrade
                     BindingFlags.Default | BindingFlags.CreateInstance | BindingFlags.Instance | BindingFlags.NonPublic);
             if (internalDictionaryInfo != null)
             {
-                Hashtable internalDictionary = new Hashtable(internalDictionaryInfo.GetValue(data) as IDictionary);
+                IDictionary iDictionary = internalDictionaryInfo.GetValue(data) as IDictionary;
+                if (iDictionary == null) yield break;
+                Hashtable internalDictionary = new Hashtable(iDictionary);
                 if (internalDictionary.Count.Equals(0)) yield break;
                 foreach (DictionaryEntry entry in internalDictionary)
                 {
@@ -9572,6 +9574,11 @@ namespace Corrade
                                         wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                                 }
                                 inventoryItem = inventoryBaseItem as InventoryItem;
+                                if (inventoryItem == null)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                }
                                 break;
                             default:
                                 throw new Exception(
@@ -11558,6 +11565,11 @@ namespace Corrade
                                         wasGetDescriptionFromEnumValue(ScriptError.FOLDER_NOT_FOUND));
                                 }
                                 inventoryFolder = inventoryBaseItem as InventoryFolder;
+                                if (inventoryFolder == null)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.FOLDER_NOT_FOUND));
+                                }
                                 break;
                             default:
                                 inventoryFolder =
@@ -13493,12 +13505,14 @@ namespace Corrade
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
                                     message))
                                 .ToLowerInvariant();
-                        switch (
+                        Action action =
                             wasGetEnumValueFromDescription<Action>(
                                 wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
-                                        message)).ToLowerInvariant()))
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
+                                    .ToLowerInvariant());
+                        switch (action)
                         {
+                            case Action.SET:
                             case Action.ADD:
                                 if (string.IsNullOrEmpty(url))
                                 {
@@ -13556,8 +13570,22 @@ namespace Corrade
                                                 // notification destination is already there
                                                 if (notification.NotificationDestination[
                                                     (Notifications) notificationValue].Contains(url)) break;
-                                                notification.NotificationDestination[(Notifications) notificationValue]
-                                                    .Add(url);
+                                                switch (action)
+                                                {
+                                                    case Action.ADD:
+                                                        notification.NotificationDestination[
+                                                            (Notifications) notificationValue]
+                                                            .Add(url);
+                                                        break;
+                                                    case Action.SET:
+                                                        notification.NotificationDestination[
+                                                            (Notifications) notificationValue] = new HashSet<string>
+                                                            {
+                                                                url
+                                                            };
+                                                        break;
+                                                }
+
                                                 break;
                                         }
                                     });
@@ -13929,7 +13957,7 @@ namespace Corrade
                             StringOrUUID(
                                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
                                     message)));
-                        InventoryItem inventoryItem = null;
+                        InventoryItem inventoryItem;
                         switch (item != null)
                         {
                             case true:
@@ -13942,6 +13970,11 @@ namespace Corrade
                                         wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                                 }
                                 inventoryItem = inventoryBaseItem as InventoryItem;
+                                if (inventoryItem == null)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                }
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
@@ -13974,7 +14007,7 @@ namespace Corrade
                             StringOrUUID(
                                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
                                     message)));
-                        InventoryItem inventoryItem = null;
+                        InventoryItem inventoryItem;
                         switch (item != null)
                         {
                             case true:
@@ -13987,6 +14020,11 @@ namespace Corrade
                                         wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                                 }
                                 inventoryItem = inventoryBaseItem as InventoryItem;
+                                if (inventoryItem == null)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                }
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
@@ -14925,6 +14963,11 @@ namespace Corrade
                                         wasGetDescriptionFromEnumValue(ScriptError.FOLDER_NOT_FOUND));
                                 }
                                 inventoryFolder = inventoryBaseItem as InventoryFolder;
+                                if (inventoryFolder == null)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.FOLDER_NOT_FOUND));
+                                }
                                 break;
                             default:
                                 inventoryFolder =
@@ -15995,7 +16038,7 @@ namespace Corrade
                             StringOrUUID(
                                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
                                     message)));
-                        InventoryItem inventoryItem = null;
+                        InventoryItem inventoryItem;
                         switch (item != null)
                         {
                             case true:
@@ -16008,6 +16051,11 @@ namespace Corrade
                                         wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                                 }
                                 inventoryItem = inventoryBaseItem as InventoryItem;
+                                if (inventoryItem == null)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
+                                }
                                 break;
                             default:
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
