@@ -1339,7 +1339,7 @@ namespace Corrade
                         password.Equals(o.Password, StringComparison.Ordinal))
                 : Configuration.GROUPS.AsParallel().Any(
                     o =>
-                        o.Name.Equals(group, StringComparison.Ordinal) &&
+                        o.Name.Equals(group, StringComparison.OrdinalIgnoreCase) &&
                         password.Equals(o.Password, StringComparison.Ordinal));
         }
 
@@ -1357,7 +1357,7 @@ namespace Corrade
                     .Any(o => groupUUID.Equals(o.UUID) && !(o.PermissionMask & permission).Equals(0))
                 : Configuration.GROUPS.AsParallel().Any(
                     o =>
-                        o.Name.Equals(group, StringComparison.Ordinal) &&
+                        o.Name.Equals(group, StringComparison.OrdinalIgnoreCase) &&
                         !(o.PermissionMask & permission).Equals(0));
         }
 
@@ -1375,7 +1375,7 @@ namespace Corrade
                     o => groupUUID.Equals(o.UUID) &&
                          !(o.NotificationMask & notification).Equals(0))
                 : Configuration.GROUPS.AsParallel().Any(
-                    o => o.Name.Equals(group, StringComparison.Ordinal) &&
+                    o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase) &&
                          !(o.NotificationMask & notification).Equals(0));
         }
 
@@ -3425,7 +3425,7 @@ namespace Corrade
                 Parallel.ForEach(GroupNotifications, o =>
                 {
                     if ((o.NotificationMask & (uint) notification).Equals(0) || !Configuration.GROUPS.AsParallel().Any(
-                        p => p.Name.Equals(o.GroupName, StringComparison.Ordinal) &&
+                        p => p.Name.Equals(o.GroupName, StringComparison.OrdinalIgnoreCase) &&
                              !(p.NotificationMask & (uint) notification).Equals(0))) return;
                     // Set the notification type
                     Dictionary<string, string> notificationData = new Dictionary<string, string>
@@ -4931,7 +4931,7 @@ namespace Corrade
                             Parallel.ForEach(
                                 Configuration.GROUPS.AsParallel().Where(
                                     o =>
-                                        o.Name.Equals(messageGroup.Name, StringComparison.Ordinal) &&
+                                        o.Name.Equals(messageGroup.Name, StringComparison.OrdinalIgnoreCase) &&
                                         o.ChatLogEnabled),
                                 o =>
                                 {
@@ -6415,6 +6415,16 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
+                        // if the grid is SecondLife and the group name length exceeds the allowed length...
+                        lock (ClientInstanceNetworkLock)
+                        {
+                            if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
+                                group.Length > LINDEN_CONSTANTS.GROUPS.MAXIMUM_GROUP_NAME_LENGTH)
+                            {
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_NAME));
+                            }
+                        }
                         if (!UpdateBalance(Configuration.SERVICES_TIMEOUT))
                         {
                             throw new Exception(
@@ -6931,10 +6941,14 @@ namespace Corrade
                             }
                             Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                         }
-                        if (roleCount >= LINDEN_CONSTANTS.GROUPS.MAXIMUM_NUMBER_OF_ROLES)
+                        lock (ClientInstanceNetworkLock)
                         {
-                            throw new Exception(
-                                wasGetDescriptionFromEnumValue(ScriptError.MAXIMUM_NUMBER_OF_ROLES_EXCEEDED));
+                            if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
+                                roleCount >= LINDEN_CONSTANTS.GROUPS.MAXIMUM_NUMBER_OF_ROLES)
+                            {
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.MAXIMUM_NUMBER_OF_ROLES_EXCEEDED));
+                            }
                         }
                         string role =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
@@ -6957,6 +6971,17 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
+                        string title = wasInput(wasKeyValueGet(
+                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TITLE)), message));
+                        lock (ClientInstanceNetworkLock)
+                        {
+                            if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
+                                title.Length > LINDEN_CONSTANTS.GROUPS.MAXIMUM_GROUP_TITLE_LENGTH)
+                            {
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_TITLE));
+                            }
+                        }
                         Client.Groups.CreateRole(groupUUID, new GroupRole
                         {
                             Name = role,
@@ -6967,9 +6992,7 @@ namespace Corrade
                             GroupID = groupUUID,
                             ID = UUID.Random(),
                             Powers = (GroupPowers) powers,
-                            Title =
-                                wasInput(wasKeyValueGet(
-                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TITLE)), message))
+                            Title = title
                         });
                         UUID roleUUID = UUID.Zero;
                         if (
@@ -7640,6 +7663,18 @@ namespace Corrade
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                                 }
+                                lock (ClientInstanceNetworkLock)
+                                {
+                                    if (
+                                        Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
+                                        Encoding.Unicode.GetByteCount(data) >
+                                        LINDEN_CONSTANTS.CHAT.MAXIMUM_MESSAGE_LENGTH || data.Count().Equals(0))
+                                    {
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(
+                                                ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE));
+                                    }
+                                }
                                 Client.Self.InstantMessage(agentUUID, data);
                                 // Log instant messages,
                                 if (Configuration.INSTANT_MESSAGE_LOG_ENABLED)
@@ -7698,6 +7733,18 @@ namespace Corrade
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                                 }
+                                lock (ClientInstanceNetworkLock)
+                                {
+                                    if (
+                                        Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
+                                        Encoding.Unicode.GetByteCount(data) >
+                                        LINDEN_CONSTANTS.CHAT.MAXIMUM_MESSAGE_LENGTH || data.Count().Equals(0))
+                                    {
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(
+                                                ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE));
+                                    }
+                                }
                                 if (!Client.Self.GroupChatSessions.ContainsKey(groupUUID))
                                 {
                                     if (
@@ -7748,6 +7795,18 @@ namespace Corrade
                                     });
                                 break;
                             case Entity.LOCAL:
+                                lock (ClientInstanceNetworkLock)
+                                {
+                                    if (
+                                        Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
+                                        Encoding.Unicode.GetByteCount(data) >
+                                        LINDEN_CONSTANTS.CHAT.MAXIMUM_MESSAGE_LENGTH || data.Count().Equals(0))
+                                    {
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(
+                                                ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE));
+                                    }
+                                }
                                 int chatChannel;
                                 if (
                                     !int.TryParse(
@@ -7939,12 +7998,22 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
+                        string body =
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
+                                    message));
+                        lock (ClientInstanceNetworkLock)
+                        {
+                            if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
+                                body.Length > LINDEN_CONSTANTS.NOTICES.MAXIMUM_NOTICE_MESSAGE_LENGTH)
+                            {
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TOO_MANY_CHARACTERS_FOR_NOTICE_MESSAGE));
+                            }
+                        }
                         GroupNotice notice = new GroupNotice
                         {
-                            Message =
-                                wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
-                                        message)),
+                            Message = body,
                             Subject =
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SUBJECT)),
@@ -9432,6 +9501,24 @@ namespace Corrade
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message));
                         wasCSVToStructure(fields, ref properties);
+                        lock (ClientInstanceNetworkLock)
+                        {
+                            if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE))
+                            {
+                                if (Encoding.Unicode.GetByteCount(properties.AboutText) >
+                                    LINDEN_CONSTANTS.AVATARS.PROFILE.SECOND_LIFE_TEXT_SIZE)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.SECOND_LIFE_TEXT_TOO_LARGE));
+                                }
+                                if (Encoding.Unicode.GetByteCount(properties.FirstLifeText) >
+                                    LINDEN_CONSTANTS.AVATARS.PROFILE.FIRST_LIFE_TEXT_SIZE)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.FIRST_LIFE_TEXT_TOO_LARGE));
+                                }
+                            }
+                        }
                         wasCSVToStructure(fields, ref interests);
                         Client.Self.UpdateProfile(properties);
                         Client.Self.UpdateInterests(interests);
@@ -9766,8 +9853,10 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.EMPTY_PICK_NAME));
                         }
+                        int pickCount = 0;
                         EventHandler<AvatarPicksReplyEventArgs> AvatarPicksEventHandler = (sender, args) =>
                         {
+                            pickCount = args.Picks.Count;
                             KeyValuePair<UUID, string> pick =
                                 args.Picks.AsParallel()
                                     .FirstOrDefault(o => o.Value.Equals(name, StringComparison.Ordinal));
@@ -9786,15 +9875,34 @@ namespace Corrade
                             }
                             Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
                         }
+                        string description =
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                    message));
+                        lock (ClientInstanceNetworkLock)
+                        {
+                            if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE))
+                            {
+                                if (pickUUID.Equals(UUID.Zero) &&
+                                    pickCount >= LINDEN_CONSTANTS.AVATARS.PICKS.MAXIMUM_PICKS)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.MAXIMUM_AMOUNT_OF_PICKS_REACHED));
+                                }
+                                if (Encoding.Unicode.GetByteCount(description) >
+                                    LINDEN_CONSTANTS.AVATARS.PICKS.MAXIMUM_PICK_DESCRIPTION_SIZE)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.DESCRIPTION_WOULD_EXCEED_MAXIMUM_SIZE));
+                                }
+                            }
+                        }
                         if (pickUUID.Equals(UUID.Zero))
                         {
                             pickUUID = UUID.Random();
                         }
                         Client.Self.PickInfoUpdate(pickUUID, false, UUID.Zero, name,
-                            Client.Self.GlobalPosition, textureUUID,
-                            wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
-                                    message)));
+                            Client.Self.GlobalPosition, textureUUID, description);
                     };
                     break;
                 case ScriptKeys.DELETEPICK:
@@ -9878,8 +9986,10 @@ namespace Corrade
                                     message));
                         ManualResetEvent AvatarClassifiedReplyEvent = new ManualResetEvent(false);
                         UUID classifiedUUID = UUID.Zero;
+                        int classifiedCount = 0;
                         EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedEventHandler = (sender, args) =>
                         {
+                            classifiedCount = args.Classifieds.Count;
                             KeyValuePair<UUID, string> classified = args.Classifieds.AsParallel().FirstOrDefault(
                                 o =>
                                     o.Value.Equals(name, StringComparison.Ordinal));
@@ -9898,6 +10008,16 @@ namespace Corrade
                                     wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_CLASSIFIEDS));
                             }
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
+                        }
+                        lock (ClientInstanceNetworkLock)
+                        {
+                            if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
+                                classifiedUUID.Equals(UUID.Zero) &&
+                                classifiedCount >= LINDEN_CONSTANTS.AVATARS.CLASSIFIEDS.MAXIMUM_CLASSIFIEDS)
+                            {
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.MAXIMUM_AMOUNT_OF_CLASSIFIEDS_REACHED));
+                            }
                         }
                         if (classifiedUUID.Equals(UUID.Zero))
                         {
@@ -10230,31 +10350,66 @@ namespace Corrade
                         {
                             replace = true;
                         }
-                        Parallel.ForEach(
-                            wasCSVToEnumerable(attachments).AsParallel().Select((o, p) => new {o, p})
+                        Dictionary<string, string> items =
+                            new Dictionary<string, string>(wasCSVToEnumerable(attachments)
+                                .AsParallel()
+                                .Select((o, p) => new {o, p})
                                 .GroupBy(q => q.p/2, q => q.o)
                                 .Select(o => o.ToList())
                                 .TakeWhile(o => o.Count%2 == 0)
-                                .ToDictionary(o => o.First(), p => p.Last()),
-                            o =>
-                                Parallel.ForEach(
-                                    typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                        .AsParallel().Where(
-                                            p =>
-                                                p.Name.Equals(o.Key, StringComparison.Ordinal)),
-                                    q =>
-                                    {
-                                        InventoryBase inventoryBaseItem =
-                                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                                                StringOrUUID(o.Value)
-                                                )
-                                                .AsParallel().FirstOrDefault(
-                                                    r => r is InventoryObject || r is InventoryAttachment);
-                                        if (inventoryBaseItem == null)
-                                            return;
-                                        Attach(inventoryBaseItem as InventoryItem, (AttachmentPoint) q.GetValue(null),
-                                            replace);
-                                    }));
+                                .ToDictionary(o => o.First(), p => p.Last()));
+                        // if this is SecondLif, check that the additional attachments would not exceed the maximum attachment limit
+                        lock (ClientInstanceNetworkLock)
+                        {
+                            if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE))
+                            {
+                                switch (replace)
+                                {
+                                    case true:
+                                        if (typeof (AttachmentPoint).GetFields(
+                                            BindingFlags.Public | BindingFlags.Static)
+                                            .AsParallel().Select(
+                                                p =>
+                                                    !items.ContainsKey(p.Name)).Count() +
+                                            GetAttachments(Configuration.SERVICES_TIMEOUT).Count() >
+                                            LINDEN_CONSTANTS.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(
+                                                    ScriptError.ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT));
+                                        }
+                                        break;
+                                    default:
+                                        if (items.Count + GetAttachments(Configuration.SERVICES_TIMEOUT).Count() >
+                                            LINDEN_CONSTANTS.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(
+                                                    ScriptError.ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT));
+                                        }
+                                        break;
+                                }
+                            }
+                        }
+                        Parallel.ForEach(items, o =>
+                            Parallel.ForEach(
+                                typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                    .AsParallel().Where(
+                                        p =>
+                                            p.Name.Equals(o.Key, StringComparison.Ordinal)),
+                                q =>
+                                {
+                                    InventoryBase inventoryBaseItem =
+                                        FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
+                                            StringOrUUID(o.Value)
+                                            )
+                                            .AsParallel().FirstOrDefault(
+                                                r => r is InventoryObject || r is InventoryAttachment);
+                                    if (inventoryBaseItem == null)
+                                        return;
+                                    Attach(inventoryBaseItem as InventoryItem, (AttachmentPoint) q.GetValue(null),
+                                        replace);
+                                }));
                         RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
                     };
                     break;
@@ -10829,6 +10984,28 @@ namespace Corrade
                         wasCSVToStructure(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message)), ref parcel);
+                        lock (ClientInstanceNetworkLock)
+                        {
+                            if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE))
+                            {
+                                if (parcel.OtherCleanTime > LINDEN_CONSTANTS.PARCELS.MAXIMUM_AUTO_RETURN_TIME ||
+                                    parcel.OtherCleanTime < LINDEN_CONSTANTS.PARCELS.MINIMUM_AUTO_RETURN_TIME)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.AUTO_RETURN_TIME_OUTSIDE_LIMIT_RANGE));
+                                }
+                                if (parcel.Name.Length > LINDEN_CONSTANTS.PARCELS.MAXIMUM_NAME_LENGTH)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.NAME_TOO_LARGE));
+                                }
+                                if (parcel.Desc.Length > LINDEN_CONSTANTS.PARCELS.MAXIMUM_DESCRIPTION_LENGTH)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.DESCRIPTION_TOO_LARGE));
+                                }
+                            }
+                        }
                         parcel.Update(simulator, true);
                     };
                     break;
@@ -11477,6 +11654,16 @@ namespace Corrade
                                 out position))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
+                        }
+                        lock (ClientInstanceNetworkLock)
+                        {
+                            if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
+                                position.Z > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
+                            {
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(
+                                        ScriptError.POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE));
+                            }
                         }
                         Quaternion rotation;
                         if (
@@ -12289,6 +12476,19 @@ namespace Corrade
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
+                        string text =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TEXT)),
+                                message));
+                        lock (ClientInstanceNetworkLock)
+                        {
+                            if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
+                                Encoding.Unicode.GetByteCount(text) >
+                                LINDEN_CONSTANTS.ASSETS.NOTECARD.MAXIMUM_BODY_LENTH)
+                            {
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.NOTECARD_MESSAGE_BODY_TOO_LARGE));
+                            }
+                        }
                         string name =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                 message));
@@ -12341,9 +12541,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_UPLOAD_ITEM));
                         }
-                        string text =
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TEXT)),
-                                message));
                         if (!string.IsNullOrEmpty(text))
                         {
                             AssetNotecard notecard = new AssetNotecard
@@ -13311,7 +13508,7 @@ namespace Corrade
                         }
                         Group configuredGroup =
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
                         switch (!configuredGroup.Equals(default(Group)))
                         {
                             case false:
@@ -13478,7 +13675,7 @@ namespace Corrade
                         }
                         Group configuredGroup =
                             Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.Ordinal));
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
                         switch (!configuredGroup.Equals(default(Group)))
                         {
                             case false:
@@ -13533,7 +13730,9 @@ namespace Corrade
                                 {
                                     notification =
                                         GroupNotifications.AsParallel().FirstOrDefault(
-                                            o => o.GroupName.Equals(configuredGroup.Name, StringComparison.Ordinal));
+                                            o =>
+                                                o.GroupName.Equals(configuredGroup.Name,
+                                                    StringComparison.OrdinalIgnoreCase));
                                 }
                                 switch (!notification.Equals(default(Notification)))
                                 {
@@ -13593,7 +13792,8 @@ namespace Corrade
                                 {
                                     // Replace notification.
                                     GroupNotifications.RemoveWhere(
-                                        o => o.GroupName.Equals(configuredGroup.Name, StringComparison.Ordinal));
+                                        o =>
+                                            o.GroupName.Equals(configuredGroup.Name, StringComparison.OrdinalIgnoreCase));
                                     GroupNotifications.Add(notification);
                                 }
                                 break;
@@ -13609,7 +13809,7 @@ namespace Corrade
                                                         (uint) wasGetEnumValueFromDescription<Notifications>(p))
                                                 .Equals(0)) &&
                                              !o.NotificationDestination.Values.Any(p => p.Contains(url))) ||
-                                            !o.GroupName.Equals(configuredGroup.Name, StringComparison.Ordinal))
+                                            !o.GroupName.Equals(configuredGroup.Name, StringComparison.OrdinalIgnoreCase))
                                         {
                                             groupNotifications.Add(o);
                                             return;
@@ -13657,7 +13857,9 @@ namespace Corrade
                                 {
                                     Notification groupNotification =
                                         GroupNotifications.AsParallel().FirstOrDefault(
-                                            o => o.GroupName.Equals(configuredGroup.Name, StringComparison.Ordinal));
+                                            o =>
+                                                o.GroupName.Equals(configuredGroup.Name,
+                                                    StringComparison.OrdinalIgnoreCase));
                                     if (!groupNotification.Equals(default(Notification)))
                                     {
                                         Parallel.ForEach(wasGetEnumDescriptions<Notifications>(), o =>
@@ -13684,7 +13886,8 @@ namespace Corrade
                                 lock (GroupNotificationsLock)
                                 {
                                     GroupNotifications.RemoveWhere(
-                                        o => o.GroupName.Equals(configuredGroup.Name, StringComparison.Ordinal));
+                                        o =>
+                                            o.GroupName.Equals(configuredGroup.Name, StringComparison.OrdinalIgnoreCase));
                                 }
                                 break;
                             default:
@@ -14248,6 +14451,8 @@ namespace Corrade
                         {
                             allEstates = false;
                         }
+                        List<UUID> estateList = new List<UUID>();
+                        wasAdaptiveAlarm EstateListReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
                         UUID targetUUID;
                         switch (
                             wasGetEnumValueFromDescription<Type>(
@@ -14283,6 +14488,51 @@ namespace Corrade
                                             .ToLowerInvariant()))
                                 {
                                     case Action.ADD:
+                                        // if this is SecondLife check that we would not exeed the maximum amount of bans
+                                        if (
+                                            Client.Network.CurrentSim.SimVersion.Contains(
+                                                LINDEN_CONSTANTS.GRID.SECOND_LIFE))
+                                        {
+                                            EventHandler<EstateBansReplyEventArgs> EstateBansReplyEventHandler =
+                                                (sender, args) =>
+                                                {
+                                                    EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                                    switch (!args.Count.Equals(0))
+                                                    {
+                                                        case true:
+                                                            estateList.AddRange(args.Banned);
+                                                            break;
+                                                        default:
+                                                            EstateListReceivedAlarm.Signal.Set();
+                                                            break;
+                                                    }
+                                                };
+                                            lock (ClientInstanceEstateLock)
+                                            {
+                                                Client.Estate.EstateBansReply += EstateBansReplyEventHandler;
+                                                Client.Estate.RequestInfo();
+                                                if (
+                                                    !EstateListReceivedAlarm.Signal.WaitOne(
+                                                        Configuration.SERVICES_TIMEOUT,
+                                                        false))
+                                                {
+                                                    Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
+                                                    throw new Exception(
+                                                        wasGetDescriptionFromEnumValue(
+                                                            ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST));
+                                                }
+                                                Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
+                                            }
+                                            lock (ClientInstanceNetworkLock)
+                                            {
+                                                if (estateList.Count >= LINDEN_CONSTANTS.ESTATE.MAXIMUM_BAN_LIST_LENGTH)
+                                                {
+                                                    throw new Exception(
+                                                        wasGetDescriptionFromEnumValue(
+                                                            ScriptError.MAXIMUM_BAN_LIST_LENGTH_REACHED));
+                                                }
+                                            }
+                                        }
                                         Client.Estate.BanUser(targetUUID, allEstates);
                                         break;
                                     case Action.REMOVE:
@@ -14316,6 +14566,50 @@ namespace Corrade
                                             .ToLowerInvariant()))
                                 {
                                     case Action.ADD:
+                                        if (
+                                            Client.Network.CurrentSim.SimVersion.Contains(
+                                                LINDEN_CONSTANTS.GRID.SECOND_LIFE))
+                                        {
+                                            EventHandler<EstateGroupsReplyEventArgs> EstateGroupsReplyEvenHandler =
+                                                (sender, args) =>
+                                                {
+                                                    EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                                    switch (!args.Count.Equals(0))
+                                                    {
+                                                        case true:
+                                                            estateList.AddRange(args.AllowedGroups);
+                                                            break;
+                                                        default:
+                                                            EstateListReceivedAlarm.Signal.Set();
+                                                            break;
+                                                    }
+                                                };
+                                            lock (ClientInstanceEstateLock)
+                                            {
+                                                Client.Estate.EstateGroupsReply += EstateGroupsReplyEvenHandler;
+                                                Client.Estate.RequestInfo();
+                                                if (
+                                                    !EstateListReceivedAlarm.Signal.WaitOne(
+                                                        Configuration.SERVICES_TIMEOUT, false))
+                                                {
+                                                    Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
+                                                    throw new Exception(
+                                                        wasGetDescriptionFromEnumValue(
+                                                            ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST));
+                                                }
+                                                Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
+                                            }
+                                            lock (ClientInstanceNetworkLock)
+                                            {
+                                                if (estateList.Count >=
+                                                    LINDEN_CONSTANTS.ESTATE.MAXIMUM_GROUP_LIST_LENGTH)
+                                                {
+                                                    throw new Exception(
+                                                        wasGetDescriptionFromEnumValue(
+                                                            ScriptError.MAXIMUM_GROUP_LIST_LENGTH_REACHED));
+                                                }
+                                            }
+                                        }
                                         Client.Estate.AddAllowedGroup(targetUUID, allEstates);
                                         break;
                                     case Action.REMOVE:
@@ -14354,6 +14648,49 @@ namespace Corrade
                                             .ToLowerInvariant()))
                                 {
                                     case Action.ADD:
+                                        if (
+                                            Client.Network.CurrentSim.SimVersion.Contains(
+                                                LINDEN_CONSTANTS.GRID.SECOND_LIFE))
+                                        {
+                                            EventHandler<EstateUsersReplyEventArgs> EstateUsersReplyEventHandler =
+                                                (sender, args) =>
+                                                {
+                                                    EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                                    switch (!args.Count.Equals(0))
+                                                    {
+                                                        case true:
+                                                            estateList.AddRange(args.AllowedUsers);
+                                                            break;
+                                                        default:
+                                                            EstateListReceivedAlarm.Signal.Set();
+                                                            break;
+                                                    }
+                                                };
+                                            lock (ClientInstanceEstateLock)
+                                            {
+                                                Client.Estate.EstateUsersReply += EstateUsersReplyEventHandler;
+                                                Client.Estate.RequestInfo();
+                                                if (
+                                                    !EstateListReceivedAlarm.Signal.WaitOne(
+                                                        Configuration.SERVICES_TIMEOUT, false))
+                                                {
+                                                    Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
+                                                    throw new Exception(
+                                                        wasGetDescriptionFromEnumValue(
+                                                            ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST));
+                                                }
+                                                Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
+                                            }
+                                            lock (ClientInstanceNetworkLock)
+                                            {
+                                                if (estateList.Count >= LINDEN_CONSTANTS.ESTATE.MAXIMUM_USER_LIST_LENGTH)
+                                                {
+                                                    throw new Exception(
+                                                        wasGetDescriptionFromEnumValue(
+                                                            ScriptError.MAXIMUM_USER_LIST_LENGTH_REACHED));
+                                                }
+                                            }
+                                        }
                                         Client.Estate.AddAllowedUser(targetUUID, allEstates);
                                         break;
                                     case Action.REMOVE:
@@ -14392,6 +14729,50 @@ namespace Corrade
                                             .ToLowerInvariant()))
                                 {
                                     case Action.ADD:
+                                        if (
+                                            Client.Network.CurrentSim.SimVersion.Contains(
+                                                LINDEN_CONSTANTS.GRID.SECOND_LIFE))
+                                        {
+                                            EventHandler<EstateManagersReplyEventArgs> EstateManagersReplyEventHandler =
+                                                (sender, args) =>
+                                                {
+                                                    EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                                    switch (!args.Count.Equals(0))
+                                                    {
+                                                        case true:
+                                                            estateList.AddRange(args.Managers);
+                                                            break;
+                                                        default:
+                                                            EstateListReceivedAlarm.Signal.Set();
+                                                            break;
+                                                    }
+                                                };
+                                            lock (ClientInstanceEstateLock)
+                                            {
+                                                Client.Estate.EstateManagersReply += EstateManagersReplyEventHandler;
+                                                Client.Estate.RequestInfo();
+                                                if (
+                                                    !EstateListReceivedAlarm.Signal.WaitOne(
+                                                        Configuration.SERVICES_TIMEOUT, false))
+                                                {
+                                                    Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
+                                                    throw new Exception(
+                                                        wasGetDescriptionFromEnumValue(
+                                                            ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST));
+                                                }
+                                                Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
+                                            }
+                                            lock (ClientInstanceNetworkLock)
+                                            {
+                                                if (estateList.Count >=
+                                                    LINDEN_CONSTANTS.ESTATE.MAXIMUM_MANAGER_LIST_LENGTH)
+                                                {
+                                                    throw new Exception(
+                                                        wasGetDescriptionFromEnumValue(
+                                                            ScriptError.MAXIMUM_MANAGER_LIST_LENGTH_REACHED));
+                                                }
+                                            }
+                                        }
                                         Client.Estate.AddEstateManager(targetUUID, allEstates);
                                         break;
                                     case Action.REMOVE:
@@ -14839,6 +15220,18 @@ namespace Corrade
                                 if (string.IsNullOrEmpty(name))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_NAME_PROVIDED));
+                                }
+                                lock (ClientInstanceNetworkLock)
+                                {
+                                    if (
+                                        Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
+                                        (name.Length > LINDEN_CONSTANTS.AVATARS.MAXIMUM_DISPLAY_NAME_CHARACTERS ||
+                                         name.Length < LINDEN_CONSTANTS.AVATARS.MINIMUM_DISPLAY_NAME_CHARACTERS))
+                                    {
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(
+                                                ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_FOR_DISPLAY_NAME));
+                                    }
                                 }
                                 bool succeeded = true;
                                 ManualResetEvent SetDisplayNameEvent = new ManualResetEvent(false);
@@ -15859,6 +16252,20 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_SCALE));
                         }
+                        lock (ClientInstanceNetworkLock)
+                        {
+                            if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
+                                ((scale.X < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_X ||
+                                  scale.Y < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_Y ||
+                                  scale.Z < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_Z ||
+                                  scale.X > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_X ||
+                                  scale.Y > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_Y ||
+                                  scale.Z > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_Z)))
+                            {
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS));
+                            }
+                        }
                         Client.Objects.SetScale(
                             Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                             primitive.LocalID, scale, true, uniform);
@@ -15896,6 +16303,14 @@ namespace Corrade
                         if (string.IsNullOrEmpty(name))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_NAME_PROVIDED));
+                        }
+                        lock (ClientInstanceNetworkLock)
+                        {
+                            if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
+                                Encoding.UTF8.GetByteCount(name) > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_NAME_SIZE)
+                            {
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NAME_TOO_LARGE));
+                            }
                         }
                         Client.Objects.SetName(
                             Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
@@ -15936,9 +16351,275 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_DESCRIPTION_PROVIDED));
                         }
+                        lock (ClientInstanceNetworkLock)
+                        {
+                            if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
+                                Encoding.UTF8.GetByteCount(description) >
+                                LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_DESCRIPTION_SIZE)
+                            {
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.DESCRIPTION_TOO_LARGE));
+                            }
+                        }
                         Client.Objects.SetDescription(
                             Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                             primitive.LocalID, description);
+                    };
+                    break;
+                case ScriptKeys.CHANGEPRIMITIVELINK:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Action action = wasGetEnumValueFromDescription<Action>(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
+                                .ToLowerInvariant());
+                        switch (action)
+                        {
+                            case Action.LINK:
+                            case Action.DELINK:
+                                break;
+                            default:
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_ACTION));
+                        }
+                        List<string> items = new List<string>(wasCSVToEnumerable(wasInput(wasKeyValueGet(
+                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))));
+                        if (items.Count.Equals(0) || (action.Equals(Action.LINK) && items.Count < 2))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.INVALID_NUMBER_OF_ITEMS_SPECIFIED));
+                        }
+                        lock (ClientInstanceNetworkLock)
+                        {
+                            if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE))
+                            {
+                                if (items.Count > LINDEN_CONSTANTS.OBJECTS.MAXIMUM_PRIMITIVE_COUNT)
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.LINK_WOULD_EXCEED_MAXIMUM_LINK_LIMIT));
+                                }
+                            }
+                        }
+                        List<uint> primIDs = new List<uint>();
+                        foreach (string item in items)
+                        {
+                            Primitive primitive = null;
+                            if (
+                                !FindPrimitive(
+                                    StringOrUUID(item),
+                                    range,
+                                    ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                            {
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                            }
+                            primIDs.Add(primitive.LocalID);
+                        }
+                        object LockObject = new object();
+                        ManualResetEvent PrimChangeLinkEvent = new ManualResetEvent(false);
+                        EventHandler<PrimEventArgs> ObjectUpdateEventHandler = (sender, args) =>
+                        {
+                            lock (LockObject)
+                            {
+                                if (primIDs.Count.Equals(0))
+                                {
+                                    PrimChangeLinkEvent.Set();
+                                    return;
+                                }
+                            }
+                            lock (LockObject)
+                            {
+                                if (primIDs.Contains(args.Prim.LocalID))
+                                {
+                                    primIDs.Remove(args.Prim.LocalID);
+                                }
+                            }
+                        };
+                        lock (ClientInstanceObjectsLock)
+                        {
+                            Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
+                            switch (action)
+                            {
+                                case Action.LINK:
+                                    Client.Objects.LinkPrims(simulator, primIDs);
+                                    break;
+                                case Action.DELINK:
+                                    Client.Objects.DelinkPrims(simulator, primIDs);
+                                    break;
+                            }
+                            if (!PrimChangeLinkEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            {
+                                Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_CHANGING_LINKS));
+                            }
+                            Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                        }
+                    };
+                    break;
+                case ScriptKeys.PRIMITIVEBUY:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        UUID groupUUID = UUID.Zero;
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        if (primitive.Properties.SaleType.Equals(SaleType.Not))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOR_SALE));
+                        }
+                        if (!primitive.Properties.SalePrice.Equals(0) &&
+                            !HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        UUID folderUUID;
+                        string folder =
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER)),
+                                    message));
+                        if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
+                        {
+                            folderUUID = Client.Inventory.Store.RootFolder.UUID;
+                        }
+                        Client.Objects.BuyObject(simulator, primitive.LocalID, primitive.Properties.SaleType,
+                            primitive.Properties.SalePrice,
+                            groupUUID, folderUUID);
+                    };
+                    break;
+                case ScriptKeys.GETPRIMITIVEPAYPRICES:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        UUID groupUUID = UUID.Zero;
+                        if (
+                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref groupUUID))
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        if (primitive.Properties.SaleType.Equals(SaleType.Not))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOR_SALE));
+                        }
+                        List<string> csv = new List<string>();
+                        ManualResetEvent PayPrceReceivedEvent = new ManualResetEvent(false);
+                        EventHandler<PayPriceReplyEventArgs> PayPriceReplyEventHandler = (sender, args) =>
+                        {
+                            csv.Add(args.DefaultPrice.ToString(CultureInfo.InvariantCulture));
+                            csv.AddRange(args.ButtonPrices.Select(o => o.ToString(CultureInfo.InvariantCulture)));
+                            PayPrceReceivedEvent.Set();
+                        };
+                        lock (ClientInstanceObjectsLock)
+                        {
+                            Client.Objects.PayPriceReply += PayPriceReplyEventHandler;
+                            Client.Objects.RequestPayPrice(simulator, primitive.ID);
+                            if (!PayPrceReceivedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            {
+                                Client.Objects.PayPriceReply -= PayPriceReplyEventHandler;
+                                throw new Exception(
+                                    wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_REQUESTING_PRICE));
+                            }
+                            Client.Objects.PayPriceReply -= PayPriceReplyEventHandler;
+                        }
+                        if (!csv.Count.Equals(0))
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                wasEnumerableToCSV(csv));
+                        }
                     };
                     break;
                 case ScriptKeys.CHANGEAPPEARANCE:
@@ -17587,7 +18268,7 @@ namespace Corrade
                                 BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
                                     o =>
-                                        string.Equals(o.Name, format, StringComparison.Ordinal));
+                                        format.Equals(o.Name, StringComparison.Ordinal));
                             if (formatProperty == null)
                             {
                                 throw new Exception(
@@ -17867,7 +18548,7 @@ namespace Corrade
                                 BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
                                     o =>
-                                        string.Equals(o.Name, format, StringComparison.Ordinal));
+                                        format.Equals(o.Name, StringComparison.Ordinal));
                             if (formatProperty == null)
                             {
                                 throw new Exception(
@@ -19011,7 +19692,9 @@ namespace Corrade
             [Description("cp")] CP,
             [Description("appear")] APPEAR,
             [Description("vanish")] VANISH,
-            [Description("list")] LIST
+            [Description("list")] LIST,
+            [Description("link")] LINK,
+            [Description("delink")] DELINK
         }
 
         /// <summary>
@@ -22042,6 +22725,7 @@ namespace Corrade
                 public struct NOTECARD
                 {
                     public const string NEWLINE = "\n";
+                    public const int MAXIMUM_BODY_LENTH = 65536;
                 }
             }
 
@@ -22049,6 +22733,44 @@ namespace Corrade
             {
                 public const int SET_DISPLAY_NAME_SUCCESS = 200;
                 public const string LASTNAME_PLACEHOLDER = @"Resident";
+                public const int MAXIMUM_DISPLAY_NAME_CHARACTERS = 31;
+                public const int MINIMUM_DISPLAY_NAME_CHARACTERS = 1;
+                public const int MAXIMUM_NUMBER_OF_ATTACHMENTS = 38;
+
+                public struct PROFILE
+                {
+                    public const int SECOND_LIFE_TEXT_SIZE = 510;
+                    public const int FIRST_LIFE_TEXT_SIZE = 253;
+                }
+
+                public struct PICKS
+                {
+                    public const int MAXIMUM_PICKS = 10;
+                    public const int MAXIMUM_PICK_DESCRIPTION_SIZE = 1022;
+                }
+
+                public struct CLASSIFIEDS
+                {
+                    public const int MAXIMUM_CLASSIFIEDS = 100;
+                }
+            }
+
+            public struct PRIMITIVES
+            {
+                public const int MAXIMUM_NAME_SIZE = 63;
+                public const int MAXIMUM_DESCRIPTION_SIZE = 127;
+                public const double MAXIMUM_REZ_HEIGHT = 4096.0;
+                public const double MINIMUM_SIZE_X = 0.01;
+                public const double MINIMUM_SIZE_Y = 0.01;
+                public const double MINIMUM_SIZE_Z = 0.01;
+                public const double MAXIMUM_SIZE_X = 64.0;
+                public const double MAXIMUM_SIZE_Y = 64.0;
+                public const double MAXIMUM_SIZE_Z = 64.0;
+            }
+
+            public struct OBJECTS
+            {
+                public const int MAXIMUM_PRIMITIVE_COUNT = 256;
             }
 
             public struct DIRECTORY
@@ -22077,6 +22799,10 @@ namespace Corrade
             public struct ESTATE
             {
                 public const int REGION_RESTART_DELAY = 120;
+                public const int MAXIMUM_BAN_LIST_LENGTH = 500;
+                public const int MAXIMUM_GROUP_LIST_LENGTH = 63;
+                public const int MAXIMUM_USER_LIST_LENGTH = 500;
+                public const int MAXIMUM_MANAGER_LIST_LENGTH = 10;
 
                 public struct MESSAGES
                 {
@@ -22084,15 +22810,35 @@ namespace Corrade
                 }
             }
 
+            public struct PARCELS
+            {
+                public const double MAXIMUM_AUTO_RETURN_TIME = 999.999;
+                public const int MINIMUM_AUTO_RETURN_TIME = 0;
+                public const int MAXIMUM_NAME_LENGTH = 63;
+                public const int MAXIMUM_DESCRIPTION_LENGTH = 255;
+            }
+
             public struct GRID
             {
                 public const string SECOND_LIFE = @"Second Life";
+            }
+
+            public struct CHAT
+            {
+                public const int MAXIMUM_MESSAGE_LENGTH = 1024;
             }
 
             public struct GROUPS
             {
                 public const int MAXIMUM_NUMBER_OF_ROLES = 10;
                 public const string EVERYONE_ROLE_NAME = @"Everyone";
+                public const int MAXIMUM_GROUP_NAME_LENGTH = 35;
+                public const int MAXIMUM_GROUP_TITLE_LENGTH = 20;
+            }
+
+            public struct NOTICES
+            {
+                public const int MAXIMUM_NOTICE_MESSAGE_LENGTH = 512;
             }
 
             public struct LSL
@@ -22401,7 +23147,33 @@ namespace Corrade
             [Description("invalid scale")] INVALID_SCALE,
             [Description("could not get current groups")] COULD_NOT_GET_CURRENT_GROUPS,
             [Description("maximum number of groups reached")] MAXIMUM_NUMBER_OF_GROUPS_REACHED,
-            [Description("unknown syntax type")] UNKNOWN_SYNTAX_TYPE
+            [Description("unknown syntax type")] UNKNOWN_SYNTAX_TYPE,
+            [Description("too many characters for group name")] TOO_MANY_CHARACTERS_FOR_GROUP_NAME,
+            [Description("too many characters for group title")] TOO_MANY_CHARACTERS_FOR_GROUP_TITLE,
+            [Description("too many characters for notice message")] TOO_MANY_CHARACTERS_FOR_NOTICE_MESSAGE,
+            [Description("notecard message body too large")] NOTECARD_MESSAGE_BODY_TOO_LARGE,
+            [Description("too many or twoo few characters for display name")] TOO_MANY_OR_TOO_FEW_CHARACTERS_FOR_DISPLAY_NAME,
+            [Description("name too large")] NAME_TOO_LARGE,
+            [Description("position would exceed maximum rez altitude")] POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE,
+            [Description("description too large")] DESCRIPTION_TOO_LARGE,
+            [Description("scale would exceed building constraints")] SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS,
+            [Description("attachments would exceed maximum attachment limit")] ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT,
+            [Description("too many or too few characters in message")] TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE,
+            [Description("maximum ban list length reached")] MAXIMUM_BAN_LIST_LENGTH_REACHED,
+            [Description("maximum group list length reached")] MAXIMUM_GROUP_LIST_LENGTH_REACHED,
+            [Description("maximum user list length reached")] MAXIMUM_USER_LIST_LENGTH_REACHED,
+            [Description("maximum manager list length reached")] MAXIMUM_MANAGER_LIST_LENGTH_REACHED,
+            [Description("auto return time outside limit range")] AUTO_RETURN_TIME_OUTSIDE_LIMIT_RANGE,
+            [Description("second life text too large")] SECOND_LIFE_TEXT_TOO_LARGE,
+            [Description("first life text too large")] FIRST_LIFE_TEXT_TOO_LARGE,
+            [Description("maximum amount of picks reached")] MAXIMUM_AMOUNT_OF_PICKS_REACHED,
+            [Description("description would exceed maximum size")] DESCRIPTION_WOULD_EXCEED_MAXIMUM_SIZE,
+            [Description("maximum amount of classifieds reached")] MAXIMUM_AMOUNT_OF_CLASSIFIEDS_REACHED,
+            [Description("timeout changing links")] TIMEOUT_CHANGING_LINKS,
+            [Description("link would exceed maximum link limit")] LINK_WOULD_EXCEED_MAXIMUM_LINK_LIMIT,
+            [Description("invalid number of items specified")] INVALID_NUMBER_OF_ITEMS_SPECIFIED,
+            [Description("timeout requesting price")] TIMEOUT_REQUESTING_PRICE,
+            [Description("primitive not for sale")] PRIMITIVE_NOT_FOR_SALE
         }
 
         /// <summary>
@@ -22410,6 +23182,18 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getprimitivepayprices>&<group=<UUID|STRING>>&<password=<STRING>>>&item=<STRING|UUID>>&[range=<FLOAT>]&[region=<STRING>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("primitivebuy")] GETPRIMITIVEPAYPRICES,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=primitivebuy>&<group=<UUID|STRING>>&<password=<STRING>>>&item=<STRING|UUID>>&[range=<FLOAT>]&[region=<STRING>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT | (uint) Permissions.PERMISSION_ECONOMY)] [Description("primitivebuy")] PRIMITIVEBUY,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=changeprimitivelink>&<group=<UUID|STRING>>&<password=<STRING>>>&<action=<link|delink>>&action=link:<item=<STRING|UUID,STRING|UUID[,STRING|UUID...>>&action=delink:<item=<STRING|UUID[,STRING|UUID...>>&[range=<FLOAT>]&[region=<STRING>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("changeprimitivelink")] CHANGEPRIMITIVELINK,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getgroupmemberdata>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<AvatarGroup[,AvatarGroup...]>>&[callback=<STRING>]"
@@ -24103,9 +24887,9 @@ namespace Corrade
         };
 
         private static volatile bool runCallbackThread = true;
-        private static volatile bool runGroupMembershipSweepThread = true;
         private static volatile bool runNotificationThread = true;
-        private static volatile bool runEffectsExpirationThread = true;
+        private static volatile bool runGroupMembershipSweepThread;
+        private static volatile bool runEffectsExpirationThread;
 
         #region KEY-VALUE DATA
 
@@ -24819,7 +25603,7 @@ namespace Corrade
                 DirGroupsReceivedAlarm.Alarm(dataTimeout);
                 DirectoryManager.GroupSearchData groupSearchData =
                     args.MatchedGroups.AsParallel()
-                        .FirstOrDefault(o => o.GroupName.Equals(groupName, StringComparison.Ordinal));
+                        .FirstOrDefault(o => o.GroupName.Equals(groupName, StringComparison.OrdinalIgnoreCase));
                 switch (!groupSearchData.Equals(default(DirectoryManager.GroupSearchData)))
                 {
                     case true:
