@@ -23185,7 +23185,7 @@ namespace Corrade
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivepayprices>&<group=<UUID|STRING>>&<password=<STRING>>>&item=<STRING|UUID>>&[range=<FLOAT>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("primitivebuy")] GETPRIMITIVEPAYPRICES,
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivepayprices")] GETPRIMITIVEPAYPRICES,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=primitivebuy>&<group=<UUID|STRING>>&<password=<STRING>>>&item=<STRING|UUID>>&[range=<FLOAT>]&[region=<STRING>]&[callback=<STRING>]"
