@@ -7667,7 +7667,7 @@ namespace Corrade
                                 {
                                     if (
                                         Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
-                                        Encoding.Unicode.GetByteCount(data) >
+                                        Encoding.UTF8.GetByteCount(data) >
                                         LINDEN_CONSTANTS.CHAT.MAXIMUM_MESSAGE_LENGTH || data.Count().Equals(0))
                                     {
                                         throw new Exception(
@@ -7737,7 +7737,7 @@ namespace Corrade
                                 {
                                     if (
                                         Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
-                                        Encoding.Unicode.GetByteCount(data) >
+                                        Encoding.UTF8.GetByteCount(data) >
                                         LINDEN_CONSTANTS.CHAT.MAXIMUM_MESSAGE_LENGTH || data.Count().Equals(0))
                                     {
                                         throw new Exception(
@@ -7799,7 +7799,7 @@ namespace Corrade
                                 {
                                     if (
                                         Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
-                                        Encoding.Unicode.GetByteCount(data) >
+                                        Encoding.UTF8.GetByteCount(data) >
                                         LINDEN_CONSTANTS.CHAT.MAXIMUM_MESSAGE_LENGTH || data.Count().Equals(0))
                                     {
                                         throw new Exception(
@@ -9505,13 +9505,13 @@ namespace Corrade
                         {
                             if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE))
                             {
-                                if (Encoding.Unicode.GetByteCount(properties.AboutText) >
+                                if (Encoding.UTF8.GetByteCount(properties.AboutText) >
                                     LINDEN_CONSTANTS.AVATARS.PROFILE.SECOND_LIFE_TEXT_SIZE)
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.SECOND_LIFE_TEXT_TOO_LARGE));
                                 }
-                                if (Encoding.Unicode.GetByteCount(properties.FirstLifeText) >
+                                if (Encoding.UTF8.GetByteCount(properties.FirstLifeText) >
                                     LINDEN_CONSTANTS.AVATARS.PROFILE.FIRST_LIFE_TEXT_SIZE)
                                 {
                                     throw new Exception(
@@ -9889,7 +9889,7 @@ namespace Corrade
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.MAXIMUM_AMOUNT_OF_PICKS_REACHED));
                                 }
-                                if (Encoding.Unicode.GetByteCount(description) >
+                                if (Encoding.UTF8.GetByteCount(description) >
                                     LINDEN_CONSTANTS.AVATARS.PICKS.MAXIMUM_PICK_DESCRIPTION_SIZE)
                                 {
                                     throw new Exception(
@@ -11301,7 +11301,7 @@ namespace Corrade
                         // Otherwise, save it to the specified file.
                         using (FileStream fs = File.Open(path, FileMode.Create))
                         {
-                            using (BinaryWriter bw = new BinaryWriter(fs))
+                            using (BinaryWriter bw = new BinaryWriter(fs, Encoding.UTF8))
                             {
                                 bw.Write(assetData);
                                 bw.Flush();
@@ -12482,7 +12482,7 @@ namespace Corrade
                         lock (ClientInstanceNetworkLock)
                         {
                             if (Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE) &&
-                                Encoding.Unicode.GetByteCount(text) >
+                                Encoding.UTF8.GetByteCount(text) >
                                 LINDEN_CONSTANTS.ASSETS.NOTECARD.MAXIMUM_BODY_LENTH)
                             {
                                 throw new Exception(
@@ -13562,7 +13562,7 @@ namespace Corrade
                                 lock (DatabaseLocks[configuredGroup.Name])
                                 {
                                     string databaseGetValue = wasKeyValueGet(databaseGetkey,
-                                        File.ReadAllText(configuredGroup.DatabaseFile));
+                                        File.ReadAllText(configuredGroup.DatabaseFile, Encoding.UTF8));
                                     if (!string.IsNullOrEmpty(databaseGetValue))
                                     {
                                         result.Add(databaseGetkey,
@@ -13605,10 +13605,10 @@ namespace Corrade
                                 }
                                 lock (DatabaseLocks[configuredGroup.Name])
                                 {
-                                    string contents = File.ReadAllText(configuredGroup.DatabaseFile);
+                                    string contents = File.ReadAllText(configuredGroup.DatabaseFile, Encoding.UTF8);
                                     using (
                                         StreamWriter recreateDatabase = new StreamWriter(configuredGroup.DatabaseFile,
-                                            false))
+                                            false, Encoding.UTF8))
                                     {
                                         recreateDatabase.Write(wasKeyValueSet(databaseSetKey,
                                             databaseSetValue, contents));
@@ -13643,10 +13643,10 @@ namespace Corrade
                                 }
                                 lock (DatabaseLocks[configuredGroup.Name])
                                 {
-                                    string contents = File.ReadAllText(configuredGroup.DatabaseFile);
+                                    string contents = File.ReadAllText(configuredGroup.DatabaseFile, Encoding.UTF8);
                                     using (
                                         StreamWriter recreateDatabase = new StreamWriter(configuredGroup.DatabaseFile,
-                                            false))
+                                            false, Encoding.UTF8))
                                     {
                                         recreateDatabase.Write(wasKeyValueDelete(databaseDeleteKey, contents));
                                         recreateDatabase.Flush();
@@ -18387,7 +18387,7 @@ namespace Corrade
                                         {
                                             using (
                                                 BinaryWriter textureEntryDataStreamWriter =
-                                                    new BinaryWriter(textureEntryDataStream))
+                                                    new BinaryWriter(textureEntryDataStream, Encoding.UTF8))
                                             {
                                                 textureEntryDataStreamWriter.Write(o.Value);
                                                 textureEntryDataStream.Flush();
@@ -18407,7 +18407,7 @@ namespace Corrade
                                 {
                                     using (
                                         StreamWriter primitiveEntryDataStreamWriter =
-                                            new StreamWriter(primitiveEntryDataStream))
+                                            new StreamWriter(primitiveEntryDataStream, Encoding.UTF8))
                                     {
                                         primitiveEntryDataStreamWriter.Write(
                                             OSDParser.SerializeLLSDXmlString(
@@ -18706,7 +18706,7 @@ namespace Corrade
                                         {
                                             using (
                                                 BinaryWriter textureEntryDataStreamWriter =
-                                                    new BinaryWriter(textureEntryDataStream))
+                                                    new BinaryWriter(textureEntryDataStream, Encoding.UTF8))
                                             {
                                                 textureEntryDataStreamWriter.Write(o.Value);
                                                 textureEntryDataStream.Flush();
@@ -19856,7 +19856,7 @@ namespace Corrade
             {
                 try
                 {
-                    using (StreamWriter writer = new StreamWriter(FileName))
+                    using (StreamWriter writer = new StreamWriter(FileName, false, Encoding.UTF8))
                     {
                         XmlSerializer serializer = new XmlSerializer(typeof (T));
                         serializer.Serialize(writer, o);
@@ -20937,7 +20937,7 @@ namespace Corrade
             {
                 lock (ConfigurationFileLock)
                 {
-                    return File.ReadAllText(file);
+                    return File.ReadAllText(file, Encoding.UTF8);
                 }
             }
 
@@ -20945,7 +20945,7 @@ namespace Corrade
             {
                 lock (ConfigurationFileLock)
                 {
-                    File.WriteAllText(file, data);
+                    File.WriteAllText(file, data, Encoding.UTF8);
                 }
             }
 
@@ -20953,7 +20953,11 @@ namespace Corrade
             {
                 lock (ConfigurationFileLock)
                 {
-                    document.Save(file);
+                    using (TextWriter writer = new StreamWriter(file, false, Encoding.UTF8))
+                    {
+                        document.Save(writer);
+                        writer.Flush();
+                    }
                 }
             }
 
@@ -21022,7 +21026,7 @@ namespace Corrade
                 {
                     lock (ConfigurationFileLock)
                     {
-                        file = File.ReadAllText(file);
+                        file = File.ReadAllText(file, Encoding.UTF8);
                     }
                 }
                 catch (Exception ex)
@@ -24769,7 +24773,7 @@ namespace Corrade
                     using (
                         StreamWriter writer =
                             new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                                CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE)))
+                                CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE), false, Encoding.UTF8))
                     {
                         XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
                         serializer.Serialize(writer, GroupNotifications);
