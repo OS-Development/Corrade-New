@@ -2640,7 +2640,7 @@ namespace Corrade
                     {
                         using (
                             StreamWriter logWriter =
-                                File.AppendText(Configuration.CLIENT_LOG_FILE))
+                                new StreamWriter(Configuration.CLIENT_LOG_FILE, true, Encoding.UTF8))
                         {
                             logWriter.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
                             //logWriter.Flush();
@@ -3329,6 +3329,10 @@ namespace Corrade
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
+        /// <summary>
+        ///     Processes HTTP POST web-requests.
+        /// </summary>
+        /// <param name="ar">the async HTTP listener object</param>
         private static void ProcessHTTPRequest(IAsyncResult ar)
         {
             try
@@ -3366,6 +3370,9 @@ namespace Corrade
                                 ? Encoding.UTF8.GetBytes(wasKeyValueEncode(wasKeyValueEscape(result)))
                                 : new byte[0];
                             response.StatusCode = (int) HttpStatusCode.OK;
+                            response.StatusDescription = "OK";
+                            response.ProtocolVersion = HttpVersion.Version11;
+                            response.KeepAlive = Configuration.HTTP_SERVER_KEEP_ALIVE;
                             using (MemoryStream outputStream = new MemoryStream())
                             {
                                 switch (Configuration.HTTP_SERVER_COMPRESSION)
@@ -4422,11 +4429,10 @@ namespace Corrade
                             {
                                 using (
                                     StreamWriter logWriter =
-                                        File.AppendText(
-                                            wasPathCombine(Configuration.LOCAL_MESSAGE_LOG_DIRECTORY,
-                                                Client.Network.CurrentSim.Name) +
-                                            "." +
-                                            CORRADE_CONSTANTS.LOG_FILE_EXTENSION))
+                                        new StreamWriter(wasPathCombine(Configuration.LOCAL_MESSAGE_LOG_DIRECTORY,
+                                            Client.Network.CurrentSim.Name) +
+                                                         "." +
+                                                         CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
                                 {
                                     logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
                                         DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
@@ -4940,7 +4946,9 @@ namespace Corrade
                                     {
                                         lock (GroupLogFileLock)
                                         {
-                                            using (StreamWriter logWriter = File.AppendText(o.ChatLog))
+                                            using (
+                                                StreamWriter logWriter = new StreamWriter(o.ChatLog, true, Encoding.UTF8)
+                                                )
                                             {
                                                 logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                     DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
@@ -4998,10 +5006,10 @@ namespace Corrade
                                     {
                                         using (
                                             StreamWriter logWriter =
-                                                File.AppendText(
+                                                new StreamWriter(
                                                     wasPathCombine(Configuration.INSTANT_MESSAGE_LOG_DIRECTORY,
                                                         args.IM.FromAgentName) +
-                                                    "." + CORRADE_CONSTANTS.LOG_FILE_EXTENSION))
+                                                    "." + CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
                                         {
                                             logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                 DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
@@ -5039,10 +5047,10 @@ namespace Corrade
                                     {
                                         using (
                                             StreamWriter logWriter =
-                                                File.AppendText(
+                                                new StreamWriter(
                                                     wasPathCombine(Configuration.REGION_MESSAGE_LOG_DIRECTORY,
                                                         Client.Network.CurrentSim.Name) + "." +
-                                                    CORRADE_CONSTANTS.LOG_FILE_EXTENSION))
+                                                    CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
                                         {
                                             logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                 DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
@@ -7696,11 +7704,11 @@ namespace Corrade
                                         {
                                             using (
                                                 StreamWriter logWriter =
-                                                    File.AppendText(
+                                                    new StreamWriter(
                                                         wasPathCombine(Configuration.INSTANT_MESSAGE_LOG_DIRECTORY,
                                                             string.Join(" ", fullName.First(), fullName.Last())) +
                                                         "." +
-                                                        CORRADE_CONSTANTS.LOG_FILE_EXTENSION))
+                                                        CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
                                             {
                                                 logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                     DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
@@ -7772,7 +7780,9 @@ namespace Corrade
                                         {
                                             lock (GroupLogFileLock)
                                             {
-                                                using (StreamWriter logWriter = File.AppendText(o.ChatLog))
+                                                using (
+                                                    StreamWriter logWriter = new StreamWriter(o.ChatLog, true,
+                                                        Encoding.UTF8))
                                                 {
                                                     logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                         DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
@@ -7849,10 +7859,10 @@ namespace Corrade
                                         {
                                             using (
                                                 StreamWriter logWriter =
-                                                    File.AppendText(
+                                                    new StreamWriter(
                                                         wasPathCombine(Configuration.LOCAL_MESSAGE_LOG_DIRECTORY,
                                                             Client.Network.CurrentSim.Name) + "." +
-                                                        CORRADE_CONSTANTS.LOG_FILE_EXTENSION))
+                                                        CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
                                             {
                                                 logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
                                                     DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
@@ -11299,14 +11309,14 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         // Otherwise, save it to the specified file.
-                        using (FileStream fs = File.Open(path, FileMode.Create))
+                        using (StreamWriter sw = new StreamWriter(path, false, Encoding.UTF8))
                         {
-                            using (BinaryWriter bw = new BinaryWriter(fs, Encoding.UTF8))
+                            using (BinaryWriter bw = new BinaryWriter(sw.BaseStream, Encoding.UTF8))
                             {
                                 bw.Write(assetData);
                                 bw.Flush();
                             }
-                            fs.Flush();
+                            sw.Flush();
                         }
                     };
                     break;
@@ -18437,9 +18447,9 @@ namespace Corrade
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                             }
                             // Otherwise, save it to the specified file.
-                            using (FileStream fs = File.Open(path, FileMode.Create))
+                            using (StreamWriter sw = new StreamWriter(path, false, Encoding.UTF8))
                             {
-                                zipMemoryStream.WriteTo(fs);
+                                zipMemoryStream.WriteTo(sw.BaseStream);
                                 zipMemoryStream.Flush();
                             }
                         }
@@ -18758,9 +18768,9 @@ namespace Corrade
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                             }
                             // Otherwise, save it to the specified file.
-                            using (FileStream fs = File.Open(path, FileMode.Create))
+                            using (StreamWriter fs = new StreamWriter(path, false, Encoding.UTF8))
                             {
-                                zipMemoryStream.WriteTo(fs);
+                                zipMemoryStream.WriteTo(fs.BaseStream);
                                 zipMemoryStream.Flush();
                             }
                         }
@@ -19377,9 +19387,10 @@ namespace Corrade
         /// <param name="URL">the url to send the message to</param>
         /// <param name="message">key-value pairs to send</param>
         /// <param name="millisecondsTimeout">the time in milliseconds for the request to timeout</param>
-        private static void wasPOST(string URL, Dictionary<string, string> message, int millisecondsTimeout)
+        private static async void wasPOST(string URL, Dictionary<string, string> message, int millisecondsTimeout)
         {
             HttpWebRequest request = (HttpWebRequest) WebRequest.Create(URL);
+            request.Proxy = WebRequest.DefaultWebProxy;
             request.Timeout = millisecondsTimeout;
             request.AllowAutoRedirect = true;
             request.AllowWriteStreamBuffering = true;
@@ -19398,16 +19409,13 @@ namespace Corrade
                     request.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.TEXT_PLAIN;
                     break;
             }
-            request.UserAgent = string.Format("{0}/{1} ({2})", CORRADE_CONSTANTS.CORRADE,
-                CORRADE_CONSTANTS.CORRADE_VERSION,
-                CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS_WEBSITE);
+            request.UserAgent = CORRADE_CONSTANTS.USER_AGENT;
             byte[] byteArray =
                 Encoding.UTF8.GetBytes(wasKeyValueEncode(message));
             request.ContentLength = byteArray.Length;
-            using (Stream dataStream = request.GetRequestStream())
+            using (Stream dataStream = await request.GetRequestStreamAsync())
             {
-                dataStream.Write(byteArray, 0, byteArray.Length);
-                dataStream.Flush();
+                await dataStream.WriteAsync(byteArray, 0, byteArray.Length);
             }
         }
 
@@ -19734,7 +19742,7 @@ namespace Corrade
 
             public const string WIZARDRY_AND_STEAMWORKS = @"Wizardry and Steamworks";
             public const string CORRADE = @"Corrade";
-            public const string WIZARDRY_AND_STEAMWORKS_WEBSITE = @"http://was.fm";
+            public const string WIZARDRY_AND_STEAMWORKS_WEBSITE = @"http://grimore.org";
 
             /// <summary>
             ///     Censor characters for passwords.
@@ -19787,6 +19795,10 @@ namespace Corrade
             {
                 public const string NONE = @"------------------------------";
             }
+
+            public static readonly string USER_AGENT = string.Format("{0}/{1} ({2})", CORRADE,
+                CORRADE_VERSION,
+                WIZARDRY_AND_STEAMWORKS_WEBSITE);
 
             /// <summary>
             ///     Corrade version.
@@ -19880,7 +19892,7 @@ namespace Corrade
                 if (!File.Exists(FileName)) return o;
                 try
                 {
-                    using (FileStream stream = File.OpenRead(FileName))
+                    using (StreamReader stream = new StreamReader(FileName, Encoding.UTF8))
                     {
                         XmlSerializer serializer = new XmlSerializer(typeof (T));
                         return (T) serializer.Deserialize(stream);
@@ -19939,6 +19951,7 @@ namespace Corrade
             private static string _HTTPServerPrefix;
             private static int _HTTPServerTimeout;
             private static HTTPCompressionMethod _HTTPServerCompression;
+            private static bool _HTTPServerKeepAlive;
             private static int _callbackTimeout;
             private static int _callbackThrottle;
             private static int _callbackQueueLength;
@@ -20227,6 +20240,24 @@ namespace Corrade
                     lock (ClientInstanceConfigurationLock)
                     {
                         _HTTPServerCompression = value;
+                    }
+                }
+            }
+
+            public static bool HTTP_SERVER_KEEP_ALIVE
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _HTTPServerKeepAlive;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _HTTPServerKeepAlive = value;
                     }
                 }
             }
@@ -20979,6 +21010,7 @@ namespace Corrade
                 HTTP_SERVER_PREFIX = @"http://+:8080/";
                 HTTP_SERVER_TIMEOUT = 5000;
                 HTTP_SERVER_COMPRESSION = HTTPCompressionMethod.NONE;
+                HTTP_SERVER_KEEP_ALIVE = true;
                 CALLBACK_TIMEOUT = 5000;
                 CALLBACK_THROTTLE = 1000;
                 CALLBACK_QUEUE_LENGTH = 100;
@@ -21459,6 +21491,14 @@ namespace Corrade
                             case ConfigurationKeys.COMPRESSION:
                                 HTTP_SERVER_COMPRESSION = wasGetEnumValueFromDescription<HTTPCompressionMethod>(
                                     serverNode.InnerText);
+                                break;
+                            case ConfigurationKeys.KEEP_ALIVE:
+                                bool HTTPKeepAlive;
+                                if (!bool.TryParse(serverNode.InnerText, out HTTPKeepAlive))
+                                {
+                                    throw new Exception("error in server section");
+                                }
+                                HTTP_SERVER_KEEP_ALIVE = HTTPKeepAlive;
                                 break;
                         }
                 }
@@ -22251,9 +22291,9 @@ namespace Corrade
                 // If any group has either the avatar radar notification or the primitive radar notification then install the listeners.
                 switch (
                     GROUPS.AsParallel().Any(
-                        o => !(o.NotificationMask & (uint) Notifications.NOTIFICATION_RADAR_AVATARS).Equals(0)) ||
-                    GROUPS.AsParallel().Any(
-                        o => !(o.NotificationMask & (uint) Notifications.NOTIFICATION_RADAR_PRIMITIVES).Equals(0)))
+                        o =>
+                            !(o.NotificationMask & (uint) Notifications.NOTIFICATION_RADAR_AVATARS).Equals(0) ||
+                            !(o.NotificationMask & (uint) Notifications.NOTIFICATION_RADAR_PRIMITIVES).Equals(0)))
                 {
                     case true:
                         Client.Network.SimChanged += HandleRadarObjects;
@@ -22346,6 +22386,7 @@ namespace Corrade
             public const string EXIT_CODE = @"exitcode";
             public const string EXPECTED = @"expected";
             public const string ABNORMAL = @"abnormal";
+            public const string KEEP_ALIVE = @"keepalive";
         }
 
         /// <summary>
@@ -24252,29 +24293,27 @@ namespace Corrade
                 elapsed.Start();
                 lock (LockObject)
                 {
-                    if (alarm != null)
+                    if (alarm == null) return;
+                    switch (decay)
                     {
-                        switch (decay)
-                        {
-                            case DECAY_TYPE.ARITHMETIC:
-                                alarm.Interval = (deadline + times.Aggregate((a, b) => b + a))/(1f + times.Count);
-                                break;
-                            case DECAY_TYPE.GEOMETRIC:
-                                alarm.Interval = Math.Pow(deadline*times.Aggregate((a, b) => b*a), 1f/(1f + times.Count));
-                                break;
-                            case DECAY_TYPE.HARMONIC:
-                                alarm.Interval = (1f + times.Count)/
-                                                 (1f/deadline + times.Aggregate((a, b) => 1f/b + 1f/a));
-                                break;
-                            case DECAY_TYPE.WEIGHTED:
-                                HashSet<double> d = new HashSet<double>(times) {deadline};
-                                double total = d.Aggregate((a, b) => b + a);
-                                alarm.Interval = d.Aggregate((a, b) => Math.Pow(a, 2)/total + Math.Pow(b, 2)/total);
-                                break;
-                            default:
-                                alarm.Interval = deadline;
-                                break;
-                        }
+                        case DECAY_TYPE.ARITHMETIC:
+                            alarm.Interval = (deadline + times.Aggregate((a, b) => b + a))/(1f + times.Count);
+                            break;
+                        case DECAY_TYPE.GEOMETRIC:
+                            alarm.Interval = Math.Pow(deadline*times.Aggregate((a, b) => b*a), 1f/(1f + times.Count));
+                            break;
+                        case DECAY_TYPE.HARMONIC:
+                            alarm.Interval = (1f + times.Count)/
+                                             (1f/deadline + times.Aggregate((a, b) => 1f/b + 1f/a));
+                            break;
+                        case DECAY_TYPE.WEIGHTED:
+                            HashSet<double> d = new HashSet<double>(times) {deadline};
+                            double total = d.Aggregate((a, b) => b + a);
+                            alarm.Interval = d.Aggregate((a, b) => Math.Pow(a, 2)/total + Math.Pow(b, 2)/total);
+                            break;
+                        default:
+                            alarm.Interval = deadline;
+                            break;
                     }
                 }
             }
@@ -24799,7 +24838,7 @@ namespace Corrade
             {
                 try
                 {
-                    using (FileStream stream = File.OpenRead(groupNotificationsStateFile))
+                    using (StreamReader stream = new StreamReader(groupNotificationsStateFile, Encoding.UTF8))
                     {
                         XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
                         Parallel.ForEach((HashSet<Notification>) serializer.Deserialize(stream),
