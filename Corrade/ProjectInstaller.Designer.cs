@@ -46,7 +46,8 @@ namespace Corrade
             this.CorradeInstaller.DisplayName = "Corrade";
             this.CorradeInstaller.ServiceName = "Corrade";
             this.CorradeInstaller.ServicesDependedOn = new string[] {
-        "Network Connections"};
+        "eventlog",
+        "Netman"};
             // 
             // ProjectInstaller
             // 
