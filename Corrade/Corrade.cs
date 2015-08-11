@@ -10871,12 +10871,10 @@ namespace Corrade
                             switch (replace)
                             {
                                 case true:
-                                    if (typeof (AttachmentPoint).GetFields(
-                                        BindingFlags.Public | BindingFlags.Static)
-                                        .AsParallel().Select(
-                                            p =>
-                                                !items.ContainsKey(p.Name)).Count() +
-                                        GetAttachments(Configuration.SERVICES_TIMEOUT).Count() >
+                                    if (GetAttachments(Configuration.SERVICES_TIMEOUT).Count() + items.Count() -
+                                        typeof (AttachmentPoint).GetFields(
+                                            BindingFlags.Public | BindingFlags.Static)
+                                            .AsParallel().Count(p => !items.ContainsKey(p.Name)) >
                                         LINDEN_CONSTANTS.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
                                     {
                                         throw new Exception(
