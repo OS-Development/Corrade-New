@@ -3364,10 +3364,8 @@ namespace Corrade
                     return;
                 // only accept connected remote endpoints
                 if (httpRequest.RemoteEndPoint == null) return;
-                Stream body = null;
-                try
+                using (Stream body = httpRequest.InputStream)
                 {
-                    body = httpRequest.InputStream;
                     using (StreamReader reader = new StreamReader(body, httpRequest.ContentEncoding))
                     {
                         Dictionary<string, string> result = HandleCorradeCommand(reader.ReadToEnd(),
@@ -3392,10 +3390,8 @@ namespace Corrade
                             response.StatusDescription = "OK";
                             response.ProtocolVersion = HttpVersion.Version11;
                             response.KeepAlive = Configuration.HTTP_SERVER_KEEP_ALIVE;
-                            MemoryStream outputStream = null;
-                            try
+                            using (MemoryStream outputStream = new MemoryStream())
                             {
-                                outputStream = new MemoryStream();
                                 switch (Configuration.HTTP_SERVER_COMPRESSION)
                                 {
                                     case HTTPCompressionMethod.GZIP:
@@ -3421,11 +3417,6 @@ namespace Corrade
                                         break;
                                 }
                             }
-                            finally
-                            {
-                                if (outputStream != null)
-                                    outputStream.Flush();
-                            }
                             response.ContentLength64 = data.Length;
                             using (Stream responseStream = response.OutputStream)
                             {
@@ -3437,11 +3428,6 @@ namespace Corrade
                             }
                         }
                     }
-                }
-                finally
-                {
-                    if (body != null)
-                        body.Flush();
                 }
             }
             catch (Exception)
@@ -18346,10 +18332,8 @@ namespace Corrade
 
                         HashSet<char> invalidPathCharacters = new HashSet<char>(Path.GetInvalidPathChars());
 
-                        MemoryStream zipMemoryStream = null;
-                        try
+                        using (MemoryStream zipMemoryStream = new MemoryStream())
                         {
-                            zipMemoryStream = new MemoryStream();
                             using (
                                 ZipArchive zipOutputStream = new ZipArchive(zipMemoryStream, ZipArchiveMode.Create, true)
                                 )
@@ -18364,21 +18348,15 @@ namespace Corrade
                                             zipOutputStreamClosure.CreateEntry(
                                                 new string(
                                                     o.Key.Where(p => !invalidPathCharacters.Contains(p)).ToArray()));
-                                        Stream textureEntryDataStream = null;
-                                        try
+                                        using (Stream textureEntryDataStream = textureEntry.Open())
                                         {
-                                            textureEntryDataStream = textureEntry.Open();
                                             using (
                                                 BinaryWriter textureEntryDataStreamWriter =
                                                     new BinaryWriter(textureEntryDataStream, Encoding.UTF8))
                                             {
                                                 textureEntryDataStreamWriter.Write(o.Value);
-                                            }
-                                        }
-                                        finally
-                                        {
-                                            if (textureEntryDataStream != null)
                                                 textureEntryDataStream.Flush();
+                                            }
                                         }
                                     }
                                 });
@@ -18390,10 +18368,8 @@ namespace Corrade
                                             (primitive.Properties.Name + ".xml").Where(
                                                 p => !invalidPathCharacters.Contains(p))
                                                 .ToArray()));
-                                Stream primitiveEntryDataStream = null;
-                                try
+                                using (Stream primitiveEntryDataStream = primitiveEntry.Open())
                                 {
-                                    primitiveEntryDataStream = primitiveEntry.Open();
                                     using (
                                         StreamWriter primitiveEntryDataStreamWriter =
                                             new StreamWriter(primitiveEntryDataStream, Encoding.UTF8))
@@ -18401,12 +18377,8 @@ namespace Corrade
                                         primitiveEntryDataStreamWriter.Write(
                                             OSDParser.SerializeLLSDXmlString(
                                                 Helpers.PrimListToOSD(exportPrimitivesSet.ToList())));
+                                        primitiveEntryDataStreamWriter.Flush();
                                     }
-                                }
-                                finally
-                                {
-                                    if (primitiveEntryDataStream != null)
-                                        primitiveEntryDataStream.Flush();
                                 }
                             }
 
@@ -18433,16 +18405,8 @@ namespace Corrade
                             using (StreamWriter sw = new StreamWriter(path, false, Encoding.UTF8))
                             {
                                 zipMemoryStream.WriteTo(sw.BaseStream);
-                            }
-                        }
-                        catch (Exception)
-                        {
-                            throw;
-                        }
-                        finally
-                        {
-                            if (zipMemoryStream != null)
                                 zipMemoryStream.Flush();
+                            }
                         }
                     };
                     break;
@@ -18686,10 +18650,8 @@ namespace Corrade
 
                         HashSet<char> invalidPathCharacters = new HashSet<char>(Path.GetInvalidPathChars());
 
-                        MemoryStream zipMemoryStream = null;
-                        try
+                        using (MemoryStream zipMemoryStream = new MemoryStream())
                         {
-                            zipMemoryStream = new MemoryStream();
                             using (
                                 ZipArchive zipOutputStream = new ZipArchive(zipMemoryStream, ZipArchiveMode.Create, true)
                                 )
@@ -18705,21 +18667,15 @@ namespace Corrade
                                                 new string(
                                                     o.Key.Where(
                                                         p => !invalidPathCharacters.Contains(p)).ToArray()));
-                                        Stream textureEntryDataStream = null;
-                                        try
+                                        using (Stream textureEntryDataStream = textureEntry.Open())
                                         {
-                                            textureEntryDataStream = textureEntry.Open();
                                             using (
                                                 BinaryWriter textureEntryDataStreamWriter =
                                                     new BinaryWriter(textureEntryDataStream, Encoding.UTF8))
                                             {
                                                 textureEntryDataStreamWriter.Write(o.Value);
-                                            }
-                                        }
-                                        finally
-                                        {
-                                            if (textureEntryDataStream != null)
                                                 textureEntryDataStream.Flush();
+                                            }
                                         }
                                     }
                                 });
@@ -18731,10 +18687,8 @@ namespace Corrade
                                             (primitive.Properties.Name + ".dae").Where(
                                                 p => !invalidPathCharacters.Contains(p))
                                                 .ToArray()));
-                                Stream primitiveEntryDataStream = null;
-                                try
+                                using (Stream primitiveEntryDataStream = primitiveEntry.Open())
                                 {
-                                    primitiveEntryDataStream = primitiveEntry.Open();
                                     using (
                                         XmlTextWriter XMLTextWriter = new XmlTextWriter(primitiveEntryDataStream,
                                             Encoding.UTF8))
@@ -18744,12 +18698,8 @@ namespace Corrade
                                             "version=\"1.0\" encoding=\"utf-8\"");
                                         GenerateCollada(exportMeshSet, exportMeshTextures, format)
                                             .WriteContentTo(XMLTextWriter);
+                                        XMLTextWriter.Flush();
                                     }
-                                }
-                                finally
-                                {
-                                    if (primitiveEntryDataStream != null)
-                                        primitiveEntryDataStream.Flush();
                                 }
                             }
 
@@ -18776,16 +18726,8 @@ namespace Corrade
                             using (StreamWriter fs = new StreamWriter(path, false, Encoding.UTF8))
                             {
                                 zipMemoryStream.WriteTo(fs.BaseStream);
-                            }
-                        }
-                        catch (Exception)
-                        {
-                            throw;
-                        }
-                        finally
-                        {
-                            if (zipMemoryStream != null)
                                 zipMemoryStream.Flush();
+                            }
                         }
                     };
                     break;
