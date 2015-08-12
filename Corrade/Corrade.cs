@@ -2815,23 +2815,41 @@ namespace Corrade
                     break;
             }
             // Set-up watcher for dynamically reading the configuration file.
-            FileSystemWatcher configurationWatcher = new FileSystemWatcher
+            FileSystemWatcher configurationWatcher = null;
+            FileSystemEventHandler HandleConfigurationFileChanged = null;
+            try
             {
-                Path = Directory.GetCurrentDirectory(),
-                Filter = CORRADE_CONSTANTS.CONFIGURATION_FILE,
-                NotifyFilter = NotifyFilters.LastWrite
-            };
-            FileSystemEventHandler HandleConfigurationFileChanged =
-                (sender, args) => ConfigurationChangedTimer.Change(1000, 0);
-            configurationWatcher.Changed += HandleConfigurationFileChanged;
-            configurationWatcher.EnableRaisingEvents = true;
+                configurationWatcher = new FileSystemWatcher
+                {
+                    Path = Directory.GetCurrentDirectory(),
+                    Filter = CORRADE_CONSTANTS.CONFIGURATION_FILE,
+                    NotifyFilter = NotifyFilters.LastWrite
+                };
+                HandleConfigurationFileChanged = (sender, args) => ConfigurationChangedTimer.Change(1000, 0);
+                configurationWatcher.Changed += HandleConfigurationFileChanged;
+                configurationWatcher.EnableRaisingEvents = true;
+            }
+            catch (Exception ex)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_CONFIGURATION_WATCHER), ex.Message);
+                Environment.Exit(Configuration.EXIT_CODE_ABNORMAL);
+            }
             // Set-up the AIML bot in case it has been enabled.
-            AIMLBotConfigurationWatcher.Path = wasPathCombine(Directory.GetCurrentDirectory(),
-                AIML_BOT_CONSTANTS.DIRECTORY);
-            AIMLBotConfigurationWatcher.NotifyFilter = NotifyFilters.LastWrite;
-            FileSystemEventHandler HandleAIMLBotConfigurationChanged =
-                (sender, args) => AIMLConfigurationChangedTimer.Change(1000, 0);
-            AIMLBotConfigurationWatcher.Changed += HandleAIMLBotConfigurationChanged;
+            FileSystemEventHandler HandleAIMLBotConfigurationChanged = null;
+            try
+            {
+                AIMLBotConfigurationWatcher.Path = wasPathCombine(Directory.GetCurrentDirectory(),
+                    AIML_BOT_CONSTANTS.DIRECTORY);
+                AIMLBotConfigurationWatcher.NotifyFilter = NotifyFilters.LastWrite;
+                HandleAIMLBotConfigurationChanged = (sender, args) => AIMLConfigurationChangedTimer.Change(1000, 0);
+                AIMLBotConfigurationWatcher.Changed += HandleAIMLBotConfigurationChanged;
+            }
+            catch (Exception ex)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER),
+                    ex.Message);
+                Environment.Exit(Configuration.EXIT_CODE_ABNORMAL);
+            }
             // Network Settings
             ServicePointManager.DefaultConnectionLimit = Configuration.CONNECTION_LIMIT;
             ServicePointManager.UseNagleAlgorithm = Configuration.USE_NAGGLE;
@@ -3120,6 +3138,7 @@ namespace Corrade
                     }
                     catch (ThreadStateException)
                     {
+                        /* We are going down and we do not care. */
                     }
                 }
             }
@@ -3140,6 +3159,7 @@ namespace Corrade
                     }
                     catch (ThreadStateException)
                     {
+                        /* We are going down and we do not care. */
                     }
                 }
             }
@@ -3158,6 +3178,7 @@ namespace Corrade
                     }
                     catch (ThreadStateException)
                     {
+                        /* We are going down and we do not care. */
                     }
                 }
             }
@@ -3181,6 +3202,7 @@ namespace Corrade
                             }
                             catch (ThreadStateException)
                             {
+                                /* We are going down and we do not care. */
                             }
                         }
                     }
@@ -3196,11 +3218,25 @@ namespace Corrade
                 });
             }
             // Disable the configuration watcher.
-            configurationWatcher.EnableRaisingEvents = false;
-            configurationWatcher.Changed -= HandleConfigurationFileChanged;
+            try
+            {
+                configurationWatcher.EnableRaisingEvents = false;
+                configurationWatcher.Changed -= HandleConfigurationFileChanged;
+            }
+            catch (Exception)
+            {
+                /* We are going down and we do not care. */
+            }
             // Disable the AIML bot configuration watcher.
-            AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
-            AIMLBotConfigurationWatcher.Changed -= HandleAIMLBotConfigurationChanged;
+            try
+            {
+                AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
+                AIMLBotConfigurationWatcher.Changed -= HandleAIMLBotConfigurationChanged;
+            }
+            catch (Exception)
+            {
+                /* We are going down and we do not care. */
+            }
             // Save the AIML user session.
             lock (AIMLBotLock)
             {
@@ -4053,10 +4089,13 @@ namespace Corrade
                                 notificationGroupInviteName.Last());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                                 notificationGroupInviteEventArgs.IM.FromAgentID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
-                                GroupInvites.AsParallel().FirstOrDefault(
-                                    p => p.Session.Equals(notificationGroupInviteEventArgs.IM.IMSessionID))
-                                    .Group);
+                            lock (GroupInviteLock)
+                            {
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
+                                    GroupInvites.AsParallel().FirstOrDefault(
+                                        p => p.Session.Equals(notificationGroupInviteEventArgs.IM.IMSessionID))
+                                        .Group);
+                            }
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
                                 notificationGroupInviteEventArgs.IM.IMSessionID.ToString());
                         };
@@ -22056,32 +22095,40 @@ namespace Corrade
                 }
 
                 // Enable AIML in case it was enabled in the configuration file.
-                switch (EnableAIML)
+                try
                 {
-                    case true:
-                        switch (!AIMLBotBrainCompiled)
-                        {
-                            case true:
-                                new Thread(
-                                    () =>
-                                    {
-                                        lock (AIMLBotLock)
+                    switch (EnableAIML)
+                    {
+                        case true:
+                            switch (!AIMLBotBrainCompiled)
+                            {
+                                case true:
+                                    new Thread(
+                                        () =>
                                         {
-                                            LoadChatBotFiles.Invoke();
-                                            AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
-                                        }
-                                    }) {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
-                                break;
-                            default:
-                                AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
-                                AIMLBot.isAcceptingUserInput = true;
-                                break;
-                        }
-                        break;
-                    default:
-                        AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
-                        AIMLBot.isAcceptingUserInput = false;
-                        break;
+                                            lock (AIMLBotLock)
+                                            {
+                                                LoadChatBotFiles.Invoke();
+                                                AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
+                                            }
+                                        }) {IsBackground = true, Priority = ThreadPriority.BelowNormal}.Start();
+                                    break;
+                                default:
+                                    AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
+                                    AIMLBot.isAcceptingUserInput = true;
+                                    break;
+                            }
+                            break;
+                        default:
+                            AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
+                            AIMLBot.isAcceptingUserInput = false;
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER),
+                        ex.Message);
                 }
 
                 // Dynamically disable or enable notifications.
@@ -22405,7 +22452,9 @@ namespace Corrade
             [Description("unable to load Corrade notifications state")] UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE,
             [Description("unknwon notification type")] UNKNOWN_NOTIFICATION_TYPE,
             [Description("teleport throttled")] TELEPORT_THROTTLED,
-            [Description("uncaught exception for thread")] UNCAUGHT_EXCEPTION_FOR_THREAD
+            [Description("uncaught exception for thread")] UNCAUGHT_EXCEPTION_FOR_THREAD,
+            [Description("error setting up configuration watcher")] ERROR_SETTING_UP_CONFIGURATION_WATCHER,
+            [Description("error setting up AIML configuration watcher")] ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER
         }
 
         /// <summary>
