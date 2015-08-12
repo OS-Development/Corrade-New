@@ -264,28 +264,14 @@ namespace Corrade
                                             ref agentName))
                                         {
                                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                                () =>
-                                                {
-                                                    try
+                                                () => SendNotification(
+                                                    Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
+                                                    new GroupMembershipEventArgs
                                                     {
-                                                        SendNotification(
-                                                            Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
-                                                            new GroupMembershipEventArgs
-                                                            {
-                                                                AgentName = agentName,
-                                                                AgentUUID = o,
-                                                                Action = Action.JOINED
-                                                            });
-                                                    }
-                                                    catch (Exception ex)
-                                                    {
-                                                        Feedback(
-                                                            wasGetDescriptionFromEnumValue(
-                                                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                                            wasGetDescriptionFromEnumValue(
-                                                                CorradeThreadType.NOTIFICATION), ex.Message);
-                                                    }
-                                                },
+                                                        AgentName = agentName,
+                                                        AgentUUID = o,
+                                                        Action = Action.JOINED
+                                                    }),
                                                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
                                         }
                                     });
@@ -304,28 +290,14 @@ namespace Corrade
                                             ref agentName))
                                         {
                                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                                () =>
-                                                {
-                                                    try
+                                                () => SendNotification(
+                                                    Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
+                                                    new GroupMembershipEventArgs
                                                     {
-                                                        SendNotification(
-                                                            Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
-                                                            new GroupMembershipEventArgs
-                                                            {
-                                                                AgentName = agentName,
-                                                                AgentUUID = o,
-                                                                Action = Action.PARTED
-                                                            });
-                                                    }
-                                                    catch (Exception ex)
-                                                    {
-                                                        Feedback(
-                                                            wasGetDescriptionFromEnumValue(
-                                                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                                            wasGetDescriptionFromEnumValue(
-                                                                CorradeThreadType.NOTIFICATION), ex.Message);
-                                                    }
-                                                },
+                                                        AgentName = agentName,
+                                                        AgentUUID = o,
+                                                        Action = Action.PARTED
+                                                    }),
                                                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
                                         }
                                     });
@@ -3079,21 +3051,7 @@ namespace Corrade
             Client.Groups.GroupLeaveReply += HandleGroupLeave;
             // Each Instant Message is processed in its own thread.
             Client.Self.IM += (sender, args) => CorradeThreadPool[CorradeThreadType.INSTANT_MESSAGE].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        HandleSelfIM(sender, args);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.INSTANT_MESSAGE), ex.Message);
-                    }
-                },
+                () => HandleSelfIM(sender, args),
                 Configuration.MAXIMUM_INSTANT_MESSAGE_THREADS);
             // Log-in to the grid.
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGGING_IN));
@@ -3277,42 +3235,14 @@ namespace Corrade
         private static void HandleAvatarUpdate(object sender, AvatarUpdateEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_RADAR_AVATARS, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_RADAR_AVATARS, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleObjectUpdate(object sender, PrimEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_RADAR_PRIMITIVES, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_RADAR_PRIMITIVES, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
@@ -3331,40 +3261,12 @@ namespace Corrade
                     {
                         case true:
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                () =>
-                                {
-                                    try
-                                    {
-                                        SendNotification(Notifications.NOTIFICATION_RADAR_AVATARS, e);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Feedback(
-                                            wasGetDescriptionFromEnumValue(
-                                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                            wasGetDescriptionFromEnumValue(
-                                                CorradeThreadType.NOTIFICATION), ex.Message);
-                                    }
-                                },
+                                () => SendNotification(Notifications.NOTIFICATION_RADAR_AVATARS, e),
                                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
                             break;
                         default:
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                () =>
-                                {
-                                    try
-                                    {
-                                        SendNotification(Notifications.NOTIFICATION_RADAR_PRIMITIVES, e);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Feedback(
-                                            wasGetDescriptionFromEnumValue(
-                                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                            wasGetDescriptionFromEnumValue(
-                                                CorradeThreadType.NOTIFICATION), ex.Message);
-                                    }
-                                },
+                                () => SendNotification(Notifications.NOTIFICATION_RADAR_PRIMITIVES, e),
                                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
                             break;
                     }
@@ -3406,21 +3308,7 @@ namespace Corrade
         private static void HandleLoadURL(object sender, LoadUrlEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_LOAD_URL, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_LOAD_URL, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
@@ -3440,63 +3328,21 @@ namespace Corrade
         private static void HandleRegionCrossed(object sender, RegionCrossedEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleMeanCollision(object sender, MeanCollisionEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_MEAN_COLLISION, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_MEAN_COLLISION, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleViewerEffect(object sender, object e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_VIEWER_EFFECT, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_VIEWER_EFFECT, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
@@ -3518,8 +3364,10 @@ namespace Corrade
                     return;
                 // only accept connected remote endpoints
                 if (httpRequest.RemoteEndPoint == null) return;
-                using (Stream body = httpRequest.InputStream)
+                Stream body = null;
+                try
                 {
+                    body = httpRequest.InputStream;
                     using (StreamReader reader = new StreamReader(body, httpRequest.ContentEncoding))
                     {
                         Dictionary<string, string> result = HandleCorradeCommand(reader.ReadToEnd(),
@@ -3544,8 +3392,10 @@ namespace Corrade
                             response.StatusDescription = "OK";
                             response.ProtocolVersion = HttpVersion.Version11;
                             response.KeepAlive = Configuration.HTTP_SERVER_KEEP_ALIVE;
-                            using (MemoryStream outputStream = new MemoryStream())
+                            MemoryStream outputStream = null;
+                            try
                             {
+                                outputStream = new MemoryStream();
                                 switch (Configuration.HTTP_SERVER_COMPRESSION)
                                 {
                                     case HTTPCompressionMethod.GZIP:
@@ -3571,6 +3421,11 @@ namespace Corrade
                                         break;
                                 }
                             }
+                            finally
+                            {
+                                if (outputStream != null)
+                                    outputStream.Flush();
+                            }
                             response.ContentLength64 = data.Length;
                             using (Stream responseStream = response.OutputStream)
                             {
@@ -3582,6 +3437,11 @@ namespace Corrade
                             }
                         }
                     }
+                }
+                finally
+                {
+                    if (body != null)
+                        body.Flush();
                 }
             }
             catch (Exception)
@@ -4553,21 +4413,7 @@ namespace Corrade
                 });
             }
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_SCRIPT_DIALOG, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_SCRIPT_DIALOG, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
@@ -4583,78 +4429,22 @@ namespace Corrade
                     {
                         // Send RLV message notifications.
                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                            () =>
-                            {
-                                try
-                                {
-                                    SendNotification(Notifications.NOTIFICATION_RLV_MESSAGE, e);
-                                }
-                                catch (Exception ex)
-                                {
-                                    Feedback(
-                                        wasGetDescriptionFromEnumValue(
-                                            ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                        wasGetDescriptionFromEnumValue(
-                                            CorradeThreadType.NOTIFICATION), ex.Message);
-                                }
-                            },
+                            () => SendNotification(Notifications.NOTIFICATION_RLV_MESSAGE, e),
                             Configuration.MAXIMUM_NOTIFICATION_THREADS);
                         CorradeThreadPool[CorradeThreadType.RLV].Spawn(
-                            () =>
-                            {
-                                try
-                                {
-                                    HandleRLVBehaviour(e.Message.Substring(1, e.Message.Length - 1), e.SourceID);
-                                }
-                                catch (Exception ex)
-                                {
-                                    Feedback(
-                                        wasGetDescriptionFromEnumValue(
-                                            ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                        wasGetDescriptionFromEnumValue(
-                                            CorradeThreadType.RLV), ex.Message);
-                                }
-                            },
+                            () => HandleRLVBehaviour(e.Message.Substring(1, e.Message.Length - 1), e.SourceID),
                             Configuration.MAXIMUM_RLV_THREADS);
                         break;
                     }
                     // Otherwise, send llOwnerSay notifications.
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () =>
-                        {
-                            try
-                            {
-                                SendNotification(Notifications.NOTIFICATION_OWNER_SAY, e);
-                            }
-                            catch (Exception ex)
-                            {
-                                Feedback(
-                                    wasGetDescriptionFromEnumValue(
-                                        ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                    wasGetDescriptionFromEnumValue(
-                                        CorradeThreadType.NOTIFICATION), ex.Message);
-                            }
-                        },
+                        () => SendNotification(Notifications.NOTIFICATION_OWNER_SAY, e),
                         Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     break;
                 case ChatType.Debug:
                     // Send debug notifications.
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () =>
-                        {
-                            try
-                            {
-                                SendNotification(Notifications.NOTIFICATION_DEBUG_MESSAGE, e);
-                            }
-                            catch (Exception ex)
-                            {
-                                Feedback(
-                                    wasGetDescriptionFromEnumValue(
-                                        ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                    wasGetDescriptionFromEnumValue(
-                                        CorradeThreadType.NOTIFICATION), ex.Message);
-                            }
-                        },
+                        () => SendNotification(Notifications.NOTIFICATION_DEBUG_MESSAGE, e),
                         Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     break;
                 case ChatType.Normal:
@@ -4662,21 +4452,7 @@ namespace Corrade
                 case ChatType.Whisper:
                     // Send chat notifications.
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () =>
-                        {
-                            try
-                            {
-                                SendNotification(Notifications.NOTIFICATION_LOCAL_CHAT, e);
-                            }
-                            catch (Exception ex)
-                            {
-                                Feedback(
-                                    wasGetDescriptionFromEnumValue(
-                                        ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                    wasGetDescriptionFromEnumValue(
-                                        CorradeThreadType.NOTIFICATION), ex.Message);
-                            }
-                        },
+                        () => SendNotification(Notifications.NOTIFICATION_LOCAL_CHAT, e),
                         Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     // Log local chat,
                     if (Configuration.LOCAL_MESSAGE_LOG_ENABLED)
@@ -4721,40 +4497,12 @@ namespace Corrade
                     {
                         // Send chat notifications.
                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                            () =>
-                            {
-                                try
-                                {
-                                    SendNotification(Notifications.NOTIFICATION_REGION_SAY_TO, e);
-                                }
-                                catch (Exception ex)
-                                {
-                                    Feedback(
-                                        wasGetDescriptionFromEnumValue(
-                                            ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                        wasGetDescriptionFromEnumValue(
-                                            CorradeThreadType.NOTIFICATION), ex.Message);
-                                }
-                            },
+                            () => SendNotification(Notifications.NOTIFICATION_REGION_SAY_TO, e),
                             Configuration.MAXIMUM_NOTIFICATION_THREADS);
                         break;
                     }
                     CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
-                        () =>
-                        {
-                            try
-                            {
-                                HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString());
-                            }
-                            catch (Exception ex)
-                            {
-                                Feedback(
-                                    wasGetDescriptionFromEnumValue(
-                                        ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                    wasGetDescriptionFromEnumValue(
-                                        CorradeThreadType.COMMAND), ex.Message);
-                            }
-                        },
+                        () => HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString()),
                         Configuration.MAXIMUM_COMMAND_THREADS);
                     break;
             }
@@ -4763,21 +4511,7 @@ namespace Corrade
         private static void HandleAlertMessage(object sender, AlertMessageEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_ALERT_MESSAGE, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_ALERT_MESSAGE, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
@@ -4785,21 +4519,7 @@ namespace Corrade
         {
             // Send notification
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_INVENTORY, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_INVENTORY, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
 
             // Accept anything from master avatars.
@@ -4924,21 +4644,7 @@ namespace Corrade
                 });
             }
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_SCRIPT_PERMISSION, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_SCRIPT_PERMISSION, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
 
             // Handle RLV: acceptpermission
@@ -5037,63 +4743,21 @@ namespace Corrade
         private static void HandleFriendOnlineStatus(object sender, FriendInfoEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleFriendRightsUpdate(object sender, FriendInfoEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleFriendShipResponse(object sender, FriendshipResponseEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
@@ -5101,21 +4765,7 @@ namespace Corrade
         {
             // Send friendship notifications
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
@@ -5155,21 +4805,7 @@ namespace Corrade
                 case InstantMessageDialog.StartTyping:
                 case InstantMessageDialog.StopTyping:
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () =>
-                        {
-                            try
-                            {
-                                SendNotification(Notifications.NOTIFICATION_TYPING, args);
-                            }
-                            catch (Exception ex)
-                            {
-                                Feedback(
-                                    wasGetDescriptionFromEnumValue(
-                                        ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                    wasGetDescriptionFromEnumValue(
-                                        CorradeThreadType.NOTIFICATION), ex.Message);
-                            }
-                        },
+                        () => SendNotification(Notifications.NOTIFICATION_TYPING, args),
                         Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     return;
                 case InstantMessageDialog.FriendshipOffered:
@@ -5187,21 +4823,7 @@ namespace Corrade
                 case InstantMessageDialog.TaskInventoryOffered:
                 case InstantMessageDialog.InventoryOffered:
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () =>
-                        {
-                            try
-                            {
-                                SendNotification(Notifications.NOTIFICATION_INVENTORY, args);
-                            }
-                            catch (Exception ex)
-                            {
-                                Feedback(
-                                    wasGetDescriptionFromEnumValue(
-                                        ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                    wasGetDescriptionFromEnumValue(
-                                        CorradeThreadType.NOTIFICATION), ex.Message);
-                            }
-                        },
+                        () => SendNotification(Notifications.NOTIFICATION_INVENTORY, args),
                         Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     return;
                 case InstantMessageDialog.MessageBox:
@@ -5244,21 +4866,7 @@ namespace Corrade
                     }
                     // Send teleport lure notification.
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () =>
-                        {
-                            try
-                            {
-                                SendNotification(Notifications.NOTIFICATION_TELEPORT_LURE, args);
-                            }
-                            catch (Exception ex)
-                            {
-                                Feedback(
-                                    wasGetDescriptionFromEnumValue(
-                                        ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                    wasGetDescriptionFromEnumValue(
-                                        CorradeThreadType.NOTIFICATION), ex.Message);
-                            }
-                        },
+                        () => SendNotification(Notifications.NOTIFICATION_TELEPORT_LURE, args),
                         Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     // If we got a teleport request from a master, then accept it (for the moment).
                     lock (ClientInstanceConfigurationLock)
@@ -5323,21 +4931,7 @@ namespace Corrade
                     }
                     // Send group invitation notification.
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () =>
-                        {
-                            try
-                            {
-                                SendNotification(Notifications.NOTIFICATION_GROUP_INVITE, args);
-                            }
-                            catch (Exception ex)
-                            {
-                                Feedback(
-                                    wasGetDescriptionFromEnumValue(
-                                        ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                    wasGetDescriptionFromEnumValue(
-                                        CorradeThreadType.NOTIFICATION), ex.Message);
-                            }
-                        },
+                        () => SendNotification(Notifications.NOTIFICATION_GROUP_INVITE, args),
                         Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     // If a master sends it, then accept.
                     lock (ClientInstanceConfigurationLock)
@@ -5356,21 +4950,7 @@ namespace Corrade
                 case InstantMessageDialog.GroupNoticeInventoryDeclined:
                 case InstantMessageDialog.GroupNotice:
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () =>
-                        {
-                            try
-                            {
-                                SendNotification(Notifications.NOTIFICATION_GROUP_NOTICE, args);
-                            }
-                            catch (Exception ex)
-                            {
-                                Feedback(
-                                    wasGetDescriptionFromEnumValue(
-                                        ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                    wasGetDescriptionFromEnumValue(
-                                        CorradeThreadType.NOTIFICATION), ex.Message);
-                            }
-                        },
+                        () => SendNotification(Notifications.NOTIFICATION_GROUP_NOTICE, args),
                         Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     return;
                 case InstantMessageDialog.SessionSend:
@@ -5394,21 +4974,7 @@ namespace Corrade
                         {
                             // Send group notice notifications.
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                () =>
-                                {
-                                    try
-                                    {
-                                        SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, args);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Feedback(
-                                            wasGetDescriptionFromEnumValue(
-                                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                            wasGetDescriptionFromEnumValue(
-                                                CorradeThreadType.NOTIFICATION), ex.Message);
-                                    }
-                                },
+                                () => SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, args),
                                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
                             // Log group messages
                             Parallel.ForEach(
@@ -5454,21 +5020,7 @@ namespace Corrade
                     {
                         case false:
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                () =>
-                                {
-                                    try
-                                    {
-                                        SendNotification(Notifications.NOTIFICATION_INSTANT_MESSAGE, args);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Feedback(
-                                            wasGetDescriptionFromEnumValue(
-                                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                            wasGetDescriptionFromEnumValue(
-                                                CorradeThreadType.NOTIFICATION), ex.Message);
-                                    }
-                                },
+                                () => SendNotification(Notifications.NOTIFICATION_INSTANT_MESSAGE, args),
                                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
 
                             // Check if we were ejected.
@@ -5527,21 +5079,7 @@ namespace Corrade
                     {
                         case false:
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                () =>
-                                {
-                                    try
-                                    {
-                                        SendNotification(Notifications.NOTIFICATION_REGION_MESSAGE, args);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Feedback(
-                                            wasGetDescriptionFromEnumValue(
-                                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                            wasGetDescriptionFromEnumValue(
-                                                CorradeThreadType.NOTIFICATION), ex.Message);
-                                    }
-                                },
+                                () => SendNotification(Notifications.NOTIFICATION_REGION_MESSAGE, args),
                                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
                             // Log region messages,
                             if (Configuration.REGION_MESSAGE_LOG_ENABLED)
@@ -5585,42 +5123,14 @@ namespace Corrade
             if (!IsCorradeCommand(args.IM.Message))
             {
                 CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                    () =>
-                    {
-                        try
-                        {
-                            SendNotification(Notifications.NOTIFICATION_OBJECT_INSTANT_MESSAGE, args);
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(
-                                wasGetDescriptionFromEnumValue(
-                                    ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                                wasGetDescriptionFromEnumValue(
-                                    CorradeThreadType.NOTIFICATION), ex.Message);
-                        }
-                    },
+                    () => SendNotification(Notifications.NOTIFICATION_OBJECT_INSTANT_MESSAGE, args),
                     Configuration.MAXIMUM_NOTIFICATION_THREADS);
                 return;
             }
 
             // Otherwise process the command.
             CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString());
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.COMMAND), ex.Message);
-                    }
-                },
+                () => HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString()),
                 Configuration.MAXIMUM_COMMAND_THREADS);
         }
 
@@ -18836,8 +18346,10 @@ namespace Corrade
 
                         HashSet<char> invalidPathCharacters = new HashSet<char>(Path.GetInvalidPathChars());
 
-                        using (MemoryStream zipMemoryStream = new MemoryStream())
+                        MemoryStream zipMemoryStream = null;
+                        try
                         {
+                            zipMemoryStream = new MemoryStream();
                             using (
                                 ZipArchive zipOutputStream = new ZipArchive(zipMemoryStream, ZipArchiveMode.Create, true)
                                 )
@@ -18852,15 +18364,21 @@ namespace Corrade
                                             zipOutputStreamClosure.CreateEntry(
                                                 new string(
                                                     o.Key.Where(p => !invalidPathCharacters.Contains(p)).ToArray()));
-                                        using (Stream textureEntryDataStream = textureEntry.Open())
+                                        Stream textureEntryDataStream = null;
+                                        try
                                         {
+                                            textureEntryDataStream = textureEntry.Open();
                                             using (
                                                 BinaryWriter textureEntryDataStreamWriter =
                                                     new BinaryWriter(textureEntryDataStream, Encoding.UTF8))
                                             {
                                                 textureEntryDataStreamWriter.Write(o.Value);
-                                                textureEntryDataStream.Flush();
                                             }
+                                        }
+                                        finally
+                                        {
+                                            if (textureEntryDataStream != null)
+                                                textureEntryDataStream.Flush();
                                         }
                                     }
                                 });
@@ -18872,8 +18390,10 @@ namespace Corrade
                                             (primitive.Properties.Name + ".xml").Where(
                                                 p => !invalidPathCharacters.Contains(p))
                                                 .ToArray()));
-                                using (Stream primitiveEntryDataStream = primitiveEntry.Open())
+                                Stream primitiveEntryDataStream = null;
+                                try
                                 {
+                                    primitiveEntryDataStream = primitiveEntry.Open();
                                     using (
                                         StreamWriter primitiveEntryDataStreamWriter =
                                             new StreamWriter(primitiveEntryDataStream, Encoding.UTF8))
@@ -18881,8 +18401,12 @@ namespace Corrade
                                         primitiveEntryDataStreamWriter.Write(
                                             OSDParser.SerializeLLSDXmlString(
                                                 Helpers.PrimListToOSD(exportPrimitivesSet.ToList())));
-                                        primitiveEntryDataStreamWriter.Flush();
                                     }
+                                }
+                                finally
+                                {
+                                    if (primitiveEntryDataStream != null)
+                                        primitiveEntryDataStream.Flush();
                                 }
                             }
 
@@ -18909,8 +18433,16 @@ namespace Corrade
                             using (StreamWriter sw = new StreamWriter(path, false, Encoding.UTF8))
                             {
                                 zipMemoryStream.WriteTo(sw.BaseStream);
-                                zipMemoryStream.Flush();
                             }
+                        }
+                        catch (Exception)
+                        {
+                            throw;
+                        }
+                        finally
+                        {
+                            if (zipMemoryStream != null)
+                                zipMemoryStream.Flush();
                         }
                     };
                     break;
@@ -19154,8 +18686,10 @@ namespace Corrade
 
                         HashSet<char> invalidPathCharacters = new HashSet<char>(Path.GetInvalidPathChars());
 
-                        using (MemoryStream zipMemoryStream = new MemoryStream())
+                        MemoryStream zipMemoryStream = null;
+                        try
                         {
+                            zipMemoryStream = new MemoryStream();
                             using (
                                 ZipArchive zipOutputStream = new ZipArchive(zipMemoryStream, ZipArchiveMode.Create, true)
                                 )
@@ -19171,15 +18705,21 @@ namespace Corrade
                                                 new string(
                                                     o.Key.Where(
                                                         p => !invalidPathCharacters.Contains(p)).ToArray()));
-                                        using (Stream textureEntryDataStream = textureEntry.Open())
+                                        Stream textureEntryDataStream = null;
+                                        try
                                         {
+                                            textureEntryDataStream = textureEntry.Open();
                                             using (
                                                 BinaryWriter textureEntryDataStreamWriter =
                                                     new BinaryWriter(textureEntryDataStream, Encoding.UTF8))
                                             {
                                                 textureEntryDataStreamWriter.Write(o.Value);
-                                                textureEntryDataStream.Flush();
                                             }
+                                        }
+                                        finally
+                                        {
+                                            if (textureEntryDataStream != null)
+                                                textureEntryDataStream.Flush();
                                         }
                                     }
                                 });
@@ -19191,8 +18731,10 @@ namespace Corrade
                                             (primitive.Properties.Name + ".dae").Where(
                                                 p => !invalidPathCharacters.Contains(p))
                                                 .ToArray()));
-                                using (Stream primitiveEntryDataStream = primitiveEntry.Open())
+                                Stream primitiveEntryDataStream = null;
+                                try
                                 {
+                                    primitiveEntryDataStream = primitiveEntry.Open();
                                     using (
                                         XmlTextWriter XMLTextWriter = new XmlTextWriter(primitiveEntryDataStream,
                                             Encoding.UTF8))
@@ -19202,8 +18744,12 @@ namespace Corrade
                                             "version=\"1.0\" encoding=\"utf-8\"");
                                         GenerateCollada(exportMeshSet, exportMeshTextures, format)
                                             .WriteContentTo(XMLTextWriter);
-                                        XMLTextWriter.Flush();
                                     }
+                                }
+                                finally
+                                {
+                                    if (primitiveEntryDataStream != null)
+                                        primitiveEntryDataStream.Flush();
                                 }
                             }
 
@@ -19230,8 +18776,16 @@ namespace Corrade
                             using (StreamWriter fs = new StreamWriter(path, false, Encoding.UTF8))
                             {
                                 zipMemoryStream.WriteTo(fs.BaseStream);
-                                zipMemoryStream.Flush();
                             }
+                        }
+                        catch (Exception)
+                        {
+                            throw;
+                        }
+                        finally
+                        {
+                            if (zipMemoryStream != null)
+                                zipMemoryStream.Flush();
                         }
                     };
                     break;
@@ -19881,21 +19435,7 @@ namespace Corrade
         private static void HandleTerseObjectUpdate(object sender, TerseObjectUpdateEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_TERSE_UPDATES, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_TERSE_UPDATES, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
@@ -19913,63 +19453,21 @@ namespace Corrade
         private static void HandleSimChanged(object sender, SimChangedEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleMoneyBalance(object sender, BalanceEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_BALANCE, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_BALANCE, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
         private static void HandleMoneyBalance(object sender, MoneyBalanceReplyEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () =>
-                {
-                    try
-                    {
-                        SendNotification(Notifications.NOTIFICATION_ECONOMY, e);
-                    }
-                    catch (Exception ex)
-                    {
-                        Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(
-                                CorradeThreadType.NOTIFICATION), ex.Message);
-                    }
-                },
+                () => SendNotification(Notifications.NOTIFICATION_ECONOMY, e),
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
@@ -22986,7 +22484,22 @@ namespace Corrade
                         return;
                     }
                 }
-                Thread t = new Thread(s) {IsBackground = true, Priority = ThreadPriority.BelowNormal};
+                Thread t = new Thread(() =>
+                {
+                    // protect inner thread
+                    try
+                    {
+                        s();
+                    }
+                    catch (Exception ex)
+                    {
+                        Feedback(
+                            wasGetDescriptionFromEnumValue(
+                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
+                            wasGetDescriptionFromEnumValue(
+                                (CorradeThreadType) m), ex.Message);
+                    }
+                }) {IsBackground = true, Priority = ThreadPriority.BelowNormal};
                 lock (LockObject)
                 {
                     WorkSet.Add(t);
@@ -24522,7 +24035,7 @@ namespace Corrade
         /// <typeparam name="TVal">the value</typeparam>
         /// <remarks>Copyright (c) Dacris Software Inc. MIT license</remarks>
         [Serializable]
-        public class SerializableDictionary<TKey, TVal> : Dictionary<TKey, TVal>, IXmlSerializable, ISerializable
+        public sealed class SerializableDictionary<TKey, TVal> : Dictionary<TKey, TVal>, IXmlSerializable, ISerializable
         {
             #region Constants
 
@@ -24568,7 +24081,7 @@ namespace Corrade
 
             #region ISerializable Members
 
-            protected SerializableDictionary(SerializationInfo info, StreamingContext context)
+            private SerializableDictionary(SerializationInfo info, StreamingContext context) : base(info, context)
             {
                 int itemCount = info.GetInt32("ItemCount");
                 for (int i = 0; i < itemCount; i++)
@@ -24589,6 +24102,7 @@ namespace Corrade
                     info.AddValue(String.Format("Item{0}", itemIdx), kvp, typeof (KeyValuePair<TKey, TVal>));
                     itemIdx++;
                 }
+                base.GetObjectData(info, context);
             }
 
             #endregion
@@ -24653,28 +24167,14 @@ namespace Corrade
 
             #region Private Properties
 
-            protected XmlSerializer ValueSerializer
+            private XmlSerializer ValueSerializer
             {
-                get
-                {
-                    if (valueSerializer == null)
-                    {
-                        valueSerializer = new XmlSerializer(typeof (TVal));
-                    }
-                    return valueSerializer;
-                }
+                get { return valueSerializer ?? (valueSerializer = new XmlSerializer(typeof (TVal))); }
             }
 
             private XmlSerializer KeySerializer
             {
-                get
-                {
-                    if (keySerializer == null)
-                    {
-                        keySerializer = new XmlSerializer(typeof (TKey));
-                    }
-                    return keySerializer;
-                }
+                get { return keySerializer ?? (keySerializer = new XmlSerializer(typeof (TKey))); }
             }
 
             #endregion
@@ -24753,12 +24253,12 @@ namespace Corrade
         ///     another lined-up event. This is mostly used to check that throttles
         ///     are being respected.
         /// </summary>
-        public class wasTimedThrottle
+        public class wasTimedThrottle : IDisposable
         {
             private readonly int EventsAllowed;
             private readonly object LockObject = new object();
-            private readonly Timer timer;
             private int _Events;
+            private Timer timer;
 
             public wasTimedThrottle(int events, int seconds)
             {
@@ -24787,6 +24287,21 @@ namespace Corrade
                     }
                 }
             }
+
+            public void Dispose()
+            {
+                Dispose(true);
+                GC.SuppressFinalize(this);
+            }
+
+            protected virtual void Dispose(bool dispose)
+            {
+                if (timer != null)
+                {
+                    timer.Dispose();
+                    timer = null;
+                }
+            }
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -24799,7 +24314,7 @@ namespace Corrade
         /// <remarks>
         ///     (C) Wizardry and Steamworks 2013 - License: GNU GPLv3
         /// </remarks>
-        public class wasAdaptiveAlarm
+        public class wasAdaptiveAlarm : IDisposable
         {
             [Flags]
             public enum DECAY_TYPE
@@ -24836,6 +24351,12 @@ namespace Corrade
             }
 
             public ManualResetEvent Signal { get; set; }
+
+            public void Dispose()
+            {
+                Dispose(true);
+                GC.SuppressFinalize(this);
+            }
 
             public void Alarm(double deadline)
             {
@@ -24887,6 +24408,15 @@ namespace Corrade
                             alarm.Interval = deadline;
                             break;
                     }
+                }
+            }
+
+            protected virtual void Dispose(bool dispose)
+            {
+                if (alarm != null)
+                {
+                    alarm.Dispose();
+                    alarm = null;
                 }
             }
         }
