@@ -258,10 +258,13 @@ namespace Corrade
                                     o =>
                                     {
                                         string agentName = string.Empty;
+                                        string groupName = string.Empty;
                                         if (AgentUUIDToName(
                                             o,
                                             Configuration.SERVICES_TIMEOUT,
-                                            ref agentName))
+                                            ref agentName) &&
+                                            GroupUUIDToName(groupUUID, Configuration.SERVICES_TIMEOUT,
+                                                Configuration.DATA_TIMEOUT, ref groupName))
                                         {
                                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                                                 () => SendNotification(
@@ -270,7 +273,9 @@ namespace Corrade
                                                     {
                                                         AgentName = agentName,
                                                         AgentUUID = o,
-                                                        Action = Action.JOINED
+                                                        Action = Action.JOINED,
+                                                        GroupName = groupName,
+                                                        GroupUUID = groupUUID
                                                     }),
                                                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
                                         }
@@ -284,10 +289,13 @@ namespace Corrade
                                     o =>
                                     {
                                         string agentName = string.Empty;
+                                        string groupName = string.Empty;
                                         if (AgentUUIDToName(
                                             o,
                                             Configuration.SERVICES_TIMEOUT,
-                                            ref agentName))
+                                            ref agentName) &&
+                                            GroupUUIDToName(groupUUID, Configuration.SERVICES_TIMEOUT,
+                                                Configuration.DATA_TIMEOUT, ref groupName))
                                         {
                                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                                                 () => SendNotification(
@@ -296,7 +304,9 @@ namespace Corrade
                                                     {
                                                         AgentName = agentName,
                                                         AgentUUID = o,
-                                                        Action = Action.PARTED
+                                                        Action = Action.PARTED,
+                                                        GroupName = groupName,
+                                                        GroupUUID = groupUUID
                                                     }),
                                                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
                                         }
@@ -3491,930 +3501,939 @@ namespace Corrade
                                 p => p.Name.Equals(o.GroupName, StringComparison.OrdinalIgnoreCase) &&
                                      !(p.NotificationMask & (uint) notification).Equals(0))));
             }
-            // Build the notification data for each installed group.
-            Parallel.ForEach(notifyGroups, o =>
+
+            // Set the notification type
+            Dictionary<string, string> notificationData = new Dictionary<string, string>
             {
-                // Set the notification type
-                Dictionary<string, string> notificationData = new Dictionary<string, string>
                 {
+                    wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
+                    wasGetDescriptionFromEnumValue(notification)
+                }
+            };
+
+            System.Action execute;
+
+            UUID groupUUID = UUID.Zero;
+
+            // Build the notification data
+            switch (notification)
+            {
+                case Notifications.NOTIFICATION_SCRIPT_DIALOG:
+                    execute = () =>
                     {
-                        wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
-                        wasGetDescriptionFromEnumValue(notification)
-                    }
-                };
-
-                System.Action execute;
-
-                // Build the notification data
-                switch (notification)
-                {
-                    case Notifications.NOTIFICATION_SCRIPT_DIALOG:
-                        execute = () =>
+                        ScriptDialogEventArgs scriptDialogEventArgs = (ScriptDialogEventArgs) args;
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            scriptDialogEventArgs.Message);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                            scriptDialogEventArgs.FirstName);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                            scriptDialogEventArgs.LastName);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CHANNEL),
+                            scriptDialogEventArgs.Channel.ToString(CultureInfo.InvariantCulture));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            scriptDialogEventArgs.ObjectName);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            scriptDialogEventArgs.ObjectID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                            scriptDialogEventArgs.OwnerID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BUTTON),
+                            wasEnumerableToCSV(scriptDialogEventArgs.ButtonLabels));
+                    };
+                    break;
+                case Notifications.NOTIFICATION_LOCAL_CHAT:
+                    execute = () =>
+                    {
+                        ChatEventArgs localChatEventArgs = (ChatEventArgs) args;
+                        List<string> chatName =
+                            new List<string>(GetAvatarNames(localChatEventArgs.FromName));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            localChatEventArgs.Message);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                            chatName.First());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                            chatName.Last());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                            localChatEventArgs.OwnerID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            localChatEventArgs.SourceID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                            localChatEventArgs.Position.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                            Enum.GetName(typeof (ChatSourceType), localChatEventArgs.SourceType));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AUDIBLE),
+                            Enum.GetName(typeof (ChatAudibleLevel), localChatEventArgs.AudibleLevel));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.VOLUME),
+                            Enum.GetName(typeof (ChatType), localChatEventArgs.Type));
+                    };
+                    break;
+                case Notifications.NOTIFICATION_BALANCE:
+                    execute = () =>
+                    {
+                        BalanceEventArgs balanceEventArgs = (BalanceEventArgs) args;
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BALANCE),
+                            balanceEventArgs.Balance.ToString(CultureInfo.InvariantCulture));
+                    };
+                    break;
+                case Notifications.NOTIFICATION_ALERT_MESSAGE:
+                    execute = () =>
+                    {
+                        AlertMessageEventArgs alertMessageEventArgs = (AlertMessageEventArgs) args;
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            alertMessageEventArgs.Message);
+                    };
+                    break;
+                case Notifications.NOTIFICATION_INVENTORY:
+                    execute = () =>
+                    {
+                        System.Type inventoryOfferedType = args.GetType();
+                        if (inventoryOfferedType == typeof (InstantMessageEventArgs))
                         {
-                            ScriptDialogEventArgs scriptDialogEventArgs = (ScriptDialogEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                scriptDialogEventArgs.Message);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                scriptDialogEventArgs.FirstName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                scriptDialogEventArgs.LastName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CHANNEL),
-                                scriptDialogEventArgs.Channel.ToString(CultureInfo.InvariantCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                scriptDialogEventArgs.ObjectName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                scriptDialogEventArgs.ObjectID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
-                                scriptDialogEventArgs.OwnerID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BUTTON),
-                                wasEnumerableToCSV(scriptDialogEventArgs.ButtonLabels));
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_LOCAL_CHAT:
-                        execute = () =>
-                        {
-                            ChatEventArgs localChatEventArgs = (ChatEventArgs) args;
-                            List<string> chatName =
-                                new List<string>(GetAvatarNames(localChatEventArgs.FromName));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                localChatEventArgs.Message);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                chatName.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                chatName.Last());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
-                                localChatEventArgs.OwnerID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                localChatEventArgs.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                localChatEventArgs.Position.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                Enum.GetName(typeof (ChatSourceType), localChatEventArgs.SourceType));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AUDIBLE),
-                                Enum.GetName(typeof (ChatAudibleLevel), localChatEventArgs.AudibleLevel));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.VOLUME),
-                                Enum.GetName(typeof (ChatType), localChatEventArgs.Type));
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_BALANCE:
-                        execute = () =>
-                        {
-                            BalanceEventArgs balanceEventArgs = (BalanceEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BALANCE),
-                                balanceEventArgs.Balance.ToString(CultureInfo.InvariantCulture));
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_ALERT_MESSAGE:
-                        execute = () =>
-                        {
-                            AlertMessageEventArgs alertMessageEventArgs = (AlertMessageEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                alertMessageEventArgs.Message);
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_INVENTORY:
-                        execute = () =>
-                        {
-                            System.Type inventoryOfferedType = args.GetType();
-                            if (inventoryOfferedType == typeof (InstantMessageEventArgs))
+                            InstantMessageEventArgs inventoryOfferEventArgs = (InstantMessageEventArgs) args;
+                            List<string> inventoryObjectOfferedName =
+                                new List<string>(CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(
+                                    inventoryOfferEventArgs.IM.FromAgentName)
+                                    .Cast<Match>()
+                                    .ToDictionary(p => new[]
+                                    {
+                                        p.Groups["first"].Value,
+                                        p.Groups["last"].Value
+                                    })
+                                    .SelectMany(
+                                        p =>
+                                            new[]
+                                            {
+                                                p.Key[0].Trim(),
+                                                !string.IsNullOrEmpty(p.Key[1])
+                                                    ? p.Key[1].Trim()
+                                                    : string.Empty
+                                            }));
+                            switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
                             {
-                                InstantMessageEventArgs inventoryOfferEventArgs = (InstantMessageEventArgs) args;
-                                List<string> inventoryObjectOfferedName =
-                                    new List<string>(CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(
-                                        inventoryOfferEventArgs.IM.FromAgentName)
-                                        .Cast<Match>()
-                                        .ToDictionary(p => new[]
+                                case true:
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                        inventoryObjectOfferedName.First());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                        inventoryObjectOfferedName.Last());
+                                    break;
+                                default:
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                        inventoryObjectOfferedName.First());
+                                    break;
+                            }
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                inventoryOfferEventArgs.IM.FromAgentID.ToString());
+                            switch (inventoryOfferEventArgs.IM.Dialog)
+                            {
+                                case InstantMessageDialog.InventoryAccepted:
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                        wasGetDescriptionFromEnumValue(Action.ACCEPT));
+                                    break;
+                                case InstantMessageDialog.InventoryDeclined:
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                        wasGetDescriptionFromEnumValue(Action.DECLINE));
+                                    break;
+                                case InstantMessageDialog.TaskInventoryOffered:
+                                case InstantMessageDialog.InventoryOffered:
+                                    lock (InventoryOffersLock)
+                                    {
+                                        KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>
+                                            inventoryObjectOfferedEventArgs =
+                                                InventoryOffers.AsParallel().FirstOrDefault(p =>
+                                                    p.Key.Offer.IMSessionID.Equals(
+                                                        inventoryOfferEventArgs.IM.IMSessionID));
+                                        if (
+                                            !inventoryObjectOfferedEventArgs.Equals(
+                                                default(
+                                                    KeyValuePair
+                                                        <InventoryObjectOfferedEventArgs, ManualResetEvent>)))
                                         {
-                                            p.Groups["first"].Value,
-                                            p.Groups["last"].Value
-                                        })
-                                        .SelectMany(
-                                            p =>
-                                                new[]
-                                                {
-                                                    p.Key[0].Trim(),
-                                                    !string.IsNullOrEmpty(p.Key[1])
-                                                        ? p.Key[1].Trim()
-                                                        : string.Empty
-                                                }));
-                                switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
-                                {
-                                    case true:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                            inventoryObjectOfferedName.First());
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                            inventoryObjectOfferedName.Last());
-                                        break;
-                                    default:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                            inventoryObjectOfferedName.First());
-                                        break;
-                                }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                    inventoryOfferEventArgs.IM.FromAgentID.ToString());
-                                switch (inventoryOfferEventArgs.IM.Dialog)
-                                {
-                                    case InstantMessageDialog.InventoryAccepted:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                            wasGetDescriptionFromEnumValue(Action.ACCEPT));
-                                        break;
-                                    case InstantMessageDialog.InventoryDeclined:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                            wasGetDescriptionFromEnumValue(Action.DECLINE));
-                                        break;
-                                    case InstantMessageDialog.TaskInventoryOffered:
-                                    case InstantMessageDialog.InventoryOffered:
-                                        lock (InventoryOffersLock)
-                                        {
-                                            KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>
-                                                inventoryObjectOfferedEventArgs =
-                                                    InventoryOffers.AsParallel().FirstOrDefault(p =>
-                                                        p.Key.Offer.IMSessionID.Equals(
-                                                            inventoryOfferEventArgs.IM.IMSessionID));
-                                            if (
-                                                !inventoryObjectOfferedEventArgs.Equals(
-                                                    default(
-                                                        KeyValuePair
-                                                            <InventoryObjectOfferedEventArgs, ManualResetEvent>)))
+                                            switch (inventoryObjectOfferedEventArgs.Key.Accept)
                                             {
-                                                switch (inventoryObjectOfferedEventArgs.Key.Accept)
-                                                {
-                                                    case true:
-                                                        notificationData.Add(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                                            wasGetDescriptionFromEnumValue(Action.ACCEPT));
-                                                        break;
-                                                    default:
-                                                        notificationData.Add(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                                            wasGetDescriptionFromEnumValue(Action.DECLINE));
-                                                        break;
-                                                }
+                                                case true:
+                                                    notificationData.Add(
+                                                        wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                                        wasGetDescriptionFromEnumValue(Action.ACCEPT));
+                                                    break;
+                                                default:
+                                                    notificationData.Add(
+                                                        wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                                        wasGetDescriptionFromEnumValue(Action.DECLINE));
+                                                    break;
                                             }
-                                            GroupCollection groups =
-                                                CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
-                                                    inventoryObjectOfferedEventArgs.Key.Offer.Message).Groups;
-                                            if (groups.Count > 0)
-                                            {
-                                                notificationData.Add(
-                                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                                    groups[1].Value);
-                                            }
-                                            InventoryOffers.Remove(inventoryObjectOfferedEventArgs.Key);
                                         }
-                                        break;
-                                }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DIRECTION),
-                                    wasGetDescriptionFromEnumValue(Action.REPLY));
-                                return;
-                            }
-                            if (inventoryOfferedType == typeof (InventoryObjectOfferedEventArgs))
-                            {
-                                InventoryObjectOfferedEventArgs inventoryObjectOfferedEventArgs =
-                                    (InventoryObjectOfferedEventArgs) args;
-                                List<string> inventoryObjectOfferedName =
-                                    new List<string>(CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(
-                                        inventoryObjectOfferedEventArgs.Offer.FromAgentName)
-                                        .Cast<Match>()
-                                        .ToDictionary(p => new[]
+                                        GroupCollection groups =
+                                            CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
+                                                inventoryObjectOfferedEventArgs.Key.Offer.Message).Groups;
+                                        if (groups.Count > 0)
                                         {
-                                            p.Groups["first"].Value,
-                                            p.Groups["last"].Value
-                                        })
-                                        .SelectMany(
-                                            p =>
-                                                new[]
-                                                {
-                                                    p.Key[0],
-                                                    !string.IsNullOrEmpty(p.Key[1])
-                                                        ? p.Key[1]
-                                                        : string.Empty
-                                                }));
-                                switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
-                                {
-                                    case true:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                            inventoryObjectOfferedName.First());
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                            inventoryObjectOfferedName.Last());
-                                        break;
-                                    default:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                            inventoryObjectOfferedName.First());
-                                        break;
-                                }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                    inventoryObjectOfferedEventArgs.Offer.FromAgentID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ASSET),
-                                    inventoryObjectOfferedEventArgs.AssetType.ToString());
-                                GroupCollection groups =
-                                    CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
-                                        inventoryObjectOfferedEventArgs.Offer.Message).Groups;
-                                if (groups.Count > 0)
-                                {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                        groups[1].Value);
-                                }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
-                                    inventoryObjectOfferedEventArgs.Offer.IMSessionID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DIRECTION),
-                                    wasGetDescriptionFromEnumValue(Action.OFFER));
+                                            notificationData.Add(
+                                                wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                                groups[1].Value);
+                                        }
+                                        InventoryOffers.Remove(inventoryObjectOfferedEventArgs.Key);
+                                    }
+                                    break;
                             }
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_SCRIPT_PERMISSION:
-                        execute = () =>
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DIRECTION),
+                                wasGetDescriptionFromEnumValue(Action.REPLY));
+                            return;
+                        }
+                        if (inventoryOfferedType == typeof (InventoryObjectOfferedEventArgs))
                         {
-                            ScriptQuestionEventArgs scriptQuestionEventArgs = (ScriptQuestionEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                scriptQuestionEventArgs.ItemID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TASK),
-                                scriptQuestionEventArgs.TaskID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS),
-                                wasEnumerableToCSV(typeof (ScriptPermission).GetFields(BindingFlags.Public |
-                                                                                       BindingFlags.Static)
+                            InventoryObjectOfferedEventArgs inventoryObjectOfferedEventArgs =
+                                (InventoryObjectOfferedEventArgs) args;
+                            List<string> inventoryObjectOfferedName =
+                                new List<string>(CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(
+                                    inventoryObjectOfferedEventArgs.Offer.FromAgentName)
+                                    .Cast<Match>()
+                                    .ToDictionary(p => new[]
+                                    {
+                                        p.Groups["first"].Value,
+                                        p.Groups["last"].Value
+                                    })
+                                    .SelectMany(
+                                        p =>
+                                            new[]
+                                            {
+                                                p.Key[0],
+                                                !string.IsNullOrEmpty(p.Key[1])
+                                                    ? p.Key[1]
+                                                    : string.Empty
+                                            }));
+                            switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
+                            {
+                                case true:
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                        inventoryObjectOfferedName.First());
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                        inventoryObjectOfferedName.Last());
+                                    break;
+                                default:
+                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                        inventoryObjectOfferedName.First());
+                                    break;
+                            }
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                inventoryObjectOfferedEventArgs.Offer.FromAgentID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ASSET),
+                                inventoryObjectOfferedEventArgs.AssetType.ToString());
+                            GroupCollection groups =
+                                CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
+                                    inventoryObjectOfferedEventArgs.Offer.Message).Groups;
+                            if (groups.Count > 0)
+                            {
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                    groups[1].Value);
+                            }
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
+                                inventoryObjectOfferedEventArgs.Offer.IMSessionID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DIRECTION),
+                                wasGetDescriptionFromEnumValue(Action.OFFER));
+                        }
+                    };
+                    break;
+                case Notifications.NOTIFICATION_SCRIPT_PERMISSION:
+                    execute = () =>
+                    {
+                        ScriptQuestionEventArgs scriptQuestionEventArgs = (ScriptQuestionEventArgs) args;
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            scriptQuestionEventArgs.ItemID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TASK),
+                            scriptQuestionEventArgs.TaskID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS),
+                            wasEnumerableToCSV(typeof (ScriptPermission).GetFields(BindingFlags.Public |
+                                                                                   BindingFlags.Static)
+                                .AsParallel().Where(
+                                    p =>
+                                        !(((int) p.GetValue(null) &
+                                           (int) scriptQuestionEventArgs.Questions)).Equals(0))
+                                .Select(p => p.Name)));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.REGION),
+                            scriptQuestionEventArgs.Simulator.Name);
+                    };
+                    break;
+                case Notifications.NOTIFICATION_FRIENDSHIP:
+                    execute = () =>
+                    {
+                        System.Type friendshipNotificationType = args.GetType();
+                        if (friendshipNotificationType == typeof (FriendInfoEventArgs))
+                        {
+                            FriendInfoEventArgs friendInfoEventArgs = (FriendInfoEventArgs) args;
+                            List<string> name =
+                                new List<string>(GetAvatarNames(friendInfoEventArgs.Friend.Name));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                name.First());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                name.Last());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                friendInfoEventArgs.Friend.UUID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.STATUS),
+                                friendInfoEventArgs.Friend.IsOnline
+                                    ? wasGetDescriptionFromEnumValue(Action.ONLINE)
+                                    : wasGetDescriptionFromEnumValue(Action.OFFLINE));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.RIGHTS),
+                                // Return the friend rights as a nice CSV string.
+                                wasEnumerableToCSV(typeof (FriendRights).GetFields(BindingFlags.Public |
+                                                                                   BindingFlags.Static)
                                     .AsParallel().Where(
                                         p =>
                                             !(((int) p.GetValue(null) &
-                                               (int) scriptQuestionEventArgs.Questions)).Equals(0))
+                                               (int) friendInfoEventArgs.Friend.MyFriendRights))
+                                                .Equals(
+                                                    0))
                                     .Select(p => p.Name)));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.REGION),
-                                scriptQuestionEventArgs.Simulator.Name);
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_FRIENDSHIP:
-                        execute = () =>
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.UPDATE));
+                            return;
+                        }
+                        if (friendshipNotificationType == typeof (FriendshipResponseEventArgs))
                         {
-                            System.Type friendshipNotificationType = args.GetType();
-                            if (friendshipNotificationType == typeof (FriendInfoEventArgs))
-                            {
-                                FriendInfoEventArgs friendInfoEventArgs = (FriendInfoEventArgs) args;
-                                List<string> name =
-                                    new List<string>(GetAvatarNames(friendInfoEventArgs.Friend.Name));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                    name.First());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                    name.Last());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                    friendInfoEventArgs.Friend.UUID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.STATUS),
-                                    friendInfoEventArgs.Friend.IsOnline
-                                        ? wasGetDescriptionFromEnumValue(Action.ONLINE)
-                                        : wasGetDescriptionFromEnumValue(Action.OFFLINE));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.RIGHTS),
-                                    // Return the friend rights as a nice CSV string.
-                                    wasEnumerableToCSV(typeof (FriendRights).GetFields(BindingFlags.Public |
-                                                                                       BindingFlags.Static)
-                                        .AsParallel().Where(
-                                            p =>
-                                                !(((int) p.GetValue(null) &
-                                                   (int) friendInfoEventArgs.Friend.MyFriendRights))
-                                                    .Equals(
-                                                        0))
-                                        .Select(p => p.Name)));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.UPDATE));
-                                return;
-                            }
-                            if (friendshipNotificationType == typeof (FriendshipResponseEventArgs))
-                            {
-                                FriendshipResponseEventArgs friendshipResponseEventArgs =
-                                    (FriendshipResponseEventArgs) args;
-                                List<string> friendshipResponseName =
-                                    new List<string>(
-                                        GetAvatarNames(friendshipResponseEventArgs.AgentName));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                    friendshipResponseName.First());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                    friendshipResponseName.Last());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                    friendshipResponseEventArgs.AgentID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.RESPONSE));
-                                return;
-                            }
-                            if (friendshipNotificationType == typeof (FriendshipOfferedEventArgs))
-                            {
-                                FriendshipOfferedEventArgs friendshipOfferedEventArgs =
-                                    (FriendshipOfferedEventArgs) args;
-                                List<string> friendshipOfferedName =
-                                    new List<string>(GetAvatarNames(friendshipOfferedEventArgs.AgentName));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                    friendshipOfferedName.First());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                    friendshipOfferedName.Last());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                    friendshipOfferedEventArgs.AgentID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.REQUEST));
-                            }
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_TELEPORT_LURE:
-                        execute = () =>
-                        {
-                            InstantMessageEventArgs teleportLureEventArgs = (InstantMessageEventArgs) args;
-                            List<string> teleportLureName =
+                            FriendshipResponseEventArgs friendshipResponseEventArgs =
+                                (FriendshipResponseEventArgs) args;
+                            List<string> friendshipResponseName =
                                 new List<string>(
-                                    GetAvatarNames(teleportLureEventArgs.IM.FromAgentName));
+                                    GetAvatarNames(friendshipResponseEventArgs.AgentName));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                teleportLureName.First());
+                                friendshipResponseName.First());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                teleportLureName.Last());
+                                friendshipResponseName.Last());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                teleportLureEventArgs.IM.FromAgentID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
-                                teleportLureEventArgs.IM.IMSessionID.ToString());
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_GROUP_NOTICE:
-                        execute = () =>
+                                friendshipResponseEventArgs.AgentID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.RESPONSE));
+                            return;
+                        }
+                        if (friendshipNotificationType == typeof (FriendshipOfferedEventArgs))
                         {
-                            InstantMessageEventArgs notificationGroupNoticeEventArgs =
-                                (InstantMessageEventArgs) args;
-                            List<string> notificationGroupNoticeName =
-                                new List<string>(
-                                    GetAvatarNames(notificationGroupNoticeEventArgs.IM.FromAgentName));
+                            FriendshipOfferedEventArgs friendshipOfferedEventArgs =
+                                (FriendshipOfferedEventArgs) args;
+                            List<string> friendshipOfferedName =
+                                new List<string>(GetAvatarNames(friendshipOfferedEventArgs.AgentName));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                notificationGroupNoticeName.First());
+                                friendshipOfferedName.First());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                notificationGroupNoticeName.Last());
+                                friendshipOfferedName.Last());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                notificationGroupNoticeEventArgs.IM.FromAgentID.ToString());
-                            string[] noticeData = notificationGroupNoticeEventArgs.IM.Message.Split('|');
-                            if (noticeData.Length > 0 && !string.IsNullOrEmpty(noticeData[0]))
-                            {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SUBJECT),
-                                    noticeData[0]);
-                            }
-                            if (noticeData.Length > 1 && !string.IsNullOrEmpty(noticeData[1]))
-                            {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                    noticeData[1]);
-                            }
-                            switch (notificationGroupNoticeEventArgs.IM.Dialog)
-                            {
-                                case InstantMessageDialog.GroupNoticeInventoryAccepted:
-                                case InstantMessageDialog.GroupNoticeInventoryDeclined:
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        !notificationGroupNoticeEventArgs.IM.Dialog.Equals(
-                                            InstantMessageDialog.GroupNoticeInventoryAccepted)
-                                            ? wasGetDescriptionFromEnumValue(Action.DECLINE)
-                                            : wasGetDescriptionFromEnumValue(Action.ACCEPT));
-                                    break;
-                                case InstantMessageDialog.GroupNotice:
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        wasGetDescriptionFromEnumValue(Action.RECEIVED));
-                                    break;
-                            }
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_INSTANT_MESSAGE:
-                        execute = () =>
+                                friendshipOfferedEventArgs.AgentID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.REQUEST));
+                        }
+                    };
+                    break;
+                case Notifications.NOTIFICATION_TELEPORT_LURE:
+                    execute = () =>
+                    {
+                        InstantMessageEventArgs teleportLureEventArgs = (InstantMessageEventArgs) args;
+                        List<string> teleportLureName =
+                            new List<string>(
+                                GetAvatarNames(teleportLureEventArgs.IM.FromAgentName));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                            teleportLureName.First());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                            teleportLureName.Last());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                            teleportLureEventArgs.IM.FromAgentID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
+                            teleportLureEventArgs.IM.IMSessionID.ToString());
+                    };
+                    break;
+                case Notifications.NOTIFICATION_GROUP_NOTICE:
+                    execute = () =>
+                    {
+                        InstantMessageEventArgs notificationGroupNoticeEventArgs =
+                            (InstantMessageEventArgs) args;
+                        List<string> notificationGroupNoticeName =
+                            new List<string>(
+                                GetAvatarNames(notificationGroupNoticeEventArgs.IM.FromAgentName));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                            notificationGroupNoticeName.First());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                            notificationGroupNoticeName.Last());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                            notificationGroupNoticeEventArgs.IM.FromAgentID.ToString());
+                        string[] noticeData = notificationGroupNoticeEventArgs.IM.Message.Split('|');
+                        if (noticeData.Length > 0 && !string.IsNullOrEmpty(noticeData[0]))
                         {
-                            InstantMessageEventArgs notificationInstantMessage =
-                                (InstantMessageEventArgs) args;
-                            List<string> notificationInstantMessageName =
-                                new List<string>(
-                                    GetAvatarNames(notificationInstantMessage.IM.FromAgentName));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                notificationInstantMessageName.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                notificationInstantMessageName.Last());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                notificationInstantMessage.IM.FromAgentID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SUBJECT),
+                                noticeData[0]);
+                        }
+                        if (noticeData.Length > 1 && !string.IsNullOrEmpty(noticeData[1]))
+                        {
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                notificationInstantMessage.IM.Message);
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_REGION_MESSAGE:
-                        execute = () =>
+                                noticeData[1]);
+                        }
+                        switch (notificationGroupNoticeEventArgs.IM.Dialog)
                         {
-                            InstantMessageEventArgs notificationRegionMessage =
-                                (InstantMessageEventArgs) args;
-                            List<string> notificationRegionMessageName =
-                                new List<string>(
-                                    GetAvatarNames(notificationRegionMessage.IM.FromAgentName));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                notificationRegionMessageName.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                notificationRegionMessageName.Last());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                notificationRegionMessage.IM.FromAgentID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                notificationRegionMessage.IM.Message);
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_GROUP_MESSAGE:
-                        execute = () =>
-                        {
-                            InstantMessageEventArgs notificationGroupMessage =
-                                (InstantMessageEventArgs) args;
-                            List<string> notificationGroupMessageName =
-                                new List<string>(
-                                    GetAvatarNames(notificationGroupMessage.IM.FromAgentName));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                notificationGroupMessageName.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                notificationGroupMessageName.Last());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                notificationGroupMessage.IM.FromAgentID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP), o.GroupName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                notificationGroupMessage.IM.Message);
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_VIEWER_EFFECT:
-                        execute = () =>
-                        {
-                            System.Type viewerEffectType = args.GetType();
-                            if (viewerEffectType == typeof (ViewerEffectEventArgs))
-                            {
-                                ViewerEffectEventArgs notificationViewerEffectEventArgs =
-                                    (ViewerEffectEventArgs) args;
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.EFFECT),
-                                    notificationViewerEffectEventArgs.Type.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
-                                    notificationViewerEffectEventArgs.SourceID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
-                                    notificationViewerEffectEventArgs.TargetID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                    notificationViewerEffectEventArgs.TargetPosition.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
-                                    notificationViewerEffectEventArgs.Duration.ToString(
-                                        CultureInfo.InvariantCulture));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                    notificationViewerEffectEventArgs.EffectID.ToString());
+                            case InstantMessageDialog.GroupNoticeInventoryAccepted:
+                            case InstantMessageDialog.GroupNoticeInventoryDeclined:
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.GENERIC));
-                                return;
-                            }
-                            if (viewerEffectType == typeof (ViewerEffectPointAtEventArgs))
-                            {
-                                ViewerEffectPointAtEventArgs notificationViewerPointAtEventArgs =
-                                    (ViewerEffectPointAtEventArgs) args;
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
-                                    notificationViewerPointAtEventArgs.SourceID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
-                                    notificationViewerPointAtEventArgs.TargetID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                    notificationViewerPointAtEventArgs.TargetPosition.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
-                                    notificationViewerPointAtEventArgs.Duration.ToString(
-                                        CultureInfo.InvariantCulture));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                    notificationViewerPointAtEventArgs.EffectID.ToString());
+                                    !notificationGroupNoticeEventArgs.IM.Dialog.Equals(
+                                        InstantMessageDialog.GroupNoticeInventoryAccepted)
+                                        ? wasGetDescriptionFromEnumValue(Action.DECLINE)
+                                        : wasGetDescriptionFromEnumValue(Action.ACCEPT));
+                                break;
+                            case InstantMessageDialog.GroupNotice:
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.POINT));
-                                return;
-                            }
-                            if (viewerEffectType == typeof (ViewerEffectLookAtEventArgs))
-                            {
-                                ViewerEffectLookAtEventArgs notificationViewerLookAtEventArgs =
-                                    (ViewerEffectLookAtEventArgs) args;
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
-                                    notificationViewerLookAtEventArgs.SourceID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
-                                    notificationViewerLookAtEventArgs.TargetID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                    notificationViewerLookAtEventArgs.TargetPosition.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
-                                    notificationViewerLookAtEventArgs.Duration.ToString(
-                                        CultureInfo.InvariantCulture));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                    notificationViewerLookAtEventArgs.EffectID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.LOOK));
-                            }
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_MEAN_COLLISION:
-                        execute = () =>
+                                    wasGetDescriptionFromEnumValue(Action.RECEIVED));
+                                break;
+                        }
+                    };
+                    break;
+                case Notifications.NOTIFICATION_INSTANT_MESSAGE:
+                    execute = () =>
+                    {
+                        InstantMessageEventArgs notificationInstantMessage =
+                            (InstantMessageEventArgs) args;
+                        List<string> notificationInstantMessageName =
+                            new List<string>(
+                                GetAvatarNames(notificationInstantMessage.IM.FromAgentName));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                            notificationInstantMessageName.First());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                            notificationInstantMessageName.Last());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                            notificationInstantMessage.IM.FromAgentID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationInstantMessage.IM.Message);
+                    };
+                    break;
+                case Notifications.NOTIFICATION_REGION_MESSAGE:
+                    execute = () =>
+                    {
+                        InstantMessageEventArgs notificationRegionMessage =
+                            (InstantMessageEventArgs) args;
+                        List<string> notificationRegionMessageName =
+                            new List<string>(
+                                GetAvatarNames(notificationRegionMessage.IM.FromAgentName));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                            notificationRegionMessageName.First());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                            notificationRegionMessageName.Last());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                            notificationRegionMessage.IM.FromAgentID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationRegionMessage.IM.Message);
+                    };
+                    break;
+                case Notifications.NOTIFICATION_GROUP_MESSAGE:
+                    execute = () =>
+                    {
+                        GroupMessageEventArgs notificationGroupMessage = (GroupMessageEventArgs) args;
+                        // Set-up filters.
+                        groupUUID = notificationGroupMessage.GroupUUID;
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                            notificationGroupMessage.FirstName);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                            notificationGroupMessage.LastName);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                            notificationGroupMessage.AgentUUID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
+                            notificationGroupMessage.GroupName);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationGroupMessage.Message);
+                    };
+                    break;
+                case Notifications.NOTIFICATION_VIEWER_EFFECT:
+                    execute = () =>
+                    {
+                        System.Type viewerEffectType = args.GetType();
+                        if (viewerEffectType == typeof (ViewerEffectEventArgs))
                         {
-                            MeanCollisionEventArgs meanCollisionEventArgs =
-                                (MeanCollisionEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGGRESSOR),
-                                meanCollisionEventArgs.Aggressor.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MAGNITUDE),
-                                meanCollisionEventArgs.Magnitude.ToString(CultureInfo.InvariantCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TIME),
-                                meanCollisionEventArgs.Time.ToLongDateString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                meanCollisionEventArgs.Type.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.VICTIM),
-                                meanCollisionEventArgs.Victim.ToString());
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_REGION_CROSSED:
-                        execute = () =>
-                        {
-                            System.Type regionChangeType = args.GetType();
-                            if (regionChangeType == typeof (SimChangedEventArgs))
-                            {
-                                SimChangedEventArgs simChangedEventArgs = (SimChangedEventArgs) args;
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OLD),
-                                    simChangedEventArgs.PreviousSimulator.Name);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NEW),
-                                    Client.Network.CurrentSim.Name);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.CHANGED));
-                                return;
-                            }
-                            if (regionChangeType == typeof (RegionCrossedEventArgs))
-                            {
-                                RegionCrossedEventArgs regionCrossedEventArgs =
-                                    (RegionCrossedEventArgs) args;
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OLD),
-                                    regionCrossedEventArgs.OldSimulator.Name);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NEW),
-                                    regionCrossedEventArgs.NewSimulator.Name);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.CROSSED));
-                            }
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_TERSE_UPDATES:
-                        execute = () =>
-                        {
-                            TerseObjectUpdateEventArgs terseObjectUpdateEventArgs =
-                                (TerseObjectUpdateEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                terseObjectUpdateEventArgs.Prim.ID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                terseObjectUpdateEventArgs.Prim.Position.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
-                                terseObjectUpdateEventArgs.Prim.Rotation.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                terseObjectUpdateEventArgs.Prim.PrimData.PCode.ToString());
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_TYPING:
-                        execute = () =>
-                        {
-                            InstantMessageEventArgs notificationTypingMessageEventArgs =
-                                (InstantMessageEventArgs) args;
-                            List<string> notificationTypingMessageName =
-                                new List<string>(
-                                    GetAvatarNames(notificationTypingMessageEventArgs.IM.FromAgentName));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                notificationTypingMessageName.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                notificationTypingMessageName.Last());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                notificationTypingMessageEventArgs.IM.FromAgentID.ToString());
-                            switch (notificationTypingMessageEventArgs.IM.Dialog)
-                            {
-                                case InstantMessageDialog.StartTyping:
-                                case InstantMessageDialog.StopTyping:
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        !notificationTypingMessageEventArgs.IM.Dialog.Equals(
-                                            InstantMessageDialog.StartTyping)
-                                            ? wasGetDescriptionFromEnumValue(Action.STOP)
-                                            : wasGetDescriptionFromEnumValue(Action.START));
-                                    break;
-                            }
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_GROUP_INVITE:
-                        execute = () =>
-                        {
-                            InstantMessageEventArgs notificationGroupInviteEventArgs =
-                                (InstantMessageEventArgs) args;
-                            List<string> notificationGroupInviteName =
-                                new List<string>(
-                                    GetAvatarNames(notificationGroupInviteEventArgs.IM.FromAgentName));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                notificationGroupInviteName.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                notificationGroupInviteName.Last());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                notificationGroupInviteEventArgs.IM.FromAgentID.ToString());
-                            lock (GroupInviteLock)
-                            {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
-                                    GroupInvites.AsParallel().FirstOrDefault(
-                                        p => p.Session.Equals(notificationGroupInviteEventArgs.IM.IMSessionID))
-                                        .Group);
-                            }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
-                                notificationGroupInviteEventArgs.IM.IMSessionID.ToString());
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_ECONOMY:
-                        execute = () =>
-                        {
-                            MoneyBalanceReplyEventArgs notificationMoneyBalanceEventArgs =
-                                (MoneyBalanceReplyEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BALANCE),
-                                notificationMoneyBalanceEventArgs.Balance.ToString(CultureInfo.InvariantCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
-                                notificationMoneyBalanceEventArgs.Description);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.COMMITTED),
-                                notificationMoneyBalanceEventArgs.MetersCommitted.ToString(
-                                    CultureInfo.InvariantCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CREDIT),
-                                notificationMoneyBalanceEventArgs.MetersCredit.ToString(CultureInfo.InvariantCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SUCCESS),
-                                notificationMoneyBalanceEventArgs.Success.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                notificationMoneyBalanceEventArgs.TransactionID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT),
-                                notificationMoneyBalanceEventArgs.TransactionInfo.Amount.ToString(
-                                    CultureInfo.InvariantCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
-                                notificationMoneyBalanceEventArgs.TransactionInfo.DestID.ToString());
+                            ViewerEffectEventArgs notificationViewerEffectEventArgs =
+                                (ViewerEffectEventArgs) args;
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.EFFECT),
+                                notificationViewerEffectEventArgs.Type.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
-                                notificationMoneyBalanceEventArgs.TransactionInfo.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TRANSACTION),
-                                Enum.GetName(typeof (MoneyTransactionType),
-                                    notificationMoneyBalanceEventArgs.TransactionInfo.TransactionType));
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_GROUP_MEMBERSHIP:
-                        execute = () =>
+                                notificationViewerEffectEventArgs.SourceID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                notificationViewerEffectEventArgs.TargetID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                notificationViewerEffectEventArgs.TargetPosition.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
+                                notificationViewerEffectEventArgs.Duration.ToString(
+                                    CultureInfo.InvariantCulture));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                notificationViewerEffectEventArgs.EffectID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.GENERIC));
+                            return;
+                        }
+                        if (viewerEffectType == typeof (ViewerEffectPointAtEventArgs))
                         {
-                            GroupMembershipEventArgs groupMembershipEventArgs = (GroupMembershipEventArgs) args;
-                            List<string> groupMembershipName =
-                                new List<string>(
-                                    GetAvatarNames(groupMembershipEventArgs.AgentName));
+                            ViewerEffectPointAtEventArgs notificationViewerPointAtEventArgs =
+                                (ViewerEffectPointAtEventArgs) args;
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
+                                notificationViewerPointAtEventArgs.SourceID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                notificationViewerPointAtEventArgs.TargetID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                notificationViewerPointAtEventArgs.TargetPosition.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
+                                notificationViewerPointAtEventArgs.Duration.ToString(
+                                    CultureInfo.InvariantCulture));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                notificationViewerPointAtEventArgs.EffectID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.POINT));
+                            return;
+                        }
+                        if (viewerEffectType == typeof (ViewerEffectLookAtEventArgs))
+                        {
+                            ViewerEffectLookAtEventArgs notificationViewerLookAtEventArgs =
+                                (ViewerEffectLookAtEventArgs) args;
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
+                                notificationViewerLookAtEventArgs.SourceID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                notificationViewerLookAtEventArgs.TargetID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                notificationViewerLookAtEventArgs.TargetPosition.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
+                                notificationViewerLookAtEventArgs.Duration.ToString(
+                                    CultureInfo.InvariantCulture));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                notificationViewerLookAtEventArgs.EffectID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.LOOK));
+                        }
+                    };
+                    break;
+                case Notifications.NOTIFICATION_MEAN_COLLISION:
+                    execute = () =>
+                    {
+                        MeanCollisionEventArgs meanCollisionEventArgs =
+                            (MeanCollisionEventArgs) args;
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGGRESSOR),
+                            meanCollisionEventArgs.Aggressor.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MAGNITUDE),
+                            meanCollisionEventArgs.Magnitude.ToString(CultureInfo.InvariantCulture));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TIME),
+                            meanCollisionEventArgs.Time.ToLongDateString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                            meanCollisionEventArgs.Type.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.VICTIM),
+                            meanCollisionEventArgs.Victim.ToString());
+                    };
+                    break;
+                case Notifications.NOTIFICATION_REGION_CROSSED:
+                    execute = () =>
+                    {
+                        System.Type regionChangeType = args.GetType();
+                        if (regionChangeType == typeof (SimChangedEventArgs))
+                        {
+                            SimChangedEventArgs simChangedEventArgs = (SimChangedEventArgs) args;
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OLD),
+                                simChangedEventArgs.PreviousSimulator.Name);
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NEW),
+                                Client.Network.CurrentSim.Name);
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.CHANGED));
+                            return;
+                        }
+                        if (regionChangeType == typeof (RegionCrossedEventArgs))
+                        {
+                            RegionCrossedEventArgs regionCrossedEventArgs =
+                                (RegionCrossedEventArgs) args;
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OLD),
+                                regionCrossedEventArgs.OldSimulator.Name);
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NEW),
+                                regionCrossedEventArgs.NewSimulator.Name);
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.CROSSED));
+                        }
+                    };
+                    break;
+                case Notifications.NOTIFICATION_TERSE_UPDATES:
+                    execute = () =>
+                    {
+                        TerseObjectUpdateEventArgs terseObjectUpdateEventArgs =
+                            (TerseObjectUpdateEventArgs) args;
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                            terseObjectUpdateEventArgs.Prim.ID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                            terseObjectUpdateEventArgs.Prim.Position.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                            terseObjectUpdateEventArgs.Prim.Rotation.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                            terseObjectUpdateEventArgs.Prim.PrimData.PCode.ToString());
+                    };
+                    break;
+                case Notifications.NOTIFICATION_TYPING:
+                    execute = () =>
+                    {
+                        InstantMessageEventArgs notificationTypingMessageEventArgs =
+                            (InstantMessageEventArgs) args;
+                        List<string> notificationTypingMessageName =
+                            new List<string>(
+                                GetAvatarNames(notificationTypingMessageEventArgs.IM.FromAgentName));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                            notificationTypingMessageName.First());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                            notificationTypingMessageName.Last());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                            notificationTypingMessageEventArgs.IM.FromAgentID.ToString());
+                        switch (notificationTypingMessageEventArgs.IM.Dialog)
+                        {
+                            case InstantMessageDialog.StartTyping:
+                            case InstantMessageDialog.StopTyping:
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                    !notificationTypingMessageEventArgs.IM.Dialog.Equals(
+                                        InstantMessageDialog.StartTyping)
+                                        ? wasGetDescriptionFromEnumValue(Action.STOP)
+                                        : wasGetDescriptionFromEnumValue(Action.START));
+                                break;
+                        }
+                    };
+                    break;
+                case Notifications.NOTIFICATION_GROUP_INVITE:
+                    execute = () =>
+                    {
+                        InstantMessageEventArgs notificationGroupInviteEventArgs =
+                            (InstantMessageEventArgs) args;
+                        List<string> notificationGroupInviteName =
+                            new List<string>(
+                                GetAvatarNames(notificationGroupInviteEventArgs.IM.FromAgentName));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                            notificationGroupInviteName.First());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                            notificationGroupInviteName.Last());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                            notificationGroupInviteEventArgs.IM.FromAgentID.ToString());
+                        lock (GroupInviteLock)
+                        {
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
+                                GroupInvites.AsParallel().FirstOrDefault(
+                                    p => p.Session.Equals(notificationGroupInviteEventArgs.IM.IMSessionID))
+                                    .Group);
+                        }
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
+                            notificationGroupInviteEventArgs.IM.IMSessionID.ToString());
+                    };
+                    break;
+                case Notifications.NOTIFICATION_ECONOMY:
+                    execute = () =>
+                    {
+                        MoneyBalanceReplyEventArgs notificationMoneyBalanceEventArgs =
+                            (MoneyBalanceReplyEventArgs) args;
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BALANCE),
+                            notificationMoneyBalanceEventArgs.Balance.ToString(CultureInfo.InvariantCulture));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
+                            notificationMoneyBalanceEventArgs.Description);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.COMMITTED),
+                            notificationMoneyBalanceEventArgs.MetersCommitted.ToString(
+                                CultureInfo.InvariantCulture));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CREDIT),
+                            notificationMoneyBalanceEventArgs.MetersCredit.ToString(CultureInfo.InvariantCulture));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SUCCESS),
+                            notificationMoneyBalanceEventArgs.Success.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                            notificationMoneyBalanceEventArgs.TransactionID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT),
+                            notificationMoneyBalanceEventArgs.TransactionInfo.Amount.ToString(
+                                CultureInfo.InvariantCulture));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                            notificationMoneyBalanceEventArgs.TransactionInfo.DestID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
+                            notificationMoneyBalanceEventArgs.TransactionInfo.SourceID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TRANSACTION),
+                            Enum.GetName(typeof (MoneyTransactionType),
+                                notificationMoneyBalanceEventArgs.TransactionInfo.TransactionType));
+                    };
+                    break;
+                case Notifications.NOTIFICATION_GROUP_MEMBERSHIP:
+                    execute = () =>
+                    {
+                        GroupMembershipEventArgs groupMembershipEventArgs = (GroupMembershipEventArgs) args;
+                        // Set-up filters.
+                        groupUUID = groupMembershipEventArgs.GroupUUID;
+                        List<string> groupMembershipName =
+                            new List<string>(
+                                GetAvatarNames(groupMembershipEventArgs.AgentName));
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                            groupMembershipName.First());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                            groupMembershipName.Last());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                            groupMembershipEventArgs.AgentUUID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
+                            groupMembershipEventArgs.GroupName);
+                        switch (groupMembershipEventArgs.Action)
+                        {
+                            case Action.JOINED:
+                            case Action.PARTED:
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                    !groupMembershipEventArgs.Action.Equals(
+                                        Action.JOINED)
+                                        ? wasGetDescriptionFromEnumValue(Action.PARTED)
+                                        : wasGetDescriptionFromEnumValue(Action.JOINED));
+                                break;
+                        }
+                    };
+                    break;
+                case Notifications.NOTIFICATION_LOAD_URL:
+                    execute = () =>
+                    {
+                        LoadUrlEventArgs loadURLEventArgs = (LoadUrlEventArgs) args;
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            loadURLEventArgs.ObjectName);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            loadURLEventArgs.ObjectID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                            loadURLEventArgs.OwnerID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
+                            loadURLEventArgs.OwnerIsGroup.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            loadURLEventArgs.Message);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.URL),
+                            loadURLEventArgs.URL);
+                    };
+                    break;
+                case Notifications.NOTIFICATION_OWNER_SAY:
+                    execute = () =>
+                    {
+                        ChatEventArgs ownerSayEventArgs = (ChatEventArgs) args;
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            ownerSayEventArgs.Message);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            ownerSayEventArgs.SourceID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            ownerSayEventArgs.FromName);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                            ownerSayEventArgs.Position.ToString());
+                    };
+                    break;
+                case Notifications.NOTIFICATION_REGION_SAY_TO:
+                    execute = () =>
+                    {
+                        ChatEventArgs regionSayToEventArgs = (ChatEventArgs) args;
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            regionSayToEventArgs.Message);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                            regionSayToEventArgs.OwnerID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            regionSayToEventArgs.SourceID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            regionSayToEventArgs.FromName);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                            regionSayToEventArgs.Position.ToString());
+                    };
+                    break;
+                case Notifications.NOTIFICATION_OBJECT_INSTANT_MESSAGE:
+                    execute = () =>
+                    {
+                        InstantMessageEventArgs notificationObjectInstantMessage =
+                            (InstantMessageEventArgs) args;
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                            notificationObjectInstantMessage.IM.FromAgentID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            notificationObjectInstantMessage.IM.IMSessionID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            notificationObjectInstantMessage.IM.FromAgentName);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationObjectInstantMessage.IM.Message);
+                    };
+                    break;
+                case Notifications.NOTIFICATION_RLV_MESSAGE:
+                    execute = () =>
+                    {
+                        ChatEventArgs RLVEventArgs = (ChatEventArgs) args;
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            RLVEventArgs.SourceID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            RLVEventArgs.FromName);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                            RLVEventArgs.Position.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.RLV),
+                            wasEnumerableToCSV(wasRLVToString(RLVEventArgs.Message)));
+                    };
+                    break;
+                case Notifications.NOTIFICATION_DEBUG_MESSAGE:
+                    execute = () =>
+                    {
+                        ChatEventArgs DebugEventArgs = (ChatEventArgs) args;
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            DebugEventArgs.SourceID.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            DebugEventArgs.FromName);
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                            DebugEventArgs.Position.ToString());
+                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            DebugEventArgs.Message);
+                    };
+                    break;
+                case Notifications.NOTIFICATION_RADAR_AVATARS:
+                    execute = () =>
+                    {
+                        System.Type radarAvatarsType = args.GetType();
+                        if (radarAvatarsType == typeof (AvatarUpdateEventArgs))
+                        {
+                            AvatarUpdateEventArgs avatarUpdateEventArgs =
+                                (AvatarUpdateEventArgs) args;
+                            lock (RadarObjectsLock)
+                            {
+                                if (RadarObjects.ContainsKey(avatarUpdateEventArgs.Avatar.ID)) return;
+                                RadarObjects.Add(avatarUpdateEventArgs.Avatar.ID, avatarUpdateEventArgs.Avatar);
+                            }
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                groupMembershipName.First());
+                                avatarUpdateEventArgs.Avatar.FirstName);
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                groupMembershipName.Last());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
-                                groupMembershipEventArgs.AgentUUID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
-                                o.GroupName);
-                            switch (groupMembershipEventArgs.Action)
-                            {
-                                case Action.JOINED:
-                                case Action.PARTED:
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        !groupMembershipEventArgs.Action.Equals(
-                                            Action.JOINED)
-                                            ? wasGetDescriptionFromEnumValue(Action.PARTED)
-                                            : wasGetDescriptionFromEnumValue(Action.JOINED));
-                                    break;
-                            }
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_LOAD_URL:
-                        execute = () =>
+                                avatarUpdateEventArgs.Avatar.LastName);
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                avatarUpdateEventArgs.Avatar.ID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                avatarUpdateEventArgs.Avatar.Position.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                avatarUpdateEventArgs.Avatar.Rotation.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                avatarUpdateEventArgs.Avatar.PrimData.PCode.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.APPEAR));
+                            return;
+                        }
+                        if (radarAvatarsType == typeof (KillObjectEventArgs))
                         {
-                            LoadUrlEventArgs loadURLEventArgs = (LoadUrlEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                loadURLEventArgs.ObjectName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                loadURLEventArgs.ObjectID.ToString());
+                            KillObjectEventArgs killObjectEventArgs =
+                                (KillObjectEventArgs) args;
+                            Avatar avatar;
+                            lock (RadarObjectsLock)
+                            {
+                                KeyValuePair<UUID, Primitive> tracked =
+                                    RadarObjects.AsParallel().FirstOrDefault(
+                                        p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
+                                switch (!tracked.Equals(default(KeyValuePair<UUID, Primitive>)))
+                                {
+                                    case true:
+                                        RadarObjects.Remove(tracked.Key);
+                                        break;
+                                    default:
+                                        return;
+                                }
+                                if (!(tracked.Value is Avatar)) return;
+                                avatar = tracked.Value as Avatar;
+                            }
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                avatar.FirstName);
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                avatar.LastName);
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                avatar.ID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                avatar.Position.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                avatar.Rotation.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                avatar.PrimData.PCode.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.VANISH));
+                        }
+                    };
+                    break;
+                case Notifications.NOTIFICATION_RADAR_PRIMITIVES:
+                    execute = () =>
+                    {
+                        System.Type radarPrimitivesType = args.GetType();
+                        if (radarPrimitivesType == typeof (PrimEventArgs))
+                        {
+                            PrimEventArgs primEventArgs =
+                                (PrimEventArgs) args;
+                            lock (RadarObjectsLock)
+                            {
+                                if (RadarObjects.ContainsKey(primEventArgs.Prim.ID)) return;
+                                RadarObjects.Add(primEventArgs.Prim.ID, primEventArgs.Prim);
+                            }
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
-                                loadURLEventArgs.OwnerID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
-                                loadURLEventArgs.OwnerIsGroup.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                loadURLEventArgs.Message);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.URL),
-                                loadURLEventArgs.URL);
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_OWNER_SAY:
-                        execute = () =>
-                        {
-                            ChatEventArgs ownerSayEventArgs = (ChatEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                ownerSayEventArgs.Message);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                ownerSayEventArgs.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                ownerSayEventArgs.FromName);
+                                primEventArgs.Prim.OwnerID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                primEventArgs.Prim.ID.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                ownerSayEventArgs.Position.ToString());
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_REGION_SAY_TO:
-                        execute = () =>
+                                primEventArgs.Prim.Position.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                primEventArgs.Prim.Rotation.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                primEventArgs.Prim.PrimData.PCode.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.APPEAR));
+                            return;
+                        }
+                        if (radarPrimitivesType == typeof (KillObjectEventArgs))
                         {
-                            ChatEventArgs regionSayToEventArgs = (ChatEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                regionSayToEventArgs.Message);
+                            KillObjectEventArgs killObjectEventArgs =
+                                (KillObjectEventArgs) args;
+                            Primitive prim;
+                            lock (RadarObjectsLock)
+                            {
+                                KeyValuePair<UUID, Primitive> tracked =
+                                    RadarObjects.AsParallel().FirstOrDefault(
+                                        p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
+                                switch (!tracked.Equals(default(KeyValuePair<UUID, Primitive>)))
+                                {
+                                    case true:
+                                        RadarObjects.Remove(tracked.Key);
+                                        prim = tracked.Value;
+                                        break;
+                                    default:
+                                        return;
+                                }
+                            }
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
-                                regionSayToEventArgs.OwnerID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                regionSayToEventArgs.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                regionSayToEventArgs.FromName);
+                                prim.OwnerID.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                prim.ID.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                regionSayToEventArgs.Position.ToString());
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_OBJECT_INSTANT_MESSAGE:
-                        execute = () =>
+                                prim.Position.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                prim.Rotation.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                prim.PrimData.PCode.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                wasGetDescriptionFromEnumValue(Action.VANISH));
+                        }
+                    };
+                    break;
+                default:
+                    execute =
+                        () =>
                         {
-                            InstantMessageEventArgs notificationObjectInstantMessage =
-                                (InstantMessageEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
-                                notificationObjectInstantMessage.IM.FromAgentID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                notificationObjectInstantMessage.IM.IMSessionID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                notificationObjectInstantMessage.IM.FromAgentName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                notificationObjectInstantMessage.IM.Message);
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ConsoleError.UNKNOWN_NOTIFICATION_TYPE));
                         };
-                        break;
-                    case Notifications.NOTIFICATION_RLV_MESSAGE:
-                        execute = () =>
-                        {
-                            ChatEventArgs RLVEventArgs = (ChatEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                RLVEventArgs.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                RLVEventArgs.FromName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                RLVEventArgs.Position.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.RLV),
-                                wasEnumerableToCSV(wasRLVToString(RLVEventArgs.Message)));
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_DEBUG_MESSAGE:
-                        execute = () =>
-                        {
-                            ChatEventArgs DebugEventArgs = (ChatEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
-                                DebugEventArgs.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
-                                DebugEventArgs.FromName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                DebugEventArgs.Position.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
-                                DebugEventArgs.Message);
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_RADAR_AVATARS:
-                        execute = () =>
-                        {
-                            System.Type radarAvatarsType = args.GetType();
-                            if (radarAvatarsType == typeof (AvatarUpdateEventArgs))
-                            {
-                                AvatarUpdateEventArgs avatarUpdateEventArgs =
-                                    (AvatarUpdateEventArgs) args;
-                                lock (RadarObjectsLock)
-                                {
-                                    if (RadarObjects.ContainsKey(avatarUpdateEventArgs.Avatar.ID)) return;
-                                    RadarObjects.Add(avatarUpdateEventArgs.Avatar.ID, avatarUpdateEventArgs.Avatar);
-                                }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                    avatarUpdateEventArgs.Avatar.FirstName);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                    avatarUpdateEventArgs.Avatar.LastName);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                    avatarUpdateEventArgs.Avatar.ID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                    avatarUpdateEventArgs.Avatar.Position.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
-                                    avatarUpdateEventArgs.Avatar.Rotation.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                    avatarUpdateEventArgs.Avatar.PrimData.PCode.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.APPEAR));
-                                return;
-                            }
-                            if (radarAvatarsType == typeof (KillObjectEventArgs))
-                            {
-                                KillObjectEventArgs killObjectEventArgs =
-                                    (KillObjectEventArgs) args;
-                                Avatar avatar;
-                                lock (RadarObjectsLock)
-                                {
-                                    KeyValuePair<UUID, Primitive> tracked =
-                                        RadarObjects.AsParallel().FirstOrDefault(
-                                            p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
-                                    switch (!tracked.Equals(default(KeyValuePair<UUID, Primitive>)))
-                                    {
-                                        case true:
-                                            RadarObjects.Remove(tracked.Key);
-                                            break;
-                                        default:
-                                            return;
-                                    }
-                                    if (!(tracked.Value is Avatar)) return;
-                                    avatar = tracked.Value as Avatar;
-                                }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                    avatar.FirstName);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                    avatar.LastName);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                    avatar.ID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                    avatar.Position.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
-                                    avatar.Rotation.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                    avatar.PrimData.PCode.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.VANISH));
-                            }
-                        };
-                        break;
-                    case Notifications.NOTIFICATION_RADAR_PRIMITIVES:
-                        execute = () =>
-                        {
-                            System.Type radarPrimitivesType = args.GetType();
-                            if (radarPrimitivesType == typeof (PrimEventArgs))
-                            {
-                                PrimEventArgs primEventArgs =
-                                    (PrimEventArgs) args;
-                                lock (RadarObjectsLock)
-                                {
-                                    if (RadarObjects.ContainsKey(primEventArgs.Prim.ID)) return;
-                                    RadarObjects.Add(primEventArgs.Prim.ID, primEventArgs.Prim);
-                                }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
-                                    primEventArgs.Prim.OwnerID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                    primEventArgs.Prim.ID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                    primEventArgs.Prim.Position.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
-                                    primEventArgs.Prim.Rotation.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                    primEventArgs.Prim.PrimData.PCode.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.APPEAR));
-                                return;
-                            }
-                            if (radarPrimitivesType == typeof (KillObjectEventArgs))
-                            {
-                                KillObjectEventArgs killObjectEventArgs =
-                                    (KillObjectEventArgs) args;
-                                Primitive prim;
-                                lock (RadarObjectsLock)
-                                {
-                                    KeyValuePair<UUID, Primitive> tracked =
-                                        RadarObjects.AsParallel().FirstOrDefault(
-                                            p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
-                                    switch (!tracked.Equals(default(KeyValuePair<UUID, Primitive>)))
-                                    {
-                                        case true:
-                                            RadarObjects.Remove(tracked.Key);
-                                            prim = tracked.Value;
-                                            break;
-                                        default:
-                                            return;
-                                    }
-                                }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
-                                    prim.OwnerID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
-                                    prim.ID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
-                                    prim.Position.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
-                                    prim.Rotation.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
-                                    prim.PrimData.PCode.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.VANISH));
-                            }
-                        };
-                        break;
-                    default:
-                        execute =
-                            () =>
-                            {
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ConsoleError.UNKNOWN_NOTIFICATION_TYPE));
-                            };
-                        break;
-                }
+                    break;
+            }
 
-                try
+            try
+            {
+                execute.Invoke();
+            }
+            catch (Exception ex)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_ERROR), ex.Message);
+                return;
+            }
+
+            lock (NotificationQueueLock)
+            {
+                if (NotificationQueue.Count >= Configuration.NOTIFICATION_QUEUE_LENGTH)
                 {
-                    execute.Invoke();
-                }
-                catch (Exception ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_ERROR), ex.Message);
                     return;
                 }
-
-                lock (NotificationQueueLock)
-                {
-                    if (NotificationQueue.Count < Configuration.NOTIFICATION_QUEUE_LENGTH)
-                    {
-                        Parallel.ForEach(
-                            o.NotificationDestination.AsParallel()
-                                .Where(p => p.Key.Equals(notification))
-                                .SelectMany(p => p.Value), p =>
+            }
+            Parallel.ForEach(notifyGroups, o =>
+            {
+                // A specific group is set, so bail if this is not the correct group.
+                if (!groupUUID.Equals(UUID.Zero) && !o.GroupUUID.Equals(groupUUID)) return;
+                Parallel.ForEach(
+                    o.NotificationDestination.AsParallel()
+                        .Where(p => p.Key.Equals(notification))
+                        .SelectMany(p => p.Value), p =>
+                        {
+                            lock (NotificationQueueLock)
+                            {
+                                NotificationQueue.Enqueue(new NotificationQueueElement
                                 {
-                                    NotificationQueue.Enqueue(new NotificationQueueElement
-                                    {
-                                        URL = p,
-                                        message = wasKeyValueEscape(notificationData)
-                                    });
+                                    URL = p,
+                                    message = wasKeyValueEscape(notificationData)
                                 });
-                    }
-                }
+                            }
+                        });
             });
         }
 
@@ -4446,9 +4465,15 @@ namespace Corrade
         {
             // Ignore chat with no message (ie: start / stop typing)
             if (string.IsNullOrEmpty(e.Message)) return;
+            List<string> fullName = new List<string>(GetAvatarNames(e.FromName));
             switch (e.Type)
             {
                 case ChatType.OwnerSay:
+                    // If this is a message from an agent, add the agent to the cache.
+                    if (e.SourceType.Equals(ChatSourceType.Agent))
+                    {
+                        Cache.AddAgent(fullName.First(), fullName.Last(), e.SourceID);
+                    }
                     // If RLV is enabled, process RLV and terminate.
                     if (EnableRLV && e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR))
                     {
@@ -4475,6 +4500,11 @@ namespace Corrade
                 case ChatType.Normal:
                 case ChatType.Shout:
                 case ChatType.Whisper:
+                    // If this is a message from an agent, add the agent to the cache.
+                    if (e.SourceType.Equals(ChatSourceType.Agent))
+                    {
+                        Cache.AddAgent(fullName.First(), fullName.Last(), e.SourceID);
+                    }
                     // Send chat notifications.
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                         () => SendNotification(Notifications.NOTIFICATION_LOCAL_CHAT, e),
@@ -4482,9 +4512,6 @@ namespace Corrade
                     // Log local chat,
                     if (Configuration.LOCAL_MESSAGE_LOG_ENABLED)
                     {
-                        List<string> fullName =
-                            new List<string>(
-                                GetAvatarNames(e.FromName));
                         try
                         {
                             lock (LocalLogFileLock)
@@ -4829,11 +4856,15 @@ namespace Corrade
                 // Send typing notification.
                 case InstantMessageDialog.StartTyping:
                 case InstantMessageDialog.StopTyping:
+                    // Add the agent to the cache.
+                    Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                         () => SendNotification(Notifications.NOTIFICATION_TYPING, args),
                         Configuration.MAXIMUM_NOTIFICATION_THREADS);
                     return;
                 case InstantMessageDialog.FriendshipOffered:
+                    // Add the agent to the cache.
+                    Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                     // Accept friendships only from masters (for the time being)
                     if (
                         !Configuration.MASTERS.AsParallel().Any(
@@ -4855,6 +4886,8 @@ namespace Corrade
                     // Not used.
                     return;
                 case InstantMessageDialog.RequestTeleport:
+                    // Add the agent to the cache.
+                    Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                     // Handle RLV: acccepttp
                     lock (RLVRulesLock)
                     {
@@ -4931,13 +4964,16 @@ namespace Corrade
                 case InstantMessageDialog.GroupInvitation:
                     OpenMetaverse.Group inviteGroup = new OpenMetaverse.Group();
                     if (!RequestGroup(args.IM.FromAgentID, Configuration.SERVICES_TIMEOUT, ref inviteGroup)) return;
+                    // Add the group to the cache.
+                    Cache.AddGroup(inviteGroup.Name, inviteGroup.ID);
                     UUID inviteGroupAgent = UUID.Zero;
                     if (
                         !AgentNameToUUID(fullName.First(), fullName.Last(),
                             Configuration.SERVICES_TIMEOUT,
                             Configuration.DATA_TIMEOUT,
                             ref inviteGroupAgent)) return;
-
+                    // Add the agent to the cache.
+                    Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                     // Add the group invite - have to track them manually.
                     lock (GroupInviteLock)
                     {
@@ -4997,9 +5033,22 @@ namespace Corrade
                             Configuration.GROUPS.AsParallel().FirstOrDefault(p => p.UUID.Equals(args.IM.IMSessionID));
                         if (!messageGroup.Equals(default(Group)))
                         {
+                            // Add the group to the cache.
+                            Cache.AddGroup(messageGroup.Name, messageGroup.UUID);
+                            // Add the agent to the cache.
+                            Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                             // Send group notice notifications.
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                () => SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, args),
+                                () =>
+                                    SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, new GroupMessageEventArgs
+                                    {
+                                        AgentUUID = args.IM.FromAgentID,
+                                        FirstName = fullName.First(),
+                                        LastName = fullName.Last(),
+                                        GroupName = messageGroup.Name,
+                                        GroupUUID = messageGroup.UUID,
+                                        Message = args.IM.Message
+                                    }),
                                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
                             // Log group messages
                             Parallel.ForEach(
@@ -5044,10 +5093,11 @@ namespace Corrade
                     switch (!args.IM.ToAgentID.Equals(Client.Self.AgentID))
                     {
                         case false:
+                            // Add the agent to the cache.
+                            Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                                 () => SendNotification(Notifications.NOTIFICATION_INSTANT_MESSAGE, args),
                                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
-
                             // Check if we were ejected.
                             UUID groupUUID = UUID.Zero;
                             if (
@@ -5103,6 +5153,8 @@ namespace Corrade
                     switch (!args.IM.IMSessionID.Equals(UUID.Zero))
                     {
                         case false:
+                            // Add the agent to the cache.
+                            Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                                 () => SendNotification(Notifications.NOTIFICATION_REGION_MESSAGE, args),
                                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
@@ -6422,18 +6474,34 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
+                        if (AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                             Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ALREADY_IN_GROUP));
                         }
                         OpenMetaverse.Group commandGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(groupUUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
+                        if (!RequestGroup(configuredGroup.UUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -6463,7 +6531,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupJoinedReply += GroupOperationEventHandler;
-                            Client.Groups.RequestJoinGroup(groupUUID);
+                            Client.Groups.RequestJoinGroup(configuredGroup.UUID);
                             if (!GroupJoinedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
@@ -6472,7 +6540,7 @@ namespace Corrade
                             Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
                         }
                         if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_JOIN_GROUP));
@@ -6546,13 +6614,29 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.Invite,
+                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.Invite,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -6573,7 +6657,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
-                        if (AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                        if (AgentInGroup(agentUUID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                             Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ALREADY_IN_GROUP));
@@ -6588,7 +6672,7 @@ namespace Corrade
                         {
                             UUID roleUUID;
                             if (!UUID.TryParse(role, out roleUUID) &&
-                                !RoleNameToUUID(role, groupUUID,
+                                !RoleNameToUUID(role, configuredGroup.UUID,
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref roleUUID))
                             {
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
@@ -6604,13 +6688,13 @@ namespace Corrade
                             roleUUIDs.Add(UUID.Zero);
                         }
                         if (!roleUUIDs.All(o => o.Equals(UUID.Zero)) &&
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
+                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.AssignMember,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
-                        Client.Groups.Invite(groupUUID, roleUUIDs.ToList(), agentUUID);
+                        Client.Groups.Invite(configuredGroup.UUID, roleUUIDs.ToList(), agentUUID);
                     };
                     break;
                 case ScriptKeys.REPLYTOGROUPINVITE:
@@ -6625,12 +6709,28 @@ namespace Corrade
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                                     .ToLowerInvariant());
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
+                        if (AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                             Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ALREADY_IN_GROUP));
@@ -6684,7 +6784,7 @@ namespace Corrade
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INSUFFICIENT_FUNDS));
                             }
                         }
-                        Client.Self.GroupInviteRespond(groupUUID, sessionUUID,
+                        Client.Self.GroupInviteRespond(configuredGroup.UUID, sessionUUID,
                             action.Equals((uint) Action.ACCEPT));
                     };
                     break;
@@ -6734,15 +6834,31 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.Eject,
+                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.Eject,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT) ||
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RemoveMember,
+                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.RemoveMember,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -6764,13 +6880,13 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         if (
-                            !AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(agentUUID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         OpenMetaverse.Group commandGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(groupUUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
+                        if (!RequestGroup(configuredGroup.UUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -6787,13 +6903,13 @@ namespace Corrade
                             Parallel.ForEach(
                                 args.RolesMembers.AsParallel().Where(
                                     o => o.Value.Equals(agentUUID)),
-                                o => Client.Groups.RemoveFromRole(groupUUID, o.Key, agentUUID));
+                                o => Client.Groups.RemoveFromRole(configuredGroup.UUID, o.Key, agentUUID));
                             GroupRoleMembersReplyEvent.Set();
                         };
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
-                            Client.Groups.RequestGroupRolesMembers(groupUUID);
+                            Client.Groups.RequestGroupRolesMembers(configuredGroup.UUID);
                             if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
@@ -6812,7 +6928,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
-                            Client.Groups.EjectUser(groupUUID, agentUUID);
+                            Client.Groups.EjectUser(configuredGroup.UUID, agentUUID);
                             if (!GroupEjectEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
@@ -6833,11 +6949,27 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         int days;
                         if (
                             !int.TryParse(
@@ -6868,7 +7000,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupAccountSummaryReply += RequestGroupAccountSummaryEventHandler;
-                            Client.Groups.RequestGroupAccountSummary(groupUUID, days, interval);
+                            Client.Groups.RequestGroupAccountSummary(configuredGroup.UUID, days, interval);
                             if (!RequestGroupAccountSummaryEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
@@ -6895,25 +7027,41 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ChangeIdentity,
+                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.ChangeIdentity,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         OpenMetaverse.Group commandGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(groupUUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
+                        if (!RequestGroup(configuredGroup.UUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -6921,7 +7069,7 @@ namespace Corrade
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message)),
                             ref commandGroup);
-                        Client.Groups.UpdateGroup(groupUUID, commandGroup);
+                        Client.Groups.UpdateGroup(configuredGroup.UUID, commandGroup);
                     };
                     break;
                 case ScriptKeys.LEAVE:
@@ -6931,13 +7079,29 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
@@ -6952,7 +7116,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupLeaveReply += GroupOperationEventHandler;
-                            Client.Groups.LeaveGroup(groupUUID);
+                            Client.Groups.LeaveGroup(configuredGroup.UUID);
                             if (!GroupLeaveReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupLeaveReply -= GroupOperationEventHandler;
@@ -6973,19 +7137,35 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.CreateRole,
+                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.CreateRole,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -7000,7 +7180,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
-                            Client.Groups.RequestGroupRoles(groupUUID);
+                            Client.Groups.RequestGroupRoles(configuredGroup.UUID);
                             if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
@@ -7030,7 +7210,7 @@ namespace Corrade
                                     typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                                         .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                     q => { powers |= ((ulong) q.GetValue(null)); }));
-                        if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ChangeActions,
+                        if (!HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.ChangeActions,
                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -7042,21 +7222,21 @@ namespace Corrade
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_TITLE));
                         }
-                        Client.Groups.CreateRole(groupUUID, new GroupRole
+                        Client.Groups.CreateRole(configuredGroup.UUID, new GroupRole
                         {
                             Name = role,
                             Description =
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
                                         message)),
-                            GroupID = groupUUID,
+                            GroupID = configuredGroup.UUID,
                             ID = UUID.Random(),
                             Powers = (GroupPowers) powers,
                             Title = title
                         });
                         UUID roleUUID = UUID.Zero;
                         if (
-                            !RoleNameToUUID(role, groupUUID,
+                            !RoleNameToUUID(role, configuredGroup.UUID,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref roleUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_CREATE_ROLE));
@@ -7070,13 +7250,29 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
@@ -7097,7 +7293,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
-                            Client.Groups.RequestGroupRoles(groupUUID);
+                            Client.Groups.RequestGroupRoles(configuredGroup.UUID);
                             if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
@@ -7120,13 +7316,29 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
@@ -7142,7 +7354,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
-                            Client.Groups.RequestGroupMembers(groupUUID);
+                            Client.Groups.RequestGroupMembers(configuredGroup.UUID);
                             if (!agentInGroupEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
@@ -7179,13 +7391,29 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
@@ -7207,7 +7435,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         if (
-                            !AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(agentUUID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
@@ -7224,7 +7452,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
-                            Client.Groups.RequestGroupRolesMembers(groupUUID);
+                            Client.Groups.RequestGroupRolesMembers(configuredGroup.UUID);
                             if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
@@ -7239,7 +7467,7 @@ namespace Corrade
                                 groupRolesMembers.AsParallel().Where(o => o.Value.Equals(agentUUID)))
                         {
                             string roleName = string.Empty;
-                            switch (!RoleUUIDToName(pair.Key, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            switch (!RoleUUIDToName(pair.Key, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT,
                                 ref roleName))
                             {
@@ -7264,13 +7492,29 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
@@ -7283,7 +7527,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ROLE_NAME_SPECIFIED));
                         }
                         UUID roleUUID;
-                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, groupUUID,
+                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, configuredGroup.UUID,
                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                             ref roleUUID))
                         {
@@ -7302,7 +7546,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
-                            Client.Groups.RequestGroupRolesMembers(groupUUID);
+                            Client.Groups.RequestGroupRolesMembers(configuredGroup.UUID);
                             if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
@@ -7340,13 +7584,29 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
@@ -7363,7 +7623,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
-                            Client.Groups.RequestGroupRolesMembers(groupUUID);
+                            Client.Groups.RequestGroupRolesMembers(configuredGroup.UUID);
                             if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
@@ -7380,7 +7640,7 @@ namespace Corrade
                         {
                             string roleName = string.Empty;
                             switch (
-                                !RoleUUIDToName(roleUUID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                !RoleUUIDToName(roleUUID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                     Configuration.DATA_TIMEOUT,
                                     ref roleName))
                             {
@@ -7422,19 +7682,35 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RoleProperties,
+                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.RoleProperties,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
                         if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
@@ -7443,7 +7719,7 @@ namespace Corrade
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
                                 message));
                         UUID roleUUID;
-                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, groupUUID,
+                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, configuredGroup.UUID,
                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                             ref roleUUID))
                         {
@@ -7466,7 +7742,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupRoleDataReply += GroupRoleDataEventHandler;
-                            Client.Groups.RequestGroupRoles(groupUUID);
+                            Client.Groups.RequestGroupRoles(configuredGroup.UUID);
                             if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
@@ -7489,21 +7765,37 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.DeleteRole,
+                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.DeleteRole,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT) ||
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RemoveMember,
+                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.RemoveMember,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -7512,7 +7804,7 @@ namespace Corrade
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
                                 message));
                         UUID roleUUID;
-                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, groupUUID,
+                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, configuredGroup.UUID,
                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                             ref roleUUID))
                         {
@@ -7524,7 +7816,7 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(ScriptError.CANNOT_DELETE_THE_EVERYONE_ROLE));
                         }
                         OpenMetaverse.Group commandGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(groupUUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
+                        if (!RequestGroup(configuredGroup.UUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -7537,13 +7829,13 @@ namespace Corrade
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                         {
                             Parallel.ForEach(args.RolesMembers.AsParallel().Where(o => o.Key.Equals(roleUUID)),
-                                o => Client.Groups.RemoveFromRole(groupUUID, roleUUID, o.Value));
+                                o => Client.Groups.RemoveFromRole(configuredGroup.UUID, roleUUID, o.Value));
                             GroupRoleMembersReplyEvent.Set();
                         };
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
-                            Client.Groups.RequestGroupRolesMembers(groupUUID);
+                            Client.Groups.RequestGroupRolesMembers(configuredGroup.UUID);
                             if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
@@ -7551,7 +7843,7 @@ namespace Corrade
                             }
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                         }
-                        Client.Groups.DeleteRole(groupUUID, roleUUID);
+                        Client.Groups.DeleteRole(configuredGroup.UUID, roleUUID);
                     };
                     break;
                 case ScriptKeys.ADDTOROLE:
@@ -7561,19 +7853,35 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AssignMember,
+                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.AssignMember,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -7598,7 +7906,7 @@ namespace Corrade
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
                                 message));
                         UUID roleUUID;
-                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, groupUUID,
+                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, configuredGroup.UUID,
                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                             ref roleUUID))
                         {
@@ -7610,7 +7918,7 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(
                                     ScriptError.GROUP_MEMBERS_ARE_BY_DEFAULT_IN_THE_EVERYONE_ROLE));
                         }
-                        Client.Groups.AddToRole(groupUUID, roleUUID, agentUUID);
+                        Client.Groups.AddToRole(configuredGroup.UUID, roleUUID, agentUUID);
                     };
                     break;
                 case ScriptKeys.DELETEFROMROLE:
@@ -7620,19 +7928,35 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.RemoveMember,
+                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.RemoveMember,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -7657,7 +7981,7 @@ namespace Corrade
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
                                 message));
                         UUID roleUUID;
-                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, groupUUID,
+                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, configuredGroup.UUID,
                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                             ref roleUUID))
                         {
@@ -7670,7 +7994,7 @@ namespace Corrade
                                     ScriptError.CANNOT_DELETE_A_GROUP_MEMBER_FROM_THE_EVERYONE_ROLE));
                         }
                         OpenMetaverse.Group commandGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(groupUUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
+                        if (!RequestGroup(configuredGroup.UUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -7679,7 +8003,7 @@ namespace Corrade
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.CANNOT_REMOVE_USER_FROM_OWNER_ROLE));
                         }
-                        Client.Groups.RemoveFromRole(groupUUID, roleUUID,
+                        Client.Groups.RemoveFromRole(configuredGroup.UUID, roleUUID,
                             agentUUID);
                     };
                     break;
@@ -7779,13 +8103,35 @@ namespace Corrade
                                 }
                                 break;
                             case Entity.GROUP:
-                                UUID groupUUID = UUID.Zero;
+                                Group configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                        o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        UUID groupUUID = UUID.Zero;
+                                        if (
+                                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT,
+                                                Configuration.DATA_TIMEOUT,
+                                                ref groupUUID))
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                        }
+                                        configuredGroup =
+                                            Configuration.GROUPS.AsParallel()
+                                                .FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                        switch (!configuredGroup.Equals(default(Group)))
+                                        {
+                                            case false:
+                                                throw new Exception(
+                                                    wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                        }
+                                        break;
+                                }
                                 if (
-                                    !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                        ref groupUUID))
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                if (
-                                    !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                    !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID,
+                                        Configuration.SERVICES_TIMEOUT,
                                         Configuration.DATA_TIMEOUT))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
@@ -7798,26 +8144,26 @@ namespace Corrade
                                         wasGetDescriptionFromEnumValue(
                                             ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE));
                                 }
-                                if (!Client.Self.GroupChatSessions.ContainsKey(groupUUID))
+                                if (!Client.Self.GroupChatSessions.ContainsKey(configuredGroup.UUID))
                                 {
                                     if (
-                                        !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.JoinChat,
+                                        !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.JoinChat,
                                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                     {
                                         throw new Exception(
                                             wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                     }
 
-                                    if (!JoinGroupChat(groupUUID, Configuration.SERVICES_TIMEOUT))
+                                    if (!JoinGroupChat(configuredGroup.UUID, Configuration.SERVICES_TIMEOUT))
                                     {
                                         throw new Exception(
                                             wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_JOIN_GROUP_CHAT));
                                     }
                                 }
-                                Client.Self.InstantMessageGroup(groupUUID, data);
+                                Client.Self.InstantMessageGroup(configuredGroup.UUID, data);
                                 Parallel.ForEach(
                                     Configuration.GROUPS.AsParallel().Where(
-                                        o => o.UUID.Equals(groupUUID) && o.ChatLogEnabled),
+                                        o => o.UUID.Equals(configuredGroup.UUID) && o.ChatLogEnabled),
                                     o =>
                                     {
                                         // Attempt to write to log file,
@@ -8032,19 +8378,35 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.SendNotices,
+                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.SendNotices,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -8082,7 +8444,7 @@ namespace Corrade
                             }
                             notice.AttachmentID = inventoryBaseItem.UUID;
                         }
-                        Client.Groups.SendGroupNotice(groupUUID, notice);
+                        Client.Groups.SendGroupNotice(configuredGroup.UUID, notice);
                     };
                     break;
                 case ScriptKeys.PAY:
@@ -8123,11 +8485,33 @@ namespace Corrade
                                         message)).ToLowerInvariant()))
                         {
                             case Entity.GROUP:
-                                if (
-                                    !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                        ref targetUUID))
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                Client.Self.GiveGroupMoney(targetUUID, amount,
+                                Group configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                        o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        UUID groupUUID = UUID.Zero;
+                                        if (
+                                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT,
+                                                Configuration.DATA_TIMEOUT,
+                                                ref groupUUID))
+                                        {
+                                            throw new Exception(
+                                                wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                        }
+                                        configuredGroup =
+                                            Configuration.GROUPS.AsParallel()
+                                                .FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                        switch (!configuredGroup.Equals(default(Group)))
+                                        {
+                                            case false:
+                                                throw new Exception(
+                                                    wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                        }
+                                        break;
+                                }
+                                Client.Self.GiveGroupMoney(configuredGroup.UUID, amount,
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REASON)),
                                             message)));
@@ -8897,11 +9281,27 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -8948,7 +9348,7 @@ namespace Corrade
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
-                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(configuredGroup.UUID))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -8957,7 +9357,7 @@ namespace Corrade
                                 {
                                     case AccessList.Access:
                                         if (
-                                            !HasGroupPowers(Client.Self.AgentID, groupUUID,
+                                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID,
                                                 GroupPowers.LandManageAllowed, Configuration.SERVICES_TIMEOUT,
                                                 Configuration.DATA_TIMEOUT))
                                         {
@@ -8967,7 +9367,8 @@ namespace Corrade
                                         break;
                                     case AccessList.Ban:
                                         if (
-                                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandManageBanned,
+                                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID,
+                                                GroupPowers.LandManageBanned,
                                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                         {
                                             throw new Exception(
@@ -8976,7 +9377,7 @@ namespace Corrade
                                         break;
                                     case AccessList.Both:
                                         if (
-                                            !HasGroupPowers(Client.Self.AgentID, groupUUID,
+                                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID,
                                                 GroupPowers.LandManageAllowed, Configuration.SERVICES_TIMEOUT,
                                                 Configuration.DATA_TIMEOUT))
                                         {
@@ -8984,7 +9385,8 @@ namespace Corrade
                                                 wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                         }
                                         if (
-                                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandManageBanned,
+                                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID,
+                                                GroupPowers.LandManageBanned,
                                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                         {
                                             throw new Exception(
@@ -9078,11 +9480,27 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -9115,13 +9533,13 @@ namespace Corrade
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
-                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(configuredGroup.UUID))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                                 if (
-                                    !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandRelease,
+                                    !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.LandRelease,
                                         Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                 {
                                     throw new Exception(
@@ -9139,11 +9557,27 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -9176,7 +9610,7 @@ namespace Corrade
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
-                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(configuredGroup.UUID))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -9184,12 +9618,12 @@ namespace Corrade
                             }
                         }
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandDeed,
+                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.LandDeed,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
-                        Client.Parcels.DeedToGroup(simulator, parcel.LocalID, groupUUID);
+                        Client.Parcels.DeedToGroup(simulator, parcel.LocalID, configuredGroup.UUID);
                     };
                     break;
                 case ScriptKeys.PARCELBUY:
@@ -9199,11 +9633,27 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -9241,7 +9691,7 @@ namespace Corrade
                                 out forGroup))
                         {
                             if (
-                                !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandDeed,
+                                !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.LandDeed,
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                             {
                                 throw new Exception(
@@ -9332,7 +9782,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Client.Parcels.Buy(simulator, parcel.LocalID, forGroup, groupUUID,
+                        Client.Parcels.Buy(simulator, parcel.LocalID, forGroup, configuredGroup.UUID,
                             removeContribution, parcel.Area, parcel.SalePrice);
                     };
                     break;
@@ -9343,11 +9793,27 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -9380,13 +9846,15 @@ namespace Corrade
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
-                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(configuredGroup.UUID))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
-                                if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandEjectAndFreeze,
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                if (
+                                    !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID,
+                                        GroupPowers.LandEjectAndFreeze,
+                                        Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -9428,11 +9896,27 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -9465,13 +9949,15 @@ namespace Corrade
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
-                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(configuredGroup.UUID))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
-                                if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.LandEjectAndFreeze,
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                if (
+                                    !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID,
+                                        GroupPowers.LandEjectAndFreeze,
+                                        Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -10184,13 +10670,29 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.ModerateChat,
+                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.ModerateChat,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -10212,7 +10714,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         if (
-                            !AgentInGroup(agentUUID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(agentUUID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
@@ -10236,7 +10738,7 @@ namespace Corrade
                         {
                             case Type.TEXT:
                             case Type.VOICE:
-                                Client.Self.ModerateChatSessions(groupUUID, agentUUID,
+                                Client.Self.ModerateChatSessions(configuredGroup.UUID, agentUUID,
                                     wasGetDescriptionFromEnumValue(type),
                                     silence);
                                 break;
@@ -10490,11 +10992,27 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
@@ -10594,7 +11112,7 @@ namespace Corrade
                                     Parallel.ForEach(
                                         parcels.AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)), o =>
                                         {
-                                            if (!o.IsGroupOwned || !o.GroupID.Equals(groupUUID))
+                                            if (!o.IsGroupOwned || !o.GroupID.Equals(configuredGroup.UUID))
                                             {
                                                 throw new Exception(
                                                     wasGetDescriptionFromEnumValue(
@@ -10613,7 +11131,7 @@ namespace Corrade
                                                     power = GroupPowers.ReturnGroupOwned;
                                                     break;
                                             }
-                                            if (!HasGroupPowers(Client.Self.AgentID, groupUUID, power,
+                                            if (!HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, power,
                                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                             {
                                                 throw new Exception(
@@ -10668,11 +11186,27 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         string region =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
                                 message));
@@ -10728,7 +11262,7 @@ namespace Corrade
                         Parallel.ForEach(parcels.AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)),
                             o =>
                             {
-                                if (!o.IsGroupOwned || !o.GroupID.Equals(groupUUID))
+                                if (!o.IsGroupOwned || !o.GroupID.Equals(configuredGroup.UUID))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -10742,7 +11276,7 @@ namespace Corrade
                                         GroupPowers.ReturnNonGroup
                                     }, p =>
                                     {
-                                        if (HasGroupPowers(Client.Self.AgentID, groupUUID, p,
+                                        if (HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, p,
                                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                         {
                                             permissions = true;
@@ -10810,13 +11344,29 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         OpenMetaverse.Group dataGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(groupUUID, Configuration.SERVICES_TIMEOUT, ref dataGroup))
+                        if (!RequestGroup(configuredGroup.UUID, Configuration.SERVICES_TIMEOUT, ref dataGroup))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -10837,11 +11387,27 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
@@ -10863,7 +11429,7 @@ namespace Corrade
                         EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
                         {
                             AvatarGroupsReceivedEvent.Alarm(Configuration.DATA_TIMEOUT);
-                            avatarGroup = args.Groups.FirstOrDefault(o => o.GroupID.Equals(groupUUID));
+                            avatarGroup = args.Groups.FirstOrDefault(o => o.GroupID.Equals(configuredGroup.UUID));
                         };
                         lock (ClientInstanceAvatarsLock)
                         {
@@ -10977,11 +11543,27 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -11012,7 +11594,7 @@ namespace Corrade
                         }
                         if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                         {
-                            if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
+                            if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(configuredGroup.UUID))
                             {
                                 throw new Exception(
                                     wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -11665,11 +12247,27 @@ namespace Corrade
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         InventoryBase inventoryBaseItem =
                             FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                 StringOrUUID(wasInput(wasKeyValueGet(
@@ -11730,12 +12328,12 @@ namespace Corrade
                             {
                                 if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                                 {
-                                    if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(groupUUID))
+                                    if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(configuredGroup.UUID))
                                     {
                                         throw new Exception(
                                             wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                     }
-                                    if (!HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.AllowRez,
+                                    if (!HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.AllowRez,
                                         Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                     {
                                         throw new Exception(
@@ -11746,7 +12344,7 @@ namespace Corrade
                         }
                         Client.Inventory.RequestRezFromInventory(simulator, rotation, position,
                             inventoryBaseItem as InventoryItem,
-                            groupUUID);
+                            configuredGroup.UUID);
                     };
                     break;
                 case ScriptKeys.DEREZ:
@@ -12606,18 +13204,34 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
                         }
-                        Client.Groups.ActivateGroup(groupUUID);
+                        Client.Groups.ActivateGroup(configuredGroup.UUID);
                     };
                     break;
                 case ScriptKeys.TAG:
@@ -12629,13 +13243,29 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
@@ -12656,7 +13286,7 @@ namespace Corrade
                                 lock (ClientInstanceGroupsLock)
                                 {
                                     Client.Groups.GroupRoleDataReply += Groups_GroupRoleDataReply;
-                                    Client.Groups.RequestGroupRoles(groupUUID);
+                                    Client.Groups.RequestGroupRoles(configuredGroup.UUID);
                                     if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Groups.GroupRoleDataReply -= Groups_GroupRoleDataReply;
@@ -12679,7 +13309,7 @@ namespace Corrade
                                         throw new Exception(
                                             wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_TITLE));
                                 }
-                                Client.Groups.ActivateTitle(groupUUID, role.Value);
+                                Client.Groups.ActivateTitle(configuredGroup.UUID, role.Value);
                                 break;
                             case Action.GET:
                                 string title = string.Empty;
@@ -12697,7 +13327,7 @@ namespace Corrade
                                 lock (ClientInstanceGroupsLock)
                                 {
                                     Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
-                                    Client.Groups.RequestGroupTitles(groupUUID);
+                                    Client.Groups.RequestGroupTitles(configuredGroup.UUID);
                                     if (!GroupTitlesReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
@@ -12723,13 +13353,29 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
@@ -12745,7 +13391,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
-                            Client.Groups.RequestGroupTitles(groupUUID);
+                            Client.Groups.RequestGroupTitles(configuredGroup.UUID);
                             if (!GroupTitlesReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
@@ -12758,7 +13404,7 @@ namespace Corrade
                         {
                             string roleName = string.Empty;
                             if (
-                                !RoleUUIDToName(title.Value.RoleID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                                !RoleUUIDToName(title.Value.RoleID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                     Configuration.DATA_TIMEOUT,
                                     ref roleName))
                                 continue;
@@ -13378,19 +14024,35 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                        if (
-                            !AgentInGroup(Client.Self.AgentID, groupUUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, groupUUID, GroupPowers.StartProposal,
+                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.StartProposal,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -13431,7 +14093,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PROPOSAL_TEXT));
                         }
-                        Client.Groups.StartProposal(groupUUID, new GroupProposal
+                        Client.Groups.StartProposal(configuredGroup.UUID, new GroupProposal
                         {
                             Duration = duration,
                             Majority = majority,
@@ -13768,6 +14430,7 @@ namespace Corrade
                                         notification = new Notification
                                         {
                                             GroupName = configuredGroup.Name,
+                                            GroupUUID = configuredGroup.UUID,
                                             NotificationMask = 0,
                                             NotificationDestination =
                                                 new SerializableDictionary<Notifications, HashSet<string>>()
@@ -13868,6 +14531,7 @@ namespace Corrade
                                         groupNotifications.Add(new Notification
                                         {
                                             GroupName = o.GroupName,
+                                            GroupUUID = o.GroupUUID,
                                             NotificationMask =
                                                 notificationDestination.Keys.Cast<uint>().Aggregate((p, q) => p |= q),
                                             NotificationDestination = notificationDestination
@@ -15852,11 +16516,27 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         float range;
                         if (
                             !float.TryParse(
@@ -15884,7 +16564,7 @@ namespace Corrade
                         }
                         Client.Objects.DeedObject(
                             Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                            primitive.LocalID, groupUUID);
+                            primitive.LocalID, configuredGroup.UUID);
                     };
                     break;
                 case ScriptKeys.SETOBJECTGROUP:
@@ -15894,11 +16574,27 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         float range;
                         if (
                             !float.TryParse(
@@ -15927,7 +16623,7 @@ namespace Corrade
                         Client.Objects.SetObjectsGroup(
                             Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                             new List<uint> {primitive.LocalID},
-                            groupUUID);
+                            configuredGroup.UUID);
                     };
                     break;
                 case ScriptKeys.SETOBJECTSALEINFO:
@@ -16491,11 +17187,27 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         string region =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
                                 message));
@@ -16548,7 +17260,7 @@ namespace Corrade
                         }
                         Client.Objects.BuyObject(simulator, primitive.LocalID, primitive.Properties.SaleType,
                             primitive.Properties.SalePrice,
-                            groupUUID, folderUUID);
+                            configuredGroup.UUID, folderUUID);
                     };
                     break;
                 case ScriptKeys.GETPRIMITIVEPAYPRICES:
@@ -16558,11 +17270,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         string region =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
                                 message));
@@ -17359,16 +18066,32 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        UUID groupUUID = UUID.Zero;
-                        if (
-                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref groupUUID))
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                        Group configuredGroup =
+                            Configuration.GROUPS.AsParallel().FirstOrDefault(
+                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
+                        switch (!configuredGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                UUID groupUUID = UUID.Zero;
+                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                    ref groupUUID))
+                                {
+                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                configuredGroup =
+                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                                switch (!configuredGroup.Equals(default(Group)))
+                                {
+                                    case false:
+                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
+                                }
+                                break;
+                        }
                         lock (GroupDirectoryTrackersLock)
                         {
-                            if (!GroupDirectoryTrackers.Contains(groupUUID))
+                            if (!GroupDirectoryTrackers.Contains(configuredGroup.UUID))
                             {
-                                GroupDirectoryTrackers.Add(groupUUID, Client.Inventory.Store.RootFolder);
+                                GroupDirectoryTrackers.Add(configuredGroup.UUID, Client.Inventory.Store.RootFolder);
                             }
                         }
                         string path =
@@ -17447,7 +18170,7 @@ namespace Corrade
                                     default:
                                         lock (GroupDirectoryTrackersLock)
                                         {
-                                            item = GroupDirectoryTrackers[groupUUID] as InventoryBase;
+                                            item = GroupDirectoryTrackers[configuredGroup.UUID] as InventoryBase;
                                         }
                                         break;
                                 }
@@ -17504,7 +18227,7 @@ namespace Corrade
                                 {
                                     DirItem dirItem =
                                         DirItem.FromInventoryBase(
-                                            GroupDirectoryTrackers[groupUUID] as InventoryBase);
+                                            GroupDirectoryTrackers[configuredGroup.UUID] as InventoryBase);
                                     csv.AddRange(new[]
                                     {wasGetStructureMemberDescription(dirItem, dirItem.Name), dirItem.Name});
                                     csv.AddRange(new[]
@@ -17531,7 +18254,7 @@ namespace Corrade
                                     case true:
                                         lock (GroupDirectoryTrackersLock)
                                         {
-                                            item = GroupDirectoryTrackers[groupUUID] as InventoryBase;
+                                            item = GroupDirectoryTrackers[configuredGroup.UUID] as InventoryBase;
                                         }
                                         break;
                                     default:
@@ -17546,7 +18269,7 @@ namespace Corrade
                                 }
                                 lock (GroupDirectoryTrackersLock)
                                 {
-                                    GroupDirectoryTrackers[groupUUID] = item;
+                                    GroupDirectoryTrackers[configuredGroup.UUID] = item;
                                 }
                                 break;
                             case Action.MKDIR:
@@ -17570,7 +18293,7 @@ namespace Corrade
                                     default:
                                         lock (GroupDirectoryTrackersLock)
                                         {
-                                            item = GroupDirectoryTrackers[groupUUID] as InventoryBase;
+                                            item = GroupDirectoryTrackers[configuredGroup.UUID] as InventoryBase;
                                         }
                                         break;
                                 }
@@ -17609,7 +18332,7 @@ namespace Corrade
                                     default:
                                         lock (GroupDirectoryTrackersLock)
                                         {
-                                            item = GroupDirectoryTrackers[groupUUID] as InventoryBase;
+                                            item = GroupDirectoryTrackers[configuredGroup.UUID] as InventoryBase;
                                         }
                                         break;
                                 }
@@ -17674,7 +18397,7 @@ namespace Corrade
                                     default:
                                         lock (GroupDirectoryTrackersLock)
                                         {
-                                            item = GroupDirectoryTrackers[groupUUID] as InventoryBase;
+                                            item = GroupDirectoryTrackers[configuredGroup.UUID] as InventoryBase;
                                         }
                                         break;
                                 }
@@ -17712,7 +18435,7 @@ namespace Corrade
                                     default:
                                         lock (GroupDirectoryTrackersLock)
                                         {
-                                            sourceItem = GroupDirectoryTrackers[groupUUID] as InventoryBase;
+                                            sourceItem = GroupDirectoryTrackers[configuredGroup.UUID] as InventoryBase;
                                         }
                                         break;
                                 }
@@ -17745,7 +18468,7 @@ namespace Corrade
                                     default:
                                         lock (GroupDirectoryTrackersLock)
                                         {
-                                            targetItem = GroupDirectoryTrackers[groupUUID] as InventoryBase;
+                                            targetItem = GroupDirectoryTrackers[configuredGroup.UUID] as InventoryBase;
                                         }
                                         break;
                                 }
@@ -19850,6 +20573,59 @@ namespace Corrade
                 lock (Locks.CurrentGroupsCacheLock)
                 {
                     CurrentGroupsCache.Clear();
+                }
+            }
+
+            public static void AddAgent(string FirstName, string LastName, UUID agentUUID)
+            {
+                Agents agent = new Agents
+                {
+                    FirstName = FirstName,
+                    LastName = LastName,
+                    UUID = agentUUID
+                };
+
+                lock (Locks.AgentCacheLock)
+                {
+                    if (!AgentCache.Contains(agent))
+                    {
+                        AgentCache.Add(agent);
+                    }
+                }
+            }
+
+            public static Agents GetAgent(string FirstName, string LastName)
+            {
+                lock (Locks.AgentCacheLock)
+                {
+                    return AgentCache.AsParallel().FirstOrDefault(
+                        o =>
+                            o.FirstName.Equals(FirstName, StringComparison.OrdinalIgnoreCase) &&
+                            o.LastName.Equals(LastName, StringComparison.OrdinalIgnoreCase));
+                }
+            }
+
+            public static Agents GetAgent(UUID agentUUID)
+            {
+                lock (Locks.AgentCacheLock)
+                {
+                    return AgentCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(agentUUID));
+                }
+            }
+
+            public static void AddGroup(string GroupName, UUID GroupUUID)
+            {
+                Groups group = new Groups
+                {
+                    Name = GroupName,
+                    UUID = GroupUUID
+                };
+                lock (Locks.GroupCacheLock)
+                {
+                    if (!GroupCache.Contains(group))
+                    {
+                        GroupCache.Add(group);
+                    }
                 }
             }
 
@@ -22758,6 +23534,21 @@ namespace Corrade
             public Action Action;
             public string AgentName;
             public UUID AgentUUID;
+            public string GroupName;
+            public UUID GroupUUID;
+        }
+
+        /// <summary>
+        ///     An event for a group message.
+        /// </summary>
+        private class GroupMessageEventArgs : EventArgs
+        {
+            public UUID AgentUUID;
+            public string FirstName;
+            public string GroupName;
+            public UUID GroupUUID;
+            public string LastName;
+            public string Message;
         }
 
         /// <summary>
@@ -22960,6 +23751,7 @@ namespace Corrade
         public struct Notification
         {
             public string GroupName;
+            public UUID GroupUUID;
             public SerializableDictionary<Notifications, HashSet<string>> NotificationDestination;
             public uint NotificationMask;
         }
@@ -25941,17 +26733,11 @@ namespace Corrade
             int dataTimeout,
             ref UUID agentUUID)
         {
-            lock (Cache.Locks.AgentCacheLock)
+            Cache.Agents agent = Cache.GetAgent(agentFirstName, agentLastName);
+            if (!agent.Equals(default(Cache.Agents)))
             {
-                Cache.Agents agent =
-                    Cache.AgentCache.AsParallel().FirstOrDefault(
-                        o => o.FirstName.Equals(agentFirstName) && o.LastName.Equals(agentLastName));
-
-                if (!agent.Equals(default(Cache.Agents)))
-                {
-                    agentUUID = agent.UUID;
-                    return true;
-                }
+                agentUUID = agent.UUID;
+                return true;
             }
             bool succeeded;
             lock (ClientInstanceDirectoryLock)
@@ -25961,15 +26747,7 @@ namespace Corrade
             }
             if (succeeded)
             {
-                lock (Cache.Locks.AgentCacheLock)
-                {
-                    Cache.AgentCache.Add(new Cache.Agents
-                    {
-                        FirstName = agentFirstName,
-                        LastName = agentLastName,
-                        UUID = agentUUID
-                    });
-                }
+                Cache.AddAgent(agentFirstName, agentLastName, agentUUID);
             }
             return succeeded;
         }
@@ -26022,15 +26800,11 @@ namespace Corrade
         private static bool AgentUUIDToName(UUID agentUUID, int millisecondsTimeout,
             ref string agentName)
         {
-            lock (Cache.Locks.AgentCacheLock)
+            Cache.Agents agent = Cache.GetAgent(agentUUID);
+            if (!agent.Equals(default(Cache.Agents)))
             {
-                Cache.Agents agent = Cache.AgentCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(agentUUID));
-
-                if (!agent.Equals(default(Cache.Agents)))
-                {
-                    agentName = string.Join(" ", agent.FirstName, agent.LastName);
-                    return true;
-                }
+                agentName = string.Join(" ", agent.FirstName, agent.LastName);
+                return true;
             }
             bool succeeded;
             lock (ClientInstanceAvatarsLock)
@@ -26040,15 +26814,7 @@ namespace Corrade
             if (succeeded)
             {
                 List<string> name = new List<string>(GetAvatarNames(agentName));
-                lock (Cache.Locks.AgentCacheLock)
-                {
-                    Cache.AgentCache.Add(new Cache.Agents
-                    {
-                        FirstName = name.First(),
-                        LastName = name.Last(),
-                        UUID = agentUUID
-                    });
-                }
+                Cache.AddAgent(name.First(), name.Last(), agentUUID);
             }
             return succeeded;
         }
