@@ -1370,6 +1370,39 @@ namespace Corrade
         }
 
         /// <summary>
+        ///     Fetches a group UUID from a key-value formatted message message.
+        /// </summary>
+        /// <param name="message">the message to inspect</param>
+        /// <returns>the UUID of the group or the zero UUID</returns>
+        private static UUID GetGroupFromMessage(string message)
+        {
+            if (string.IsNullOrEmpty(message)) return UUID.Zero;
+            // Get group and password.
+            string group =
+                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)), message));
+            // Bail if no group set.
+            if (string.IsNullOrEmpty(group)) return UUID.Zero;
+            // If an UUID was sent, try to resolve to a name and bail if not.
+            UUID groupUUID;
+            switch (UUID.TryParse(group, out groupUUID))
+            {
+                case true:
+                    // Then grab the group UUID from the configured groups.
+                    Group configGroup = Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+                    if (!configGroup.Equals(default(Group)))
+                        groupUUID = configGroup.UUID;
+                    break;
+                default:
+                    if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                        ref groupUUID))
+                        return UUID.Zero;
+                    break;
+            }
+
+            return groupUUID;
+        }
+
+        /// <summary>
         ///     Used to check whether a group has a certain notification for Corrade.
         /// </summary>
         /// <param name="group">the name of the group</param>
@@ -2643,54 +2676,60 @@ namespace Corrade
         /// <param name="messages">a list of messages</param>
         private static void Feedback(params string[] messages)
         {
-            List<string> output = new List<string>
-            {
-                CORRADE_CONSTANTS.CORRADE,
-                string.Format(CultureInfo.InvariantCulture, "[{0}]",
-                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP, DateTimeFormatInfo.InvariantInfo))
-            };
-
-            output.AddRange(messages.Select(message => message));
-
-            // Attempt to write to log file,
-            if (Configuration.CLIENT_LOG_ENABLED)
-            {
-                try
+            CorradeThreadPool[CorradeThreadType.LOG].Spawn(
+                () =>
                 {
-                    lock (ClientLogFileLock)
+                    List<string> output = new List<string>
                     {
-                        using (
-                            StreamWriter logWriter =
-                                new StreamWriter(Configuration.CLIENT_LOG_FILE, true, Encoding.UTF8))
+                        CORRADE_CONSTANTS.CORRADE,
+                        string.Format(CultureInfo.InvariantCulture, "[{0}]",
+                            DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP, DateTimeFormatInfo.InvariantInfo))
+                    };
+
+                    output.AddRange(messages.Select(message => message));
+
+                    // Attempt to write to log file,
+                    if (Configuration.CLIENT_LOG_ENABLED)
+                    {
+                        try
                         {
-                            logWriter.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
-                            //logWriter.Flush();
+                            lock (ClientLogFileLock)
+                            {
+                                using (
+                                    StreamWriter logWriter =
+                                        new StreamWriter(Configuration.CLIENT_LOG_FILE, true, Encoding.UTF8))
+                                {
+                                    logWriter.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
+                                    //logWriter.Flush();
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // or fail and append the fail message.
+                            output.Add(string.Format(CultureInfo.InvariantCulture, "{0} {1}",
+                                wasGetDescriptionFromEnumValue(
+                                    ConsoleError.COULD_NOT_WRITE_TO_CLIENT_LOG_FILE),
+                                ex.Message));
                         }
                     }
-                }
-                catch (Exception ex)
-                {
-                    // or fail and append the fail message.
-                    output.Add(string.Format(CultureInfo.InvariantCulture, "{0} {1}",
-                        wasGetDescriptionFromEnumValue(
-                            ConsoleError.COULD_NOT_WRITE_TO_CLIENT_LOG_FILE),
-                        ex.Message));
-                }
-            }
 
-            if (!Environment.UserInteractive)
-            {
-                switch (Environment.OSVersion.Platform)
-                {
-                    case PlatformID.Win32NT:
-                        CorradeEventLog.WriteEntry(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()),
-                            EventLogEntryType.Information);
-                        break;
-                }
-                return;
-            }
+                    if (!Environment.UserInteractive)
+                    {
+                        switch (Environment.OSVersion.Platform)
+                        {
+                            case PlatformID.Win32NT:
+                                CorradeEventLog.WriteEntry(
+                                    string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()),
+                                    EventLogEntryType.Information);
+                                break;
+                        }
+                        return;
+                    }
 
-            Console.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
+                    Console.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
+                },
+                Configuration.MAXIMUM_LOG_THREADS);
         }
 
         public static int Main(string[] args)
@@ -2924,9 +2963,9 @@ namespace Corrade
                 {
                     Settings.BIND_ADDR = IPAddress.Parse(Configuration.BIND_IP_ADDRESS);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNKNOWN_IP_ADDRESS));
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNKNOWN_IP_ADDRESS), ex.Message);
                     Environment.Exit(Configuration.EXIT_CODE_ABNORMAL);
                 }
             }
@@ -2990,18 +3029,18 @@ namespace Corrade
             {
                 do
                 {
-                    Thread.Sleep(Configuration.CALLBACK_THROTTLE);
-                    lock (CallbackQueueLock)
-                    {
-                        if (CallbackQueue.Count.Equals(0)) continue;
-                    }
-                    CallbackQueueElement callbackQueueElement;
-                    lock (CallbackQueueLock)
-                    {
-                        callbackQueueElement = CallbackQueue.Dequeue();
-                    }
                     try
                     {
+                        Thread.Sleep(Configuration.CALLBACK_THROTTLE);
+                        lock (CallbackQueueLock)
+                        {
+                            if (CallbackQueue.Count.Equals(0)) continue;
+                        }
+                        CallbackQueueElement callbackQueueElement;
+                        lock (CallbackQueueLock)
+                        {
+                            callbackQueueElement = CallbackQueue.Dequeue();
+                        }
                         if (!callbackQueueElement.Equals(default(CallbackQueueElement)))
                         {
                             wasPOST(callbackQueueElement.URL, callbackQueueElement.message,
@@ -3011,7 +3050,6 @@ namespace Corrade
                     catch (Exception ex)
                     {
                         Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CALLBACK_ERROR),
-                            callbackQueueElement.URL,
                             ex.Message);
                     }
                 } while (runCallbackThread);
@@ -3021,18 +3059,18 @@ namespace Corrade
             {
                 do
                 {
-                    Thread.Sleep(Configuration.NOTIFICATION_THROTTLE);
-                    lock (NotificationQueueLock)
-                    {
-                        if (NotificationQueue.Count.Equals(0)) continue;
-                    }
-                    NotificationQueueElement notificationQueueElement;
-                    lock (NotificationQueueLock)
-                    {
-                        notificationQueueElement = NotificationQueue.Dequeue();
-                    }
                     try
                     {
+                        Thread.Sleep(Configuration.NOTIFICATION_THROTTLE);
+                        lock (NotificationQueueLock)
+                        {
+                            if (NotificationQueue.Count.Equals(0)) continue;
+                        }
+                        NotificationQueueElement notificationQueueElement;
+                        lock (NotificationQueueLock)
+                        {
+                            notificationQueueElement = NotificationQueue.Dequeue();
+                        }
                         if (!notificationQueueElement.Equals(default(NotificationQueueElement)))
                         {
                             wasPOST(notificationQueueElement.URL, notificationQueueElement.message,
@@ -3042,7 +3080,6 @@ namespace Corrade
                     catch (Exception ex)
                     {
                         Feedback(wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_ERROR),
-                            notificationQueueElement.URL,
                             ex.Message);
                     }
                 } while (runNotificationThread);
@@ -3139,17 +3176,17 @@ namespace Corrade
                 (EffectsExpirationThread.ThreadState.Equals(ThreadState.Running) ||
                  EffectsExpirationThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
             {
-                if (!EffectsExpirationThread.Join(1000))
+                try
                 {
-                    try
+                    if (!EffectsExpirationThread.Join(1000))
                     {
                         EffectsExpirationThread.Abort();
                         EffectsExpirationThread.Join();
                     }
-                    catch (ThreadStateException)
-                    {
-                        /* We are going down and we do not care. */
-                    }
+                }
+                catch (Exception)
+                {
+                    /* We are going down and we do not care. */
                 }
             }
             // Stop the group member sweep thread.
@@ -3160,17 +3197,17 @@ namespace Corrade
                 (NotificationThread.ThreadState.Equals(ThreadState.Running) ||
                  NotificationThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
             {
-                if (!NotificationThread.Join(1000))
+                try
                 {
-                    try
+                    if (!NotificationThread.Join(1000))
                     {
                         NotificationThread.Abort();
                         NotificationThread.Join();
                     }
-                    catch (ThreadStateException)
-                    {
-                        /* We are going down and we do not care. */
-                    }
+                }
+                catch (Exception)
+                {
+                    /* We are going down and we do not care. */
                 }
             }
             // Stop the callback thread.
@@ -3179,43 +3216,43 @@ namespace Corrade
                 (CallbackThread.ThreadState.Equals(ThreadState.Running) ||
                  CallbackThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
             {
-                if (!CallbackThread.Join(1000))
+                try
                 {
-                    try
+                    if (!CallbackThread.Join(1000))
                     {
                         CallbackThread.Abort();
                         CallbackThread.Join();
                     }
-                    catch (ThreadStateException)
-                    {
-                        /* We are going down and we do not care. */
-                    }
+                }
+                catch (Exception)
+                {
+                    /* We are going down and we do not care. */
                 }
             }
             // Close HTTP server
             if (Configuration.ENABLE_HTTP_SERVER && HttpListener.IsSupported)
             {
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.STOPPING_HTTP_SERVER));
-                if (HTTPListenerThread != null)
+                try
                 {
-                    HTTPListener.Stop();
-                    if (
-                        (HTTPListenerThread.ThreadState.Equals(ThreadState.Running) ||
-                         HTTPListenerThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                    if (HTTPListenerThread != null)
                     {
-                        if (!HTTPListenerThread.Join(1000))
+                        HTTPListener.Stop();
+                        if (
+                            (HTTPListenerThread.ThreadState.Equals(ThreadState.Running) ||
+                             HTTPListenerThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
                         {
-                            try
+                            if (!HTTPListenerThread.Join(1000))
                             {
                                 HTTPListenerThread.Abort();
                                 HTTPListenerThread.Join();
                             }
-                            catch (ThreadStateException)
-                            {
-                                /* We are going down and we do not care. */
-                            }
                         }
                     }
+                }
+                catch (Exception)
+                {
+                    /* We are going down and we do not care. */
                 }
             }
             // Reject any inventory that has not been accepted.
@@ -3502,6 +3539,9 @@ namespace Corrade
                                      !(p.NotificationMask & (uint) notification).Equals(0))));
             }
 
+            // No groups to notify so bail directly.
+            if (notifyGroups.Count.Equals(0)) return;
+
             // Set the notification type
             Dictionary<string, string> notificationData = new Dictionary<string, string>
             {
@@ -3513,6 +3553,7 @@ namespace Corrade
 
             System.Action execute;
 
+            // Store group UUID for group destination.
             UUID groupUUID = UUID.Zero;
 
             // Build the notification data
@@ -3544,14 +3585,16 @@ namespace Corrade
                     execute = () =>
                     {
                         ChatEventArgs localChatEventArgs = (ChatEventArgs) args;
-                        List<string> chatName =
-                            new List<string>(GetAvatarNames(localChatEventArgs.FromName));
+                        IEnumerable<string> name = GetAvatarNames(localChatEventArgs.FromName);
+                        if (name != null)
+                        {
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                name.First());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                name.Last());
+                        }
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
                             localChatEventArgs.Message);
-                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                            chatName.First());
-                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                            chatName.Last());
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
                             localChatEventArgs.OwnerID.ToString());
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
@@ -3759,12 +3802,14 @@ namespace Corrade
                         if (friendshipNotificationType == typeof (FriendInfoEventArgs))
                         {
                             FriendInfoEventArgs friendInfoEventArgs = (FriendInfoEventArgs) args;
-                            List<string> name =
-                                new List<string>(GetAvatarNames(friendInfoEventArgs.Friend.Name));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                name.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                name.Last());
+                            IEnumerable<string> name = GetAvatarNames(friendInfoEventArgs.Friend.Name);
+                            if (name != null)
+                            {
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    name.First());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    name.Last());
+                            }
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                                 friendInfoEventArgs.Friend.UUID.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.STATUS),
@@ -3790,13 +3835,14 @@ namespace Corrade
                         {
                             FriendshipResponseEventArgs friendshipResponseEventArgs =
                                 (FriendshipResponseEventArgs) args;
-                            List<string> friendshipResponseName =
-                                new List<string>(
-                                    GetAvatarNames(friendshipResponseEventArgs.AgentName));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                friendshipResponseName.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                friendshipResponseName.Last());
+                            IEnumerable<string> name = GetAvatarNames(friendshipResponseEventArgs.AgentName);
+                            if (name != null)
+                            {
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    name.First());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    name.Last());
+                            }
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                                 friendshipResponseEventArgs.AgentID.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
@@ -3807,12 +3853,14 @@ namespace Corrade
                         {
                             FriendshipOfferedEventArgs friendshipOfferedEventArgs =
                                 (FriendshipOfferedEventArgs) args;
-                            List<string> friendshipOfferedName =
-                                new List<string>(GetAvatarNames(friendshipOfferedEventArgs.AgentName));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                                friendshipOfferedName.First());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                                friendshipOfferedName.Last());
+                            IEnumerable<string> name = GetAvatarNames(friendshipOfferedEventArgs.AgentName);
+                            if (name != null)
+                            {
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    name.First());
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    name.Last());
+                            }
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                                 friendshipOfferedEventArgs.AgentID.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
@@ -3824,13 +3872,14 @@ namespace Corrade
                     execute = () =>
                     {
                         InstantMessageEventArgs teleportLureEventArgs = (InstantMessageEventArgs) args;
-                        List<string> teleportLureName =
-                            new List<string>(
-                                GetAvatarNames(teleportLureEventArgs.IM.FromAgentName));
-                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                            teleportLureName.First());
-                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                            teleportLureName.Last());
+                        IEnumerable<string> name = GetAvatarNames(teleportLureEventArgs.IM.FromAgentName);
+                        if (name != null)
+                        {
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                name.First());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                name.Last());
+                        }
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                             teleportLureEventArgs.IM.FromAgentID.ToString());
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
@@ -3842,13 +3891,14 @@ namespace Corrade
                     {
                         InstantMessageEventArgs notificationGroupNoticeEventArgs =
                             (InstantMessageEventArgs) args;
-                        List<string> notificationGroupNoticeName =
-                            new List<string>(
-                                GetAvatarNames(notificationGroupNoticeEventArgs.IM.FromAgentName));
-                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                            notificationGroupNoticeName.First());
-                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                            notificationGroupNoticeName.Last());
+                        IEnumerable<string> name = GetAvatarNames(notificationGroupNoticeEventArgs.IM.FromAgentName);
+                        if (name != null)
+                        {
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                name.First());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                name.Last());
+                        }
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                             notificationGroupNoticeEventArgs.IM.FromAgentID.ToString());
                         string[] noticeData = notificationGroupNoticeEventArgs.IM.Message.Split('|');
@@ -3884,13 +3934,14 @@ namespace Corrade
                     {
                         InstantMessageEventArgs notificationInstantMessage =
                             (InstantMessageEventArgs) args;
-                        List<string> notificationInstantMessageName =
-                            new List<string>(
-                                GetAvatarNames(notificationInstantMessage.IM.FromAgentName));
-                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                            notificationInstantMessageName.First());
-                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                            notificationInstantMessageName.Last());
+                        IEnumerable<string> name = GetAvatarNames(notificationInstantMessage.IM.FromAgentName);
+                        if (name != null)
+                        {
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                name.First());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                name.Last());
+                        }
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                             notificationInstantMessage.IM.FromAgentID.ToString());
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
@@ -3902,13 +3953,14 @@ namespace Corrade
                     {
                         InstantMessageEventArgs notificationRegionMessage =
                             (InstantMessageEventArgs) args;
-                        List<string> notificationRegionMessageName =
-                            new List<string>(
-                                GetAvatarNames(notificationRegionMessage.IM.FromAgentName));
-                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                            notificationRegionMessageName.First());
-                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                            notificationRegionMessageName.Last());
+                        IEnumerable<string> name = GetAvatarNames(notificationRegionMessage.IM.FromAgentName);
+                        if (name != null)
+                        {
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                name.First());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                name.Last());
+                        }
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                             notificationRegionMessage.IM.FromAgentID.ToString());
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
@@ -4021,8 +4073,11 @@ namespace Corrade
                         if (regionChangeType == typeof (SimChangedEventArgs))
                         {
                             SimChangedEventArgs simChangedEventArgs = (SimChangedEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OLD),
-                                simChangedEventArgs.PreviousSimulator.Name);
+                            if (simChangedEventArgs.PreviousSimulator != null)
+                            {
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OLD),
+                                    simChangedEventArgs.PreviousSimulator.Name);
+                            }
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NEW),
                                 Client.Network.CurrentSim.Name);
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
@@ -4033,8 +4088,11 @@ namespace Corrade
                         {
                             RegionCrossedEventArgs regionCrossedEventArgs =
                                 (RegionCrossedEventArgs) args;
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OLD),
-                                regionCrossedEventArgs.OldSimulator.Name);
+                            if (regionCrossedEventArgs.OldSimulator != null)
+                            {
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OLD),
+                                    regionCrossedEventArgs.OldSimulator.Name);
+                            }
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NEW),
                                 regionCrossedEventArgs.NewSimulator.Name);
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
@@ -4062,13 +4120,14 @@ namespace Corrade
                     {
                         InstantMessageEventArgs notificationTypingMessageEventArgs =
                             (InstantMessageEventArgs) args;
-                        List<string> notificationTypingMessageName =
-                            new List<string>(
-                                GetAvatarNames(notificationTypingMessageEventArgs.IM.FromAgentName));
-                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                            notificationTypingMessageName.First());
-                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                            notificationTypingMessageName.Last());
+                        IEnumerable<string> name = GetAvatarNames(notificationTypingMessageEventArgs.IM.FromAgentName);
+                        if (name != null)
+                        {
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                name.First());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                name.Last());
+                        }
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                             notificationTypingMessageEventArgs.IM.FromAgentID.ToString());
                         switch (notificationTypingMessageEventArgs.IM.Dialog)
@@ -4089,13 +4148,14 @@ namespace Corrade
                     {
                         InstantMessageEventArgs notificationGroupInviteEventArgs =
                             (InstantMessageEventArgs) args;
-                        List<string> notificationGroupInviteName =
-                            new List<string>(
-                                GetAvatarNames(notificationGroupInviteEventArgs.IM.FromAgentName));
-                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                            notificationGroupInviteName.First());
-                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                            notificationGroupInviteName.Last());
+                        IEnumerable<string> name = GetAvatarNames(notificationGroupInviteEventArgs.IM.FromAgentName);
+                        if (name != null)
+                        {
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                name.First());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                name.Last());
+                        }
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                             notificationGroupInviteEventArgs.IM.FromAgentID.ToString());
                         lock (GroupInviteLock)
@@ -4145,13 +4205,14 @@ namespace Corrade
                         GroupMembershipEventArgs groupMembershipEventArgs = (GroupMembershipEventArgs) args;
                         // Set-up filters.
                         groupUUID = groupMembershipEventArgs.GroupUUID;
-                        List<string> groupMembershipName =
-                            new List<string>(
-                                GetAvatarNames(groupMembershipEventArgs.AgentName));
-                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
-                            groupMembershipName.First());
-                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
-                            groupMembershipName.Last());
+                        IEnumerable<string> name = GetAvatarNames(groupMembershipEventArgs.AgentName);
+                        if (name != null)
+                        {
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                name.First());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                name.Last());
+                        }
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
                             groupMembershipEventArgs.AgentUUID.ToString());
                         notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
@@ -4413,6 +4474,7 @@ namespace Corrade
             {
                 if (NotificationQueue.Count >= Configuration.NOTIFICATION_QUEUE_LENGTH)
                 {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_THROTTLED));
                     return;
                 }
             }
@@ -4512,35 +4574,38 @@ namespace Corrade
                     // Log local chat,
                     if (Configuration.LOCAL_MESSAGE_LOG_ENABLED)
                     {
-                        try
+                        CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
                         {
-                            lock (LocalLogFileLock)
+                            try
                             {
-                                using (
-                                    StreamWriter logWriter =
-                                        new StreamWriter(wasPathCombine(Configuration.LOCAL_MESSAGE_LOG_DIRECTORY,
-                                            Client.Network.CurrentSim.Name) +
-                                                         "." +
-                                                         CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
+                                lock (LocalLogFileLock)
                                 {
-                                    logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
-                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                            DateTimeFormatInfo.InvariantInfo), fullName.First(), fullName.Last(),
-                                        Enum.GetName(typeof (ChatType), e.Type),
-                                        e.Message);
-                                    //logWriter.Flush();
-                                    //logWriter.Close();
+                                    using (
+                                        StreamWriter logWriter =
+                                            new StreamWriter(wasPathCombine(Configuration.LOCAL_MESSAGE_LOG_DIRECTORY,
+                                                Client.Network.CurrentSim.Name) +
+                                                             "." +
+                                                             CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
+                                    {
+                                        logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
+                                            DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                DateTimeFormatInfo.InvariantInfo), fullName.First(), fullName.Last(),
+                                            Enum.GetName(typeof (ChatType), e.Type),
+                                            e.Message);
+                                        //logWriter.Flush();
+                                        //logWriter.Close();
+                                    }
                                 }
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                            // or fail and append the fail message.
-                            Feedback(
-                                wasGetDescriptionFromEnumValue(
-                                    ConsoleError.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
-                                ex.Message);
-                        }
+                            catch (Exception ex)
+                            {
+                                // or fail and append the fail message.
+                                Feedback(
+                                    wasGetDescriptionFromEnumValue(
+                                        ConsoleError.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
+                                    ex.Message);
+                            }
+                        }, Configuration.MAXIMUM_LOG_THREADS);
                     }
                     break;
                 case (ChatType) 9:
@@ -4555,7 +4620,8 @@ namespace Corrade
                     }
                     CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
                         () => HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString()),
-                        Configuration.MAXIMUM_COMMAND_THREADS);
+                        Configuration.MAXIMUM_COMMAND_THREADS, GetGroupFromMessage(e.Message),
+                        Configuration.SCHEDULER_EXPIRATION_TIME);
                     break;
             }
         }
@@ -5059,32 +5125,36 @@ namespace Corrade
                                 o =>
                                 {
                                     // Attempt to write to log file,
-                                    try
+                                    CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
                                     {
-                                        lock (GroupLogFileLock)
+                                        try
                                         {
-                                            using (
-                                                StreamWriter logWriter = new StreamWriter(o.ChatLog, true, Encoding.UTF8)
-                                                )
+                                            lock (GroupLogFileLock)
                                             {
-                                                logWriter.WriteLine("[{0}] {1} {2} : {3}",
-                                                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                        DateTimeFormatInfo.InvariantInfo), fullName.First(),
-                                                    fullName.Last(),
-                                                    args.IM.Message);
-                                                //logWriter.Flush();
-                                                //logWriter.Close();
+                                                using (
+                                                    StreamWriter logWriter = new StreamWriter(o.ChatLog, true,
+                                                        Encoding.UTF8)
+                                                    )
+                                                {
+                                                    logWriter.WriteLine("[{0}] {1} {2} : {3}",
+                                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                            DateTimeFormatInfo.InvariantInfo), fullName.First(),
+                                                        fullName.Last(),
+                                                        args.IM.Message);
+                                                    //logWriter.Flush();
+                                                    //logWriter.Close();
+                                                }
                                             }
                                         }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        // or fail and append the fail message.
-                                        Feedback(
-                                            wasGetDescriptionFromEnumValue(
-                                                ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
-                                            ex.Message);
-                                    }
+                                        catch (Exception ex)
+                                        {
+                                            // or fail and append the fail message.
+                                            Feedback(
+                                                wasGetDescriptionFromEnumValue(
+                                                    ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
+                                                ex.Message);
+                                        }
+                                    }, Configuration.MAXIMUM_LOG_THREADS);
                                 });
                         }
                         return;
@@ -5118,34 +5188,39 @@ namespace Corrade
                             // Log instant messages,
                             if (Configuration.INSTANT_MESSAGE_LOG_ENABLED)
                             {
-                                try
+                                CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
                                 {
-                                    lock (InstantMessageLogFileLock)
+                                    try
                                     {
-                                        using (
-                                            StreamWriter logWriter =
-                                                new StreamWriter(
-                                                    wasPathCombine(Configuration.INSTANT_MESSAGE_LOG_DIRECTORY,
-                                                        args.IM.FromAgentName) +
-                                                    "." + CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
+                                        lock (InstantMessageLogFileLock)
                                         {
-                                            logWriter.WriteLine("[{0}] {1} {2} : {3}",
-                                                DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                    DateTimeFormatInfo.InvariantInfo), fullName.First(), fullName.Last(),
-                                                args.IM.Message);
-                                            //logWriter.Flush();
-                                            //logWriter.Close();
+                                            using (
+                                                StreamWriter logWriter =
+                                                    new StreamWriter(
+                                                        wasPathCombine(Configuration.INSTANT_MESSAGE_LOG_DIRECTORY,
+                                                            args.IM.FromAgentName) +
+                                                        "." + CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8)
+                                                )
+                                            {
+                                                logWriter.WriteLine("[{0}] {1} {2} : {3}",
+                                                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                        DateTimeFormatInfo.InvariantInfo), fullName.First(),
+                                                    fullName.Last(),
+                                                    args.IM.Message);
+                                                //logWriter.Flush();
+                                                //logWriter.Close();
+                                            }
                                         }
                                     }
-                                }
-                                catch (Exception ex)
-                                {
-                                    // or fail and append the fail message.
-                                    Feedback(
-                                        wasGetDescriptionFromEnumValue(
-                                            ConsoleError.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
-                                        ex.Message);
-                                }
+                                    catch (Exception ex)
+                                    {
+                                        // or fail and append the fail message.
+                                        Feedback(
+                                            wasGetDescriptionFromEnumValue(
+                                                ConsoleError.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
+                                            ex.Message);
+                                    }
+                                }, Configuration.MAXIMUM_LOG_THREADS);
                             }
                             return;
                     }
@@ -5161,34 +5236,38 @@ namespace Corrade
                             // Log region messages,
                             if (Configuration.REGION_MESSAGE_LOG_ENABLED)
                             {
-                                try
+                                CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
                                 {
-                                    lock (RegionLogFileLock)
+                                    try
                                     {
-                                        using (
-                                            StreamWriter logWriter =
-                                                new StreamWriter(
-                                                    wasPathCombine(Configuration.REGION_MESSAGE_LOG_DIRECTORY,
-                                                        Client.Network.CurrentSim.Name) + "." +
-                                                    CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
+                                        lock (RegionLogFileLock)
                                         {
-                                            logWriter.WriteLine("[{0}] {1} {2} : {3}",
-                                                DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                    DateTimeFormatInfo.InvariantInfo), fullName.First(), fullName.Last(),
-                                                args.IM.Message);
-                                            //logWriter.Flush();
-                                            //logWriter.Close();
+                                            using (
+                                                StreamWriter logWriter =
+                                                    new StreamWriter(
+                                                        wasPathCombine(Configuration.REGION_MESSAGE_LOG_DIRECTORY,
+                                                            Client.Network.CurrentSim.Name) + "." +
+                                                        CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
+                                            {
+                                                logWriter.WriteLine("[{0}] {1} {2} : {3}",
+                                                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                        DateTimeFormatInfo.InvariantInfo), fullName.First(),
+                                                    fullName.Last(),
+                                                    args.IM.Message);
+                                                //logWriter.Flush();
+                                                //logWriter.Close();
+                                            }
                                         }
                                     }
-                                }
-                                catch (Exception ex)
-                                {
-                                    // or fail and append the fail message.
-                                    Feedback(
-                                        wasGetDescriptionFromEnumValue(
-                                            ConsoleError.COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE),
-                                        ex.Message);
-                                }
+                                    catch (Exception ex)
+                                    {
+                                        // or fail and append the fail message.
+                                        Feedback(
+                                            wasGetDescriptionFromEnumValue(
+                                                ConsoleError.COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE),
+                                            ex.Message);
+                                    }
+                                }, Configuration.MAXIMUM_LOG_THREADS);
                             }
                             return;
                     }
@@ -5208,7 +5287,8 @@ namespace Corrade
             // Otherwise process the command.
             CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
                 () => HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString()),
-                Configuration.MAXIMUM_COMMAND_THREADS);
+                Configuration.MAXIMUM_COMMAND_THREADS, GetGroupFromMessage(args.IM.Message),
+                Configuration.SCHEDULER_EXPIRATION_TIME);
         }
 
         /// <summary>
@@ -6425,7 +6505,11 @@ namespace Corrade
                 GroupWorkers[group] = ((uint) GroupWorkers[group]) - 1;
             }
             // do not send a callback if the callback queue is saturated
-            if (CallbackQueue.Count >= Configuration.CALLBACK_QUEUE_LENGTH) return result;
+            if (CallbackQueue.Count >= Configuration.CALLBACK_QUEUE_LENGTH)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CALLBACK_THROTTLED));
+                return result;
+            }
             // send callback if registered
             string url =
                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.CALLBACK)), message));
@@ -8060,7 +8144,7 @@ namespace Corrade
                                 // Log instant messages,
                                 if (Configuration.INSTANT_MESSAGE_LOG_ENABLED)
                                 {
-                                    string agentName = "";
+                                    string agentName = string.Empty;
                                     if (!AgentUUIDToName(
                                         agentUUID,
                                         Configuration.SERVICES_TIMEOUT,
@@ -8071,35 +8155,39 @@ namespace Corrade
                                     List<string> fullName =
                                         new List<string>(
                                             GetAvatarNames(agentName));
-                                    try
+                                    CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
                                     {
-                                        lock (InstantMessageLogFileLock)
+                                        try
                                         {
-                                            using (
-                                                StreamWriter logWriter =
-                                                    new StreamWriter(
-                                                        wasPathCombine(Configuration.INSTANT_MESSAGE_LOG_DIRECTORY,
-                                                            string.Join(" ", fullName.First(), fullName.Last())) +
-                                                        "." +
-                                                        CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
+                                            lock (InstantMessageLogFileLock)
                                             {
-                                                logWriter.WriteLine("[{0}] {1} {2} : {3}",
-                                                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                        DateTimeFormatInfo.InvariantInfo), myName.First(), myName.Last(),
-                                                    data);
-                                                //logWriter.Flush();
-                                                //logWriter.Close();
+                                                using (
+                                                    StreamWriter logWriter =
+                                                        new StreamWriter(
+                                                            wasPathCombine(Configuration.INSTANT_MESSAGE_LOG_DIRECTORY,
+                                                                string.Join(" ", fullName.First(), fullName.Last())) +
+                                                            "." +
+                                                            CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
+                                                {
+                                                    logWriter.WriteLine("[{0}] {1} {2} : {3}",
+                                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                            DateTimeFormatInfo.InvariantInfo), myName.First(),
+                                                        myName.Last(),
+                                                        data);
+                                                    //logWriter.Flush();
+                                                    //logWriter.Close();
+                                                }
                                             }
                                         }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        // or fail and append the fail message.
-                                        Feedback(
-                                            wasGetDescriptionFromEnumValue(
-                                                ConsoleError.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
-                                            ex.Message);
-                                    }
+                                        catch (Exception ex)
+                                        {
+                                            // or fail and append the fail message.
+                                            Feedback(
+                                                wasGetDescriptionFromEnumValue(
+                                                    ConsoleError.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
+                                                ex.Message);
+                                        }
+                                    }, Configuration.MAXIMUM_LOG_THREADS);
                                 }
                                 break;
                             case Entity.GROUP:
@@ -8166,33 +8254,36 @@ namespace Corrade
                                         o => o.UUID.Equals(configuredGroup.UUID) && o.ChatLogEnabled),
                                     o =>
                                     {
-                                        // Attempt to write to log file,
-                                        try
+                                        CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
                                         {
-                                            lock (GroupLogFileLock)
+                                            // Attempt to write to log file,
+                                            try
                                             {
-                                                using (
-                                                    StreamWriter logWriter = new StreamWriter(o.ChatLog, true,
-                                                        Encoding.UTF8))
+                                                lock (GroupLogFileLock)
                                                 {
-                                                    logWriter.WriteLine("[{0}] {1} {2} : {3}",
-                                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                            DateTimeFormatInfo.InvariantInfo), myName.First(),
-                                                        myName.Last(),
-                                                        data);
-                                                    //logWriter.Flush();
-                                                    //logWriter.Close();
+                                                    using (
+                                                        StreamWriter logWriter = new StreamWriter(o.ChatLog, true,
+                                                            Encoding.UTF8))
+                                                    {
+                                                        logWriter.WriteLine("[{0}] {1} {2} : {3}",
+                                                            DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                                DateTimeFormatInfo.InvariantInfo), myName.First(),
+                                                            myName.Last(),
+                                                            data);
+                                                        //logWriter.Flush();
+                                                        //logWriter.Close();
+                                                    }
                                                 }
                                             }
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            // or fail and append the fail message.
-                                            Feedback(
-                                                wasGetDescriptionFromEnumValue(
-                                                    ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
-                                                ex.Message);
-                                        }
+                                            catch (Exception ex)
+                                            {
+                                                // or fail and append the fail message.
+                                                Feedback(
+                                                    wasGetDescriptionFromEnumValue(
+                                                        ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
+                                                    ex.Message);
+                                            }
+                                        }, Configuration.MAXIMUM_LOG_THREADS);
                                     });
                                 break;
                             case Entity.LOCAL:
@@ -8240,35 +8331,38 @@ namespace Corrade
                                     List<string> fullName =
                                         new List<string>(
                                             GetAvatarNames(string.Join(" ", Client.Self.FirstName, Client.Self.LastName)));
-                                    try
+                                    CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
                                     {
-                                        lock (LocalLogFileLock)
+                                        try
                                         {
-                                            using (
-                                                StreamWriter logWriter =
-                                                    new StreamWriter(
-                                                        wasPathCombine(Configuration.LOCAL_MESSAGE_LOG_DIRECTORY,
-                                                            Client.Network.CurrentSim.Name) + "." +
-                                                        CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
+                                            lock (LocalLogFileLock)
                                             {
-                                                logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
-                                                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                        DateTimeFormatInfo.InvariantInfo), fullName.First(),
-                                                    fullName.Last(), Enum.GetName(typeof (ChatType), chatType),
-                                                    data);
-                                                //logWriter.Flush();
-                                                //logWriter.Close();
+                                                using (
+                                                    StreamWriter logWriter =
+                                                        new StreamWriter(
+                                                            wasPathCombine(Configuration.LOCAL_MESSAGE_LOG_DIRECTORY,
+                                                                Client.Network.CurrentSim.Name) + "." +
+                                                            CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
+                                                {
+                                                    logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
+                                                        DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                            DateTimeFormatInfo.InvariantInfo), fullName.First(),
+                                                        fullName.Last(), Enum.GetName(typeof (ChatType), chatType),
+                                                        data);
+                                                    //logWriter.Flush();
+                                                    //logWriter.Close();
+                                                }
                                             }
                                         }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        // or fail and append the fail message.
-                                        Feedback(
-                                            wasGetDescriptionFromEnumValue(
-                                                ConsoleError.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
-                                            ex.Message);
-                                    }
+                                        catch (Exception ex)
+                                        {
+                                            // or fail and append the fail message.
+                                            Feedback(
+                                                wasGetDescriptionFromEnumValue(
+                                                    ConsoleError.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
+                                                ex.Message);
+                                        }
+                                    }, Configuration.MAXIMUM_LOG_THREADS);
                                 }
                                 break;
                             case Entity.ESTATE:
@@ -20731,10 +20825,12 @@ namespace Corrade
             private static int _connectionLimit;
             private static int _connectionIdleTime;
             private static float _range;
+            private static int _schedulerExpiration;
             private static int _maximumNotificationThreads;
             private static int _maximumCommandThreads;
             private static int _maximumRLVThreads;
             private static int _maximumInstantMessageThreads;
+            private static int _maximumLogThreads;
             private static bool _useNaggle;
             private static bool _useExpect100Continue;
             private static int _servicesTimeout;
@@ -21194,6 +21290,24 @@ namespace Corrade
                 }
             }
 
+            public static int SCHEDULER_EXPIRATION_TIME
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _schedulerExpiration;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _schedulerExpiration = value;
+                    }
+                }
+            }
+
             public static int MAXIMUM_NOTIFICATION_THREADS
             {
                 get
@@ -21262,6 +21376,24 @@ namespace Corrade
                     lock (ClientInstanceConfigurationLock)
                     {
                         _maximumInstantMessageThreads = value;
+                    }
+                }
+            }
+
+            public static int MAXIMUM_LOG_THREADS
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _maximumLogThreads;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _maximumLogThreads = value;
                     }
                 }
             }
@@ -21790,10 +21922,12 @@ namespace Corrade
                 CONNECTION_LIMIT = 100;
                 CONNECTION_IDLE_TIME = 900000;
                 RANGE = 64;
+                SCHEDULER_EXPIRATION_TIME = 60000;
                 MAXIMUM_NOTIFICATION_THREADS = 10;
                 MAXIMUM_COMMAND_THREADS = 10;
                 MAXIMUM_RLV_THREADS = 10;
                 MAXIMUM_INSTANT_MESSAGE_THREADS = 10;
+                MAXIMUM_LOG_THREADS = 20;
                 USE_NAGGLE = false;
                 SERVICES_TIMEOUT = 60000;
                 DATA_TIMEOUT = 2500;
@@ -22404,6 +22538,52 @@ namespace Corrade
                                                 throw new Exception("error in instant message limits section");
                                             }
                                             MAXIMUM_INSTANT_MESSAGE_THREADS = maximumInstantMessageThreads;
+                                            break;
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.SCHEDULER:
+                                XmlNodeList schedulerLimitNodeList = limitsNode.SelectNodes("*");
+                                if (schedulerLimitNodeList == null)
+                                {
+                                    throw new Exception("error in scheduler limits section");
+                                }
+                                foreach (XmlNode schedulerLimitNode in schedulerLimitNodeList)
+                                {
+                                    switch (schedulerLimitNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.THREADS:
+                                            int expiration;
+                                            if (
+                                                !int.TryParse(schedulerLimitNode.InnerText,
+                                                    out expiration))
+                                            {
+                                                throw new Exception("error in scheduler limits section");
+                                            }
+                                            SCHEDULER_EXPIRATION_TIME = expiration;
+                                            break;
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.LOG:
+                                XmlNodeList logLimitNodeList = limitsNode.SelectNodes("*");
+                                if (logLimitNodeList == null)
+                                {
+                                    throw new Exception("error in log limits section");
+                                }
+                                foreach (XmlNode logLimitNode in logLimitNodeList)
+                                {
+                                    switch (logLimitNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.THREADS:
+                                            int maximumLogThreads;
+                                            if (
+                                                !int.TryParse(logLimitNode.InnerText,
+                                                    out maximumLogThreads))
+                                            {
+                                                throw new Exception("error in log limits section");
+                                            }
+                                            MAXIMUM_LOG_THREADS = maximumLogThreads;
                                             break;
                                     }
                                 }
@@ -23165,6 +23345,7 @@ namespace Corrade
             public const string EXPECTED = @"expected";
             public const string ABNORMAL = @"abnormal";
             public const string KEEP_ALIVE = @"keepalive";
+            public const string SCHEDULER = @"scheduler";
         }
 
         /// <summary>
@@ -23230,7 +23411,9 @@ namespace Corrade
             [Description("teleport throttled")] TELEPORT_THROTTLED,
             [Description("uncaught exception for thread")] UNCAUGHT_EXCEPTION_FOR_THREAD,
             [Description("error setting up configuration watcher")] ERROR_SETTING_UP_CONFIGURATION_WATCHER,
-            [Description("error setting up AIML configuration watcher")] ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER
+            [Description("error setting up AIML configuration watcher")] ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER,
+            [Description("callback throttled")] CALLBACK_THROTTLED,
+            [Description("notification throttled")] NOTIFICATION_THROTTLED
         }
 
         /// <summary>
@@ -23238,12 +23421,81 @@ namespace Corrade
         /// </summary>
         public struct CorradeThread
         {
+            /// <summary>
+            ///     Holds all the live threads.
+            /// </summary>
             private static readonly HashSet<Thread> WorkSet = new HashSet<Thread>();
-            private static readonly object LockObject = new object();
 
+            private static readonly object WorkSetLock = new object();
+
+            /// <summary>
+            ///     Semaphore for sequential execution of threads.
+            /// </summary>
+            private static readonly ManualResetEvent ThreadCompletedEvent = new ManualResetEvent(true);
+
+            /// <summary>
+            ///     Holds a map of groups to execution time in milliseconds.
+            /// </summary>
+            private static readonly Dictionary<UUID, GroupExecution> GroupExecutionTime =
+                new Dictionary<UUID, GroupExecution>();
+
+            private static readonly object GroupExecutionTimeLock = new object();
+            private static readonly Stopwatch ThreadExecutuionStopwatch = new Stopwatch();
+
+            /// <summary>
+            ///     This is a sequential scheduler that benefits from not blocking Corrade
+            ///     and guarrantees that any Corrade thread spawned this way will only execute
+            ///     until the previous thread spawned this way has completed.
+            /// </summary>
+            /// <param name="s">the code to execute as a ThreadStart delegate</param>
+            /// <param name="m">the type of thread</param>
+            public void SpawnSequential(ThreadStart s, int m)
+            {
+                lock (WorkSetLock)
+                {
+                    WorkSet.RemoveWhere(o => !o.IsAlive);
+                    if (WorkSet.Count > m)
+                    {
+                        return;
+                    }
+                }
+                Thread t = new Thread(() =>
+                {
+                    // Wait for previous sequential thread to complete.
+                    ThreadCompletedEvent.WaitOne(Timeout.Infinite);
+                    ThreadCompletedEvent.Reset();
+                    // protect inner thread
+                    try
+                    {
+                        s();
+                    }
+                    catch (Exception ex)
+                    {
+                        Feedback(
+                            wasGetDescriptionFromEnumValue(
+                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
+                            wasGetDescriptionFromEnumValue(
+                                (CorradeThreadType) m), ex.Message);
+                    }
+                    // Thread has completed.
+                    ThreadCompletedEvent.Set();
+                }) {IsBackground = true, Priority = ThreadPriority.BelowNormal};
+                lock (WorkSetLock)
+                {
+                    WorkSet.Add(t);
+                }
+                t.Start();
+            }
+
+            /// <summary>
+            ///     This is an ad-hoc scheduler where threads will be executed in a
+            ///     first-come first-served fashion.
+            /// </summary>
+            /// <param name="s">the code to execute as a ThreadStart delegate</param>
+            /// <param name="m">the type of thread</param>
             public void Spawn(ThreadStart s, int m)
             {
-                lock (LockObject)
+                lock (WorkSetLock)
                 {
                     WorkSet.RemoveWhere(o => !o.IsAlive);
                     if (WorkSet.Count > m)
@@ -23267,11 +23519,123 @@ namespace Corrade
                                 (CorradeThreadType) m), ex.Message);
                     }
                 }) {IsBackground = true, Priority = ThreadPriority.BelowNormal};
-                lock (LockObject)
+                lock (WorkSetLock)
                 {
                     WorkSet.Add(t);
                 }
                 t.Start();
+            }
+
+            /// <summary>
+            ///     This is a fairness-oriented group/time-based scheduler that monitors
+            ///     the execution time of threads for each configured group and favors
+            ///     threads for the configured groups that have the smallest accumulated
+            ///     execution time.
+            /// </summary>
+            /// <param name="s">the code to execute as a ThreadStart delegate</param>
+            /// <param name="m">the type of thread</param>
+            /// <param name="groupUUID">the UUID of the group</param>
+            /// <param name="expiration">the time in milliseconds after which measurements are expunged</param>
+            public void Spawn(ThreadStart s, int m, UUID groupUUID, int expiration)
+            {
+                // Don't accept to schedule bogus groups.
+                if (groupUUID.Equals(UUID.Zero))
+                    return;
+                lock (WorkSetLock)
+                {
+                    WorkSet.RemoveWhere(o => !o.IsAlive);
+                    if (WorkSet.Count > m)
+                    {
+                        return;
+                    }
+                }
+                Thread t = new Thread(() =>
+                {
+                    // protect inner thread
+                    try
+                    {
+                        // First remove any groups that have expired.
+                        //GroupExecutionTime.R(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
+                        lock (GroupExecutionTimeLock)
+                        {
+                            List<UUID> RemoveGroups = new List<UUID>();
+                            Parallel.ForEach(GroupExecutionTime, o =>
+                            {
+                                if ((DateTime.Now - o.Value.TimeStamp).Milliseconds > expiration)
+                                {
+                                    RemoveGroups.Add(o.Key);
+                                }
+                            });
+                            Parallel.ForEach(RemoveGroups, o => { GroupExecutionTime.Remove(o); });
+                        }
+                        int sleepTime = 0;
+                        List<KeyValuePair<UUID, GroupExecution>> sortedTimeGroups;
+                        lock (GroupExecutionTimeLock)
+                        {
+                            sortedTimeGroups = GroupExecutionTime.ToList();
+                        }
+                        // In case only one group is involved, then do not schedule the group.
+                        if (sortedTimeGroups.Count > 1 && sortedTimeGroups.Any(o => o.Key.Equals(groupUUID)))
+                        {
+                            sortedTimeGroups.Sort((o, p) => o.Value.ExecutionTime.CompareTo(p.Value.ExecutionTime));
+                            int draw = CorradeRandom.Next(sortedTimeGroups.Sum(o => o.Value.ExecutionTime));
+                            int accu = 0;
+                            foreach (KeyValuePair<UUID, GroupExecution> group in sortedTimeGroups)
+                            {
+                                accu += group.Value.ExecutionTime;
+                                if (accu < draw) continue;
+                                sleepTime = group.Value.ExecutionTime;
+                                break;
+                            }
+                        }
+                        Thread.Sleep(sleepTime);
+                        ThreadExecutuionStopwatch.Restart();
+                        s();
+                        ThreadExecutuionStopwatch.Stop();
+                        lock (GroupExecutionTimeLock)
+                        {
+                            // add or change the mean execution time for a group
+                            switch (GroupExecutionTime.ContainsKey(groupUUID))
+                            {
+                                case true:
+                                    GroupExecutionTime[groupUUID] = new GroupExecution
+                                    {
+                                        ExecutionTime = (GroupExecutionTime[groupUUID].ExecutionTime +
+                                                         (int) ThreadExecutuionStopwatch.ElapsedMilliseconds)/
+                                                        2,
+                                        TimeStamp = DateTime.Now
+                                    };
+                                    break;
+                                default:
+                                    GroupExecutionTime.Add(groupUUID, new GroupExecution
+                                    {
+                                        ExecutionTime = (int) ThreadExecutuionStopwatch.ElapsedMilliseconds,
+                                        TimeStamp = DateTime.Now
+                                    });
+                                    break;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Feedback(
+                            wasGetDescriptionFromEnumValue(
+                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
+                            wasGetDescriptionFromEnumValue(
+                                (CorradeThreadType) m), ex.Message);
+                    }
+                }) {IsBackground = true, Priority = ThreadPriority.BelowNormal};
+                lock (WorkSetLock)
+                {
+                    WorkSet.Add(t);
+                }
+                t.Start();
+            }
+
+            private struct GroupExecution
+            {
+                public int ExecutionTime;
+                public DateTime TimeStamp;
             }
         }
 
@@ -23283,7 +23647,8 @@ namespace Corrade
             [Description("command")] COMMAND = 1,
             [Description("rlv")] RLV = 2,
             [Description("notification")] NOTIFICATION = 3,
-            [Description("instant message")] INSTANT_MESSAGE = 4
+            [Description("instant message")] INSTANT_MESSAGE = 4,
+            [Description("log")] LOG = 5
         };
 
         /// <summary>
@@ -24864,7 +25229,8 @@ namespace Corrade
 
             #region ISerializable Members
 
-            private SerializableDictionary(SerializationInfo info, StreamingContext context) : base(info, context)
+            private SerializableDictionary(SerializationInfo info, StreamingContext context)
+                : base(info, context)
             {
                 int itemCount = info.GetInt32("ItemCount");
                 for (int i = 0; i < itemCount; i++)
@@ -25218,6 +25584,7 @@ namespace Corrade
 
         public static string InstalledServiceName;
         private static Thread programThread;
+        private static readonly Random CorradeRandom = new Random();
         private static readonly EventLog CorradeEventLog = new EventLog();
         private static readonly GridClient Client = new GridClient();
 
@@ -25317,7 +25684,8 @@ namespace Corrade
                 {CorradeThreadType.COMMAND, new CorradeThread()},
                 {CorradeThreadType.RLV, new CorradeThread()},
                 {CorradeThreadType.NOTIFICATION, new CorradeThread()},
-                {CorradeThreadType.INSTANT_MESSAGE, new CorradeThread()}
+                {CorradeThreadType.INSTANT_MESSAGE, new CorradeThread()},
+                {CorradeThreadType.LOG, new CorradeThread()}
             };
 
         /// <summary>
@@ -25519,22 +25887,24 @@ namespace Corrade
         /// </summary>
         /// <returns>the firstname and the lastname or Resident</returns>
         private static readonly Func<string, IEnumerable<string>> GetAvatarNames =
-            o => CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(o)
-                .Cast<Match>()
-                .ToDictionary(p => new[]
-                {
-                    p.Groups["first"].Value,
-                    p.Groups["last"].Value
-                })
-                .SelectMany(
-                    p =>
-                        new[]
-                        {
-                            p.Key[0].Trim(),
-                            !string.IsNullOrEmpty(p.Key[1])
-                                ? p.Key[1].Trim()
-                                : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                        });
+            o => !string.IsNullOrEmpty(o)
+                ? CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(o)
+                    .Cast<Match>()
+                    .ToDictionary(p => new[]
+                    {
+                        p.Groups["first"].Value,
+                        p.Groups["last"].Value
+                    })
+                    .SelectMany(
+                        p =>
+                            new[]
+                            {
+                                p.Key[0].Trim(),
+                                !string.IsNullOrEmpty(p.Key[1])
+                                    ? p.Key[1].Trim()
+                                    : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                            })
+                : null;
 
         /// <summary>
         ///     Updates the inventory starting from a folder recursively.
