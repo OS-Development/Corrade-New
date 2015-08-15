@@ -1316,6 +1316,7 @@ namespace Corrade
             {
                 GroupMembersReceivedAlarm.Alarm(dataTimeout);
                 agentInGroup = args.Members.AsParallel().Any(o => o.Value.ID.Equals(agentUUID));
+                if (agentInGroup) GroupMembersReceivedAlarm.Signal.Set();
             };
             lock (ClientInstanceGroupsLock)
             {
@@ -1370,36 +1371,22 @@ namespace Corrade
         }
 
         /// <summary>
-        ///     Fetches a group UUID from a key-value formatted message message.
+        ///     Fetches a Corrade group from a key-value formatted message message.
         /// </summary>
         /// <param name="message">the message to inspect</param>
-        /// <returns>the UUID of the group or the zero UUID</returns>
-        private static UUID GetGroupFromMessage(string message)
+        /// <returns>the configured group</returns>
+        private static Group GetCorradeGroupFromMessage(string message)
         {
-            if (string.IsNullOrEmpty(message)) return UUID.Zero;
-            // Get group and password.
             string group =
                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)), message));
-            // Bail if no group set.
-            if (string.IsNullOrEmpty(group)) return UUID.Zero;
-            // If an UUID was sent, try to resolve to a name and bail if not.
             UUID groupUUID;
             switch (UUID.TryParse(group, out groupUUID))
             {
                 case true:
-                    // Then grab the group UUID from the configured groups.
-                    Group configGroup = Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                    if (!configGroup.Equals(default(Group)))
-                        groupUUID = configGroup.UUID;
-                    break;
+                    return Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
                 default:
-                    if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                        ref groupUUID))
-                        return UUID.Zero;
-                    break;
+                    return Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.Name.Equals(group));
             }
-
-            return groupUUID;
         }
 
         /// <summary>
@@ -3435,88 +3422,107 @@ namespace Corrade
         /// <param name="ar">the async HTTP listener object</param>
         private static void ProcessHTTPRequest(IAsyncResult ar)
         {
+            // We need to grab the context and everything else outside of the main request.
+            HttpListenerContext httpContext;
+            HttpListenerRequest httpRequest;
+            string message;
+            Group commandGroup;
+            // Now grab the message and check that the group is set or abandon.
             try
             {
-                HttpListener httpListener = ar.AsyncState as HttpListener;
-                // bail if we are not listening
-                if (httpListener == null || !httpListener.IsListening) return;
-                HttpListenerContext httpContext = httpListener.EndGetContext(ar);
-                HttpListenerRequest httpRequest = httpContext.Request;
+                HttpListener httpListener = (HttpListener) ar.AsyncState;
+                httpContext = httpListener.EndGetContext(ar);
+                httpRequest = httpContext.Request;
                 // only accept POST requests
                 if (!httpRequest.HttpMethod.Equals(WebRequestMethods.Http.Post, StringComparison.OrdinalIgnoreCase))
                     return;
-                // only accept connected remote endpoints
-                if (httpRequest.RemoteEndPoint == null) return;
-                using (Stream body = httpRequest.InputStream)
+                // retrieve the message sent.
+                using (StreamReader reader = new StreamReader(httpRequest.InputStream, httpRequest.ContentEncoding))
                 {
-                    using (StreamReader reader = new StreamReader(body, httpRequest.ContentEncoding))
+                    message = reader.ReadToEnd();
+                }
+                // ignore empty messages right-away.
+                if (string.IsNullOrEmpty(message)) return;
+                commandGroup = GetCorradeGroupFromMessage(message);
+                // do not process anything from unknown groups.
+                if (commandGroup.Equals(default(Group))) return;
+            }
+            catch (Exception ex)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_PROCESSING_ABORTED), ex.Message);
+                return;
+            }
+
+            // We have the group so schedule the Corrade command though the group scheduler.
+            CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(() =>
+            {
+                try
+                {
+                    Dictionary<string, string> result = HandleCorradeCommand(message,
+                        CORRADE_CONSTANTS.WEB_REQUEST,
+                        httpRequest.RemoteEndPoint.ToString(), commandGroup);
+                    using (HttpListenerResponse response = httpContext.Response)
                     {
-                        Dictionary<string, string> result = HandleCorradeCommand(reader.ReadToEnd(),
-                            CORRADE_CONSTANTS.WEB_REQUEST,
-                            httpRequest.RemoteEndPoint.ToString());
-                        using (HttpListenerResponse response = httpContext.Response)
+                        // set the content type based on chosen output filers
+                        switch (Configuration.OUTPUT_FILTERS.Last())
                         {
-                            // set the content type based on chosen output filers
-                            switch (Configuration.OUTPUT_FILTERS.Last())
+                            case Filter.RFC1738:
+                                response.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
+                                break;
+                            default:
+                                response.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.TEXT_PLAIN;
+                                break;
+                        }
+                        byte[] data = !result.Count.Equals(0)
+                            ? Encoding.UTF8.GetBytes(wasKeyValueEncode(wasKeyValueEscape(result)))
+                            : new byte[0];
+                        response.StatusCode = (int) HttpStatusCode.OK;
+                        response.StatusDescription = "OK";
+                        response.ProtocolVersion = HttpVersion.Version11;
+                        response.KeepAlive = Configuration.HTTP_SERVER_KEEP_ALIVE;
+                        using (MemoryStream outputStream = new MemoryStream())
+                        {
+                            switch (Configuration.HTTP_SERVER_COMPRESSION)
                             {
-                                case Filter.RFC1738:
-                                    response.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
+                                case HTTPCompressionMethod.GZIP:
+                                    using (GZipStream dataGZipStream = new GZipStream(outputStream,
+                                        CompressionMode.Compress, false))
+                                    {
+                                        dataGZipStream.Write(data, 0, data.Length);
+                                        dataGZipStream.Flush();
+                                    }
+                                    response.AddHeader("Content-Encoding", "gzip");
+                                    data = outputStream.ToArray();
+                                    break;
+                                case HTTPCompressionMethod.DEFLATE:
+                                    using (
+                                        DeflateStream dataDeflateStream = new DeflateStream(outputStream,
+                                            CompressionMode.Compress, false))
+                                    {
+                                        dataDeflateStream.Write(data, 0, data.Length);
+                                        dataDeflateStream.Flush();
+                                    }
+                                    response.AddHeader("Content-Encoding", "deflate");
+                                    data = outputStream.ToArray();
                                     break;
                                 default:
-                                    response.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.TEXT_PLAIN;
+                                    response.AddHeader("Content-Encoding", "UTF-8");
                                     break;
                             }
-                            byte[] data = !result.Count.Equals(0)
-                                ? Encoding.UTF8.GetBytes(wasKeyValueEncode(wasKeyValueEscape(result)))
-                                : new byte[0];
-                            response.StatusCode = (int) HttpStatusCode.OK;
-                            response.StatusDescription = "OK";
-                            response.ProtocolVersion = HttpVersion.Version11;
-                            response.KeepAlive = Configuration.HTTP_SERVER_KEEP_ALIVE;
-                            using (MemoryStream outputStream = new MemoryStream())
-                            {
-                                switch (Configuration.HTTP_SERVER_COMPRESSION)
-                                {
-                                    case HTTPCompressionMethod.GZIP:
-                                        using (GZipStream dataGZipStream = new GZipStream(outputStream,
-                                            CompressionMode.Compress, false))
-                                        {
-                                            dataGZipStream.Write(data, 0, data.Length);
-                                            dataGZipStream.Flush();
-                                        }
-                                        response.AddHeader("Content-Encoding", "gzip");
-                                        data = outputStream.ToArray();
-                                        break;
-                                    case HTTPCompressionMethod.DEFLATE:
-                                        using (
-                                            DeflateStream dataDeflateStream = new DeflateStream(outputStream,
-                                                CompressionMode.Compress, false))
-                                        {
-                                            dataDeflateStream.Write(data, 0, data.Length);
-                                            dataDeflateStream.Flush();
-                                        }
-                                        response.AddHeader("Content-Encoding", "deflate");
-                                        data = outputStream.ToArray();
-                                        break;
-                                }
-                            }
-                            response.ContentLength64 = data.Length;
-                            using (Stream responseStream = response.OutputStream)
-                            {
-                                if (responseStream != null)
-                                {
-                                    responseStream.Write(data, 0, data.Length);
-                                    responseStream.Flush();
-                                }
-                            }
+                        }
+                        response.ContentLength64 += data.Length;
+                        using (Stream responseStream = response.OutputStream)
+                        {
+                            responseStream.Write(data, 0, (int) response.ContentLength64);
+                            //responseStream.Flush();
                         }
                     }
                 }
-            }
-            catch (Exception)
-            {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_PROCESSING_ABORTED));
-            }
+                catch (Exception ex)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_PROCESSING_ABORTED), ex.Message);
+                }
+            }, Configuration.MAXIMUM_COMMAND_THREADS, commandGroup.UUID, Configuration.SCHEDULER_EXPIRATION_TIME);
         }
 
         /// <summary>
@@ -4618,9 +4624,13 @@ namespace Corrade
                             Configuration.MAXIMUM_NOTIFICATION_THREADS);
                         break;
                     }
+                    // If the group was not set properly, then bail.
+                    Group commandGroup = GetCorradeGroupFromMessage(e.Message);
+                    if (commandGroup.Equals(default(Group))) return;
+                    // Spawn the command.
                     CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
-                        () => HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString()),
-                        Configuration.MAXIMUM_COMMAND_THREADS, GetGroupFromMessage(e.Message),
+                        () => HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString(), commandGroup),
+                        Configuration.MAXIMUM_COMMAND_THREADS, commandGroup.UUID,
                         Configuration.SCHEDULER_EXPIRATION_TIME);
                     break;
             }
@@ -5284,10 +5294,15 @@ namespace Corrade
                 return;
             }
 
+            // If the group was not set properly, then bail.
+            Group commandGroup = GetCorradeGroupFromMessage(args.IM.Message);
+            if (commandGroup.Equals(default(Group))) return;
             // Otherwise process the command.
             CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
-                () => HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString()),
-                Configuration.MAXIMUM_COMMAND_THREADS, GetGroupFromMessage(args.IM.Message),
+                () =>
+                    HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString(),
+                        commandGroup),
+                Configuration.MAXIMUM_COMMAND_THREADS, commandGroup.UUID,
                 Configuration.SCHEDULER_EXPIRATION_TIME);
         }
 
@@ -6396,47 +6411,18 @@ namespace Corrade
             HandleRLVBehaviour(message, senderUUID);
         }
 
-        private static Dictionary<string, string> HandleCorradeCommand(string message, string sender, string identifier)
+        private static Dictionary<string, string> HandleCorradeCommand(string message, string sender, string identifier,
+            Group commandGroup)
         {
-            // Now we can start processing commands.
-            // Get group and password.
-            string group =
-                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)), message));
-            // Bail if no group set.
-            if (string.IsNullOrEmpty(group)) return null;
-            // If an UUID was sent, try to resolve to a name and bail if not.
-            UUID groupUUID;
-            if (UUID.TryParse(group, out groupUUID))
-            {
-                // First, trust the user to have properly configured the UUID for the group.
-                Group configGroup = Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                switch (!configGroup.Equals(default(Group)))
-                {
-                    case true:
-                        // If they have, then just grab the group name.
-                        group = configGroup.Name;
-                        break;
-                    default:
-                        // Otherwise, attempt to resolve the group name.
-                        if (
-                            !GroupUUIDToName(groupUUID, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                ref group)) return null;
-
-                        break;
-                }
-            }
-            // Set literal group.
-            message = wasKeyValueSet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)),
-                wasOutput(group), message);
             // Get password.
             string password =
                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD)), message));
             // Bail if no password set.
             if (string.IsNullOrEmpty(password)) return null;
             // Authenticate the request against the group password.
-            if (!Authenticate(group, password))
+            if (!Authenticate(commandGroup.Name, password))
             {
-                Feedback(group, wasGetDescriptionFromEnumValue(ConsoleError.ACCESS_DENIED));
+                Feedback(commandGroup.Name, wasGetDescriptionFromEnumValue(ConsoleError.ACCESS_DENIED));
                 return null;
             }
             // Censor password.
@@ -6444,9 +6430,9 @@ namespace Corrade
                 CORRADE_CONSTANTS.PASSWORD_CENSOR, message);
             /*
              * OpenSim sends the primitive UUID through args.IM.FromAgentID while Second Life properly sends 
-             * the agent UUID - which just shows how crap OpenSim really is. This tries to resolve 
-             * args.IM.FromAgentID to a name, which is what Second Life does, otherwise it just sets the name 
-             * to the name of the primitive sending the message.
+             * the agent UUID - which just shows how crap and non-compliant OpenSim really is. This tries to 
+             * resolve args.IM.FromAgentID to a name, which is what Second Life does, otherwise it just sets
+             * the name to the name of the primitive sending the message.
              */
             if (IsSecondLife())
             {
@@ -6472,22 +6458,22 @@ namespace Corrade
             // Initialize workers for the group if they are not set.
             lock (GroupWorkersLock)
             {
-                if (!GroupWorkers.Contains(group))
+                if (!GroupWorkers.Contains(commandGroup.Name))
                 {
-                    GroupWorkers.Add(group, 0u);
+                    GroupWorkers.Add(commandGroup.Name, 0u);
                 }
             }
 
             // Check if the workers have not been exceeded.
             lock (GroupWorkersLock)
             {
-                if ((uint) GroupWorkers[group] >
+                if ((uint) GroupWorkers[commandGroup.Name] >
                     Configuration.GROUPS.AsParallel().FirstOrDefault(
-                        o => o.Name.Equals(group, StringComparison.InvariantCultureIgnoreCase)).Workers)
+                        o => o.Name.Equals(commandGroup.Name, StringComparison.InvariantCultureIgnoreCase)).Workers)
                 {
                     // And refuse to proceed if they have.
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WORKERS_EXCEEDED),
-                        group);
+                        commandGroup.Name);
                     return null;
                 }
             }
@@ -6495,14 +6481,14 @@ namespace Corrade
             // Increment the group workers.
             lock (GroupWorkersLock)
             {
-                GroupWorkers[group] = ((uint) GroupWorkers[group]) + 1;
+                GroupWorkers[commandGroup.Name] = ((uint) GroupWorkers[commandGroup.Name]) + 1;
             }
             // Perform the command.
-            Dictionary<string, string> result = ProcessCommand(message);
+            Dictionary<string, string> result = ProcessCommand(message, commandGroup);
             // Decrement the group workers.
             lock (GroupWorkersLock)
             {
-                GroupWorkers[group] = ((uint) GroupWorkers[group]) - 1;
+                GroupWorkers[commandGroup.Name] = ((uint) GroupWorkers[commandGroup.Name]) - 1;
             }
             // do not send a callback if the callback queue is saturated
             if (CallbackQueue.Count >= Configuration.CALLBACK_QUEUE_LENGTH)
@@ -6530,79 +6516,58 @@ namespace Corrade
         ///     This function is responsible for processing commands.
         /// </summary>
         /// <param name="message">the message</param>
+        /// <param name="commandGroup">the group for the Corrade command</param>
         /// <returns>a dictionary of key-value pairs representing the results of the command</returns>
-        private static Dictionary<string, string> ProcessCommand(string message)
+        private static Dictionary<string, string> ProcessCommand(string message, Group commandGroup)
         {
-            Dictionary<string, string> result = new Dictionary<string, string>();
+            Dictionary<string, string> result = new Dictionary<string, string>
+            {
+                // add the command group to the response.
+                {wasGetDescriptionFromEnumValue(ScriptKeys.GROUP), commandGroup.Name}
+            };
+
+            // retrieve the command from the message.
             string command =
                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND)), message));
             if (!string.IsNullOrEmpty(command))
             {
                 result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND), command);
             }
-            string group =
-                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)), message));
-            if (!string.IsNullOrEmpty(group))
-            {
-                result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP), group);
-            }
 
+            // switch on the command and execute.
             System.Action execute;
-
             switch (wasGetEnumValueFromDescription<ScriptKeys>(command))
             {
                 case ScriptKeys.JOIN:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
+                        if (
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
                         {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
                         }
-                        if (AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                            Configuration.DATA_TIMEOUT))
+                        if (currentGroups.Contains(commandGroup.UUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ALREADY_IN_GROUP));
                         }
-                        OpenMetaverse.Group commandGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(configuredGroup.UUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
+                        OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
+                        if (!RequestGroup(commandGroup.UUID, Configuration.SERVICES_TIMEOUT, ref targetGroup))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
-                        if (!commandGroup.OpenEnrollment)
+                        if (!targetGroup.OpenEnrollment)
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_OPEN));
                         }
                         if (!Client.Network.MaxAgentGroups.Equals(-1))
                         {
-                            HashSet<UUID> currentGroups = new HashSet<UUID>();
-                            if (
-                                !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref currentGroups))
-                            {
-                                throw new Exception(
-                                    wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
-                            }
                             if (currentGroups.Count >= Client.Network.MaxAgentGroups)
                             {
                                 throw new Exception(
@@ -6615,7 +6580,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupJoinedReply += GroupOperationEventHandler;
-                            Client.Groups.RequestJoinGroup(configuredGroup.UUID);
+                            Client.Groups.RequestJoinGroup(commandGroup.UUID);
                             if (!GroupJoinedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
@@ -6623,9 +6588,15 @@ namespace Corrade
                             }
                             Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
                         }
+                        currentGroups.Clear();
                         if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_JOIN_GROUP));
                         }
@@ -6634,13 +6605,13 @@ namespace Corrade
                 case ScriptKeys.CREATEGROUP:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
                         // if the grid is SecondLife and the group name length exceeds the allowed length...
                         if (IsSecondLife() &&
-                            group.Length > LINDEN_CONSTANTS.GROUPS.MAXIMUM_GROUP_NAME_LENGTH)
+                            commandGroup.Name.Length > LINDEN_CONSTANTS.GROUPS.MAXIMUM_GROUP_NAME_LENGTH)
                         {
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_NAME));
@@ -6655,18 +6626,18 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INSUFFICIENT_FUNDS));
                         }
                         if (!Configuration.GROUP_CREATE_FEE.Equals(0) &&
-                            !HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_ECONOMY))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        OpenMetaverse.Group commandGroup = new OpenMetaverse.Group
+                        OpenMetaverse.Group targetGroup = new OpenMetaverse.Group
                         {
-                            Name = group
+                            Name = commandGroup.Name
                         };
                         wasCSVToStructure(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message)),
-                            ref commandGroup);
+                            ref targetGroup);
                         bool succeeded = false;
                         ManualResetEvent GroupCreatedReplyEvent = new ManualResetEvent(false);
                         EventHandler<GroupCreatedReplyEventArgs> GroupCreatedEventHandler = (sender, args) =>
@@ -6677,7 +6648,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupCreatedReply += GroupCreatedEventHandler;
-                            Client.Groups.RequestCreateGroup(commandGroup);
+                            Client.Groups.RequestCreateGroup(targetGroup);
                             if (!GroupCreatedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
@@ -6694,33 +6665,13 @@ namespace Corrade
                 case ScriptKeys.INVITE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.Invite,
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.Invite,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -6741,7 +6692,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
-                        if (AgentInGroup(agentUUID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
+                        if (AgentInGroup(agentUUID, commandGroup.UUID, Configuration.SERVICES_TIMEOUT,
                             Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ALREADY_IN_GROUP));
@@ -6756,7 +6707,7 @@ namespace Corrade
                         {
                             UUID roleUUID;
                             if (!UUID.TryParse(role, out roleUUID) &&
-                                !RoleNameToUUID(role, configuredGroup.UUID,
+                                !RoleNameToUUID(role, commandGroup.UUID,
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref roleUUID))
                             {
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ROLE_NOT_FOUND));
@@ -6772,19 +6723,19 @@ namespace Corrade
                             roleUUIDs.Add(UUID.Zero);
                         }
                         if (!roleUUIDs.All(o => o.Equals(UUID.Zero)) &&
-                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.AssignMember,
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AssignMember,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
-                        Client.Groups.Invite(configuredGroup.UUID, roleUUIDs.ToList(), agentUUID);
+                        Client.Groups.Invite(commandGroup.UUID, roleUUIDs.ToList(), agentUUID);
                     };
                     break;
                 case ScriptKeys.REPLYTOGROUPINVITE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -6793,29 +6744,16 @@ namespace Corrade
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                                     .ToLowerInvariant());
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
+                        if (
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
                         {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
                         }
-                        if (AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                            Configuration.DATA_TIMEOUT))
+                        if (currentGroups.Contains(commandGroup.UUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.ALREADY_IN_GROUP));
                         }
@@ -6854,7 +6792,7 @@ namespace Corrade
                         }
                         if (!amount.Equals(0) && action.Equals((uint) Action.ACCEPT))
                         {
-                            if (!HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
+                            if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_ECONOMY))
                             {
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                             }
@@ -6868,14 +6806,14 @@ namespace Corrade
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INSUFFICIENT_FUNDS));
                             }
                         }
-                        Client.Self.GroupInviteRespond(configuredGroup.UUID, sessionUUID,
+                        Client.Self.GroupInviteRespond(commandGroup.UUID, sessionUUID,
                             action.Equals((uint) Action.ACCEPT));
                     };
                     break;
                 case ScriptKeys.GETGROUPINVITES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -6914,35 +6852,15 @@ namespace Corrade
                 case ScriptKeys.EJECT:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.Eject,
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.Eject,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT) ||
-                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.RemoveMember,
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.RemoveMember,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -6964,13 +6882,13 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         if (
-                            !AgentInGroup(agentUUID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(agentUUID, commandGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
-                        OpenMetaverse.Group commandGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(configuredGroup.UUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
+                        OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
+                        if (!RequestGroup(commandGroup.UUID, Configuration.SERVICES_TIMEOUT, ref targetGroup))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -6979,7 +6897,7 @@ namespace Corrade
                         {
                             switch (
                                 !args.RolesMembers.AsParallel()
-                                    .Any(o => o.Key.Equals(commandGroup.OwnerRole) && o.Value.Equals(agentUUID)))
+                                    .Any(o => o.Key.Equals(targetGroup.OwnerRole) && o.Value.Equals(agentUUID)))
                             {
                                 case false:
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.CANNOT_EJECT_OWNERS));
@@ -6987,13 +6905,13 @@ namespace Corrade
                             Parallel.ForEach(
                                 args.RolesMembers.AsParallel().Where(
                                     o => o.Value.Equals(agentUUID)),
-                                o => Client.Groups.RemoveFromRole(configuredGroup.UUID, o.Key, agentUUID));
+                                o => Client.Groups.RemoveFromRole(commandGroup.UUID, o.Key, agentUUID));
                             GroupRoleMembersReplyEvent.Set();
                         };
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
-                            Client.Groups.RequestGroupRolesMembers(configuredGroup.UUID);
+                            Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
                             if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
@@ -7012,7 +6930,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
-                            Client.Groups.EjectUser(configuredGroup.UUID, agentUUID);
+                            Client.Groups.EjectUser(commandGroup.UUID, agentUUID);
                             if (!GroupEjectEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
@@ -7029,31 +6947,11 @@ namespace Corrade
                 case ScriptKeys.GETGROUPACCOUNTSUMMARYDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         int days;
                         if (
                             !int.TryParse(
@@ -7084,7 +6982,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupAccountSummaryReply += RequestGroupAccountSummaryEventHandler;
-                            Client.Groups.RequestGroupAccountSummary(configuredGroup.UUID, days, interval);
+                            Client.Groups.RequestGroupAccountSummary(commandGroup.UUID, days, interval);
                             if (!RequestGroupAccountSummaryEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
@@ -7107,86 +7005,58 @@ namespace Corrade
                 case ScriptKeys.UPDATEGROUPDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.ChangeIdentity,
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.ChangeIdentity,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
-                        OpenMetaverse.Group commandGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(configuredGroup.UUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
+                        OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
+                        if (!RequestGroup(commandGroup.UUID, Configuration.SERVICES_TIMEOUT, ref targetGroup))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
                         wasCSVToStructure(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message)),
-                            ref commandGroup);
-                        Client.Groups.UpdateGroup(configuredGroup.UUID, commandGroup);
+                            ref targetGroup);
+                        Client.Groups.UpdateGroup(commandGroup.UUID, targetGroup);
                     };
                     break;
                 case ScriptKeys.LEAVE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -7200,7 +7070,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupLeaveReply += GroupOperationEventHandler;
-                            Client.Groups.LeaveGroup(configuredGroup.UUID);
+                            Client.Groups.LeaveGroup(commandGroup.UUID);
                             if (!GroupLeaveReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupLeaveReply -= GroupOperationEventHandler;
@@ -7217,39 +7087,25 @@ namespace Corrade
                 case ScriptKeys.CREATEROLE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.CreateRole,
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.CreateRole,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -7264,7 +7120,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
-                            Client.Groups.RequestGroupRoles(configuredGroup.UUID);
+                            Client.Groups.RequestGroupRoles(commandGroup.UUID);
                             if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
@@ -7294,7 +7150,7 @@ namespace Corrade
                                     typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                                         .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                     q => { powers |= ((ulong) q.GetValue(null)); }));
-                        if (!HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.ChangeActions,
+                        if (!HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.ChangeActions,
                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -7306,21 +7162,21 @@ namespace Corrade
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_TITLE));
                         }
-                        Client.Groups.CreateRole(configuredGroup.UUID, new GroupRole
+                        Client.Groups.CreateRole(commandGroup.UUID, new GroupRole
                         {
                             Name = role,
                             Description =
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
                                         message)),
-                            GroupID = configuredGroup.UUID,
+                            GroupID = commandGroup.UUID,
                             ID = UUID.Random(),
                             Powers = (GroupPowers) powers,
                             Title = title
                         });
                         UUID roleUUID = UUID.Zero;
                         if (
-                            !RoleNameToUUID(role, configuredGroup.UUID,
+                            !RoleNameToUUID(role, commandGroup.UUID,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref roleUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_CREATE_ROLE));
@@ -7330,34 +7186,20 @@ namespace Corrade
                 case ScriptKeys.GETROLES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -7377,7 +7219,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
-                            Client.Groups.RequestGroupRoles(configuredGroup.UUID);
+                            Client.Groups.RequestGroupRoles(commandGroup.UUID);
                             if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
@@ -7396,34 +7238,20 @@ namespace Corrade
                 case ScriptKeys.GETMEMBERS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -7438,7 +7266,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
-                            Client.Groups.RequestGroupMembers(configuredGroup.UUID);
+                            Client.Groups.RequestGroupMembers(commandGroup.UUID);
                             if (!agentInGroupEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
@@ -7471,34 +7299,20 @@ namespace Corrade
                 case ScriptKeys.GETMEMBERROLES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -7519,7 +7333,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
                         if (
-                            !AgentInGroup(agentUUID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
+                            !AgentInGroup(agentUUID, commandGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
@@ -7536,7 +7350,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
-                            Client.Groups.RequestGroupRolesMembers(configuredGroup.UUID);
+                            Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
                             if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
@@ -7551,7 +7365,7 @@ namespace Corrade
                                 groupRolesMembers.AsParallel().Where(o => o.Value.Equals(agentUUID)))
                         {
                             string roleName = string.Empty;
-                            switch (!RoleUUIDToName(pair.Key, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
+                            switch (!RoleUUIDToName(pair.Key, commandGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                 Configuration.DATA_TIMEOUT,
                                 ref roleName))
                             {
@@ -7572,34 +7386,20 @@ namespace Corrade
                 case ScriptKeys.GETROLEMEMBERS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -7611,7 +7411,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ROLE_NAME_SPECIFIED));
                         }
                         UUID roleUUID;
-                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, configuredGroup.UUID,
+                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, commandGroup.UUID,
                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                             ref roleUUID))
                         {
@@ -7630,7 +7430,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
-                            Client.Groups.RequestGroupRolesMembers(configuredGroup.UUID);
+                            Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
                             if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
@@ -7664,34 +7464,20 @@ namespace Corrade
                 case ScriptKeys.GETROLESMEMBERS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
@@ -7707,7 +7493,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
-                            Client.Groups.RequestGroupRolesMembers(configuredGroup.UUID);
+                            Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
                             if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
@@ -7724,7 +7510,7 @@ namespace Corrade
                         {
                             string roleName = string.Empty;
                             switch (
-                                !RoleUUIDToName(roleUUID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
+                                !RoleUUIDToName(roleUUID, commandGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                     Configuration.DATA_TIMEOUT,
                                     ref roleName))
                             {
@@ -7762,48 +7548,34 @@ namespace Corrade
                 case ScriptKeys.GETROLEPOWERS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
+                        if (
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
                         {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.RoleProperties,
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.RoleProperties,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
-                        }
-                        if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID,
-                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         string role =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
                                 message));
                         UUID roleUUID;
-                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, configuredGroup.UUID,
+                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, commandGroup.UUID,
                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                             ref roleUUID))
                         {
@@ -7826,7 +7598,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupRoleDataReply += GroupRoleDataEventHandler;
-                            Client.Groups.RequestGroupRoles(configuredGroup.UUID);
+                            Client.Groups.RequestGroupRoles(commandGroup.UUID);
                             if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
@@ -7845,41 +7617,27 @@ namespace Corrade
                 case ScriptKeys.DELETEROLE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.DeleteRole,
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.DeleteRole,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT) ||
-                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.RemoveMember,
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.RemoveMember,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -7888,7 +7646,7 @@ namespace Corrade
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
                                 message));
                         UUID roleUUID;
-                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, configuredGroup.UUID,
+                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, commandGroup.UUID,
                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                             ref roleUUID))
                         {
@@ -7899,12 +7657,12 @@ namespace Corrade
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.CANNOT_DELETE_THE_EVERYONE_ROLE));
                         }
-                        OpenMetaverse.Group commandGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(configuredGroup.UUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
+                        OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
+                        if (!RequestGroup(commandGroup.UUID, Configuration.SERVICES_TIMEOUT, ref targetGroup))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
-                        if (commandGroup.OwnerRole.Equals(roleUUID))
+                        if (targetGroup.OwnerRole.Equals(roleUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.CANNOT_REMOVE_OWNER_ROLE));
                         }
@@ -7913,13 +7671,13 @@ namespace Corrade
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                         {
                             Parallel.ForEach(args.RolesMembers.AsParallel().Where(o => o.Key.Equals(roleUUID)),
-                                o => Client.Groups.RemoveFromRole(configuredGroup.UUID, roleUUID, o.Value));
+                                o => Client.Groups.RemoveFromRole(commandGroup.UUID, roleUUID, o.Value));
                             GroupRoleMembersReplyEvent.Set();
                         };
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
-                            Client.Groups.RequestGroupRolesMembers(configuredGroup.UUID);
+                            Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
                             if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
@@ -7927,45 +7685,31 @@ namespace Corrade
                             }
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                         }
-                        Client.Groups.DeleteRole(configuredGroup.UUID, roleUUID);
+                        Client.Groups.DeleteRole(commandGroup.UUID, roleUUID);
                     };
                     break;
                 case ScriptKeys.ADDTOROLE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.AssignMember,
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AssignMember,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -7990,7 +7734,7 @@ namespace Corrade
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
                                 message));
                         UUID roleUUID;
-                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, configuredGroup.UUID,
+                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, commandGroup.UUID,
                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                             ref roleUUID))
                         {
@@ -8002,45 +7746,31 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(
                                     ScriptError.GROUP_MEMBERS_ARE_BY_DEFAULT_IN_THE_EVERYONE_ROLE));
                         }
-                        Client.Groups.AddToRole(configuredGroup.UUID, roleUUID, agentUUID);
+                        Client.Groups.AddToRole(commandGroup.UUID, roleUUID, agentUUID);
                     };
                     break;
                 case ScriptKeys.DELETEFROMROLE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.RemoveMember,
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.RemoveMember,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -8065,7 +7795,7 @@ namespace Corrade
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
                                 message));
                         UUID roleUUID;
-                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, configuredGroup.UUID,
+                        if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, commandGroup.UUID,
                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
                             ref roleUUID))
                         {
@@ -8077,24 +7807,24 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(
                                     ScriptError.CANNOT_DELETE_A_GROUP_MEMBER_FROM_THE_EVERYONE_ROLE));
                         }
-                        OpenMetaverse.Group commandGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(configuredGroup.UUID, Configuration.SERVICES_TIMEOUT, ref commandGroup))
+                        OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
+                        if (!RequestGroup(commandGroup.UUID, Configuration.SERVICES_TIMEOUT, ref targetGroup))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
-                        if (commandGroup.OwnerRole.Equals(roleUUID))
+                        if (targetGroup.OwnerRole.Equals(roleUUID))
                         {
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.CANNOT_REMOVE_USER_FROM_OWNER_ROLE));
                         }
-                        Client.Groups.RemoveFromRole(configuredGroup.UUID, roleUUID,
+                        Client.Groups.RemoveFromRole(commandGroup.UUID, roleUUID,
                             agentUUID);
                     };
                     break;
                 case ScriptKeys.TELL:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_TALK))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_TALK))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -8191,36 +7921,15 @@ namespace Corrade
                                 }
                                 break;
                             case Entity.GROUP:
-                                Group configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                        o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        UUID groupUUID = UUID.Zero;
-                                        if (
-                                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT,
-                                                Configuration.DATA_TIMEOUT,
-                                                ref groupUUID))
-                                        {
-                                            throw new Exception(
-                                                wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                        }
-                                        configuredGroup =
-                                            Configuration.GROUPS.AsParallel()
-                                                .FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                        switch (!configuredGroup.Equals(default(Group)))
-                                        {
-                                            case false:
-                                                throw new Exception(
-                                                    wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                        }
-                                        break;
-                                }
+                                HashSet<UUID> currentGroups = new HashSet<UUID>();
                                 if (
-                                    !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID,
-                                        Configuration.SERVICES_TIMEOUT,
-                                        Configuration.DATA_TIMEOUT))
+                                    !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                        ref currentGroups))
+                                {
+                                    throw new Exception(
+                                        wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                                }
+                                if (!currentGroups.Contains(commandGroup.UUID))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                                 }
@@ -8232,26 +7941,26 @@ namespace Corrade
                                         wasGetDescriptionFromEnumValue(
                                             ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE));
                                 }
-                                if (!Client.Self.GroupChatSessions.ContainsKey(configuredGroup.UUID))
+                                if (!Client.Self.GroupChatSessions.ContainsKey(commandGroup.UUID))
                                 {
                                     if (
-                                        !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.JoinChat,
+                                        !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.JoinChat,
                                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                     {
                                         throw new Exception(
                                             wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                     }
 
-                                    if (!JoinGroupChat(configuredGroup.UUID, Configuration.SERVICES_TIMEOUT))
+                                    if (!JoinGroupChat(commandGroup.UUID, Configuration.SERVICES_TIMEOUT))
                                     {
                                         throw new Exception(
                                             wasGetDescriptionFromEnumValue(ScriptError.UNABLE_TO_JOIN_GROUP_CHAT));
                                     }
                                 }
-                                Client.Self.InstantMessageGroup(configuredGroup.UUID, data);
+                                Client.Self.InstantMessageGroup(commandGroup.UUID, data);
                                 Parallel.ForEach(
                                     Configuration.GROUPS.AsParallel().Where(
-                                        o => o.UUID.Equals(configuredGroup.UUID) && o.ChatLogEnabled),
+                                        o => o.UUID.Equals(commandGroup.UUID) && o.ChatLogEnabled),
                                     o =>
                                     {
                                         CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
@@ -8379,7 +8088,7 @@ namespace Corrade
                 case ScriptKeys.AI:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_TALK))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_TALK))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -8468,39 +8177,25 @@ namespace Corrade
                 case ScriptKeys.NOTICE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.SendNotices,
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.SendNotices,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -8538,14 +8233,14 @@ namespace Corrade
                             }
                             notice.AttachmentID = inventoryBaseItem.UUID;
                         }
-                        Client.Groups.SendGroupNotice(configuredGroup.UUID, notice);
+                        Client.Groups.SendGroupNotice(commandGroup.UUID, notice);
                     };
                     break;
                 case ScriptKeys.PAY:
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_ECONOMY))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -8571,7 +8266,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INSUFFICIENT_FUNDS));
                         }
-                        UUID targetUUID = UUID.Zero;
+                        UUID targetUUID;
                         switch (
                             wasGetEnumValueFromDescription<Entity>(
                                 wasInput(
@@ -8579,33 +8274,7 @@ namespace Corrade
                                         message)).ToLowerInvariant()))
                         {
                             case Entity.GROUP:
-                                Group configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                        o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        UUID groupUUID = UUID.Zero;
-                                        if (
-                                            !GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT,
-                                                Configuration.DATA_TIMEOUT,
-                                                ref groupUUID))
-                                        {
-                                            throw new Exception(
-                                                wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                        }
-                                        configuredGroup =
-                                            Configuration.GROUPS.AsParallel()
-                                                .FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                        switch (!configuredGroup.Equals(default(Group)))
-                                        {
-                                            case false:
-                                                throw new Exception(
-                                                    wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                        }
-                                        break;
-                                }
-                                Client.Self.GiveGroupMoney(configuredGroup.UUID, amount,
+                                Client.Self.GiveGroupMoney(commandGroup.UUID, amount,
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REASON)),
                                             message)));
@@ -8659,7 +8328,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_ECONOMY))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -8676,7 +8345,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -8787,7 +8456,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -8817,7 +8486,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -8860,7 +8529,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -8893,7 +8562,7 @@ namespace Corrade
                 case ScriptKeys.GETREGIONDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -8924,7 +8593,7 @@ namespace Corrade
                 case ScriptKeys.GETGRIDREGIONDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -8973,7 +8642,7 @@ namespace Corrade
                 case ScriptKeys.GETNETWORKDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -8990,7 +8659,7 @@ namespace Corrade
                 case ScriptKeys.GETCONNECTEDREGIONS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -9013,10 +8682,6 @@ namespace Corrade
                             CommandPermissionMaskAttribute commandPermissionMaskAttribute =
                                 wasGetAttributeFromEnumValue<CommandPermissionMaskAttribute>(scriptKey);
                             if (commandPermissionMaskAttribute == null) return;
-                            Group commandGroup =
-                                Configuration.GROUPS.AsParallel()
-                                    .FirstOrDefault(
-                                        p => p.Name.Equals(group, StringComparison.InvariantCultureIgnoreCase));
                             if (!commandGroup.Equals(default(Group)) &&
                                 !(commandGroup.PermissionMask & commandPermissionMaskAttribute.PermissionMask).Equals(0))
                             {
@@ -9056,10 +8721,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group commandGroup =
-                            Configuration.GROUPS.AsParallel()
-                                .FirstOrDefault(
-                                    p => p.Name.Equals(group, StringComparison.InvariantCultureIgnoreCase));
                         switch (!commandGroup.Equals(default(Group)))
                         {
                             case false:
@@ -9121,7 +8782,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -9202,7 +8863,7 @@ namespace Corrade
                 case ScriptKeys.RELAX:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MOVEMENT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_MOVEMENT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -9230,7 +8891,7 @@ namespace Corrade
                 case ScriptKeys.AWAY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -9261,7 +8922,7 @@ namespace Corrade
                 case ScriptKeys.BUSY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -9288,7 +8949,7 @@ namespace Corrade
                 case ScriptKeys.TYPING:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -9315,7 +8976,7 @@ namespace Corrade
                 case ScriptKeys.RUN:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MOVEMENT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_MOVEMENT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -9343,7 +9004,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -9371,31 +9032,11 @@ namespace Corrade
                 case ScriptKeys.GETPARCELLIST:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -9442,7 +9083,7 @@ namespace Corrade
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
-                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(configuredGroup.UUID))
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(commandGroup.UUID))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -9451,7 +9092,7 @@ namespace Corrade
                                 {
                                     case AccessList.Access:
                                         if (
-                                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID,
+                                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
                                                 GroupPowers.LandManageAllowed, Configuration.SERVICES_TIMEOUT,
                                                 Configuration.DATA_TIMEOUT))
                                         {
@@ -9461,7 +9102,7 @@ namespace Corrade
                                         break;
                                     case AccessList.Ban:
                                         if (
-                                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID,
+                                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
                                                 GroupPowers.LandManageBanned,
                                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                         {
@@ -9471,7 +9112,7 @@ namespace Corrade
                                         break;
                                     case AccessList.Both:
                                         if (
-                                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID,
+                                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
                                                 GroupPowers.LandManageAllowed, Configuration.SERVICES_TIMEOUT,
                                                 Configuration.DATA_TIMEOUT))
                                         {
@@ -9479,7 +9120,7 @@ namespace Corrade
                                                 wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                         }
                                         if (
-                                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID,
+                                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
                                                 GroupPowers.LandManageBanned,
                                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                         {
@@ -9528,7 +9169,7 @@ namespace Corrade
                 case ScriptKeys.PARCELRECLAIM:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -9570,31 +9211,11 @@ namespace Corrade
                 case ScriptKeys.PARCELRELEASE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -9627,13 +9248,13 @@ namespace Corrade
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
-                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(configuredGroup.UUID))
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(commandGroup.UUID))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                                 if (
-                                    !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.LandRelease,
+                                    !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.LandRelease,
                                         Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                 {
                                     throw new Exception(
@@ -9647,31 +9268,11 @@ namespace Corrade
                 case ScriptKeys.PARCELDEED:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -9704,7 +9305,7 @@ namespace Corrade
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
-                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(configuredGroup.UUID))
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(commandGroup.UUID))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -9712,42 +9313,22 @@ namespace Corrade
                             }
                         }
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.LandDeed,
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.LandDeed,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                         }
-                        Client.Parcels.DeedToGroup(simulator, parcel.LocalID, configuredGroup.UUID);
+                        Client.Parcels.DeedToGroup(simulator, parcel.LocalID, commandGroup.UUID);
                     };
                     break;
                 case ScriptKeys.PARCELBUY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -9785,7 +9366,7 @@ namespace Corrade
                                 out forGroup))
                         {
                             if (
-                                !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.LandDeed,
+                                !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.LandDeed,
                                     Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                             {
                                 throw new Exception(
@@ -9872,42 +9453,22 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INSUFFICIENT_FUNDS));
                         }
                         if (!parcel.SalePrice.Equals(0) &&
-                            !HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_ECONOMY))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Client.Parcels.Buy(simulator, parcel.LocalID, forGroup, configuredGroup.UUID,
+                        Client.Parcels.Buy(simulator, parcel.LocalID, forGroup, commandGroup.UUID,
                             removeContribution, parcel.Area, parcel.SalePrice);
                     };
                     break;
                 case ScriptKeys.PARCELEJECT:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -9940,13 +9501,13 @@ namespace Corrade
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
-                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(configuredGroup.UUID))
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(commandGroup.UUID))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                                 if (
-                                    !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID,
+                                    !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
                                         GroupPowers.LandEjectAndFreeze,
                                         Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                 {
@@ -9986,31 +9547,11 @@ namespace Corrade
                 case ScriptKeys.PARCELFREEZE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -10043,13 +9584,13 @@ namespace Corrade
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
-                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(configuredGroup.UUID))
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(commandGroup.UUID))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                 }
                                 if (
-                                    !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID,
+                                    !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
                                         GroupPowers.LandEjectAndFreeze,
                                         Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                 {
@@ -10090,7 +9631,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -10156,7 +9697,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -10267,7 +9808,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -10362,7 +9903,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -10396,7 +9937,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -10408,7 +9949,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -10451,7 +9992,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -10534,7 +10075,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -10577,8 +10118,8 @@ namespace Corrade
                 case ScriptKeys.ADDCLASSIFIED:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING) ||
-                            !HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING) ||
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_ECONOMY))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -10686,7 +10227,7 @@ namespace Corrade
                 case ScriptKeys.DELETECLASSIFIED:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -10731,7 +10272,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -10760,33 +10301,13 @@ namespace Corrade
                 case ScriptKeys.MODERATE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.ModerateChat,
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.ModerateChat,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -10807,11 +10328,17 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_FOUND));
                         }
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
-                            !AgentInGroup(agentUUID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         bool silence;
                         if (
@@ -10832,7 +10359,7 @@ namespace Corrade
                         {
                             case Type.TEXT:
                             case Type.VOICE:
-                                Client.Self.ModerateChatSessions(configuredGroup.UUID, agentUUID,
+                                Client.Self.ModerateChatSessions(commandGroup.UUID, agentUUID,
                                     wasGetDescriptionFromEnumValue(type),
                                     silence);
                                 break;
@@ -10845,7 +10372,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -10856,7 +10383,7 @@ namespace Corrade
                 case ScriptKeys.GETWEARABLES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -10878,7 +10405,7 @@ namespace Corrade
                 case ScriptKeys.WEAR:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -10915,7 +10442,7 @@ namespace Corrade
                 case ScriptKeys.UNWEAR:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -10943,7 +10470,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -10965,7 +10492,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -11050,7 +10577,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -11082,31 +10609,11 @@ namespace Corrade
                 case ScriptKeys.RETURNPRIMITIVES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
@@ -11206,7 +10713,7 @@ namespace Corrade
                                     Parallel.ForEach(
                                         parcels.AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)), o =>
                                         {
-                                            if (!o.IsGroupOwned || !o.GroupID.Equals(configuredGroup.UUID))
+                                            if (!o.IsGroupOwned || !o.GroupID.Equals(commandGroup.UUID))
                                             {
                                                 throw new Exception(
                                                     wasGetDescriptionFromEnumValue(
@@ -11225,7 +10732,7 @@ namespace Corrade
                                                     power = GroupPowers.ReturnGroupOwned;
                                                     break;
                                             }
-                                            if (!HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, power,
+                                            if (!HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, power,
                                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                             {
                                                 throw new Exception(
@@ -11276,31 +10783,11 @@ namespace Corrade
                 case ScriptKeys.GETPRIMITIVEOWNERS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         string region =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
                                 message));
@@ -11356,7 +10843,7 @@ namespace Corrade
                         Parallel.ForEach(parcels.AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)),
                             o =>
                             {
-                                if (!o.IsGroupOwned || !o.GroupID.Equals(configuredGroup.UUID))
+                                if (!o.IsGroupOwned || !o.GroupID.Equals(commandGroup.UUID))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -11370,7 +10857,7 @@ namespace Corrade
                                         GroupPowers.ReturnNonGroup
                                     }, p =>
                                     {
-                                        if (HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, p,
+                                        if (HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, p,
                                             Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                         {
                                             permissions = true;
@@ -11434,33 +10921,13 @@ namespace Corrade
                 case ScriptKeys.GETGROUPDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         OpenMetaverse.Group dataGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(configuredGroup.UUID, Configuration.SERVICES_TIMEOUT, ref dataGroup))
+                        if (!RequestGroup(commandGroup.UUID, Configuration.SERVICES_TIMEOUT, ref dataGroup))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
                         }
@@ -11477,31 +10944,11 @@ namespace Corrade
                 case ScriptKeys.GETGROUPMEMBERDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
@@ -11523,7 +10970,7 @@ namespace Corrade
                         EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
                         {
                             AvatarGroupsReceivedEvent.Alarm(Configuration.DATA_TIMEOUT);
-                            avatarGroup = args.Groups.FirstOrDefault(o => o.GroupID.Equals(configuredGroup.UUID));
+                            avatarGroup = args.Groups.FirstOrDefault(o => o.GroupID.Equals(commandGroup.UUID));
                         };
                         lock (ClientInstanceAvatarsLock)
                         {
@@ -11551,7 +10998,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -11588,7 +11035,7 @@ namespace Corrade
                 case ScriptKeys.GETPARCELDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -11633,31 +11080,11 @@ namespace Corrade
                 case ScriptKeys.SETPARCELDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -11688,7 +11115,7 @@ namespace Corrade
                         }
                         if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                         {
-                            if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(configuredGroup.UUID))
+                            if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(commandGroup.UUID))
                             {
                                 throw new Exception(
                                     wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -11722,7 +11149,7 @@ namespace Corrade
                 case ScriptKeys.GETREGIONPARCELSBOUNDINGBOX:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -11770,7 +11197,7 @@ namespace Corrade
                 case ScriptKeys.DOWNLOAD:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -11854,7 +11281,9 @@ namespace Corrade
                                     // All of these can only be fetched if they exist locally.
                                     case AssetType.LSLText:
                                     case AssetType.Notecard:
-                                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                                        if (
+                                            !HasCorradePermission(commandGroup.Name,
+                                                (int) Permissions.PERMISSION_INVENTORY))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -12004,7 +11433,7 @@ namespace Corrade
                             return;
                         }
                         if (
-                            !HasCorradePermission(group, (int) Permissions.PERMISSION_SYSTEM))
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_SYSTEM))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -12023,7 +11452,7 @@ namespace Corrade
                 case ScriptKeys.UPLOAD:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -12078,7 +11507,7 @@ namespace Corrade
                             case AssetType.Sound:
                             case AssetType.Animation:
                                 // the holy asset trinity is charged money
-                                if (!HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
+                                if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_ECONOMY))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -12336,32 +11765,12 @@ namespace Corrade
                 case ScriptKeys.REZ:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         InventoryBase inventoryBaseItem =
                             FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                 StringOrUUID(wasInput(wasKeyValueGet(
@@ -12422,12 +11831,12 @@ namespace Corrade
                             {
                                 if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                                 {
-                                    if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(configuredGroup.UUID))
+                                    if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(commandGroup.UUID))
                                     {
                                         throw new Exception(
                                             wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                     }
-                                    if (!HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.AllowRez,
+                                    if (!HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AllowRez,
                                         Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                                     {
                                         throw new Exception(
@@ -12438,13 +11847,13 @@ namespace Corrade
                         }
                         Client.Inventory.RequestRezFromInventory(simulator, rotation, position,
                             inventoryBaseItem as InventoryItem,
-                            configuredGroup.UUID);
+                            commandGroup.UUID);
                     };
                     break;
                 case ScriptKeys.DEREZ:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -12516,7 +11925,7 @@ namespace Corrade
                 case ScriptKeys.SETSCRIPTRUNNING:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -12621,7 +12030,7 @@ namespace Corrade
                 case ScriptKeys.GETSCRIPTRUNNING:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -12700,7 +12109,7 @@ namespace Corrade
                 case ScriptKeys.GETPRIMITIVEINVENTORY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -12741,7 +12150,7 @@ namespace Corrade
                 case ScriptKeys.GETPRIMITIVEINVENTORYDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -12800,7 +12209,7 @@ namespace Corrade
                 case ScriptKeys.UPDATEPRIMITIVEINVENTORY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -12915,7 +12324,7 @@ namespace Corrade
                 case ScriptKeys.GETINVENTORYDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -12942,7 +12351,7 @@ namespace Corrade
                 case ScriptKeys.SEARCHINVENTORY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -12999,7 +12408,7 @@ namespace Corrade
                 case ScriptKeys.GETINVENTORYPATH:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -13043,7 +12452,7 @@ namespace Corrade
                 case ScriptKeys.GETPARTICLESYSTEM:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -13194,7 +12603,7 @@ namespace Corrade
                 case ScriptKeys.CREATENOTECARD:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -13293,76 +12702,48 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
                         }
-                        Client.Groups.ActivateGroup(configuredGroup.UUID);
+                        if (!currentGroups.Contains(commandGroup.UUID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
+                        }
+                        Client.Groups.ActivateGroup(commandGroup.UUID);
                     };
                     break;
                 case ScriptKeys.TAG:
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         switch (wasGetEnumValueFromDescription<Action>(
                             wasInput(
@@ -13380,7 +12761,7 @@ namespace Corrade
                                 lock (ClientInstanceGroupsLock)
                                 {
                                     Client.Groups.GroupRoleDataReply += Groups_GroupRoleDataReply;
-                                    Client.Groups.RequestGroupRoles(configuredGroup.UUID);
+                                    Client.Groups.RequestGroupRoles(commandGroup.UUID);
                                     if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Groups.GroupRoleDataReply -= Groups_GroupRoleDataReply;
@@ -13403,7 +12784,7 @@ namespace Corrade
                                         throw new Exception(
                                             wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_TITLE));
                                 }
-                                Client.Groups.ActivateTitle(configuredGroup.UUID, role.Value);
+                                Client.Groups.ActivateTitle(commandGroup.UUID, role.Value);
                                 break;
                             case Action.GET:
                                 string title = string.Empty;
@@ -13421,7 +12802,7 @@ namespace Corrade
                                 lock (ClientInstanceGroupsLock)
                                 {
                                     Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
-                                    Client.Groups.RequestGroupTitles(configuredGroup.UUID);
+                                    Client.Groups.RequestGroupTitles(commandGroup.UUID);
                                     if (!GroupTitlesReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
@@ -13443,36 +12824,22 @@ namespace Corrade
                 case ScriptKeys.GETTITLES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.AGENT_NOT_IN_GROUP));
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         List<string> csv = new List<string>();
                         Dictionary<UUID, GroupTitle> groupTitles = new Dictionary<UUID, GroupTitle>();
@@ -13485,7 +12852,7 @@ namespace Corrade
                         lock (ClientInstanceGroupsLock)
                         {
                             Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
-                            Client.Groups.RequestGroupTitles(configuredGroup.UUID);
+                            Client.Groups.RequestGroupTitles(commandGroup.UUID);
                             if (!GroupTitlesReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
@@ -13498,7 +12865,7 @@ namespace Corrade
                         {
                             string roleName = string.Empty;
                             if (
-                                !RoleUUIDToName(title.Value.RoleID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
+                                !RoleUUIDToName(title.Value.RoleID, commandGroup.UUID, Configuration.SERVICES_TIMEOUT,
                                     Configuration.DATA_TIMEOUT,
                                     ref roleName))
                                 continue;
@@ -13518,7 +12885,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -13575,7 +12942,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -13602,7 +12969,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_MOVEMENT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -13680,7 +13047,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -13927,7 +13294,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -14064,7 +13431,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -14114,39 +13481,25 @@ namespace Corrade
                 case ScriptKeys.STARTPROPOSAL:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
+                        HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
-                            !AgentInGroup(Client.Self.AgentID, configuredGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT))
+                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                ref currentGroups))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_GET_CURRENT_GROUPS));
+                        }
+                        if (!currentGroups.Contains(commandGroup.UUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NOT_IN_GROUP));
                         }
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, configuredGroup.UUID, GroupPowers.StartProposal,
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.StartProposal,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
@@ -14187,7 +13540,7 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_PROPOSAL_TEXT));
                         }
-                        Client.Groups.StartProposal(configuredGroup.UUID, new GroupProposal
+                        Client.Groups.StartProposal(commandGroup.UUID, new GroupProposal
                         {
                             Duration = duration,
                             Majority = majority,
@@ -14200,7 +13553,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group, (int) Permissions.PERMISSION_MUTE))
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_MUTE))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -14267,7 +13620,7 @@ namespace Corrade
                 case ScriptKeys.GETMUTES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MUTE))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_MUTE))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -14286,39 +13639,19 @@ namespace Corrade
                 case ScriptKeys.DATABASE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_DATABASE))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_DATABASE))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
-                        if (string.IsNullOrEmpty(configuredGroup.DatabaseFile))
+
+                        if (string.IsNullOrEmpty(commandGroup.DatabaseFile))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_DATABASE_FILE_CONFIGURED));
                         }
-                        if (!File.Exists(configuredGroup.DatabaseFile))
+                        if (!File.Exists(commandGroup.DatabaseFile))
                         {
                             // create the file and close it
-                            File.Create(configuredGroup.DatabaseFile).Close();
+                            File.Create(commandGroup.DatabaseFile).Close();
                         }
                         switch (
                             wasGetEnumValueFromDescription<Action>(
@@ -14338,15 +13671,15 @@ namespace Corrade
                                 }
                                 lock (DatabaseFileLock)
                                 {
-                                    if (!DatabaseLocks.ContainsKey(configuredGroup.Name))
+                                    if (!DatabaseLocks.ContainsKey(commandGroup.Name))
                                     {
-                                        DatabaseLocks.Add(configuredGroup.Name, new object());
+                                        DatabaseLocks.Add(commandGroup.Name, new object());
                                     }
                                 }
-                                lock (DatabaseLocks[configuredGroup.Name])
+                                lock (DatabaseLocks[commandGroup.Name])
                                 {
                                     string databaseGetValue = wasKeyValueGet(databaseGetkey,
-                                        File.ReadAllText(configuredGroup.DatabaseFile, Encoding.UTF8));
+                                        File.ReadAllText(commandGroup.DatabaseFile, Encoding.UTF8));
                                     if (!string.IsNullOrEmpty(databaseGetValue))
                                     {
                                         result.Add(databaseGetkey,
@@ -14355,9 +13688,9 @@ namespace Corrade
                                 }
                                 lock (DatabaseFileLock)
                                 {
-                                    if (DatabaseLocks.ContainsKey(configuredGroup.Name))
+                                    if (DatabaseLocks.ContainsKey(commandGroup.Name))
                                     {
-                                        DatabaseLocks.Remove(configuredGroup.Name);
+                                        DatabaseLocks.Remove(commandGroup.Name);
                                     }
                                 }
                                 break;
@@ -14382,16 +13715,16 @@ namespace Corrade
                                 }
                                 lock (DatabaseFileLock)
                                 {
-                                    if (!DatabaseLocks.ContainsKey(configuredGroup.Name))
+                                    if (!DatabaseLocks.ContainsKey(commandGroup.Name))
                                     {
-                                        DatabaseLocks.Add(configuredGroup.Name, new object());
+                                        DatabaseLocks.Add(commandGroup.Name, new object());
                                     }
                                 }
-                                lock (DatabaseLocks[configuredGroup.Name])
+                                lock (DatabaseLocks[commandGroup.Name])
                                 {
-                                    string contents = File.ReadAllText(configuredGroup.DatabaseFile, Encoding.UTF8);
+                                    string contents = File.ReadAllText(commandGroup.DatabaseFile, Encoding.UTF8);
                                     using (
-                                        StreamWriter recreateDatabase = new StreamWriter(configuredGroup.DatabaseFile,
+                                        StreamWriter recreateDatabase = new StreamWriter(commandGroup.DatabaseFile,
                                             false, Encoding.UTF8))
                                     {
                                         recreateDatabase.Write(wasKeyValueSet(databaseSetKey,
@@ -14402,9 +13735,9 @@ namespace Corrade
                                 }
                                 lock (DatabaseFileLock)
                                 {
-                                    if (DatabaseLocks.ContainsKey(configuredGroup.Name))
+                                    if (DatabaseLocks.ContainsKey(commandGroup.Name))
                                     {
-                                        DatabaseLocks.Remove(configuredGroup.Name);
+                                        DatabaseLocks.Remove(commandGroup.Name);
                                     }
                                 }
                                 break;
@@ -14420,16 +13753,16 @@ namespace Corrade
                                 }
                                 lock (DatabaseFileLock)
                                 {
-                                    if (!DatabaseLocks.ContainsKey(configuredGroup.Name))
+                                    if (!DatabaseLocks.ContainsKey(commandGroup.Name))
                                     {
-                                        DatabaseLocks.Add(configuredGroup.Name, new object());
+                                        DatabaseLocks.Add(commandGroup.Name, new object());
                                     }
                                 }
-                                lock (DatabaseLocks[configuredGroup.Name])
+                                lock (DatabaseLocks[commandGroup.Name])
                                 {
-                                    string contents = File.ReadAllText(configuredGroup.DatabaseFile, Encoding.UTF8);
+                                    string contents = File.ReadAllText(commandGroup.DatabaseFile, Encoding.UTF8);
                                     using (
-                                        StreamWriter recreateDatabase = new StreamWriter(configuredGroup.DatabaseFile,
+                                        StreamWriter recreateDatabase = new StreamWriter(commandGroup.DatabaseFile,
                                             false, Encoding.UTF8))
                                     {
                                         recreateDatabase.Write(wasKeyValueDelete(databaseDeleteKey, contents));
@@ -14439,9 +13772,9 @@ namespace Corrade
                                 }
                                 lock (DatabaseFileLock)
                                 {
-                                    if (DatabaseLocks.ContainsKey(configuredGroup.Name))
+                                    if (DatabaseLocks.ContainsKey(commandGroup.Name))
                                     {
-                                        DatabaseLocks.Remove(configuredGroup.Name);
+                                        DatabaseLocks.Remove(commandGroup.Name);
                                     }
                                 }
                                 break;
@@ -14453,31 +13786,11 @@ namespace Corrade
                 case ScriptKeys.NOTIFY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_NOTIFICATIONS))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_NOTIFICATIONS))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         string url = wasInput(
                             wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.URL)),
                                 message));
@@ -14515,7 +13828,7 @@ namespace Corrade
                                     notification =
                                         GroupNotifications.AsParallel().FirstOrDefault(
                                             o =>
-                                                o.GroupName.Equals(configuredGroup.Name,
+                                                o.GroupName.Equals(commandGroup.Name,
                                                     StringComparison.OrdinalIgnoreCase));
                                 }
                                 switch (!notification.Equals(default(Notification)))
@@ -14523,8 +13836,8 @@ namespace Corrade
                                     case false:
                                         notification = new Notification
                                         {
-                                            GroupName = configuredGroup.Name,
-                                            GroupUUID = configuredGroup.UUID,
+                                            GroupName = commandGroup.Name,
+                                            GroupUUID = commandGroup.UUID,
                                             NotificationMask = 0,
                                             NotificationDestination =
                                                 new SerializableDictionary<Notifications, HashSet<string>>()
@@ -14536,7 +13849,7 @@ namespace Corrade
                                     o =>
                                     {
                                         uint notificationValue = (uint) wasGetEnumValueFromDescription<Notifications>(o);
-                                        if (!GroupHasNotification(configuredGroup.Name, notificationValue))
+                                        if (!GroupHasNotification(commandGroup.Name, notificationValue))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.NOTIFICATION_NOT_ALLOWED));
@@ -14578,7 +13891,7 @@ namespace Corrade
                                     // Replace notification.
                                     GroupNotifications.RemoveWhere(
                                         o =>
-                                            o.GroupName.Equals(configuredGroup.Name, StringComparison.OrdinalIgnoreCase));
+                                            o.GroupName.Equals(commandGroup.Name, StringComparison.OrdinalIgnoreCase));
                                     GroupNotifications.Add(notification);
                                 }
                                 break;
@@ -14594,7 +13907,7 @@ namespace Corrade
                                                         (uint) wasGetEnumValueFromDescription<Notifications>(p))
                                                 .Equals(0)) &&
                                              !o.NotificationDestination.Values.Any(p => p.Contains(url))) ||
-                                            !o.GroupName.Equals(configuredGroup.Name, StringComparison.OrdinalIgnoreCase))
+                                            !o.GroupName.Equals(commandGroup.Name, StringComparison.OrdinalIgnoreCase))
                                         {
                                             groupNotifications.Add(o);
                                             return;
@@ -14644,7 +13957,7 @@ namespace Corrade
                                     Notification groupNotification =
                                         GroupNotifications.AsParallel().FirstOrDefault(
                                             o =>
-                                                o.GroupName.Equals(configuredGroup.Name,
+                                                o.GroupName.Equals(commandGroup.Name,
                                                     StringComparison.OrdinalIgnoreCase));
                                     if (!groupNotification.Equals(default(Notification)))
                                     {
@@ -14673,7 +13986,7 @@ namespace Corrade
                                 {
                                     GroupNotifications.RemoveWhere(
                                         o =>
-                                            o.GroupName.Equals(configuredGroup.Name, StringComparison.OrdinalIgnoreCase));
+                                            o.GroupName.Equals(commandGroup.Name, StringComparison.OrdinalIgnoreCase));
                                 }
                                 break;
                             default:
@@ -14690,7 +14003,7 @@ namespace Corrade
                 case ScriptKeys.REPLYTOTELEPORTLURE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MOVEMENT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_MOVEMENT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -14729,7 +14042,7 @@ namespace Corrade
                 case ScriptKeys.GETTELEPORTLURES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MOVEMENT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_MOVEMENT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -14762,7 +14075,7 @@ namespace Corrade
                 case ScriptKeys.REPLYTOSCRIPTPERMISSIONREQUEST:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -14809,7 +14122,7 @@ namespace Corrade
                 case ScriptKeys.GETSCRIPTPERMISSIONREQUESTS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -14852,7 +14165,7 @@ namespace Corrade
                 case ScriptKeys.REPLYTOSCRIPTDIALOG:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -14897,7 +14210,7 @@ namespace Corrade
                 case ScriptKeys.GETSCRIPTDIALOGS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -14938,7 +14251,7 @@ namespace Corrade
                 case ScriptKeys.ANIMATION:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -14988,7 +14301,7 @@ namespace Corrade
                 case ScriptKeys.PLAYGESTURE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -15024,7 +14337,7 @@ namespace Corrade
                 case ScriptKeys.GETANIMATIONS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -15046,7 +14359,7 @@ namespace Corrade
                 case ScriptKeys.RESTARTREGION:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -15086,7 +14399,7 @@ namespace Corrade
                 case ScriptKeys.SETREGIONDEBUG:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -15130,7 +14443,7 @@ namespace Corrade
                 case ScriptKeys.GETREGIONTOP:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -15220,7 +14533,7 @@ namespace Corrade
                 case ScriptKeys.SETESTATELIST:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -15569,7 +14882,7 @@ namespace Corrade
                 case ScriptKeys.GETESTATELIST:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -15710,7 +15023,7 @@ namespace Corrade
                 case ScriptKeys.GETAVATARDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -15808,7 +15121,7 @@ namespace Corrade
                 case ScriptKeys.GETAVATARPOSITIONS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -15889,7 +15202,7 @@ namespace Corrade
                 case ScriptKeys.GETMAPAVATARPOSITIONS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -15949,7 +15262,7 @@ namespace Corrade
                 case ScriptKeys.GETSELFDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -15966,7 +15279,7 @@ namespace Corrade
                 case ScriptKeys.DISPLAYNAME:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -16041,7 +15354,7 @@ namespace Corrade
                 case ScriptKeys.GETINVENTORYOFFERS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -16085,7 +15398,7 @@ namespace Corrade
                 case ScriptKeys.REPLYTOINVENTORYOFFER:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -16175,7 +15488,7 @@ namespace Corrade
                 case ScriptKeys.GETFRIENDSLIST:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FRIENDSHIP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FRIENDSHIP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -16195,7 +15508,7 @@ namespace Corrade
                 case ScriptKeys.GETFRIENDSHIPREQUESTS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FRIENDSHIP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FRIENDSHIP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -16222,7 +15535,7 @@ namespace Corrade
                 case ScriptKeys.REPLYTOFRIENDSHIPREQUEST:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FRIENDSHIP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FRIENDSHIP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -16274,7 +15587,7 @@ namespace Corrade
                 case ScriptKeys.GETFRIENDDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FRIENDSHIP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FRIENDSHIP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -16312,7 +15625,7 @@ namespace Corrade
                 case ScriptKeys.OFFERFRIENDSHIP:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FRIENDSHIP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FRIENDSHIP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -16345,7 +15658,7 @@ namespace Corrade
                 case ScriptKeys.TERMINATEFRIENDSHIP:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FRIENDSHIP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FRIENDSHIP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -16376,7 +15689,7 @@ namespace Corrade
                 case ScriptKeys.GRANTFRIENDRIGHTS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FRIENDSHIP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FRIENDSHIP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -16416,7 +15729,7 @@ namespace Corrade
                 case ScriptKeys.MAPFRIEND:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FRIENDSHIP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FRIENDSHIP))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -16503,7 +15816,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -16541,7 +15854,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -16606,31 +15919,11 @@ namespace Corrade
                 case ScriptKeys.OBJECTDEED:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         float range;
                         if (
                             !float.TryParse(
@@ -16658,37 +15951,17 @@ namespace Corrade
                         }
                         Client.Objects.DeedObject(
                             Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                            primitive.LocalID, configuredGroup.UUID);
+                            primitive.LocalID, commandGroup.UUID);
                     };
                     break;
                 case ScriptKeys.SETOBJECTGROUP:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         float range;
                         if (
                             !float.TryParse(
@@ -16717,13 +15990,13 @@ namespace Corrade
                         Client.Objects.SetObjectsGroup(
                             Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                             new List<uint> {primitive.LocalID},
-                            configuredGroup.UUID);
+                            commandGroup.UUID);
                     };
                     break;
                 case ScriptKeys.SETOBJECTSALEINFO:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -16784,7 +16057,7 @@ namespace Corrade
                 case ScriptKeys.SETOBJECTPOSITION:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -16831,7 +16104,7 @@ namespace Corrade
                 case ScriptKeys.SETPRIMITIVEPOSITION:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -16872,7 +16145,7 @@ namespace Corrade
                 case ScriptKeys.SETOBJECTROTATION:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -16919,7 +16192,7 @@ namespace Corrade
                 case ScriptKeys.SETPRIMITIVEROTATION:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -16960,7 +16233,7 @@ namespace Corrade
                 case ScriptKeys.SETOBJECTSCALE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -17016,7 +16289,7 @@ namespace Corrade
                 case ScriptKeys.SETPRIMITIVESCALE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -17077,7 +16350,7 @@ namespace Corrade
                 case ScriptKeys.SETPRIMITIVENAME:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -17120,7 +16393,7 @@ namespace Corrade
                 case ScriptKeys.SETPRIMITIVEDESCRIPTION:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -17165,7 +16438,7 @@ namespace Corrade
                 case ScriptKeys.CHANGEPRIMITIVELINK:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -17277,31 +16550,11 @@ namespace Corrade
                 case ScriptKeys.PRIMITIVEBUY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         string region =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
                                 message));
@@ -17339,7 +16592,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOR_SALE));
                         }
                         if (!primitive.Properties.SalePrice.Equals(0) &&
-                            !HasCorradePermission(group, (int) Permissions.PERMISSION_ECONOMY))
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_ECONOMY))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -17354,13 +16607,13 @@ namespace Corrade
                         }
                         Client.Objects.BuyObject(simulator, primitive.LocalID, primitive.Properties.SaleType,
                             primitive.Properties.SalePrice,
-                            configuredGroup.UUID, folderUUID);
+                            commandGroup.UUID, folderUUID);
                     };
                     break;
                 case ScriptKeys.GETPRIMITIVEPAYPRICES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -17430,7 +16683,7 @@ namespace Corrade
                 case ScriptKeys.CHANGEAPPEARANCE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -17498,7 +16751,7 @@ namespace Corrade
                 case ScriptKeys.PLAYSOUND:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -17552,7 +16805,7 @@ namespace Corrade
                 case ScriptKeys.TERRAIN:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -17664,7 +16917,7 @@ namespace Corrade
                 case ScriptKeys.GETTERRAINHEIGHT:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -17738,7 +16991,7 @@ namespace Corrade
                 case ScriptKeys.CROUCH:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MOVEMENT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_MOVEMENT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -17779,7 +17032,7 @@ namespace Corrade
                 case ScriptKeys.JUMP:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_MOVEMENT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_MOVEMENT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -17819,7 +17072,7 @@ namespace Corrade
                 case ScriptKeys.EXECUTE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_EXECUTE))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_EXECUTE))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -17892,7 +17145,7 @@ namespace Corrade
                 case ScriptKeys.CONFIGURATION:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_SYSTEM))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_SYSTEM))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -18003,7 +17256,7 @@ namespace Corrade
                 case ScriptKeys.CACHE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_SYSTEM))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_SYSTEM))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -18029,7 +17282,7 @@ namespace Corrade
                 case ScriptKeys.LOGOUT:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_SYSTEM))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_SYSTEM))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -18039,7 +17292,7 @@ namespace Corrade
                 case ScriptKeys.RLV:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_SYSTEM))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_SYSTEM))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -18064,7 +17317,7 @@ namespace Corrade
                 case ScriptKeys.FILTER:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_FILTER))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FILTER))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -18156,36 +17409,16 @@ namespace Corrade
                 case ScriptKeys.INVENTORY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        Group configuredGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(
-                                o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
-                        switch (!configuredGroup.Equals(default(Group)))
-                        {
-                            case false:
-                                UUID groupUUID = UUID.Zero;
-                                if (!GroupNameToUUID(group, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
-                                    ref groupUUID))
-                                {
-                                    throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                configuredGroup =
-                                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                                switch (!configuredGroup.Equals(default(Group)))
-                                {
-                                    case false:
-                                        throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.GROUP_NOT_FOUND));
-                                }
-                                break;
-                        }
+
                         lock (GroupDirectoryTrackersLock)
                         {
-                            if (!GroupDirectoryTrackers.Contains(configuredGroup.UUID))
+                            if (!GroupDirectoryTrackers.Contains(commandGroup.UUID))
                             {
-                                GroupDirectoryTrackers.Add(configuredGroup.UUID, Client.Inventory.Store.RootFolder);
+                                GroupDirectoryTrackers.Add(commandGroup.UUID, Client.Inventory.Store.RootFolder);
                             }
                         }
                         string path =
@@ -18264,7 +17497,7 @@ namespace Corrade
                                     default:
                                         lock (GroupDirectoryTrackersLock)
                                         {
-                                            item = GroupDirectoryTrackers[configuredGroup.UUID] as InventoryBase;
+                                            item = GroupDirectoryTrackers[commandGroup.UUID] as InventoryBase;
                                         }
                                         break;
                                 }
@@ -18321,7 +17554,7 @@ namespace Corrade
                                 {
                                     DirItem dirItem =
                                         DirItem.FromInventoryBase(
-                                            GroupDirectoryTrackers[configuredGroup.UUID] as InventoryBase);
+                                            GroupDirectoryTrackers[commandGroup.UUID] as InventoryBase);
                                     csv.AddRange(new[]
                                     {wasGetStructureMemberDescription(dirItem, dirItem.Name), dirItem.Name});
                                     csv.AddRange(new[]
@@ -18348,7 +17581,7 @@ namespace Corrade
                                     case true:
                                         lock (GroupDirectoryTrackersLock)
                                         {
-                                            item = GroupDirectoryTrackers[configuredGroup.UUID] as InventoryBase;
+                                            item = GroupDirectoryTrackers[commandGroup.UUID] as InventoryBase;
                                         }
                                         break;
                                     default:
@@ -18363,7 +17596,7 @@ namespace Corrade
                                 }
                                 lock (GroupDirectoryTrackersLock)
                                 {
-                                    GroupDirectoryTrackers[configuredGroup.UUID] = item;
+                                    GroupDirectoryTrackers[commandGroup.UUID] = item;
                                 }
                                 break;
                             case Action.MKDIR:
@@ -18387,7 +17620,7 @@ namespace Corrade
                                     default:
                                         lock (GroupDirectoryTrackersLock)
                                         {
-                                            item = GroupDirectoryTrackers[configuredGroup.UUID] as InventoryBase;
+                                            item = GroupDirectoryTrackers[commandGroup.UUID] as InventoryBase;
                                         }
                                         break;
                                 }
@@ -18426,7 +17659,7 @@ namespace Corrade
                                     default:
                                         lock (GroupDirectoryTrackersLock)
                                         {
-                                            item = GroupDirectoryTrackers[configuredGroup.UUID] as InventoryBase;
+                                            item = GroupDirectoryTrackers[commandGroup.UUID] as InventoryBase;
                                         }
                                         break;
                                 }
@@ -18491,7 +17724,7 @@ namespace Corrade
                                     default:
                                         lock (GroupDirectoryTrackersLock)
                                         {
-                                            item = GroupDirectoryTrackers[configuredGroup.UUID] as InventoryBase;
+                                            item = GroupDirectoryTrackers[commandGroup.UUID] as InventoryBase;
                                         }
                                         break;
                                 }
@@ -18529,7 +17762,7 @@ namespace Corrade
                                     default:
                                         lock (GroupDirectoryTrackersLock)
                                         {
-                                            sourceItem = GroupDirectoryTrackers[configuredGroup.UUID] as InventoryBase;
+                                            sourceItem = GroupDirectoryTrackers[commandGroup.UUID] as InventoryBase;
                                         }
                                         break;
                                 }
@@ -18562,7 +17795,7 @@ namespace Corrade
                                     default:
                                         lock (GroupDirectoryTrackersLock)
                                         {
-                                            targetItem = GroupDirectoryTrackers[configuredGroup.UUID] as InventoryBase;
+                                            targetItem = GroupDirectoryTrackers[commandGroup.UUID] as InventoryBase;
                                         }
                                         break;
                                 }
@@ -18625,7 +17858,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -18798,7 +18031,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -18991,7 +18224,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -19253,7 +18486,7 @@ namespace Corrade
                                 return;
                             }
                             if (
-                                !HasCorradePermission(group, (int) Permissions.PERMISSION_SYSTEM))
+                                !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_SYSTEM))
                             {
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                             }
@@ -19270,7 +18503,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(group,
+                            !HasCorradePermission(commandGroup.Name,
                                 (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
@@ -19574,7 +18807,7 @@ namespace Corrade
                                 return;
                             }
                             if (
-                                !HasCorradePermission(group, (int) Permissions.PERMISSION_SYSTEM))
+                                !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_SYSTEM))
                             {
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                             }
@@ -19596,7 +18829,7 @@ namespace Corrade
                 case ScriptKeys.DIRECTORYSEARCH:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(group, (int) Permissions.PERMISSION_DIRECTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_DIRECTORY))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
@@ -23555,7 +22788,6 @@ namespace Corrade
                     try
                     {
                         // First remove any groups that have expired.
-                        //GroupExecutionTime.R(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
                         lock (GroupExecutionTimeLock)
                         {
                             List<UUID> RemoveGroups = new List<UUID>();
