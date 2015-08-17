@@ -174,7 +174,7 @@ namespace Corrade
 
             while (runGroupMembershipSweepThread)
             {
-                Thread.Sleep(Configuration.MEMBERSHIP_SWEEP_INTERVAL);
+                Thread.Sleep((int) Configuration.MEMBERSHIP_SWEEP_INTERVAL);
                 if (!Client.Network.Connected) continue;
 
                 HashSet<UUID> currentGroups = new HashSet<UUID>();
@@ -232,7 +232,7 @@ namespace Corrade
                         Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                         GroupMembersReplyEvent.Reset();
                         Client.Groups.RequestGroupMembers(groupUUID);
-                        if (!GroupMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                        if (!GroupMembersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                         {
                             Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                             continue;
@@ -333,7 +333,7 @@ namespace Corrade
             // Set the user disconnect semaphore.
             ConnectionSemaphores['u'].Set();
             // Wait for threads to finish.
-            Thread.Sleep(Configuration.SERVICES_TIMEOUT);
+            Thread.Sleep((int) Configuration.SERVICES_TIMEOUT);
             return true;
         }
 
@@ -1238,7 +1238,7 @@ namespace Corrade
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <returns>true if the agent has the powers</returns>
         private static bool HasGroupPowers(UUID agentUUID, UUID groupUUID, GroupPowers powers,
-            int millisecondsTimeout, int dataTimeout)
+            uint millisecondsTimeout, uint dataTimeout)
         {
             bool hasPowers = false;
             wasAdaptiveAlarm AvatarGroupsReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
@@ -1253,7 +1253,7 @@ namespace Corrade
             {
                 Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
                 Client.Avatars.RequestAvatarProperties(agentUUID);
-                if (!AvatarGroupsReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
+                if (!AvatarGroupsReceivedAlarm.Signal.WaitOne((int) millisecondsTimeout, false))
                 {
                     Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
                     return false;
@@ -1272,7 +1272,7 @@ namespace Corrade
         /// <param name="groupUUID">the UUID of the group to join the group chat for</param>
         /// <param name="millisecondsTimeout">timeout for joining the group chat</param>
         /// <returns>true if the group chat was joined</returns>
-        private static bool JoinGroupChat(UUID groupUUID, int millisecondsTimeout)
+        private static bool JoinGroupChat(UUID groupUUID, uint millisecondsTimeout)
         {
             bool succeeded = false;
             ManualResetEvent GroupChatJoinedEvent = new ManualResetEvent(false);
@@ -1286,7 +1286,7 @@ namespace Corrade
             {
                 Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
                 Client.Self.RequestJoinGroupChat(groupUUID);
-                if (!GroupChatJoinedEvent.WaitOne(millisecondsTimeout, false))
+                if (!GroupChatJoinedEvent.WaitOne((int) millisecondsTimeout, false))
                 {
                     Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
                     return false;
@@ -1308,7 +1308,7 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <returns>true if the agent is in the group</returns>
-        private static bool AgentInGroup(UUID agentUUID, UUID groupUUID, int millisecondsTimeout, int dataTimeout)
+        private static bool AgentInGroup(UUID agentUUID, UUID groupUUID, uint millisecondsTimeout, uint dataTimeout)
         {
             bool agentInGroup = false;
             wasAdaptiveAlarm GroupMembersReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
@@ -1322,7 +1322,7 @@ namespace Corrade
             {
                 Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                 Client.Groups.RequestGroupMembers(groupUUID);
-                if (!GroupMembersReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
+                if (!GroupMembersReceivedAlarm.Signal.WaitOne((int) millisecondsTimeout, false))
                 {
                     Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                     return false;
@@ -1429,7 +1429,7 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="group">a group object to store the group profile</param>
         /// <returns>true if the group was found and false otherwise</returns>
-        private static bool RequestGroup(UUID groupUUID, int millisecondsTimeout, ref OpenMetaverse.Group group)
+        private static bool RequestGroup(UUID groupUUID, uint millisecondsTimeout, ref OpenMetaverse.Group group)
         {
             OpenMetaverse.Group localGroup = new OpenMetaverse.Group();
             ManualResetEvent GroupProfileEvent = new ManualResetEvent(false);
@@ -1442,7 +1442,7 @@ namespace Corrade
             {
                 Client.Groups.GroupProfile += GroupProfileDelegate;
                 Client.Groups.RequestGroupProfile(groupUUID);
-                if (!GroupProfileEvent.WaitOne(millisecondsTimeout, false))
+                if (!GroupProfileEvent.WaitOne((int) millisecondsTimeout, false))
                 {
                     Client.Groups.GroupProfile -= GroupProfileDelegate;
                     return false;
@@ -1482,7 +1482,7 @@ namespace Corrade
                         RequestAllSimParcelsEvent.Set();
                         break;
                 }
-                if (!RequestAllSimParcelsEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                if (!RequestAllSimParcelsEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                 {
                     Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;
                     return false;
@@ -1530,8 +1530,8 @@ namespace Corrade
         /// <param name="millisecondsTimeout">the services timeout in milliseconds</param>
         /// <param name="dataTimeout">the data timeout in milliseconds</param>
         /// <returns>true if the primitive could be found</returns>
-        private static bool FindPrimitive<T>(T item, float range, ref Primitive primitive, int millisecondsTimeout,
-            int dataTimeout)
+        private static bool FindPrimitive<T>(T item, float range, ref Primitive primitive, uint millisecondsTimeout,
+            uint dataTimeout)
         {
             HashSet<Primitive> selectedPrimitives = new HashSet<Primitive>();
             HashSet<Primitive> objectsPrimitives =
@@ -1636,7 +1636,7 @@ namespace Corrade
         /// <param name="millisecondsTimeout">the services timeout</param>
         /// <returns>true if the mesh could be created successfully</returns>
         private static bool MakeFacetedMesh(Primitive primitive, MeshmerizerR mesher, ref FacetedMesh facetedMesh,
-            int millisecondsTimeout)
+            uint millisecondsTimeout)
         {
             if (primitive.Sculpt == null || primitive.Sculpt.SculptTexture.Equals(UUID.Zero))
             {
@@ -1658,7 +1658,7 @@ namespace Corrade
                                 assetData = args.AssetData;
                                 ImageDownloadedEvent.Set();
                             });
-                            if (!ImageDownloadedEvent.WaitOne(millisecondsTimeout, false))
+                            if (!ImageDownloadedEvent.WaitOne((int) millisecondsTimeout, false))
                                 return false;
                         }
                         Client.Assets.Cache.SaveAssetToCache(primitive.Sculpt.SculptTexture, assetData);
@@ -1694,7 +1694,7 @@ namespace Corrade
                     MeshDownloadedEvent.Set();
                 });
 
-                if (!MeshDownloadedEvent.WaitOne(millisecondsTimeout, false))
+                if (!MeshDownloadedEvent.WaitOne((int) millisecondsTimeout, false))
                     return false;
             }
 
@@ -2090,7 +2090,7 @@ namespace Corrade
                 var matrix = node.AppendChild(Doc.CreateElement("matrix"));
 
                 var srt = createSRTMatrix.Invoke(obj.Prim.Scale, obj.Prim.Rotation, obj.Prim.Position);
-                string matrixVal = "";
+                string matrixVal = string.Empty;
                 for (int i = 0; i < 4; i++)
                 {
                     for (int j = 0; j < 4; j++)
@@ -2148,7 +2148,7 @@ namespace Corrade
         /// <param name="millisecondsTimeout">the timeout in milliseconds</param>
         /// <param name="dataTimeout">the data timeout in milliseconds</param>
         /// <returns>the avatars in range</returns>
-        private static IEnumerable<Avatar> GetAvatars(float range, int millisecondsTimeout, int dataTimeout)
+        private static IEnumerable<Avatar> GetAvatars(float range, uint millisecondsTimeout, uint dataTimeout)
         {
             switch (Client.Self.Movement.Camera.Far < range)
             {
@@ -2165,7 +2165,7 @@ namespace Corrade
                             Client.Self.Movement.Camera.Far = range;
                         }
                         RangeUpdateAlarm.Alarm(dataTimeout);
-                        RangeUpdateAlarm.Signal.WaitOne(millisecondsTimeout, false);
+                        RangeUpdateAlarm.Signal.WaitOne((int) millisecondsTimeout, false);
                         avatars =
                             Client.Network.Simulators.Select(o => o.ObjectsAvatars)
                                 .Select(o => o.Copy().Values)
@@ -2192,7 +2192,7 @@ namespace Corrade
         /// <param name="millisecondsTimeout">the timeout in milliseconds</param>
         /// <param name="dataTimeout">the data timeout in milliseconds</param>
         /// <returns>the primitives in range</returns>
-        private static IEnumerable<Primitive> GetPrimitives(float range, int millisecondsTimeout, int dataTimeout)
+        private static IEnumerable<Primitive> GetPrimitives(float range, uint millisecondsTimeout, uint dataTimeout)
         {
             switch (Client.Self.Movement.Camera.Far < range)
             {
@@ -2209,7 +2209,7 @@ namespace Corrade
                             Client.Self.Movement.Camera.Far = range;
                         }
                         RangeUpdateAlarm.Alarm(dataTimeout);
-                        RangeUpdateAlarm.Signal.WaitOne(millisecondsTimeout, false);
+                        RangeUpdateAlarm.Signal.WaitOne((int) millisecondsTimeout, false);
                         primitives =
                             Client.Network.Simulators.Select(o => o.ObjectsPrimitives)
                                 .Select(o => o.Copy().Values)
@@ -2235,7 +2235,7 @@ namespace Corrade
         /// <param name="primitives">a list of primitives to update</param>
         /// <param name="dataTimeout">the timeout for receiving data from the grid</param>
         /// <returns>a list of updated primitives</returns>
-        private static bool UpdatePrimitives(ref HashSet<Primitive> primitives, int dataTimeout)
+        private static bool UpdatePrimitives(ref HashSet<Primitive> primitives, uint dataTimeout)
         {
             HashSet<Primitive> scansPrimitives = new HashSet<Primitive>(primitives);
             HashSet<Primitive> localPrimitives = new HashSet<Primitive>();
@@ -2283,9 +2283,9 @@ namespace Corrade
                             Client.Network.Simulators.FirstOrDefault(p => p.Handle.Equals(queryPrimitive.RegionHandle)),
                             queryPrimitive.LocalID,
                             true);
-                        int average = (int) times.Average();
-                        primitiveEvents[queryPrimitive.ID].WaitOne(
-                            average != 0 ? average : dataTimeout, false);
+                        uint average = (uint) times.Average();
+                        primitiveEvents[queryPrimitive.ID].WaitOne((int)
+                            (average != 0 ? average : dataTimeout), false);
                         Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
                     });
             }
@@ -2305,8 +2305,8 @@ namespace Corrade
         /// <param name="millisecondsTimeout">the amount of time in milliseconds to timeout</param>
         /// <param name="dataTimeout">the data timeout</param>
         /// <returns>true if any avatars were updated</returns>
-        private static bool UpdateAvatars(ref HashSet<Avatar> avatars, int millisecondsTimeout,
-            int dataTimeout)
+        private static bool UpdateAvatars(ref HashSet<Avatar> avatars, uint millisecondsTimeout,
+            uint dataTimeout)
         {
             HashSet<Avatar> scansAvatars = new HashSet<Avatar>(avatars);
             Dictionary<UUID, wasAdaptiveAlarm> avatarAlarms =
@@ -2353,7 +2353,7 @@ namespace Corrade
                     Client.Avatars.RequestAvatarProperties(o.ID);
                     Client.Avatars.RequestAvatarPicks(o.ID);
                     Client.Avatars.RequestAvatarClassified(o.ID);
-                    avatarAlarms[o.ID].Signal.WaitOne(millisecondsTimeout, false);
+                    avatarAlarms[o.ID].Signal.WaitOne((int) millisecondsTimeout, false);
                     Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
                     Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
                     Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
@@ -2383,7 +2383,7 @@ namespace Corrade
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="groups">a hashset where to store the UUIDs</param>
         /// <returns>true if the current groups could be fetched</returns>
-        private static bool directGetCurrentGroups(int millisecondsTimeout, int dataTimeout, ref HashSet<UUID> groups)
+        private static bool directGetCurrentGroups(uint millisecondsTimeout, uint dataTimeout, ref HashSet<UUID> groups)
         {
             wasAdaptiveAlarm CurrentGroupsReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
             List<UUID> currentGroups = new List<UUID>();
@@ -2398,7 +2398,7 @@ namespace Corrade
             };
             Client.Groups.CurrentGroups += CurrentGroupsEventHandler;
             Client.Groups.RequestCurrentGroups();
-            if (!CurrentGroupsReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
+            if (!CurrentGroupsReceivedAlarm.Signal.WaitOne((int) millisecondsTimeout, false))
             {
                 Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
                 return false;
@@ -2419,7 +2419,7 @@ namespace Corrade
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="groups">a hashset where to store the UUIDs</param>
         /// <returns>true if the current groups could be fetched</returns>
-        private static bool GetCurrentGroups(int millisecondsTimeout, int dataTimeout, ref HashSet<UUID> groups)
+        private static bool GetCurrentGroups(uint millisecondsTimeout, uint dataTimeout, ref HashSet<UUID> groups)
         {
             lock (Cache.Locks.CurrentGroupsCacheLock)
             {
@@ -2453,7 +2453,7 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <returns>attachment points by primitives</returns>
         private static IEnumerable<KeyValuePair<Primitive, AttachmentPoint>> GetAttachments(
-            int millisecondsTimeout)
+            uint millisecondsTimeout)
         {
             HashSet<Primitive> primitives;
             lock (ClientInstanceNetworkLock)
@@ -2475,22 +2475,16 @@ namespace Corrade
                 Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
                 Client.Objects.SelectObjects(Client.Network.CurrentSim, primitiveQueue.Values.Cast<uint>().ToArray(),
                     true);
-                if (ObjectPropertiesEvent.WaitOne(millisecondsTimeout, false))
-                {
-                    Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
-                    foreach (KeyValuePair<Primitive, AttachmentPoint> pair in primitives
-                        .AsParallel()
-                        .Select(
-                            o =>
-                                new KeyValuePair<Primitive, AttachmentPoint>(o,
-                                    (AttachmentPoint) (((o.PrimData.State & 0xF0) >> 4) |
-                                                       ((o.PrimData.State & ~0xF0) << 4)))))
-                    {
-                        yield return pair;
-                    }
-                }
+                ObjectPropertiesEvent.WaitOne((int) millisecondsTimeout, false);
                 Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
             }
+            return primitives
+                .AsParallel()
+                .Select(
+                    o =>
+                        new KeyValuePair<Primitive, AttachmentPoint>(o,
+                            (AttachmentPoint) (((o.PrimData.State & 0xF0) >> 4) |
+                                               ((o.PrimData.State & ~0xF0) << 4))));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -2887,10 +2881,10 @@ namespace Corrade
                 Environment.Exit(Configuration.EXIT_CODE_ABNORMAL);
             }
             // Network Settings
-            ServicePointManager.DefaultConnectionLimit = Configuration.CONNECTION_LIMIT;
+            ServicePointManager.DefaultConnectionLimit = (int) Configuration.CONNECTION_LIMIT;
             ServicePointManager.UseNagleAlgorithm = Configuration.USE_NAGGLE;
             ServicePointManager.Expect100Continue = Configuration.USE_EXPECT100CONTINUE;
-            ServicePointManager.MaxServicePointIdleTime = Configuration.CONNECTION_IDLE_TIME;
+            ServicePointManager.MaxServicePointIdleTime = (int) Configuration.CONNECTION_IDLE_TIME;
             // Suppress standard OpenMetaverse logs, we have better ones.
             Settings.LOG_LEVEL = Helpers.LogLevel.None;
             Client.Settings.ALWAYS_REQUEST_PARCEL_ACL = true;
@@ -2973,44 +2967,6 @@ namespace Corrade
             {
                 LoadNotificationState.Invoke();
             }
-            // Start the HTTP Server if it is supported
-            Thread HTTPListenerThread = null;
-            HttpListener HTTPListener = null;
-            if (Configuration.ENABLE_HTTP_SERVER)
-            {
-                switch (HttpListener.IsSupported)
-                {
-                    case true:
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.STARTING_HTTP_SERVER));
-                        HTTPListenerThread = new Thread(() =>
-                        {
-                            try
-                            {
-                                using (HTTPListener = new HttpListener())
-                                {
-                                    HTTPListener.Prefixes.Add(Configuration.HTTP_SERVER_PREFIX);
-                                    HTTPListener.Start();
-                                    while (HTTPListener.IsListening)
-                                    {
-                                        IAsyncResult result = HTTPListener.BeginGetContext(ProcessHTTPRequest,
-                                            HTTPListener);
-                                        result.AsyncWaitHandle.WaitOne(Configuration.HTTP_SERVER_TIMEOUT, false);
-                                    }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR), ex.Message);
-                            }
-                        }) {IsBackground = true, Priority = ThreadPriority.BelowNormal};
-                        HTTPListenerThread.Start();
-                        break;
-                    default:
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR),
-                            wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_NOT_SUPPORTED));
-                        break;
-                }
-            }
             // Start the callback thread to send callbacks.
             Thread CallbackThread = new Thread(() =>
             {
@@ -3018,7 +2974,7 @@ namespace Corrade
                 {
                     try
                     {
-                        Thread.Sleep(Configuration.CALLBACK_THROTTLE);
+                        Thread.Sleep((int) Configuration.CALLBACK_THROTTLE);
                         lock (CallbackQueueLock)
                         {
                             if (CallbackQueue.Count.Equals(0)) continue;
@@ -3030,8 +2986,9 @@ namespace Corrade
                         }
                         if (!callbackQueueElement.Equals(default(CallbackQueueElement)))
                         {
-                            wasPOST(callbackQueueElement.URL, callbackQueueElement.message,
-                                Configuration.CALLBACK_TIMEOUT);
+                            CorradeThreadPool[CorradeThreadType.POST].Spawn(
+                                () => wasPOST(callbackQueueElement.URL, callbackQueueElement.message,
+                                    Configuration.CALLBACK_TIMEOUT), Configuration.MAXIMUM_POST_THREADS);
                         }
                     }
                     catch (Exception ex)
@@ -3042,13 +2999,14 @@ namespace Corrade
                 } while (runCallbackThread);
             }) {IsBackground = true, Priority = ThreadPriority.BelowNormal};
             CallbackThread.Start();
+            // Start the notification thread for notifications.
             Thread NotificationThread = new Thread(() =>
             {
                 do
                 {
                     try
                     {
-                        Thread.Sleep(Configuration.NOTIFICATION_THROTTLE);
+                        Thread.Sleep((int) Configuration.NOTIFICATION_THROTTLE);
                         lock (NotificationQueueLock)
                         {
                             if (NotificationQueue.Count.Equals(0)) continue;
@@ -3060,8 +3018,9 @@ namespace Corrade
                         }
                         if (!notificationQueueElement.Equals(default(NotificationQueueElement)))
                         {
-                            wasPOST(notificationQueueElement.URL, notificationQueueElement.message,
-                                Configuration.NOTIFICATION_TIMEOUT);
+                            CorradeThreadPool[CorradeThreadType.POST].Spawn(
+                                () => wasPOST(notificationQueueElement.URL, notificationQueueElement.message,
+                                    Configuration.NOTIFICATION_TIMEOUT), Configuration.MAXIMUM_POST_THREADS);
                         }
                     }
                     catch (Exception ex)
@@ -3217,9 +3176,10 @@ namespace Corrade
                 }
             }
             // Close HTTP server
-            if (Configuration.ENABLE_HTTP_SERVER && HttpListener.IsSupported)
+            if (HttpListener.IsSupported && Configuration.ENABLE_HTTP_SERVER)
             {
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.STOPPING_HTTP_SERVER));
+                runHTTPServer = false;
                 try
                 {
                     if (HTTPListenerThread != null)
@@ -3240,6 +3200,10 @@ namespace Corrade
                 catch (Exception)
                 {
                     /* We are going down and we do not care. */
+                }
+                finally
+                {
+                    HTTPListenerThread = null;
                 }
             }
             // Reject any inventory that has not been accepted.
@@ -3287,7 +3251,7 @@ namespace Corrade
                 EventHandler<LoggedOutEventArgs> LoggedOutEventHandler = (sender, args) => LoggedOutEvent.Set();
                 Client.Network.LoggedOut += LoggedOutEventHandler;
                 Client.Network.RequestLogout();
-                if (!LoggedOutEvent.WaitOne(Configuration.LOGOUT_GRACE, false))
+                if (!LoggedOutEvent.WaitOne((int) Configuration.LOGOUT_GRACE, false))
                 {
                     Client.Network.LoggedOut -= LoggedOutEventHandler;
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TIMEOUT_LOGGING_OUT));
@@ -3430,12 +3394,16 @@ namespace Corrade
             // Now grab the message and check that the group is set or abandon.
             try
             {
-                HttpListener httpListener = (HttpListener) ar.AsyncState;
+                HttpListener httpListener = ar.AsyncState as HttpListener;
+                // bail if we are not listening
+                if (httpListener == null || !httpListener.IsListening) return;
                 httpContext = httpListener.EndGetContext(ar);
                 httpRequest = httpContext.Request;
                 // only accept POST requests
                 if (!httpRequest.HttpMethod.Equals(WebRequestMethods.Http.Post, StringComparison.OrdinalIgnoreCase))
                     return;
+                // only accept connected remote endpoints
+                if (httpRequest.RemoteEndPoint == null) return;
                 // retrieve the message sent.
                 using (StreamReader reader = new StreamReader(httpRequest.InputStream, httpRequest.ContentEncoding))
                 {
@@ -4543,7 +4511,7 @@ namespace Corrade
                         Cache.AddAgent(fullName.First(), fullName.Last(), e.SourceID);
                     }
                     // If RLV is enabled, process RLV and terminate.
-                    if (EnableRLV && e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR))
+                    if (Configuration.ENABLE_RLV && e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR))
                     {
                         // Send RLV message notifications.
                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
@@ -5530,7 +5498,7 @@ namespace Corrade
                             Client.Self.AvatarSitResponse += AvatarSitEventHandler;
                             Client.Self.AlertMessage += AlertMessageEventHandler;
                             Client.Self.RequestSit(primitive.ID, Vector3.Zero);
-                            SitEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                            SitEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false);
                             Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                             Client.Self.AlertMessage -= AlertMessageEventHandler;
                         }
@@ -6581,7 +6549,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupJoinedReply += GroupOperationEventHandler;
                             Client.Groups.RequestJoinGroup(commandGroup.UUID);
-                            if (!GroupJoinedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupJoinedReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_JOINING_GROUP));
@@ -6649,7 +6617,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupCreatedReply += GroupCreatedEventHandler;
                             Client.Groups.RequestCreateGroup(targetGroup);
-                            if (!GroupCreatedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupCreatedReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_CREATING_GROUP));
@@ -6912,7 +6880,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
                             Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupRoleMembersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                                 throw new Exception(
@@ -6931,7 +6899,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                             Client.Groups.EjectUser(commandGroup.UUID, agentUUID);
-                            if (!GroupEjectEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupEjectEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_EJECTING_AGENT));
@@ -6983,7 +6951,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupAccountSummaryReply += RequestGroupAccountSummaryEventHandler;
                             Client.Groups.RequestGroupAccountSummary(commandGroup.UUID, days, interval);
-                            if (!RequestGroupAccountSummaryEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!RequestGroupAccountSummaryEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
                                 throw new Exception(
@@ -7071,7 +7039,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupLeaveReply += GroupOperationEventHandler;
                             Client.Groups.LeaveGroup(commandGroup.UUID);
-                            if (!GroupLeaveReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupLeaveReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupLeaveReply -= GroupOperationEventHandler;
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_LEAVING_GROUP));
@@ -7121,7 +7089,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
                             Client.Groups.RequestGroupRoles(commandGroup.UUID);
-                            if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupRoleDataReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                                 throw new Exception(
@@ -7220,7 +7188,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
                             Client.Groups.RequestGroupRoles(commandGroup.UUID);
-                            if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupRoleDataReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                                 throw new Exception(
@@ -7267,7 +7235,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                             Client.Groups.RequestGroupMembers(commandGroup.UUID);
-                            if (!agentInGroupEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!agentInGroupEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                                 throw new Exception(
@@ -7351,7 +7319,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                             Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupRoleMembersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                                 throw new Exception(
@@ -7431,7 +7399,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                             Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupRoleMembersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                                 throw new Exception(
@@ -7494,7 +7462,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                             Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupRoleMembersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                                 throw new Exception(
@@ -7599,7 +7567,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupRoleDataReply += GroupRoleDataEventHandler;
                             Client.Groups.RequestGroupRoles(commandGroup.UUID);
-                            if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupRoleDataReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
                                 throw new Exception(
@@ -7678,7 +7646,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                             Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupRoleMembersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_EJECTING_AGENT));
@@ -8434,7 +8402,7 @@ namespace Corrade
                         {
                             Client.Self.TeleportProgress += TeleportEventHandler;
                             Client.Self.Teleport(regionHandle, position);
-                            if (!TeleportEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!TeleportEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Self.TeleportProgress -= TeleportEventHandler;
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_DURING_TELEPORT));
@@ -8511,7 +8479,7 @@ namespace Corrade
                         {
                             Client.Self.AlertMessage += AlertMessageEventHandler;
                             Client.Self.SetHome();
-                            if (!AlertMessageEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!AlertMessageEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Self.AlertMessage -= AlertMessageEventHandler;
                                 throw new Exception(
@@ -8617,7 +8585,7 @@ namespace Corrade
                         {
                             Client.Grid.GridRegion += GridRegionEventHandler;
                             Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
-                            if (!GridRegionEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!GridRegionEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Grid.GridRegion -= GridRegionEventHandler;
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_REGION));
@@ -8839,7 +8807,7 @@ namespace Corrade
                             Client.Self.AvatarSitResponse += AvatarSitEventHandler;
                             Client.Self.AlertMessage += AlertMessageEventHandler;
                             Client.Self.RequestSit(primitive.ID, Vector3.Zero);
-                            if (!SitEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!SitEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                                 Client.Self.AlertMessage -= AlertMessageEventHandler;
@@ -9152,7 +9120,7 @@ namespace Corrade
                         {
                             Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
                             Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, 0);
-                            if (!ParcelAccessListEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!ParcelAccessListEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
@@ -9394,7 +9362,7 @@ namespace Corrade
                         {
                             Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
                             Client.Parcels.RequestParcelInfo(parcelUUID);
-                            if (!ParcelInfoEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!ParcelInfoEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
@@ -9432,7 +9400,7 @@ namespace Corrade
                             Client.Directory.DirLandReply += DirLandReplyEventArgs;
                             Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
                                 DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue, handledEvents);
-                            if (!DirLandReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!DirLandReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Directory.DirLandReply -= DirLandReplyEventArgs;
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
@@ -9660,7 +9628,7 @@ namespace Corrade
                             Client.Avatars.RequestAvatarProperties(Client.Self.AgentID);
                             if (
                                 !WaitHandle.WaitAll(AvatarProfileDataEvent.Select(o => (WaitHandle) o).ToArray(),
-                                    Configuration.SERVICES_TIMEOUT, false))
+                                    (int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
                                 Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
@@ -9766,7 +9734,7 @@ namespace Corrade
                             Client.Avatars.RequestAvatarProperties(agentUUID);
                             Client.Avatars.RequestAvatarPicks(agentUUID);
                             Client.Avatars.RequestAvatarClassified(agentUUID);
-                            if (!ProfileDataReceivedAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!ProfileDataReceivedAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
                                 Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
@@ -10037,7 +10005,7 @@ namespace Corrade
                         {
                             Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
                             Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);
-                            if (!AvatarPicksReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!AvatarPicksReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PICKS));
@@ -10101,7 +10069,7 @@ namespace Corrade
                         {
                             Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
                             Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);
-                            if (!AvatarPicksReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!AvatarPicksReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PICKS));
@@ -10167,7 +10135,7 @@ namespace Corrade
                         {
                             Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
                             Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);
-                            if (!AvatarClassifiedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!AvatarClassifiedReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
                                 throw new Exception(
@@ -10253,7 +10221,7 @@ namespace Corrade
                         {
                             Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
                             Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);
-                            if (!AvatarClassifiedReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!AvatarClassifiedReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
                                 throw new Exception(
@@ -10675,7 +10643,8 @@ namespace Corrade
                                                 SimParcelsDownloadedEvent.Set();
                                             }
                                             if (
-                                                !SimParcelsDownloadedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                                !SimParcelsDownloadedEvent.WaitOne(
+                                                    (int) Configuration.SERVICES_TIMEOUT, false))
                                             {
                                                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                                 throw new Exception(
@@ -10829,7 +10798,7 @@ namespace Corrade
                                     {
                                         SimParcelsDownloadedEvent.Set();
                                     }
-                                    if (!SimParcelsDownloadedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                    if (!SimParcelsDownloadedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                         throw new Exception(
@@ -10896,7 +10865,7 @@ namespace Corrade
                             {
                                 Client.Parcels.ParcelObjectOwnersReply += ParcelObjectOwnersEventHandler;
                                 Client.Parcels.RequestObjectOwners(simulator, parcel.LocalID);
-                                if (!ParcelObjectOwnersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                if (!ParcelObjectOwnersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                 {
                                     Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
                                     throw new Exception(
@@ -10976,7 +10945,7 @@ namespace Corrade
                         {
                             Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
                             Client.Avatars.RequestAvatarProperties(agentUUID);
-                            if (!AvatarGroupsReceivedEvent.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!AvatarGroupsReceivedEvent.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
                                 throw new Exception(
@@ -11178,7 +11147,7 @@ namespace Corrade
                             {
                                 SimParcelsDownloadedEvent.Set();
                             }
-                            if (!SimParcelsDownloadedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!SimParcelsDownloadedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
@@ -11272,7 +11241,7 @@ namespace Corrade
                                                 }
                                                 RequestAssetEvent.Set();
                                             });
-                                        if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                        if (!RequestAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
@@ -11298,7 +11267,7 @@ namespace Corrade
                                                 }
                                                 RequestAssetEvent.Set();
                                             });
-                                        if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                        if (!RequestAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
@@ -11315,7 +11284,7 @@ namespace Corrade
                                                 succeeded = true;
                                                 RequestAssetEvent.Set();
                                             });
-                                        if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                        if (!RequestAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
@@ -11339,7 +11308,7 @@ namespace Corrade
                                                 }
                                                 RequestAssetEvent.Set();
                                             });
-                                        if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                        if (!RequestAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
@@ -11567,7 +11536,7 @@ namespace Corrade
                                         succeeded = completed;
                                         CreateItemFromAssetEvent.Set();
                                     });
-                                if (!CreateItemFromAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                if (!CreateItemFromAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPLOADING_ASSET));
@@ -11609,7 +11578,7 @@ namespace Corrade
                                         succeeded = completed;
                                         CreateWearableEvent.Set();
                                     });
-                                if (!CreateWearableEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                if (!CreateWearableEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_CREATING_ITEM));
                                 }
@@ -11634,7 +11603,7 @@ namespace Corrade
                                         succeeded = completed;
                                         CreateLandmarkEvent.Set();
                                     });
-                                if (!CreateLandmarkEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                if (!CreateLandmarkEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_CREATING_ITEM));
                                 }
@@ -11657,7 +11626,7 @@ namespace Corrade
                                         newGesture = createdItem;
                                         CreateGestureEvent.Set();
                                     });
-                                if (!CreateGestureEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                if (!CreateGestureEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_CREATING_ITEM));
                                 }
@@ -11672,7 +11641,7 @@ namespace Corrade
                                         succeeded = completed;
                                         UploadGestureAssetEvent.Set();
                                     });
-                                if (!UploadGestureAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                if (!UploadGestureAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPLOADING_ASSET));
@@ -11696,7 +11665,7 @@ namespace Corrade
                                         newNotecard = createdItem;
                                         CreateNotecardEvent.Set();
                                     });
-                                if (!CreateNotecardEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                if (!CreateNotecardEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_CREATING_ITEM));
                                 }
@@ -11711,7 +11680,7 @@ namespace Corrade
                                         succeeded = completed;
                                         UploadNotecardAssetEvent.Set();
                                     });
-                                if (!UploadNotecardAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                if (!UploadNotecardAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPLOADING_ASSET));
@@ -11735,7 +11704,7 @@ namespace Corrade
                                         newScript = createdItem;
                                         CreateScriptEvent.Set();
                                     });
-                                if (!CreateScriptEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                if (!CreateScriptEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                 {
                                     throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_CREATING_ITEM));
                                 }
@@ -11747,7 +11716,7 @@ namespace Corrade
                                         succeeded = completed;
                                         UpdateScriptEvent.Set();
                                     });
-                                if (!UpdateScriptEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                if (!UpdateScriptEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                 {
                                     throw new Exception(
                                         wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPLOADING_ASSET));
@@ -11963,7 +11932,7 @@ namespace Corrade
                         }
                         List<InventoryBase> inventory =
                             Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                Configuration.SERVICES_TIMEOUT).ToList();
+                                (int) Configuration.SERVICES_TIMEOUT).ToList();
                         InventoryItem item = !entityUUID.Equals(UUID.Zero)
                             ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
                             : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
@@ -12013,7 +11982,7 @@ namespace Corrade
                         {
                             Client.Inventory.ScriptRunningReply += ScriptRunningEventHandler;
                             Client.Inventory.RequestGetScriptRunning(primitive.ID, item.UUID);
-                            if (!ScriptRunningReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!ScriptRunningReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
                                 throw new Exception(
@@ -12068,7 +12037,7 @@ namespace Corrade
                         }
                         List<InventoryBase> inventory =
                             Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                Configuration.SERVICES_TIMEOUT).ToList();
+                                (int) Configuration.SERVICES_TIMEOUT).ToList();
                         InventoryItem item = !entityUUID.Equals(UUID.Zero)
                             ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
                             : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
@@ -12095,7 +12064,7 @@ namespace Corrade
                         {
                             Client.Inventory.ScriptRunningReply += ScriptRunningEventHandler;
                             Client.Inventory.RequestGetScriptRunning(primitive.ID, item.UUID);
-                            if (!ScriptRunningReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!ScriptRunningReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
                                 throw new Exception(
@@ -12135,7 +12104,7 @@ namespace Corrade
                         }
                         List<string> data =
                             new List<string>(Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                Configuration.SERVICES_TIMEOUT).AsParallel().Select(o => new[]
+                                (int) Configuration.SERVICES_TIMEOUT).AsParallel().Select(o => new[]
                                 {
                                     o.Name,
                                     o.UUID.ToString()
@@ -12188,7 +12157,7 @@ namespace Corrade
                         }
                         List<InventoryBase> inventory =
                             Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                Configuration.SERVICES_TIMEOUT).ToList();
+                                (int) Configuration.SERVICES_TIMEOUT).ToList();
                         InventoryItem item = !entityUUID.Equals(UUID.Zero)
                             ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
                             : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
@@ -12270,7 +12239,7 @@ namespace Corrade
                                 {
                                     inventoryBaseItem = Client.Inventory.GetTaskInventory(primitive.ID,
                                         primitive.LocalID,
-                                        Configuration.SERVICES_TIMEOUT)
+                                        (int) Configuration.SERVICES_TIMEOUT)
                                         .AsParallel()
                                         .FirstOrDefault(o => o.Name.Equals(entity));
                                     if (inventoryBaseItem == null)
@@ -12287,11 +12256,11 @@ namespace Corrade
                             case Action.TAKE:
                                 inventoryBaseItem = !entityUUID.Equals(UUID.Zero)
                                     ? Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                        Configuration.SERVICES_TIMEOUT)
+                                        (int) Configuration.SERVICES_TIMEOUT)
                                         .AsParallel()
                                         .FirstOrDefault(o => o.UUID.Equals(entityUUID))
                                     : Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                        Configuration.SERVICES_TIMEOUT)
+                                        (int) Configuration.SERVICES_TIMEOUT)
                                         .AsParallel()
                                         .FirstOrDefault(o => o.Name.Equals(entity));
                                 InventoryItem inventoryItem = inventoryBaseItem as InventoryItem;
@@ -12641,7 +12610,7 @@ namespace Corrade
                                 newItem = createdItem;
                                 CreateNotecardEvent.Set();
                             });
-                        if (!CreateNotecardEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                        if (!CreateNotecardEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_CREATING_ITEM));
                         }
@@ -12662,7 +12631,7 @@ namespace Corrade
                                 succeeded = completed;
                                 UploadBlankNotecardEvent.Set();
                             });
-                        if (!UploadBlankNotecardEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                        if (!UploadBlankNotecardEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPLOADING_ITEM));
                         }
@@ -12685,7 +12654,7 @@ namespace Corrade
                                     succeeded = completed;
                                     UploadNotecardDataEvent.Set();
                                 });
-                            if (!UploadNotecardDataEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!UploadNotecardDataEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 throw new Exception(
                                     wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_UPLOADING_ITEM_DATA));
@@ -12762,7 +12731,7 @@ namespace Corrade
                                 {
                                     Client.Groups.GroupRoleDataReply += Groups_GroupRoleDataReply;
                                     Client.Groups.RequestGroupRoles(commandGroup.UUID);
-                                    if (!GroupRoleDataReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                    if (!GroupRoleDataReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Groups.GroupRoleDataReply -= Groups_GroupRoleDataReply;
                                         throw new Exception(
@@ -12803,7 +12772,7 @@ namespace Corrade
                                 {
                                     Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
                                     Client.Groups.RequestGroupTitles(commandGroup.UUID);
-                                    if (!GroupTitlesReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                    if (!GroupTitlesReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
                                         throw new Exception(
@@ -12853,7 +12822,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
                             Client.Groups.RequestGroupTitles(commandGroup.UUID);
-                            if (!GroupTitlesReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupTitlesReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
                                 throw new Exception(
@@ -13597,7 +13566,7 @@ namespace Corrade
                                         wasInput(
                                             wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                                 message)));
-                                    if (!MuteListUpdatedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                    if (!MuteListUpdatedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                                         throw new Exception(
@@ -14367,9 +14336,9 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_LAND_RIGHTS));
                         }
-                        int delay;
+                        uint delay;
                         if (
-                            !int.TryParse(
+                            !uint.TryParse(
                                 wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DELAY)), message))
                                     .ToLowerInvariant(), out delay))
@@ -14471,7 +14440,7 @@ namespace Corrade
                                 {
                                     Client.Estate.TopScriptsReply += TopScriptsReplyEventHandler;
                                     Client.Estate.RequestTopScripts();
-                                    if (!TopScriptsReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                    if (!TopScriptsReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Estate.TopScriptsReply -= TopScriptsReplyEventHandler;
                                         throw new Exception(
@@ -14494,7 +14463,7 @@ namespace Corrade
                                 {
                                     Client.Estate.TopCollidersReply += TopCollidersReplyEventHandler;
                                     Client.Estate.RequestTopScripts();
-                                    if (!TopCollidersReplyEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                    if (!TopCollidersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Estate.TopCollidersReply -= TopCollidersReplyEventHandler;
                                         throw new Exception(
@@ -14609,7 +14578,7 @@ namespace Corrade
                                                 Client.Estate.EstateBansReply += EstateBansReplyEventHandler;
                                                 Client.Estate.RequestInfo();
                                                 if (
-                                                    !EstateListReceivedAlarm.Signal.WaitOne(
+                                                    !EstateListReceivedAlarm.Signal.WaitOne((int)
                                                         Configuration.SERVICES_TIMEOUT,
                                                         false))
                                                 {
@@ -14684,7 +14653,7 @@ namespace Corrade
                                                 Client.Estate.EstateGroupsReply += EstateGroupsReplyEvenHandler;
                                                 Client.Estate.RequestInfo();
                                                 if (
-                                                    !EstateListReceivedAlarm.Signal.WaitOne(
+                                                    !EstateListReceivedAlarm.Signal.WaitOne((int)
                                                         Configuration.SERVICES_TIMEOUT, false))
                                                 {
                                                     Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
@@ -14764,7 +14733,7 @@ namespace Corrade
                                                 Client.Estate.EstateUsersReply += EstateUsersReplyEventHandler;
                                                 Client.Estate.RequestInfo();
                                                 if (
-                                                    !EstateListReceivedAlarm.Signal.WaitOne(
+                                                    !EstateListReceivedAlarm.Signal.WaitOne((int)
                                                         Configuration.SERVICES_TIMEOUT, false))
                                                 {
                                                     Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
@@ -14843,7 +14812,7 @@ namespace Corrade
                                                 Client.Estate.EstateManagersReply += EstateManagersReplyEventHandler;
                                                 Client.Estate.RequestInfo();
                                                 if (
-                                                    !EstateListReceivedAlarm.Signal.WaitOne(
+                                                    !EstateListReceivedAlarm.Signal.WaitOne((int)
                                                         Configuration.SERVICES_TIMEOUT, false))
                                                 {
                                                     Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
@@ -14916,7 +14885,9 @@ namespace Corrade
                                 {
                                     Client.Estate.EstateBansReply += EstateBansReplyEventHandler;
                                     Client.Estate.RequestInfo();
-                                    if (!EstateListReceivedAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                    if (
+                                        !EstateListReceivedAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                            false))
                                     {
                                         Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
                                         throw new Exception(
@@ -14944,7 +14915,9 @@ namespace Corrade
                                 {
                                     Client.Estate.EstateGroupsReply += EstateGroupsReplyEvenHandler;
                                     Client.Estate.RequestInfo();
-                                    if (!EstateListReceivedAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                    if (
+                                        !EstateListReceivedAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                            false))
                                     {
                                         Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
                                         throw new Exception(
@@ -14972,7 +14945,9 @@ namespace Corrade
                                 {
                                     Client.Estate.EstateManagersReply += EstateManagersReplyEventHandler;
                                     Client.Estate.RequestInfo();
-                                    if (!EstateListReceivedAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                    if (
+                                        !EstateListReceivedAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                            false))
                                     {
                                         Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
                                         throw new Exception(
@@ -15000,7 +14975,9 @@ namespace Corrade
                                 {
                                     Client.Estate.EstateUsersReply += EstateUsersReplyEventHandler;
                                     Client.Estate.RequestInfo();
-                                    if (!EstateListReceivedAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                    if (
+                                        !EstateListReceivedAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                            false))
                                     {
                                         Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
                                         throw new Exception(
@@ -15092,7 +15069,7 @@ namespace Corrade
                             Client.Avatars.RequestAvatarProperties(agentUUID);
                             Client.Avatars.RequestAvatarPicks(agentUUID);
                             Client.Avatars.RequestAvatarClassified(agentUUID);
-                            if (!ProfileDataReceivedAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!ProfileDataReceivedAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
                                 Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
@@ -15226,7 +15203,7 @@ namespace Corrade
                         {
                             Client.Grid.GridRegion += GridRegionEventHandler;
                             Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
-                            if (!GridRegionEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!GridRegionEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Grid.GridRegion -= GridRegionEventHandler;
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_REGION));
@@ -15239,7 +15216,7 @@ namespace Corrade
                         }
                         HashSet<MapItem> mapItems =
                             new HashSet<MapItem>(Client.Grid.MapItems(regionHandle, GridItemType.AgentLocations,
-                                GridLayerType.Objects, Configuration.SERVICES_TIMEOUT));
+                                GridLayerType.Objects, (int) Configuration.SERVICES_TIMEOUT));
                         if (mapItems.Count.Equals(0))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_MAP_ITEMS_FOUND));
@@ -15332,7 +15309,7 @@ namespace Corrade
                                 {
                                     Client.Self.SetDisplayNameReply += SetDisplayNameEventHandler;
                                     Client.Self.SetDisplayName(previous, name);
-                                    if (!SetDisplayNameEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                    if (!SetDisplayNameEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Self.SetDisplayNameReply -= SetDisplayNameEventHandler;
                                         throw new Exception(
@@ -15778,7 +15755,7 @@ namespace Corrade
                         {
                             Client.Friends.FriendFoundReply += FriendFoundEventHandler;
                             Client.Friends.MapFriend(agentUUID);
-                            if (!FriendFoundEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!FriendFoundEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Friends.FriendFoundReply -= FriendFoundEventHandler;
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_MAPPING_FRIEND));
@@ -15801,7 +15778,7 @@ namespace Corrade
                         {
                             Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
                             Client.Parcels.RequestParcelInfo(parcelUUID);
-                            if (!ParcelInfoEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!ParcelInfoEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_GETTING_PARCELS));
@@ -16537,7 +16514,7 @@ namespace Corrade
                                     Client.Objects.DelinkPrims(simulator, primIDs);
                                     break;
                             }
-                            if (!PrimChangeLinkEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!PrimChangeLinkEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                 throw new Exception(
@@ -16665,7 +16642,7 @@ namespace Corrade
                         {
                             Client.Objects.PayPriceReply += PayPriceReplyEventHandler;
                             Client.Objects.RequestPayPrice(simulator, primitive.ID);
-                            if (!PayPrceReceivedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                            if (!PayPrceReceivedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Objects.PayPriceReply -= PayPriceReplyEventHandler;
                                 throw new Exception(
@@ -16856,7 +16833,7 @@ namespace Corrade
                                         simulator.Name
                                     });
                                     if (!WaitHandle.WaitAll(DownloadTerrainEvents.Select(o => (WaitHandle) o).ToArray(),
-                                        Configuration.SERVICES_TIMEOUT, false))
+                                        (int) Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
                                         Client.Assets.XferReceived -= XferReceivedEventHandler;
@@ -16900,7 +16877,7 @@ namespace Corrade
                                 {
                                     Client.Assets.UploadProgress += AssetUploadEventHandler;
                                     Client.Estate.UploadTerrain(data, simulator.Name);
-                                    if (!AssetUploadEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                    if (!AssetUploadEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Assets.UploadProgress -= AssetUploadEventHandler;
                                         throw new Exception(
@@ -17128,15 +17105,15 @@ namespace Corrade
                         };
                         q.BeginErrorReadLine();
                         q.BeginOutputReadLine();
-                        if (!q.WaitForExit(Configuration.SERVICES_TIMEOUT))
+                        if (!q.WaitForExit((int) Configuration.SERVICES_TIMEOUT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_WAITING_FOR_EXECUTION));
                         }
-                        if (StdEvent[0].WaitOne(Configuration.SERVICES_TIMEOUT) && !stdout.Length.Equals(0))
+                        if (StdEvent[0].WaitOne((int) Configuration.SERVICES_TIMEOUT) && !stdout.Length.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), stdout.ToString());
                         }
-                        if (StdEvent[1].WaitOne(Configuration.SERVICES_TIMEOUT) && !stderr.Length.Equals(0))
+                        if (StdEvent[1].WaitOne((int) Configuration.SERVICES_TIMEOUT) && !stderr.Length.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), stderr.ToString());
                         }
@@ -17302,10 +17279,10 @@ namespace Corrade
                                     message)).ToLowerInvariant()))
                         {
                             case Action.ENABLE:
-                                EnableRLV = true;
+                                Configuration.ENABLE_RLV = true;
                                 break;
                             case Action.DISABLE:
-                                EnableRLV = false;
+                                Configuration.ENABLE_RLV = false;
                                 lock (RLVRulesLock)
                                 {
                                     RLVRules.Clear();
@@ -17682,7 +17659,7 @@ namespace Corrade
                                     {
                                         Client.Inventory.ItemReceived += ItemReceivedEventHandler;
                                         Client.Inventory.RequestFetchInventory(o.UUID, o.OwnerID);
-                                        if (!ItemReceivedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                        if (!ItemReceivedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                         {
                                             Client.Inventory.ItemReceived -= ItemReceivedEventHandler;
                                             throw new Exception(
@@ -17941,7 +17918,7 @@ namespace Corrade
                                     {
                                         SimParcelsDownloadedEvent.Set();
                                     }
-                                    if (!SimParcelsDownloadedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                    if (!SimParcelsDownloadedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                         throw new Exception(
@@ -18112,7 +18089,7 @@ namespace Corrade
                                     {
                                         SimParcelsDownloadedEvent.Set();
                                     }
-                                    if (!SimParcelsDownloadedEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                    if (!SimParcelsDownloadedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                     {
                                         Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                         throw new Exception(
@@ -18349,7 +18326,7 @@ namespace Corrade
                                                 assetData = asset.AssetData;
                                                 RequestAssetEvent.Set();
                                             });
-                                        if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                        if (!RequestAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
@@ -18630,7 +18607,7 @@ namespace Corrade
                                                 assetData = asset.AssetData;
                                                 RequestAssetEvent.Set();
                                             });
-                                        if (!RequestAssetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false))
+                                        if (!RequestAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(ScriptError.TIMEOUT_TRANSFERRING_ASSET));
@@ -18890,7 +18867,8 @@ namespace Corrade
                                 {
                                     Client.Directory.DirClassifiedsReply += DirClassifiedsEventHandler;
                                     Client.Directory.StartClassifiedSearch(name);
-                                    DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                                    DirectorySearchResultsAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                        false);
                                     Client.Directory.DirClassifiedsReply -= DirClassifiedsEventHandler;
                                 }
                                 Dictionary<DirectoryManager.Classified, int> safeClassifieds;
@@ -18960,7 +18938,8 @@ namespace Corrade
                                     Client.Directory.DirEventsReply += DirEventsEventHandler;
                                     Client.Directory.StartEventsSearch(name,
                                         (uint) handledEvents);
-                                    DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                                    DirectorySearchResultsAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                        false);
                                     Client.Directory.DirEventsReply -= DirEventsEventHandler;
                                 }
                                 Dictionary<DirectoryManager.EventsSearchData, int> safeEvents;
@@ -19033,7 +19012,8 @@ namespace Corrade
                                 {
                                     Client.Directory.DirGroupsReply += DirGroupsEventHandler;
                                     Client.Directory.StartGroupSearch(name, handledEvents);
-                                    DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                                    DirectorySearchResultsAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                        false);
                                     Client.Directory.DirGroupsReply -= DirGroupsEventHandler;
                                 }
                                 Dictionary<DirectoryManager.GroupSearchData, int> safeGroups;
@@ -19104,7 +19084,8 @@ namespace Corrade
                                     Client.Directory.DirLandReply += DirLandReplyEventArgs;
                                     Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
                                         DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue, handledEvents);
-                                    DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                                    DirectorySearchResultsAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                        false);
                                     Client.Directory.DirLandReply -= DirLandReplyEventArgs;
                                 }
                                 Dictionary<DirectoryManager.DirectoryParcel, int> safeLands;
@@ -19172,7 +19153,8 @@ namespace Corrade
                                 {
                                     Client.Directory.DirPeopleReply += DirPeopleReplyEventHandler;
                                     Client.Directory.StartPeopleSearch(name, handledEvents);
-                                    DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                                    DirectorySearchResultsAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                        false);
                                     Client.Directory.DirPeopleReply -= DirPeopleReplyEventHandler;
                                 }
                                 Dictionary<DirectoryManager.AgentSearchData, int> safeAgents;
@@ -19234,7 +19216,8 @@ namespace Corrade
                                 {
                                     Client.Directory.PlacesReply += DirPlacesReplyEventHandler;
                                     Client.Directory.StartPlacesSearch(name);
-                                    DirectorySearchResultsAlarm.Signal.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                                    DirectorySearchResultsAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                        false);
                                     Client.Directory.PlacesReply -= DirPlacesReplyEventHandler;
                                 }
                                 Dictionary<DirectoryManager.PlacesSearchData, int> safePlaces;
@@ -19431,11 +19414,11 @@ namespace Corrade
         /// <param name="URL">the url to send the message to</param>
         /// <param name="message">key-value pairs to send</param>
         /// <param name="millisecondsTimeout">the time in milliseconds for the request to timeout</param>
-        private static async void wasPOST(string URL, Dictionary<string, string> message, int millisecondsTimeout)
+        private static void wasPOST(string URL, Dictionary<string, string> message, uint millisecondsTimeout)
         {
             HttpWebRequest request = (HttpWebRequest) WebRequest.Create(URL);
             request.Proxy = WebRequest.DefaultWebProxy;
-            request.Timeout = millisecondsTimeout;
+            request.Timeout = (int) millisecondsTimeout;
             request.AllowAutoRedirect = true;
             request.AllowWriteStreamBuffering = true;
             request.Pipelined = true;
@@ -19457,9 +19440,9 @@ namespace Corrade
             byte[] byteArray =
                 Encoding.UTF8.GetBytes(wasKeyValueEncode(message));
             request.ContentLength = byteArray.Length;
-            using (Stream dataStream = await request.GetRequestStreamAsync())
+            using (Stream dataStream = request.GetRequestStream())
             {
-                await dataStream.WriteAsync(byteArray, 0, byteArray.Length);
+                dataStream.Write(byteArray, 0, byteArray.Length);
             }
         }
 
@@ -20045,32 +20028,35 @@ namespace Corrade
             private static string _regionMessageLogDirectory;
             private static bool _regionMessageLogEnabled;
             private static bool _enableHTTPServer;
+            private static bool _enableAIML;
+            private static bool _enableRLV;
             private static string _HTTPServerPrefix;
-            private static int _HTTPServerTimeout;
+            private static uint _HTTPServerTimeout;
             private static HTTPCompressionMethod _HTTPServerCompression;
             private static bool _HTTPServerKeepAlive;
-            private static int _callbackTimeout;
-            private static int _callbackThrottle;
-            private static int _callbackQueueLength;
-            private static int _notificationTimeout;
-            private static int _notificationThrottle;
-            private static int _notificationQueueLength;
-            private static int _connectionLimit;
-            private static int _connectionIdleTime;
+            private static uint _callbackTimeout;
+            private static uint _callbackThrottle;
+            private static uint _callbackQueueLength;
+            private static uint _notificationTimeout;
+            private static uint _notificationThrottle;
+            private static uint _notificationQueueLength;
+            private static uint _connectionLimit;
+            private static uint _connectionIdleTime;
             private static float _range;
-            private static int _schedulerExpiration;
-            private static int _maximumNotificationThreads;
-            private static int _maximumCommandThreads;
-            private static int _maximumRLVThreads;
-            private static int _maximumInstantMessageThreads;
-            private static int _maximumLogThreads;
+            private static uint _schedulerExpiration;
+            private static uint _maximumNotificationThreads;
+            private static uint _maximumCommandThreads;
+            private static uint _maximumRLVThreads;
+            private static uint _maximumInstantMessageThreads;
+            private static uint _maximumLogThreads;
+            private static uint _maximumPOSTThreads;
             private static bool _useNaggle;
             private static bool _useExpect100Continue;
-            private static int _servicesTimeout;
-            private static int _dataTimeout;
+            private static uint _servicesTimeout;
+            private static uint _dataTimeout;
             private static wasAdaptiveAlarm.DECAY_TYPE _dataDecayType;
-            private static int _rebakeDelay;
-            private static int _membershipSweepInterval;
+            private static uint _rebakeDelay;
+            private static uint _membershipSweepInterval;
             private static bool _TOSAccepted;
             private static string _startLocation;
             private static string _bindIPAddress;
@@ -20079,8 +20065,8 @@ namespace Corrade
             private static string _clientLogFile;
             private static bool _clientLogEnabled;
             private static bool _autoActivateGroup;
-            private static int _activateDelay;
-            private static int _groupCreateFee;
+            private static uint _activateDelay;
+            private static uint _groupCreateFee;
             private static int _exitCodeExpected;
             private static int _exitCodeAbnormal;
             private static HashSet<Group> _groups;
@@ -20089,7 +20075,7 @@ namespace Corrade
             private static List<Filter> _outputFilters;
             private static string _vigenereSecret;
             private static ENIGMA _enigma;
-            private static int _logoutGrace;
+            private static uint _logoutGrace;
 
             public static string FIRST_NAME
             {
@@ -20289,6 +20275,42 @@ namespace Corrade
                 }
             }
 
+            public static bool ENABLE_AIML
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _enableAIML;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _enableAIML = value;
+                    }
+                }
+            }
+
+            public static bool ENABLE_RLV
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _enableRLV;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _enableRLV = value;
+                    }
+                }
+            }
+
             public static string HTTP_SERVER_PREFIX
             {
                 get
@@ -20307,7 +20329,7 @@ namespace Corrade
                 }
             }
 
-            public static int HTTP_SERVER_TIMEOUT
+            public static uint HTTP_SERVER_TIMEOUT
             {
                 get
                 {
@@ -20361,7 +20383,7 @@ namespace Corrade
                 }
             }
 
-            public static int CALLBACK_TIMEOUT
+            public static uint CALLBACK_TIMEOUT
             {
                 get
                 {
@@ -20379,7 +20401,7 @@ namespace Corrade
                 }
             }
 
-            public static int CALLBACK_THROTTLE
+            public static uint CALLBACK_THROTTLE
             {
                 get
                 {
@@ -20397,7 +20419,7 @@ namespace Corrade
                 }
             }
 
-            public static int CALLBACK_QUEUE_LENGTH
+            public static uint CALLBACK_QUEUE_LENGTH
             {
                 get
                 {
@@ -20415,7 +20437,7 @@ namespace Corrade
                 }
             }
 
-            public static int NOTIFICATION_TIMEOUT
+            public static uint NOTIFICATION_TIMEOUT
             {
                 get
                 {
@@ -20433,7 +20455,7 @@ namespace Corrade
                 }
             }
 
-            public static int NOTIFICATION_THROTTLE
+            public static uint NOTIFICATION_THROTTLE
             {
                 get
                 {
@@ -20451,7 +20473,7 @@ namespace Corrade
                 }
             }
 
-            public static int NOTIFICATION_QUEUE_LENGTH
+            public static uint NOTIFICATION_QUEUE_LENGTH
             {
                 get
                 {
@@ -20469,7 +20491,7 @@ namespace Corrade
                 }
             }
 
-            public static int CONNECTION_LIMIT
+            public static uint CONNECTION_LIMIT
             {
                 get
                 {
@@ -20487,7 +20509,7 @@ namespace Corrade
                 }
             }
 
-            public static int CONNECTION_IDLE_TIME
+            public static uint CONNECTION_IDLE_TIME
             {
                 get
                 {
@@ -20523,7 +20545,7 @@ namespace Corrade
                 }
             }
 
-            public static int SCHEDULER_EXPIRATION_TIME
+            public static uint SCHEDULER_EXPIRATION_TIME
             {
                 get
                 {
@@ -20541,7 +20563,7 @@ namespace Corrade
                 }
             }
 
-            public static int MAXIMUM_NOTIFICATION_THREADS
+            public static uint MAXIMUM_NOTIFICATION_THREADS
             {
                 get
                 {
@@ -20559,7 +20581,7 @@ namespace Corrade
                 }
             }
 
-            public static int MAXIMUM_COMMAND_THREADS
+            public static uint MAXIMUM_COMMAND_THREADS
             {
                 get
                 {
@@ -20577,7 +20599,7 @@ namespace Corrade
                 }
             }
 
-            public static int MAXIMUM_RLV_THREADS
+            public static uint MAXIMUM_RLV_THREADS
             {
                 get
                 {
@@ -20595,7 +20617,7 @@ namespace Corrade
                 }
             }
 
-            public static int MAXIMUM_INSTANT_MESSAGE_THREADS
+            public static uint MAXIMUM_INSTANT_MESSAGE_THREADS
             {
                 get
                 {
@@ -20613,7 +20635,7 @@ namespace Corrade
                 }
             }
 
-            public static int MAXIMUM_LOG_THREADS
+            public static uint MAXIMUM_LOG_THREADS
             {
                 get
                 {
@@ -20627,6 +20649,24 @@ namespace Corrade
                     lock (ClientInstanceConfigurationLock)
                     {
                         _maximumLogThreads = value;
+                    }
+                }
+            }
+
+            public static uint MAXIMUM_POST_THREADS
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _maximumPOSTThreads;
+                    }
+                }
+                private set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _maximumPOSTThreads = value;
                     }
                 }
             }
@@ -20667,7 +20707,7 @@ namespace Corrade
                 }
             }
 
-            public static int SERVICES_TIMEOUT
+            public static uint SERVICES_TIMEOUT
             {
                 get
                 {
@@ -20685,7 +20725,7 @@ namespace Corrade
                 }
             }
 
-            public static int DATA_TIMEOUT
+            public static uint DATA_TIMEOUT
             {
                 get
                 {
@@ -20721,7 +20761,7 @@ namespace Corrade
                 }
             }
 
-            public static int REBAKE_DELAY
+            public static uint REBAKE_DELAY
             {
                 get
                 {
@@ -20739,7 +20779,7 @@ namespace Corrade
                 }
             }
 
-            public static int MEMBERSHIP_SWEEP_INTERVAL
+            public static uint MEMBERSHIP_SWEEP_INTERVAL
             {
                 get
                 {
@@ -20901,7 +20941,7 @@ namespace Corrade
                 }
             }
 
-            public static int ACTIVATE_DELAY
+            public static uint ACTIVATE_DELAY
             {
                 get
                 {
@@ -20919,7 +20959,7 @@ namespace Corrade
                 }
             }
 
-            public static int GROUP_CREATE_FEE
+            public static uint GROUP_CREATE_FEE
             {
                 get
                 {
@@ -21081,7 +21121,7 @@ namespace Corrade
                 }
             }
 
-            public static int LOGOUT_GRACE
+            public static uint LOGOUT_GRACE
             {
                 get
                 {
@@ -21142,6 +21182,8 @@ namespace Corrade
                 REGION_MESSAGE_LOG_DIRECTORY = @"logs/region";
                 REGION_MESSAGE_LOG_ENABLED = false;
                 ENABLE_HTTP_SERVER = false;
+                ENABLE_RLV = false;
+                ENABLE_AIML = false;
                 HTTP_SERVER_PREFIX = @"http://+:8080/";
                 HTTP_SERVER_TIMEOUT = 5000;
                 HTTP_SERVER_COMPRESSION = HTTPCompressionMethod.NONE;
@@ -21161,6 +21203,7 @@ namespace Corrade
                 MAXIMUM_RLV_THREADS = 10;
                 MAXIMUM_INSTANT_MESSAGE_THREADS = 10;
                 MAXIMUM_LOG_THREADS = 20;
+                MAXIMUM_POST_THREADS = 25;
                 USE_NAGGLE = false;
                 SERVICES_TIMEOUT = 60000;
                 DATA_TIMEOUT = 2500;
@@ -21265,8 +21308,8 @@ namespace Corrade
                                 TOS_ACCEPTED = accepted;
                                 break;
                             case ConfigurationKeys.GROUP_CREATE_FEE:
-                                int groupCreateFee;
-                                if (!int.TryParse(client.InnerText, out groupCreateFee))
+                                uint groupCreateFee;
+                                if (!uint.TryParse(client.InnerText, out groupCreateFee))
                                 {
                                     throw new Exception("error in client section");
                                 }
@@ -21574,7 +21617,7 @@ namespace Corrade
                                 {
                                     throw new Exception("error in AIML section");
                                 }
-                                EnableAIML = enable;
+                                ENABLE_AIML = enable;
                                 break;
                         }
                 }
@@ -21595,7 +21638,7 @@ namespace Corrade
                                 {
                                     throw new Exception("error in RLV section");
                                 }
-                                EnableRLV = enable;
+                                ENABLE_RLV = enable;
                                 break;
                         }
                 }
@@ -21717,9 +21760,9 @@ namespace Corrade
                                     switch (rlvLimitNode.Name.ToLowerInvariant())
                                     {
                                         case ConfigurationKeys.THREADS:
-                                            int maximumRLVThreads;
+                                            uint maximumRLVThreads;
                                             if (
-                                                !int.TryParse(rlvLimitNode.InnerText,
+                                                !uint.TryParse(rlvLimitNode.InnerText,
                                                     out maximumRLVThreads))
                                             {
                                                 throw new Exception("error in RLV limits section");
@@ -21740,9 +21783,9 @@ namespace Corrade
                                     switch (commandsLimitNode.Name.ToLowerInvariant())
                                     {
                                         case ConfigurationKeys.THREADS:
-                                            int maximumCommandThreads;
+                                            uint maximumCommandThreads;
                                             if (
-                                                !int.TryParse(commandsLimitNode.InnerText,
+                                                !uint.TryParse(commandsLimitNode.InnerText,
                                                     out maximumCommandThreads))
                                             {
                                                 throw new Exception("error in commands limits section");
@@ -21763,9 +21806,9 @@ namespace Corrade
                                     switch (instantMessageLimitNode.Name.ToLowerInvariant())
                                     {
                                         case ConfigurationKeys.THREADS:
-                                            int maximumInstantMessageThreads;
+                                            uint maximumInstantMessageThreads;
                                             if (
-                                                !int.TryParse(instantMessageLimitNode.InnerText,
+                                                !uint.TryParse(instantMessageLimitNode.InnerText,
                                                     out maximumInstantMessageThreads))
                                             {
                                                 throw new Exception("error in instant message limits section");
@@ -21786,9 +21829,9 @@ namespace Corrade
                                     switch (schedulerLimitNode.Name.ToLowerInvariant())
                                     {
                                         case ConfigurationKeys.THREADS:
-                                            int expiration;
+                                            uint expiration;
                                             if (
-                                                !int.TryParse(schedulerLimitNode.InnerText,
+                                                !uint.TryParse(schedulerLimitNode.InnerText,
                                                     out expiration))
                                             {
                                                 throw new Exception("error in scheduler limits section");
@@ -21809,14 +21852,37 @@ namespace Corrade
                                     switch (logLimitNode.Name.ToLowerInvariant())
                                     {
                                         case ConfigurationKeys.THREADS:
-                                            int maximumLogThreads;
+                                            uint maximumLogThreads;
                                             if (
-                                                !int.TryParse(logLimitNode.InnerText,
+                                                !uint.TryParse(logLimitNode.InnerText,
                                                     out maximumLogThreads))
                                             {
                                                 throw new Exception("error in log limits section");
                                             }
                                             MAXIMUM_LOG_THREADS = maximumLogThreads;
+                                            break;
+                                    }
+                                }
+                                break;
+                            case ConfigurationKeys.POST:
+                                XmlNodeList postLimitNodeList = limitsNode.SelectNodes("*");
+                                if (postLimitNodeList == null)
+                                {
+                                    throw new Exception("error in post limits section");
+                                }
+                                foreach (XmlNode postLimitNode in postLimitNodeList)
+                                {
+                                    switch (postLimitNode.Name.ToLowerInvariant())
+                                    {
+                                        case ConfigurationKeys.THREADS:
+                                            uint maximumPOSTThreads;
+                                            if (
+                                                !uint.TryParse(postLimitNode.InnerText,
+                                                    out maximumPOSTThreads))
+                                            {
+                                                throw new Exception("error in post limits section");
+                                            }
+                                            MAXIMUM_POST_THREADS = maximumPOSTThreads;
                                             break;
                                     }
                                 }
@@ -21832,9 +21898,9 @@ namespace Corrade
                                     switch (clientLimitNode.Name.ToLowerInvariant())
                                     {
                                         case ConfigurationKeys.CONNECTIONS:
-                                            int connectionLimit;
+                                            uint connectionLimit;
                                             if (
-                                                !int.TryParse(clientLimitNode.InnerText,
+                                                !uint.TryParse(clientLimitNode.InnerText,
                                                     out connectionLimit))
                                             {
                                                 throw new Exception("error in client limits section");
@@ -21842,9 +21908,9 @@ namespace Corrade
                                             CONNECTION_LIMIT = connectionLimit;
                                             break;
                                         case ConfigurationKeys.IDLE:
-                                            int connectionIdleTime;
+                                            uint connectionIdleTime;
                                             if (
-                                                !int.TryParse(clientLimitNode.InnerText,
+                                                !uint.TryParse(clientLimitNode.InnerText,
                                                     out connectionIdleTime))
                                             {
                                                 throw new Exception("error in client limits section");
@@ -21865,26 +21931,26 @@ namespace Corrade
                                     switch (callbackLimitNode.Name.ToLowerInvariant())
                                     {
                                         case ConfigurationKeys.TIMEOUT:
-                                            int callbackTimeout;
-                                            if (!int.TryParse(callbackLimitNode.InnerText, out callbackTimeout))
+                                            uint callbackTimeout;
+                                            if (!uint.TryParse(callbackLimitNode.InnerText, out callbackTimeout))
                                             {
                                                 throw new Exception("error in callback limits section");
                                             }
                                             CALLBACK_TIMEOUT = callbackTimeout;
                                             break;
                                         case ConfigurationKeys.THROTTLE:
-                                            int callbackThrottle;
+                                            uint callbackThrottle;
                                             if (
-                                                !int.TryParse(callbackLimitNode.InnerText, out callbackThrottle))
+                                                !uint.TryParse(callbackLimitNode.InnerText, out callbackThrottle))
                                             {
                                                 throw new Exception("error in callback limits section");
                                             }
                                             CALLBACK_THROTTLE = callbackThrottle;
                                             break;
                                         case ConfigurationKeys.QUEUE_LENGTH:
-                                            int callbackQueueLength;
+                                            uint callbackQueueLength;
                                             if (
-                                                !int.TryParse(callbackLimitNode.InnerText,
+                                                !uint.TryParse(callbackLimitNode.InnerText,
                                                     out callbackQueueLength))
                                             {
                                                 throw new Exception("error in callback limits section");
@@ -21905,9 +21971,9 @@ namespace Corrade
                                     switch (notificationLimitNode.Name.ToLowerInvariant())
                                     {
                                         case ConfigurationKeys.TIMEOUT:
-                                            int notificationTimeout;
+                                            uint notificationTimeout;
                                             if (
-                                                !int.TryParse(notificationLimitNode.InnerText,
+                                                !uint.TryParse(notificationLimitNode.InnerText,
                                                     out notificationTimeout))
                                             {
                                                 throw new Exception("error in notification limits section");
@@ -21915,9 +21981,9 @@ namespace Corrade
                                             NOTIFICATION_TIMEOUT = notificationTimeout;
                                             break;
                                         case ConfigurationKeys.THROTTLE:
-                                            int notificationThrottle;
+                                            uint notificationThrottle;
                                             if (
-                                                !int.TryParse(notificationLimitNode.InnerText,
+                                                !uint.TryParse(notificationLimitNode.InnerText,
                                                     out notificationThrottle))
                                             {
                                                 throw new Exception("error in notification limits section");
@@ -21925,9 +21991,9 @@ namespace Corrade
                                             NOTIFICATION_THROTTLE = notificationThrottle;
                                             break;
                                         case ConfigurationKeys.QUEUE_LENGTH:
-                                            int notificationQueueLength;
+                                            uint notificationQueueLength;
                                             if (
-                                                !int.TryParse(notificationLimitNode.InnerText,
+                                                !uint.TryParse(notificationLimitNode.InnerText,
                                                     out notificationQueueLength))
                                             {
                                                 throw new Exception("error in notification limits section");
@@ -21935,9 +22001,9 @@ namespace Corrade
                                             NOTIFICATION_QUEUE_LENGTH = notificationQueueLength;
                                             break;
                                         case ConfigurationKeys.THREADS:
-                                            int maximumNotificationThreads;
+                                            uint maximumNotificationThreads;
                                             if (
-                                                !int.TryParse(notificationLimitNode.InnerText,
+                                                !uint.TryParse(notificationLimitNode.InnerText,
                                                     out maximumNotificationThreads))
                                             {
                                                 throw new Exception("error in notification limits section");
@@ -21958,9 +22024,9 @@ namespace Corrade
                                     switch (HTTPServerLimitNode.Name.ToLowerInvariant())
                                     {
                                         case ConfigurationKeys.TIMEOUT:
-                                            int HTTPServerTimeout;
+                                            uint HTTPServerTimeout;
                                             if (
-                                                !int.TryParse(HTTPServerLimitNode.InnerText,
+                                                !uint.TryParse(HTTPServerLimitNode.InnerText,
                                                     out HTTPServerTimeout))
                                             {
                                                 throw new Exception("error in server limits section");
@@ -21981,9 +22047,9 @@ namespace Corrade
                                     switch (servicesLimitNode.Name.ToLowerInvariant())
                                     {
                                         case ConfigurationKeys.TIMEOUT:
-                                            int servicesTimeout;
+                                            uint servicesTimeout;
                                             if (
-                                                !int.TryParse(servicesLimitNode.InnerText,
+                                                !uint.TryParse(servicesLimitNode.InnerText,
                                                     out servicesTimeout))
                                             {
                                                 throw new Exception("error in services limits section");
@@ -21991,17 +22057,17 @@ namespace Corrade
                                             SERVICES_TIMEOUT = servicesTimeout;
                                             break;
                                         case ConfigurationKeys.REBAKE:
-                                            int rebakeDelay;
-                                            if (!int.TryParse(servicesLimitNode.InnerText, out rebakeDelay))
+                                            uint rebakeDelay;
+                                            if (!uint.TryParse(servicesLimitNode.InnerText, out rebakeDelay))
                                             {
                                                 throw new Exception("error in services limits section");
                                             }
                                             REBAKE_DELAY = rebakeDelay;
                                             break;
                                         case ConfigurationKeys.ACTIVATE:
-                                            int activateDelay;
+                                            uint activateDelay;
                                             if (
-                                                !int.TryParse(servicesLimitNode.InnerText,
+                                                !uint.TryParse(servicesLimitNode.InnerText,
                                                     out activateDelay))
                                             {
                                                 throw new Exception("error in services limits section");
@@ -22022,9 +22088,9 @@ namespace Corrade
                                     switch (dataLimitNode.Name.ToLowerInvariant())
                                     {
                                         case ConfigurationKeys.TIMEOUT:
-                                            int dataTimeout;
+                                            uint dataTimeout;
                                             if (
-                                                !int.TryParse(dataLimitNode.InnerText,
+                                                !uint.TryParse(dataLimitNode.InnerText,
                                                     out dataTimeout))
                                             {
                                                 throw new Exception("error in data limits section");
@@ -22050,9 +22116,9 @@ namespace Corrade
                                     switch (servicesLimitNode.Name.ToLowerInvariant())
                                     {
                                         case ConfigurationKeys.SWEEP:
-                                            int membershipSweepInterval;
+                                            uint membershipSweepInterval;
                                             if (
-                                                !int.TryParse(servicesLimitNode.InnerText,
+                                                !uint.TryParse(servicesLimitNode.InnerText,
                                                     out membershipSweepInterval))
                                             {
                                                 throw new Exception("error in membership limits section");
@@ -22073,9 +22139,9 @@ namespace Corrade
                                     switch (logoutLimitNode.Name.ToLowerInvariant())
                                     {
                                         case ConfigurationKeys.TIMEOUT:
-                                            int logoutGrace;
+                                            uint logoutGrace;
                                             if (
-                                                !int.TryParse(logoutLimitNode.InnerText,
+                                                !uint.TryParse(logoutLimitNode.InnerText,
                                                     out logoutGrace))
                                             {
                                                 throw new Exception("error in logout limits section");
@@ -22286,7 +22352,7 @@ namespace Corrade
                 // Enable AIML in case it was enabled in the configuration file.
                 try
                 {
-                    switch (EnableAIML)
+                    switch (ENABLE_AIML)
                     {
                         case true:
                             switch (!AIMLBotBrainCompiled)
@@ -22318,6 +22384,76 @@ namespace Corrade
                 {
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER),
                         ex.Message);
+                }
+
+                // Enable the HTTP server in case it is supported and it was enabled in the configuration file.
+                switch (HttpListener.IsSupported)
+                {
+                    case true:
+                        switch (ENABLE_HTTP_SERVER)
+                        {
+                            case true:
+                                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.STARTING_HTTP_SERVER));
+                                runHTTPServer = true;
+                                HTTPListenerThread = new Thread(() =>
+                                {
+                                    try
+                                    {
+                                        using (HTTPListener = new HttpListener())
+                                        {
+                                            HTTPListener.Prefixes.Add(HTTP_SERVER_PREFIX);
+                                            HTTPListener.Start();
+                                            while (runHTTPServer && HTTPListener.IsListening)
+                                            {
+                                                IAsyncResult result = HTTPListener.BeginGetContext(ProcessHTTPRequest,
+                                                    HTTPListener);
+                                                result.AsyncWaitHandle.WaitOne((int) HTTP_SERVER_TIMEOUT, false);
+                                            }
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR),
+                                            ex.Message);
+                                    }
+                                }) {IsBackground = true, Priority = ThreadPriority.BelowNormal};
+                                HTTPListenerThread.Start();
+                                break;
+                            default:
+                                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.STOPPING_HTTP_SERVER));
+                                runHTTPServer = false;
+                                try
+                                {
+                                    if (HTTPListenerThread != null)
+                                    {
+                                        HTTPListener.Stop();
+                                        if (
+                                            (HTTPListenerThread.ThreadState.Equals(ThreadState.Running) ||
+                                             HTTPListenerThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                                        {
+                                            if (!HTTPListenerThread.Join(1000))
+                                            {
+                                                HTTPListenerThread.Abort();
+                                                HTTPListenerThread.Join();
+                                            }
+                                        }
+                                    }
+                                }
+                                catch (Exception)
+                                {
+                                    /* We are going down and we do not care. */
+                                }
+                                finally
+                                {
+                                    HTTPListenerThread = null;
+                                }
+                                break;
+                        }
+                        break;
+                    default:
+                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR),
+                            wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_NOT_SUPPORTED));
+                        break;
                 }
 
                 // Dynamically disable or enable notifications.
@@ -22501,8 +22637,8 @@ namespace Corrade
                 }
                 // Apply settings to the instance.
                 Client.Self.Movement.Camera.Far = RANGE;
-                Client.Settings.LOGIN_TIMEOUT = SERVICES_TIMEOUT;
-                Client.Settings.LOGOUT_TIMEOUT = SERVICES_TIMEOUT;
+                Client.Settings.LOGIN_TIMEOUT = (int) SERVICES_TIMEOUT;
+                Client.Settings.LOGOUT_TIMEOUT = (int) SERVICES_TIMEOUT;
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
             }
         }
@@ -22579,6 +22715,7 @@ namespace Corrade
             public const string ABNORMAL = @"abnormal";
             public const string KEEP_ALIVE = @"keepalive";
             public const string SCHEDULER = @"scheduler";
+            public const string POST = @"post";
         }
 
         /// <summary>
@@ -22682,7 +22819,7 @@ namespace Corrade
             /// </summary>
             /// <param name="s">the code to execute as a ThreadStart delegate</param>
             /// <param name="m">the type of thread</param>
-            public void SpawnSequential(ThreadStart s, int m)
+            public void SpawnSequential(ThreadStart s, uint m)
             {
                 lock (WorkSetLock)
                 {
@@ -22726,7 +22863,7 @@ namespace Corrade
             /// </summary>
             /// <param name="s">the code to execute as a ThreadStart delegate</param>
             /// <param name="m">the type of thread</param>
-            public void Spawn(ThreadStart s, int m)
+            public void Spawn(ThreadStart s, uint m)
             {
                 lock (WorkSetLock)
                 {
@@ -22769,7 +22906,7 @@ namespace Corrade
             /// <param name="m">the type of thread</param>
             /// <param name="groupUUID">the UUID of the group</param>
             /// <param name="expiration">the time in milliseconds after which measurements are expunged</param>
-            public void Spawn(ThreadStart s, int m, UUID groupUUID, int expiration)
+            public void Spawn(ThreadStart s, uint m, UUID groupUUID, uint expiration)
             {
                 // Don't accept to schedule bogus groups.
                 if (groupUUID.Equals(UUID.Zero))
@@ -22880,7 +23017,8 @@ namespace Corrade
             [Description("rlv")] RLV = 2,
             [Description("notification")] NOTIFICATION = 3,
             [Description("instant message")] INSTANT_MESSAGE = 4,
-            [Description("log")] LOG = 5
+            [Description("log")] LOG = 5,
+            [Description("post")] POST = 6
         };
 
         /// <summary>
@@ -23179,40 +23317,40 @@ namespace Corrade
                 public struct NOTECARD
                 {
                     public const string NEWLINE = "\n";
-                    public const int MAXIMUM_BODY_LENTH = 65536;
+                    public const uint MAXIMUM_BODY_LENTH = 65536;
                 }
             }
 
             public struct AVATARS
             {
-                public const int SET_DISPLAY_NAME_SUCCESS = 200;
+                public const uint SET_DISPLAY_NAME_SUCCESS = 200;
                 public const string LASTNAME_PLACEHOLDER = @"Resident";
-                public const int MAXIMUM_DISPLAY_NAME_CHARACTERS = 31;
-                public const int MINIMUM_DISPLAY_NAME_CHARACTERS = 1;
-                public const int MAXIMUM_NUMBER_OF_ATTACHMENTS = 38;
+                public const uint MAXIMUM_DISPLAY_NAME_CHARACTERS = 31;
+                public const uint MINIMUM_DISPLAY_NAME_CHARACTERS = 1;
+                public const uint MAXIMUM_NUMBER_OF_ATTACHMENTS = 38;
 
                 public struct PROFILE
                 {
-                    public const int SECOND_LIFE_TEXT_SIZE = 510;
-                    public const int FIRST_LIFE_TEXT_SIZE = 253;
+                    public const uint SECOND_LIFE_TEXT_SIZE = 510;
+                    public const uint FIRST_LIFE_TEXT_SIZE = 253;
                 }
 
                 public struct PICKS
                 {
-                    public const int MAXIMUM_PICKS = 10;
-                    public const int MAXIMUM_PICK_DESCRIPTION_SIZE = 1022;
+                    public const uint MAXIMUM_PICKS = 10;
+                    public const uint MAXIMUM_PICK_DESCRIPTION_SIZE = 1022;
                 }
 
                 public struct CLASSIFIEDS
                 {
-                    public const int MAXIMUM_CLASSIFIEDS = 100;
+                    public const uint MAXIMUM_CLASSIFIEDS = 100;
                 }
             }
 
             public struct PRIMITIVES
             {
-                public const int MAXIMUM_NAME_SIZE = 63;
-                public const int MAXIMUM_DESCRIPTION_SIZE = 127;
+                public const uint MAXIMUM_NAME_SIZE = 63;
+                public const uint MAXIMUM_DESCRIPTION_SIZE = 127;
                 public const double MAXIMUM_REZ_HEIGHT = 4096.0;
                 public const double MINIMUM_SIZE_X = 0.01;
                 public const double MINIMUM_SIZE_Y = 0.01;
@@ -23224,39 +23362,39 @@ namespace Corrade
 
             public struct OBJECTS
             {
-                public const int MAXIMUM_PRIMITIVE_COUNT = 256;
+                public const uint MAXIMUM_PRIMITIVE_COUNT = 256;
             }
 
             public struct DIRECTORY
             {
                 public struct EVENT
                 {
-                    public const int SEARCH_RESULTS_COUNT = 200;
+                    public const uint SEARCH_RESULTS_COUNT = 200;
                 }
 
                 public struct GROUP
                 {
-                    public const int SEARCH_RESULTS_COUNT = 100;
+                    public const uint SEARCH_RESULTS_COUNT = 100;
                 }
 
                 public struct LAND
                 {
-                    public const int SEARCH_RESULTS_COUNT = 100;
+                    public const uint SEARCH_RESULTS_COUNT = 100;
                 }
 
                 public struct PEOPLE
                 {
-                    public const int SEARCH_RESULTS_COUNT = 100;
+                    public const uint SEARCH_RESULTS_COUNT = 100;
                 }
             }
 
             public struct ESTATE
             {
-                public const int REGION_RESTART_DELAY = 120;
-                public const int MAXIMUM_BAN_LIST_LENGTH = 500;
-                public const int MAXIMUM_GROUP_LIST_LENGTH = 63;
-                public const int MAXIMUM_USER_LIST_LENGTH = 500;
-                public const int MAXIMUM_MANAGER_LIST_LENGTH = 10;
+                public const uint REGION_RESTART_DELAY = 120;
+                public const uint MAXIMUM_BAN_LIST_LENGTH = 500;
+                public const uint MAXIMUM_GROUP_LIST_LENGTH = 63;
+                public const uint MAXIMUM_USER_LIST_LENGTH = 500;
+                public const uint MAXIMUM_MANAGER_LIST_LENGTH = 10;
 
                 public struct MESSAGES
                 {
@@ -23267,9 +23405,9 @@ namespace Corrade
             public struct PARCELS
             {
                 public const double MAXIMUM_AUTO_RETURN_TIME = 999999;
-                public const int MINIMUM_AUTO_RETURN_TIME = 0;
-                public const int MAXIMUM_NAME_LENGTH = 63;
-                public const int MAXIMUM_DESCRIPTION_LENGTH = 255;
+                public const uint MINIMUM_AUTO_RETURN_TIME = 0;
+                public const uint MAXIMUM_NAME_LENGTH = 63;
+                public const uint MAXIMUM_DESCRIPTION_LENGTH = 255;
             }
 
             public struct GRID
@@ -23279,20 +23417,20 @@ namespace Corrade
 
             public struct CHAT
             {
-                public const int MAXIMUM_MESSAGE_LENGTH = 1024;
+                public const uint MAXIMUM_MESSAGE_LENGTH = 1024;
             }
 
             public struct GROUPS
             {
-                public const int MAXIMUM_NUMBER_OF_ROLES = 10;
+                public const uint MAXIMUM_NUMBER_OF_ROLES = 10;
                 public const string EVERYONE_ROLE_NAME = @"Everyone";
-                public const int MAXIMUM_GROUP_NAME_LENGTH = 35;
-                public const int MAXIMUM_GROUP_TITLE_LENGTH = 20;
+                public const uint MAXIMUM_GROUP_NAME_LENGTH = 35;
+                public const uint MAXIMUM_GROUP_TITLE_LENGTH = 20;
             }
 
             public struct NOTICES
             {
-                public const int MAXIMUM_NOTICE_MESSAGE_LENGTH = 512;
+                public const uint MAXIMUM_NOTICE_MESSAGE_LENGTH = 512;
             }
 
             public struct LSL
@@ -23315,8 +23453,8 @@ namespace Corrade
             {
                 public struct THROTTLE
                 {
-                    public const int MAX_TELEPORTS = 10;
-                    public const int GRACE_SECONDS = 15;
+                    public const uint MAX_TELEPORTS = 10;
+                    public const uint GRACE_SECONDS = 15;
                 }
             }
         }
@@ -24636,12 +24774,12 @@ namespace Corrade
         /// </summary>
         public class wasTimedThrottle : IDisposable
         {
-            private readonly int EventsAllowed;
+            private readonly uint EventsAllowed;
             private readonly object LockObject = new object();
-            private int _Events;
+            private uint _Events;
             private Timer timer;
 
-            public wasTimedThrottle(int events, int seconds)
+            public wasTimedThrottle(uint events, uint seconds)
             {
                 EventsAllowed = events;
                 if (timer == null)
@@ -24816,6 +24954,8 @@ namespace Corrade
 
         public static string InstalledServiceName;
         private static Thread programThread;
+        private static Thread HTTPListenerThread;
+        private static HttpListener HTTPListener;
         private static readonly Random CorradeRandom = new Random();
         private static readonly EventLog CorradeEventLog = new EventLog();
         private static readonly GridClient Client = new GridClient();
@@ -24903,12 +25043,10 @@ namespace Corrade
         private static readonly object BeamEffectsLock = new object();
         private static readonly object InputFiltersLock = new object();
         private static readonly object OutputFiltersLock = new object();
-        private static volatile bool EnableRLV;
-        private static volatile bool EnableAIML;
         private static volatile bool AIMLBotBrainCompiled;
 
         /// <summary>
-        ///     The various types of threads used by Corrade.
+        ///     The various types of threads created by Corrade.
         /// </summary>
         private static readonly Dictionary<CorradeThreadType, CorradeThread> CorradeThreadPool =
             new Dictionary<CorradeThreadType, CorradeThread>
@@ -24917,7 +25055,8 @@ namespace Corrade
                 {CorradeThreadType.RLV, new CorradeThread()},
                 {CorradeThreadType.NOTIFICATION, new CorradeThread()},
                 {CorradeThreadType.INSTANT_MESSAGE, new CorradeThread()},
-                {CorradeThreadType.LOG, new CorradeThread()}
+                {CorradeThreadType.LOG, new CorradeThread()},
+                {CorradeThreadType.POST, new CorradeThread()}
             };
 
         /// <summary>
@@ -25001,7 +25140,7 @@ namespace Corrade
                 EventHandler<AppearanceSetEventArgs> HandleAppearanceSet = (sender, args) => AppearanceSetEvent.Set();
                 Client.Appearance.AppearanceSet += HandleAppearanceSet;
                 Client.Appearance.RequestSetAppearance(true);
-                AppearanceSetEvent.WaitOne(Configuration.SERVICES_TIMEOUT, false);
+                AppearanceSetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false);
                 Client.Appearance.AppearanceSet -= HandleAppearanceSet;
             }
         });
@@ -25421,6 +25560,7 @@ namespace Corrade
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WROTE_AIML_BOT_CONFIGURATION));
         };
 
+        private static volatile bool runHTTPServer;
         private static volatile bool runCallbackThread = true;
         private static volatile bool runNotificationThread = true;
         private static volatile bool runGroupMembershipSweepThread;
@@ -25926,7 +26066,7 @@ namespace Corrade
         /// <returns>the expanded key</returns>
         private static string wasVigenereExpandKey(string input, string enc_key)
         {
-            string exp_key = "";
+            string exp_key = string.Empty;
             int i = 0, j = 0;
             do
             {
@@ -25963,7 +26103,7 @@ namespace Corrade
             };
 
             enc_key = wasVigenereExpandKey(input, enc_key);
-            string result = "";
+            string result = string.Empty;
             int i = 0;
             do
             {
@@ -26005,7 +26145,7 @@ namespace Corrade
             };
 
             enc_key = wasVigenereExpandKey(input, enc_key);
-            string result = "";
+            string result = string.Empty;
             int i = 0;
             do
             {
@@ -26098,7 +26238,7 @@ namespace Corrade
         /// </summary>
         /// <param name="millisecondsTimeout">timeout for the request in milliseconds</param>
         /// <returns>true if the balance could be retrieved</returns>
-        private static bool UpdateBalance(int millisecondsTimeout)
+        private static bool UpdateBalance(uint millisecondsTimeout)
         {
             ManualResetEvent MoneyBalanceEvent = new ManualResetEvent(false);
             EventHandler<MoneyBalanceReplyEventArgs> MoneyBalanceEventHandler =
@@ -26107,7 +26247,7 @@ namespace Corrade
             {
                 Client.Self.MoneyBalanceReply += MoneyBalanceEventHandler;
                 Client.Self.RequestBalance();
-                if (!MoneyBalanceEvent.WaitOne(millisecondsTimeout, false))
+                if (!MoneyBalanceEvent.WaitOne((int) millisecondsTimeout, false))
                 {
                     Client.Self.MoneyBalanceReply -= MoneyBalanceEventHandler;
                     return false;
@@ -26128,7 +26268,7 @@ namespace Corrade
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="groupUUID">an object in which to store the UUID of the group</param>
         /// <returns>true if the group name could be resolved to an UUID</returns>
-        private static bool directGroupNameToUUID(string groupName, int millisecondsTimeout, int dataTimeout,
+        private static bool directGroupNameToUUID(string groupName, uint millisecondsTimeout, uint dataTimeout,
             ref UUID groupUUID)
         {
             UUID localGroupUUID = UUID.Zero;
@@ -26149,7 +26289,7 @@ namespace Corrade
             };
             Client.Directory.DirGroupsReply += DirGroupsReplyDelegate;
             Client.Directory.StartGroupSearch(groupName, 0);
-            if (!DirGroupsReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
+            if (!DirGroupsReceivedAlarm.Signal.WaitOne((int) millisecondsTimeout, false))
             {
                 Client.Directory.DirGroupsReply -= DirGroupsReplyDelegate;
                 return false;
@@ -26168,7 +26308,7 @@ namespace Corrade
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="groupUUID">an object in which to store the UUID of the group</param>
         /// <returns>true if the group name could be resolved to an UUID</returns>
-        private static bool GroupNameToUUID(string groupName, int millisecondsTimeout, int dataTimeout,
+        private static bool GroupNameToUUID(string groupName, uint millisecondsTimeout, uint dataTimeout,
             ref UUID groupUUID)
         {
             lock (Cache.Locks.GroupCacheLock)
@@ -26211,7 +26351,7 @@ namespace Corrade
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="groupUUID">the UUID of the group to resolve</param>
         /// <returns>true if the group UUID could be resolved to an name</returns>
-        private static bool directGroupUUIDToName(UUID groupUUID, int millisecondsTimeout, int dataTimeout,
+        private static bool directGroupUUIDToName(UUID groupUUID, uint millisecondsTimeout, uint dataTimeout,
             ref string groupName)
         {
             string localGroupName = groupName;
@@ -26223,7 +26363,7 @@ namespace Corrade
             };
             Client.Groups.GroupProfile += GroupProfileDelegate;
             Client.Groups.RequestGroupProfile(groupUUID);
-            if (!GroupProfileReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
+            if (!GroupProfileReceivedAlarm.Signal.WaitOne((int) millisecondsTimeout, false))
             {
                 Client.Groups.GroupProfile -= GroupProfileDelegate;
                 return false;
@@ -26241,7 +26381,7 @@ namespace Corrade
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="groupUUID">the UUID of the group to resolve</param>
         /// <returns>true if the group UUID could be resolved to an name</returns>
-        private static bool GroupUUIDToName(UUID groupUUID, int millisecondsTimeout, int dataTimeout,
+        private static bool GroupUUIDToName(UUID groupUUID, uint millisecondsTimeout, uint dataTimeout,
             ref string groupName)
         {
             lock (Cache.Locks.GroupCacheLock)
@@ -26286,8 +26426,8 @@ namespace Corrade
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="agentUUID">an object to store the agent UUID</param>
         /// <returns>true if the agent name could be resolved to an UUID</returns>
-        private static bool directAgentNameToUUID(string agentFirstName, string agentLastName, int millisecondsTimeout,
-            int dataTimeout,
+        private static bool directAgentNameToUUID(string agentFirstName, string agentLastName, uint millisecondsTimeout,
+            uint dataTimeout,
             ref UUID agentUUID)
         {
             UUID localAgentUUID = UUID.Zero;
@@ -26311,7 +26451,7 @@ namespace Corrade
             Client.Directory.DirPeopleReply += DirPeopleReplyDelegate;
             Client.Directory.StartPeopleSearch(
                 string.Format(CultureInfo.InvariantCulture, "{0} {1}", agentFirstName, agentLastName), 0);
-            if (!DirPeopleReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
+            if (!DirPeopleReceivedAlarm.Signal.WaitOne((int) millisecondsTimeout, false))
             {
                 Client.Directory.DirPeopleReply -= DirPeopleReplyDelegate;
                 return false;
@@ -26331,8 +26471,8 @@ namespace Corrade
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="agentUUID">an object to store the agent UUID</param>
         /// <returns>true if the agent name could be resolved to an UUID</returns>
-        private static bool AgentNameToUUID(string agentFirstName, string agentLastName, int millisecondsTimeout,
-            int dataTimeout,
+        private static bool AgentNameToUUID(string agentFirstName, string agentLastName, uint millisecondsTimeout,
+            uint dataTimeout,
             ref UUID agentUUID)
         {
             Cache.Agents agent = Cache.GetAgent(agentFirstName, agentLastName);
@@ -26364,7 +26504,7 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="agentName">an object to store the name of the agent in</param>
         /// <returns>true if the UUID could be resolved to a name</returns>
-        private static bool directAgentUUIDToName(UUID agentUUID, int millisecondsTimeout,
+        private static bool directAgentUUIDToName(UUID agentUUID, uint millisecondsTimeout,
             ref string agentName)
         {
             if (agentUUID.Equals(UUID.Zero))
@@ -26381,7 +26521,7 @@ namespace Corrade
             };
             Client.Avatars.UUIDNameReply += UUIDNameReplyDelegate;
             Client.Avatars.RequestAvatarName(agentUUID);
-            if (!UUIDNameReplyEvent.WaitOne(millisecondsTimeout, false))
+            if (!UUIDNameReplyEvent.WaitOne((int) millisecondsTimeout, false))
             {
                 Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
                 return false;
@@ -26399,7 +26539,7 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="agentName">an object to store the name of the agent in</param>
         /// <returns>true if the UUID could be resolved to a name</returns>
-        private static bool AgentUUIDToName(UUID agentUUID, int millisecondsTimeout,
+        private static bool AgentUUIDToName(UUID agentUUID, uint millisecondsTimeout,
             ref string agentName)
         {
             Cache.Agents agent = Cache.GetAgent(agentUUID);
@@ -26434,8 +26574,8 @@ namespace Corrade
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="roleUUID">an UUID object to store the role UUID in</param>
         /// <returns>true if the role could be found</returns>
-        private static bool RoleNameToUUID(string roleName, UUID groupUUID, int millisecondsTimeout,
-            int dataTimeout,
+        private static bool RoleNameToUUID(string roleName, UUID groupUUID, uint millisecondsTimeout,
+            uint dataTimeout,
             ref UUID roleUUID)
         {
             switch (!roleName.Equals(LINDEN_CONSTANTS.GROUPS.EVERYONE_ROLE_NAME, StringComparison.Ordinal))
@@ -26456,7 +26596,7 @@ namespace Corrade
             {
                 Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
                 Client.Groups.RequestGroupRoles(groupUUID);
-                if (!GroupRoleDataReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
+                if (!GroupRoleDataReceivedAlarm.Signal.WaitOne((int) millisecondsTimeout, false))
                 {
                     Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
                     return false;
@@ -26484,7 +26624,7 @@ namespace Corrade
         /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <param name="roleName">a string object to store the role name in</param>
         /// <returns>true if the role could be resolved</returns>
-        private static bool RoleUUIDToName(UUID RoleUUID, UUID GroupUUID, int millisecondsTimeout, int dataTimeout,
+        private static bool RoleUUIDToName(UUID RoleUUID, UUID GroupUUID, uint millisecondsTimeout, uint dataTimeout,
             ref string roleName)
         {
             switch (!RoleUUID.Equals(UUID.Zero))
@@ -26504,7 +26644,7 @@ namespace Corrade
             {
                 Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
                 Client.Groups.RequestGroupRoles(GroupUUID);
-                if (!GroupRoleDataReceivedAlarm.Signal.WaitOne(millisecondsTimeout, false))
+                if (!GroupRoleDataReceivedAlarm.Signal.WaitOne((int) millisecondsTimeout, false))
                 {
                     Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
                     return false;
