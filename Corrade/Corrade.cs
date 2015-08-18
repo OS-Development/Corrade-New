@@ -98,7 +98,8 @@ namespace Corrade
             [Description("rlv")] NOTIFICATION_RLV_MESSAGE = 16777216,
             [Description("debug")] NOTIFICATION_DEBUG_MESSAGE = 33554432,
             [Description("avatars")] NOTIFICATION_RADAR_AVATARS = 67108864,
-            [Description("primitives")] NOTIFICATION_RADAR_PRIMITIVES = 134217728
+            [Description("primitives")] NOTIFICATION_RADAR_PRIMITIVES = 134217728,
+            [Description("control")] NOTIFICATION_SCRIPT_CONTROL = 268435456
         }
 
         public Corrade()
@@ -832,6 +833,9 @@ namespace Corrade
                 if (iList.Count.Equals(0)) yield break;
                 foreach (object item in iList.Cast<object>().Where(o => o != null))
                 {
+                    // These are index collections so pre-prend an index.
+                    yield return "Index";
+                    yield return iList.IndexOf(item).ToString();
                     foreach (KeyValuePair<FieldInfo, object> fi in wasGetFields(item, item.GetType().Name))
                     {
                         if (fi.Key != null)
@@ -1007,10 +1011,156 @@ namespace Corrade
         private static void wasSetInfo<T>(object info, object value, string setting, ref T @object)
         {
             if (info == null) return;
-            if (wasGetInfoValue(info, value) is string)
+
+            // OpenMetaverse particular flags.
+            if (wasGetInfoValue(info, value) is ParcelFlags)
             {
-                wasSetInfoValue(info, ref @object, setting);
+                uint parcelFlags;
+                switch (!uint.TryParse(setting, out parcelFlags))
+                {
+                    case true:
+                        Parallel.ForEach(wasCSVToEnumerable(setting), o =>
+                        {
+                            Parallel.ForEach(typeof (ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                p => { parcelFlags |= ((uint) p.GetValue(null)); });
+                        });
+                        break;
+                }
+                wasSetInfoValue(info, ref @object, parcelFlags);
+                return;
             }
+            if (wasGetInfoValue(info, value) is GroupPowers)
+            {
+                uint groupPowers;
+                switch (!uint.TryParse(setting, out groupPowers))
+                {
+                    case true:
+                        Parallel.ForEach(wasCSVToEnumerable(setting), o =>
+                        {
+                            Parallel.ForEach(typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                p => { groupPowers |= ((uint) p.GetValue(null)); });
+                        });
+                        break;
+                }
+                wasSetInfoValue(info, ref @object, groupPowers);
+                return;
+            }
+            if (wasGetInfoValue(info, value) is AttachmentPoint)
+            {
+                byte attachmentPoint;
+                switch (!byte.TryParse(setting, out attachmentPoint))
+                {
+                    case true:
+                        FieldInfo attachmentPointFieldInfo =
+                            typeof (AttachmentPoint).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                .AsParallel()
+                                .FirstOrDefault(p => p.Name.Equals(setting, StringComparison.Ordinal));
+                        if (attachmentPointFieldInfo == null) break;
+                        attachmentPoint = (byte) attachmentPointFieldInfo.GetValue(null);
+                        break;
+                }
+                wasSetInfoValue(info, ref @object, attachmentPoint);
+                return;
+            }
+            if (wasGetInfoValue(info, value) is Material)
+            {
+                byte material;
+                switch (!byte.TryParse(setting, out material))
+                {
+                    case true:
+                        FieldInfo materialFieldInfo = typeof (Material).GetFields(BindingFlags.Public |
+                                                                                  BindingFlags.Static)
+                            .AsParallel().FirstOrDefault(p => p.Name.Equals(setting, StringComparison.Ordinal));
+                        if (materialFieldInfo == null) break;
+                        material = (byte) materialFieldInfo.GetValue(null);
+                        break;
+                }
+                wasSetInfoValue(info, ref @object, material);
+                return;
+            }
+            if (wasGetInfoValue(info, value) is PathCurve)
+            {
+                byte pathCurve;
+                switch (!byte.TryParse(setting, out pathCurve))
+                {
+                    case true:
+                        FieldInfo pathCurveFieldInfo = typeof (PathCurve).GetFields(BindingFlags.Public |
+                                                                                    BindingFlags.Static)
+                            .AsParallel().FirstOrDefault(p => p.Name.Equals(setting, StringComparison.Ordinal));
+                        if (pathCurveFieldInfo == null) break;
+                        pathCurve = (byte) pathCurveFieldInfo.GetValue(null);
+                        break;
+                }
+                wasSetInfoValue(info, ref @object, pathCurve);
+                return;
+            }
+            if (wasGetInfoValue(info, value) is PCode)
+            {
+                byte pCode;
+                switch (!byte.TryParse(setting, out pCode))
+                {
+                    case true:
+                        FieldInfo pCodeFieldInfo = typeof (PCode).GetFields(BindingFlags.Public | BindingFlags.Static)
+                            .AsParallel().FirstOrDefault(p => p.Name.Equals(setting, StringComparison.Ordinal));
+                        if (pCodeFieldInfo == null) break;
+                        pCode = (byte) pCodeFieldInfo.GetValue(null);
+                        break;
+                }
+                wasSetInfoValue(info, ref @object, pCode);
+                return;
+            }
+            if (wasGetInfoValue(info, value) is ProfileCurve)
+            {
+                byte profileCurve;
+                switch (!byte.TryParse(setting, out profileCurve))
+                {
+                    case true:
+                        FieldInfo profileCurveFieldInfo =
+                            typeof (ProfileCurve).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                .AsParallel()
+                                .FirstOrDefault(p => p.Name.Equals(setting, StringComparison.Ordinal));
+                        if (profileCurveFieldInfo == null) break;
+                        profileCurve = (byte) profileCurveFieldInfo.GetValue(null);
+                        break;
+                }
+                wasSetInfoValue(info, ref @object, profileCurve);
+                return;
+            }
+            if (wasGetInfoValue(info, value) is HoleType)
+            {
+                byte holeType;
+                switch (!byte.TryParse(setting, out holeType))
+                {
+                    case true:
+                        FieldInfo holeTypeFieldInfo = typeof (HoleType).GetFields(BindingFlags.Public |
+                                                                                  BindingFlags.Static)
+                            .AsParallel().FirstOrDefault(p => p.Name.Equals(setting, StringComparison.Ordinal));
+                        if (holeTypeFieldInfo == null) break;
+                        holeType = (byte) holeTypeFieldInfo.GetValue(null);
+                        break;
+                }
+                wasSetInfoValue(info, ref @object, holeType);
+                return;
+            }
+            if (wasGetInfoValue(info, value) is SculptType)
+            {
+                byte sculptType;
+                switch (!byte.TryParse(setting, out sculptType))
+                {
+                    case true:
+                        FieldInfo sculptTypeFieldInfo = typeof (SculptType).GetFields(BindingFlags.Public |
+                                                                                      BindingFlags.Static)
+                            .AsParallel().FirstOrDefault(p => p.Name.Equals(setting, StringComparison.Ordinal));
+                        if (sculptTypeFieldInfo == null) break;
+                        sculptType = (byte) sculptTypeFieldInfo.GetValue(null);
+                        break;
+                }
+                wasSetInfoValue(info, ref @object, sculptType);
+                return;
+            }
+            // OpenMetaverse Primitive Types
             if (wasGetInfoValue(info, value) is UUID)
             {
                 UUID UUIDData;
@@ -1028,17 +1178,91 @@ namespace Corrade
                 {
                     case true:
                         wasSetInfoValue(info, ref @object, UUIDData);
-                        break;
+                        return;
                     default:
                         throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVENTORY_ITEM_NOT_FOUND));
                 }
             }
+            if (wasGetInfoValue(info, value) is Vector3)
+            {
+                Vector3 vector3Data;
+                if (Vector3.TryParse(setting, out vector3Data))
+                {
+                    wasSetInfoValue(info, ref @object, vector3Data);
+                    return;
+                }
+            }
+            if (wasGetInfoValue(info, value) is Vector2)
+            {
+                Vector3 vector2Data;
+                if (Vector2.TryParse(setting, out vector2Data))
+                {
+                    wasSetInfoValue(info, ref @object, vector2Data);
+                    return;
+                }
+            }
+            if (wasGetInfoValue(info, value) is Vector3d)
+            {
+                Vector3d vector3DData;
+                if (Vector3d.TryParse(setting, out vector3DData))
+                {
+                    wasSetInfoValue(info, ref @object, vector3DData);
+                    return;
+                }
+            }
+            if (wasGetInfoValue(info, value) is Vector4)
+            {
+                Vector4 vector4Data;
+                if (Vector4.TryParse(setting, out vector4Data))
+                {
+                    wasSetInfoValue(info, ref @object, vector4Data);
+                    return;
+                }
+            }
+            if (wasGetInfoValue(info, value) is Quaternion)
+            {
+                Quaternion quaternionData;
+                if (Quaternion.TryParse(setting, out quaternionData))
+                {
+                    wasSetInfoValue(info, ref @object, quaternionData);
+                    return;
+                }
+            }
+            // Primitive types.
             if (wasGetInfoValue(info, value) is bool)
             {
                 bool boolData;
                 if (bool.TryParse(setting, out boolData))
                 {
                     wasSetInfoValue(info, ref @object, boolData);
+                    return;
+                }
+            }
+            if (wasGetInfoValue(info, value) is char)
+            {
+                char charData;
+                if (char.TryParse(setting, out charData))
+                {
+                    wasSetInfoValue(info, ref @object, charData);
+                    return;
+                }
+            }
+            if (wasGetInfoValue(info, value) is decimal)
+            {
+                decimal decimalData;
+                if (decimal.TryParse(setting, out decimalData))
+                {
+                    wasSetInfoValue(info, ref @object, decimalData);
+                    return;
+                }
+            }
+            if (wasGetInfoValue(info, value) is byte)
+            {
+                byte byteData;
+                if (byte.TryParse(setting, out byteData))
+                {
+                    wasSetInfoValue(info, ref @object, byteData);
+                    return;
                 }
             }
             if (wasGetInfoValue(info, value) is int)
@@ -1047,6 +1271,7 @@ namespace Corrade
                 if (int.TryParse(setting, out intData))
                 {
                     wasSetInfoValue(info, ref @object, intData);
+                    return;
                 }
             }
             if (wasGetInfoValue(info, value) is uint)
@@ -1055,6 +1280,34 @@ namespace Corrade
                 if (uint.TryParse(setting, out uintData))
                 {
                     wasSetInfoValue(info, ref @object, uintData);
+                    return;
+                }
+            }
+            if (wasGetInfoValue(info, value) is float)
+            {
+                float floatData;
+                if (float.TryParse(setting, out floatData))
+                {
+                    wasSetInfoValue(info, ref @object, floatData);
+                    return;
+                }
+            }
+            if (wasGetInfoValue(info, value) is long)
+            {
+                long longData;
+                if (long.TryParse(setting, out longData))
+                {
+                    wasSetInfoValue(info, ref @object, longData);
+                    return;
+                }
+            }
+            if (wasGetInfoValue(info, value) is Single)
+            {
+                Single singleData;
+                if (Single.TryParse(setting, out singleData))
+                {
+                    wasSetInfoValue(info, ref @object, singleData);
+                    return;
                 }
             }
             if (wasGetInfoValue(info, value) is DateTime)
@@ -1063,39 +1316,12 @@ namespace Corrade
                 if (DateTime.TryParse(setting, out dateTimeData))
                 {
                     wasSetInfoValue(info, ref @object, dateTimeData);
+                    return;
                 }
             }
-            if (wasGetInfoValue(info, value) is ParcelFlags)
+            if (wasGetInfoValue(info, value) is string)
             {
-                uint parcelFlags;
-                switch (!uint.TryParse(setting, out parcelFlags))
-                {
-                    case true:
-                        Parallel.ForEach(wasCSVToEnumerable(setting), o =>
-                        {
-                            Parallel.ForEach(typeof (ParcelFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
-                                p => { parcelFlags |= ((uint) p.GetValue(null)); });
-                        });
-                        break;
-                }
-                wasSetInfoValue(info, ref @object, parcelFlags);
-            }
-            if (wasGetInfoValue(info, value) is GroupPowers)
-            {
-                uint groupPowers;
-                switch (!uint.TryParse(setting, out groupPowers))
-                {
-                    case true:
-                        Parallel.ForEach(wasCSVToEnumerable(setting), o =>
-                        {
-                            Parallel.ForEach(typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
-                                p => { groupPowers |= ((uint) p.GetValue(null)); });
-                        });
-                        break;
-                }
-                wasSetInfoValue(info, ref @object, groupPowers);
+                wasSetInfoValue(info, ref @object, setting);
             }
         }
 
@@ -2294,27 +2520,22 @@ namespace Corrade
             };
             lock (ClientInstanceObjectsLock)
             {
-                Parallel.ForEach(primitiveEvents,
-                    new ParallelOptions
-                    {
-                        // Don't choke the chicken.
-                        MaxDegreeOfParallelism = Environment.ProcessorCount > 1 ? Environment.ProcessorCount - 1 : 1
-                    }, o =>
-                    {
-                        Primitive queryPrimitive =
-                            scansPrimitives.AsParallel().SingleOrDefault(p => p.ID.Equals(o.Key));
-                        if (queryPrimitive == null) return;
-                        stopWatch[queryPrimitive.ID].Start();
-                        Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
-                        Client.Objects.SelectObject(
-                            Client.Network.Simulators.FirstOrDefault(p => p.Handle.Equals(queryPrimitive.RegionHandle)),
-                            queryPrimitive.LocalID,
-                            true);
-                        uint average = (uint) times.Average();
-                        primitiveEvents[queryPrimitive.ID].WaitOne((int)
-                            (average != 0 ? average : dataTimeout), false);
-                        Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
-                    });
+                Parallel.ForEach(primitiveEvents, o =>
+                {
+                    Primitive queryPrimitive =
+                        scansPrimitives.AsParallel().SingleOrDefault(p => p.ID.Equals(o.Key));
+                    if (queryPrimitive == null) return;
+                    stopWatch[queryPrimitive.ID].Start();
+                    Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
+                    Client.Objects.SelectObject(
+                        Client.Network.Simulators.FirstOrDefault(p => p.Handle.Equals(queryPrimitive.RegionHandle)),
+                        queryPrimitive.LocalID,
+                        true);
+                    uint average = (uint) times.Average();
+                    primitiveEvents[queryPrimitive.ID].WaitOne((int)
+                        (average != 0 ? average : dataTimeout), false);
+                    Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
+                });
             }
             if (!scansPrimitives.Count.Equals(localPrimitives.Count))
                 return false;
@@ -2367,10 +2588,7 @@ namespace Corrade
                 (sender, args) => avatarAlarms[args.AvatarID].Alarm(dataTimeout);
             lock (ClientInstanceAvatarsLock)
             {
-                Parallel.ForEach(scansAvatars, new ParallelOptions
-                {
-                    MaxDegreeOfParallelism = Environment.ProcessorCount > 1 ? Environment.ProcessorCount - 1 : 1
-                }, o =>
+                Parallel.ForEach(scansAvatars, o =>
                 {
                     Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
                     Client.Avatars.AvatarPropertiesReply += AvatarPropertiesReplyEventHandler;
@@ -3006,6 +3224,7 @@ namespace Corrade
             Client.Settings.ASSET_CACHE_DIR = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
                 CORRADE_CONSTANTS.ASSET_CACHE_DIRECTORY);
             Client.Settings.USE_ASSET_CACHE = true;
+            Client.Assets.Cache.AutoPruneEnabled = false;
             // More precision for object and avatar tracking updates.
             Client.Settings.USE_INTERPOLATION_TIMER = true;
             Client.Settings.FETCH_MISSING_INVENTORY = true;
@@ -3016,6 +3235,8 @@ namespace Corrade
             Client.Settings.STORE_LAND_PATCHES = true;
             // Decode simulator statistics.
             Client.Settings.ENABLE_SIMSTATS = true;
+            // Disable throttling.
+            Client.Settings.THROTTLE_OUTGOING_PACKETS = false;
             // Enable multiple simulators
             Client.Settings.MULTIPLE_SIMS = true;
             // Check TOS
@@ -3154,6 +3375,7 @@ namespace Corrade
             Client.Objects.ObjectUpdate -= HandleObjectUpdate;
             Client.Objects.KillObject -= HandleKillObject;
             Client.Self.LoadURL -= HandleLoadURL;
+            Client.Self.ScriptControlChange -= HandleScriptControlChange;
             Client.Self.MoneyBalanceReply -= HandleMoneyBalance;
             Client.Network.SimChanged -= HandleSimChanged;
             Client.Self.RegionCrossed -= HandleRegionCrossed;
@@ -3435,6 +3657,13 @@ namespace Corrade
                 Configuration.MAXIMUM_NOTIFICATION_THREADS);
         }
 
+        private static void HandleScriptControlChange(object sender, ScriptControlEventArgs e)
+        {
+            CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
+                () => SendNotification(Notifications.NOTIFICATION_SCRIPT_CONTROL, e),
+                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+        }
+
         private static void HandleAppearanceSet(object sender, AppearanceSetEventArgs e)
         {
             switch (e.Success)
@@ -3620,13 +3849,7 @@ namespace Corrade
             Parallel.ForEach(notifyGroups, z =>
             {
                 // Set the notification type
-                Dictionary<string, string> notificationData = new Dictionary<string, string>
-                {
-                    {
-                        wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
-                        wasGetDescriptionFromEnumValue(notification)
-                    }
-                };
+                Dictionary<string, string> notificationData = new Dictionary<string, string>();
 
                 // Create the executable delegate.
                 System.Action execute;
@@ -4858,6 +5081,33 @@ namespace Corrade
                             }
                         };
                         break;
+                    case Notifications.NOTIFICATION_SCRIPT_CONTROL:
+                        execute = () =>
+                        {
+                            ScriptControlEventArgs scriptControlEventArgs =
+                                (ScriptControlEventArgs) args;
+                            // In case we should send specific data then query the structure and return.
+                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            {
+                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                    wasEnumerableToCSV(GetStructuredData(scriptControlEventArgs,
+                                        wasEnumerableToCSV(z.Data))));
+                                return;
+                            }
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CONTROLS),
+                                wasEnumerableToCSV(typeof (ScriptControlChange).GetFields(BindingFlags.Public |
+                                                                                          BindingFlags.Static)
+                                    .AsParallel().Where(
+                                        p =>
+                                            !(((uint) p.GetValue(null) &
+                                               (uint) scriptControlEventArgs.Controls)).Equals(0))
+                                    .Select(p => p.Name)));
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.PASS),
+                                scriptControlEventArgs.Pass.ToString());
+                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TAKE),
+                                scriptControlEventArgs.Take.ToString());
+                        };
+                        break;
                     default:
                         execute = () =>
                         {
@@ -4877,6 +5127,13 @@ namespace Corrade
                     return;
                 }
 
+                // Do not send empty notifications.
+                if (notificationData.Count.Equals(0)) return;
+
+                // Add the notification type.
+                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
+                    wasGetDescriptionFromEnumValue(notification));
+
                 // Build the afterburn.
                 if (z.Afterburn != null && !z.Afterburn.Count.Equals(0))
                 {
@@ -4889,9 +5146,6 @@ namespace Corrade
                         }
                     });
                 }
-
-                // Do not send empty notifications.
-                if (notificationData.Count.Equals(0)) return;
 
                 // Check that the notification queue is not already full.
                 if (NotificationQueue.Count >= Configuration.NOTIFICATION_QUEUE_LENGTH)
@@ -11440,6 +11694,120 @@ namespace Corrade
                         }
                     };
                     break;
+                case ScriptKeys.GETPRIMITIVESHAPEDATA:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(commandGroup.Name,
+                                (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        List<string> data = new List<string>(GetStructuredData(primitive.PrimData,
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                message))));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                wasEnumerableToCSV(data));
+                        }
+                    };
+                    break;
+                case ScriptKeys.GETPRIMITIVESCULPTDATA:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(commandGroup.Name,
+                                (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        List<string> data = new List<string>(GetStructuredData(primitive.Sculpt,
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                message))));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                wasEnumerableToCSV(data));
+                        }
+                    };
+                    break;
+                case ScriptKeys.GETPRIMITIVETEXTUREDATA:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(commandGroup.Name,
+                                (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = new Primitive();
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        List<string> data = new List<string>(GetStructuredData(primitive.Textures,
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                message))));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                wasEnumerableToCSV(data));
+                        }
+                    };
+                    break;
                 case ScriptKeys.GETPARCELDATA:
                     execute = () =>
                     {
@@ -12178,7 +12546,6 @@ namespace Corrade
                             throw new Exception(
                                 wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-
                         InventoryBase inventoryBaseItem =
                             FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                                 StringOrUUID(wasInput(wasKeyValueGet(
@@ -12328,6 +12695,144 @@ namespace Corrade
                                 deRezDestionationTypeInfo
                                     .GetValue(null)
                             : DeRezDestination.AgentInventoryTake, inventoryFolder.UUID, UUID.Random());
+                    };
+                    break;
+                case ScriptKeys.CREATEPRIMITIVE:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        Vector3 position;
+                        if (
+                            !Vector3.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
+                                out position))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
+                        }
+                        if (IsSecondLife() &&
+                            position.Z > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(
+                                    ScriptError.POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE));
+                        }
+                        Quaternion rotation;
+                        if (
+                            !Quaternion.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION)),
+                                        message)),
+                                out rotation))
+                        {
+                            rotation = Quaternion.CreateFromEulers(0, 0, 0);
+                        }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
+                        Parcel parcel = null;
+                        if (!GetParcelAtPosition(simulator, position, ref parcel))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
+                        }
+                        if (((uint) parcel.Flags & (uint) ParcelFlags.CreateObjects).Equals(0))
+                        {
+                            if (!simulator.IsEstateManager)
+                            {
+                                if (!parcel.OwnerID.Equals(Client.Self.AgentID))
+                                {
+                                    if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(commandGroup.UUID))
+                                    {
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                    }
+                                    if (!HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AllowRez,
+                                        Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                    {
+                                        throw new Exception(
+                                            wasGetDescriptionFromEnumValue(ScriptError.NO_GROUP_POWER_FOR_COMMAND));
+                                    }
+                                }
+                            }
+                        }
+                        Vector3 scale;
+                        if (
+                            !Vector3.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SCALE)),
+                                        message)),
+                                out scale))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_SCALE));
+                        }
+                        if (IsSecondLife() &&
+                            ((scale.X < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_X ||
+                              scale.Y < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_Y ||
+                              scale.Z < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_Z ||
+                              scale.X > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_X ||
+                              scale.Y > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_Y ||
+                              scale.Z > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_Z)))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS));
+                        }
+                        // build the primitive shape from presets by supplying "type" (or not)...
+                        FieldInfo primitiveShapesFieldInfo = typeof (CORRADE_CONSTANTS.PRIMTIVE_SHAPES).GetFields(
+                            BindingFlags.Public |
+                            BindingFlags.Static)
+                            .AsParallel().FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        wasInput(
+                                            wasKeyValueGet(
+                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                                message)),
+                                        StringComparison.OrdinalIgnoreCase));
+                        Primitive.ConstructionData constructionData;
+                        switch (primitiveShapesFieldInfo != null)
+                        {
+                            case true:
+                                constructionData = (Primitive.ConstructionData) primitiveShapesFieldInfo.GetValue(null);
+                                break;
+                            default:
+                                // Build the construction data as a default primitive box.
+                                constructionData = CORRADE_CONSTANTS.PRIMTIVE_SHAPES.CUBE;
+                                break;
+                        }
+                        // ... and overwrite with manual data settings.
+                        wasCSVToStructure(
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)), message)),
+                            ref constructionData);
+                        // Get any primitive flags.
+                        uint primFlags = 0;
+                        Parallel.ForEach(wasCSVToEnumerable(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FLAGS)),
+                                    message))),
+                            o =>
+                                Parallel.ForEach(
+                                    typeof (PrimFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                        .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                    q => { primFlags |= ((uint) q.GetValue(null)); }));
+
+                        // Finally, add the primitive to the simulator.
+                        Client.Objects.AddPrim(simulator, constructionData, commandGroup.UUID, position, scale, rotation,
+                            (PrimFlags) primFlags);
                     };
                     break;
                 case ScriptKeys.SETSCRIPTRUNNING:
@@ -13893,7 +14398,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-
                         HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
                             !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -14657,6 +15161,19 @@ namespace Corrade
                                 out itemUUID))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_ITEM_SPECIFIED));
+                        }
+                        lock (ScriptDialogLock)
+                        {
+                            ScriptDialog scriptDialog =
+                                ScriptDialogs.FirstOrDefault(
+                                    o =>
+                                        o.Item.Equals(itemUUID) && o.Channel.Equals(channel) &&
+                                        !o.Button.IndexOf(label).Equals(-1));
+                            if (scriptDialog.Equals(default(ScriptDialog)))
+                            {
+                                throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_MATCHING_DIALOG_FOUND));
+                            }
+                            ScriptDialogs.Remove(scriptDialog);
                         }
                         Client.Self.ReplyToScriptDialog(channel, index, label, itemUUID);
                     };
@@ -16743,6 +17260,17 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_SCALE));
                         }
+                        if (IsSecondLife() &&
+                            ((scale.X < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_X ||
+                              scale.Y < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_Y ||
+                              scale.Z < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_Z ||
+                              scale.X > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_X ||
+                              scale.Y > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_Y ||
+                              scale.Z > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_Z)))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS));
+                        }
                         Client.Objects.SetScale(
                             Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                             primitive.LocalID, scale, false, uniform);
@@ -16895,6 +17423,191 @@ namespace Corrade
                         Client.Objects.SetDescription(
                             Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                             primitive.LocalID, description);
+                    };
+                    break;
+                case ScriptKeys.SETPRIMITIVESHAPEDATA:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        // build the primitive shape from presets by supplying "type" (or not)...
+                        FieldInfo primitiveShapesFieldInfo = typeof (CORRADE_CONSTANTS.PRIMTIVE_SHAPES).GetFields(
+                            BindingFlags.Public |
+                            BindingFlags.Static)
+                            .AsParallel().FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        wasInput(
+                                            wasKeyValueGet(
+                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                                message)),
+                                        StringComparison.OrdinalIgnoreCase));
+                        Primitive.ConstructionData constructionData;
+                        switch (primitiveShapesFieldInfo != null)
+                        {
+                            case true:
+                                constructionData = (Primitive.ConstructionData) primitiveShapesFieldInfo.GetValue(null);
+                                break;
+                            default:
+                                // Build the construction data as a default primitive box.
+                                constructionData = CORRADE_CONSTANTS.PRIMTIVE_SHAPES.CUBE;
+                                break;
+                        }
+                        // ... and overwrite with manual data settings.
+                        wasCSVToStructure(
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)), message)),
+                            ref constructionData);
+                        Client.Objects.SetShape(simulator, primitive.LocalID, constructionData);
+                    };
+                    break;
+                case ScriptKeys.SETPRIMITIVESCULPTDATA:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        Primitive.SculptData sculptData = new Primitive.SculptData();
+                        wasCSVToStructure(
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)), message)),
+                            ref sculptData);
+                        Client.Objects.SetSculpt(simulator, primitive.LocalID, sculptData);
+                    };
+                    break;
+                case ScriptKeys.SETPRIMITIVETEXTUREDATA:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        int index;
+                        if (
+                            !int.TryParse(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.INDEX)),
+                                    message)), out index) || index < 0 || index > Primitive.TextureEntry.MAX_FACES)
+                        {
+                            // no index specified or index out of bounds, assume the default texture.
+                            index = -1;
+                        }
+                        switch (index)
+                        {
+                            case -1: // default texture
+                                wasCSVToStructure(
+                                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                        message)),
+                                    ref primitive.Textures.DefaultTexture);
+                                break;
+                            default:
+                                if (primitive.Textures.FaceTextures[index] == null)
+                                {
+                                    primitive.Textures.FaceTextures[index] = primitive.Textures.CreateFace((uint) index);
+                                }
+                                wasCSVToStructure(
+                                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                        message)),
+                                    ref primitive.Textures.FaceTextures[index]);
+                                break;
+                        }
+                        Client.Objects.SetTextures(simulator, primitive.LocalID, primitive.Textures);
                     };
                     break;
                 case ScriptKeys.CHANGEPRIMITIVELINK:
@@ -20308,6 +21021,333 @@ namespace Corrade
                 public const string NONE = @"------------------------------";
             }
 
+            public struct PRIMTIVE_SHAPES
+            {
+                [Description("cube")] public static readonly Primitive.ConstructionData CUBE = new Primitive.
+                    ConstructionData
+                {
+                    AttachmentPoint = AttachmentPoint.Default,
+                    Material = Material.Wood,
+                    PathBegin = 0f,
+                    PathCurve = PathCurve.Line,
+                    PathEnd = 1.0f,
+                    PathRadiusOffset = 0.0f,
+                    PathRevolutions = 1.0f,
+                    PathScaleX = 1.0f,
+                    PathScaleY = 1.0f,
+                    PathShearX = 0.0f,
+                    PathShearY = 0.0f,
+                    PathSkew = 0.0f,
+                    PathTaperX = 0.0f,
+                    PathTaperY = 0.0f,
+                    PathTwistBegin = 0.0f,
+                    PCode = PCode.Prim,
+                    ProfileBegin = 0.0f,
+                    ProfileCurve = ProfileCurve.Square,
+                    ProfileEnd = 1.0f,
+                    ProfileHole = HoleType.Same,
+                    ProfileHollow = 0.0f,
+                    State = 0
+                };
+
+                [Description("prism")] public static readonly Primitive.ConstructionData PRISM = new Primitive.
+                    ConstructionData
+                {
+                    AttachmentPoint = AttachmentPoint.Default,
+                    Material = Material.Wood,
+                    PathBegin = 0f,
+                    PathCurve = PathCurve.Line,
+                    PathEnd = 1.0f,
+                    PathRadiusOffset = 0.0f,
+                    PathRevolutions = 1.0f,
+                    PathScaleX = 0.0f,
+                    PathScaleY = 1.0f,
+                    PathShearX = -0.5f,
+                    PathShearY = 0.0f,
+                    PathSkew = 0.0f,
+                    PathTaperX = 0.0f,
+                    PathTaperY = 0.0f,
+                    PathTwistBegin = 0.0f,
+                    PCode = PCode.Prim,
+                    ProfileBegin = 0.0f,
+                    ProfileCurve = ProfileCurve.Square,
+                    ProfileEnd = 1.0f,
+                    ProfileHole = HoleType.Same,
+                    ProfileHollow = 0.0f,
+                    State = 0
+                };
+
+                [Description("pyramid")] public static readonly Primitive.ConstructionData PYRAMID = new Primitive.
+                    ConstructionData
+                {
+                    AttachmentPoint = AttachmentPoint.Default,
+                    Material = Material.Wood,
+                    PathBegin = 0f,
+                    PathCurve = PathCurve.Line,
+                    PathEnd = 1.0f,
+                    PathRadiusOffset = 0.0f,
+                    PathRevolutions = 1.0f,
+                    PathScaleX = 0.0f,
+                    PathScaleY = 0.0f,
+                    PathShearX = 0.0f,
+                    PathShearY = 0.0f,
+                    PathSkew = 0.0f,
+                    PathTaperX = 0.0f,
+                    PathTaperY = 0.0f,
+                    PathTwistBegin = 0.0f,
+                    PCode = PCode.Prim,
+                    ProfileBegin = 0.0f,
+                    ProfileCurve = ProfileCurve.Square,
+                    ProfileEnd = 1.0f,
+                    ProfileHole = HoleType.Same,
+                    ProfileHollow = 0.0f,
+                    State = 0
+                };
+
+                [Description("tetrahedron")] public static readonly Primitive.ConstructionData TETRAHEDRON = new Primitive
+                    .ConstructionData
+                {
+                    AttachmentPoint = AttachmentPoint.Default,
+                    Material = Material.Wood,
+                    PathBegin = 0f,
+                    PathCurve = PathCurve.Line,
+                    PathEnd = 1.0f,
+                    PathRadiusOffset = 0.0f,
+                    PathRevolutions = 1.0f,
+                    PathScaleX = 0.0f,
+                    PathScaleY = 0.0f,
+                    PathShearX = 0.0f,
+                    PathShearY = 0.0f,
+                    PathSkew = 0.0f,
+                    PathTaperX = 0.0f,
+                    PathTaperY = 0.0f,
+                    PathTwistBegin = 0.0f,
+                    PCode = PCode.Prim,
+                    ProfileBegin = 0.0f,
+                    ProfileCurve = ProfileCurve.EqualTriangle,
+                    ProfileEnd = 1.0f,
+                    ProfileHole = HoleType.Same,
+                    ProfileHollow = 0.0f,
+                    State = 0
+                };
+
+                [Description("cylinder")] public static readonly Primitive.ConstructionData CYLINDER = new Primitive.
+                    ConstructionData
+                {
+                    AttachmentPoint = AttachmentPoint.Default,
+                    Material = Material.Wood,
+                    PathBegin = 0f,
+                    PathCurve = PathCurve.Line,
+                    PathEnd = 1.0f,
+                    PathRadiusOffset = 0.0f,
+                    PathRevolutions = 1.0f,
+                    PathScaleX = 1.0f,
+                    PathScaleY = 1.0f,
+                    PathShearX = 0.0f,
+                    PathShearY = 0.0f,
+                    PathSkew = 0.0f,
+                    PathTaperX = 0.0f,
+                    PathTaperY = 0.0f,
+                    PathTwistBegin = 0.0f,
+                    PCode = PCode.Prim,
+                    ProfileBegin = 0.0f,
+                    ProfileCurve = ProfileCurve.Circle,
+                    ProfileEnd = 1.0f,
+                    ProfileHole = HoleType.Same,
+                    ProfileHollow = 0.0f,
+                    State = 0
+                };
+
+                [Description("hemicylinder")] public static readonly Primitive.ConstructionData HEMICYLINDER = new Primitive
+                    .ConstructionData
+                {
+                    AttachmentPoint = AttachmentPoint.Default,
+                    Material = Material.Wood,
+                    PathBegin = 0.0f,
+                    PathCurve = PathCurve.Line,
+                    PathEnd = 1.0f,
+                    PathRadiusOffset = 0.0f,
+                    PathRevolutions = 1.0f,
+                    PathScaleX = 1.0f,
+                    PathScaleY = 1.0f,
+                    PathShearX = 0.0f,
+                    PathShearY = 0.0f,
+                    PathSkew = 0.0f,
+                    PathTaperX = 0.0f,
+                    PathTaperY = 0.0f,
+                    PathTwistBegin = 0.0f,
+                    PCode = PCode.Prim,
+                    ProfileBegin = 0.25f,
+                    ProfileCurve = ProfileCurve.Circle,
+                    ProfileEnd = 0.75f,
+                    ProfileHole = HoleType.Same,
+                    ProfileHollow = 0.0f,
+                    State = 0
+                };
+
+                [Description("cone")] public static readonly Primitive.ConstructionData CONE = new Primitive.
+                    ConstructionData
+                {
+                    AttachmentPoint = AttachmentPoint.Default,
+                    Material = Material.Wood,
+                    PathBegin = 0f,
+                    PathCurve = PathCurve.Line,
+                    PathEnd = 1.0f,
+                    PathRadiusOffset = 0.0f,
+                    PathRevolutions = 1.0f,
+                    PathScaleX = 0.0f,
+                    PathScaleY = 0.0f,
+                    PathShearX = 0.0f,
+                    PathShearY = 0.0f,
+                    PathSkew = 0.0f,
+                    PathTaperX = 0.0f,
+                    PathTaperY = 0.0f,
+                    PathTwistBegin = 0.0f,
+                    PCode = PCode.Prim,
+                    ProfileBegin = 0.0f,
+                    ProfileCurve = ProfileCurve.Circle,
+                    ProfileEnd = 1.0f,
+                    ProfileHole = HoleType.Same,
+                    ProfileHollow = 0.0f,
+                    State = 0
+                };
+
+                [Description("hemicone")] public static readonly Primitive.ConstructionData HEMICONE = new Primitive.
+                    ConstructionData
+                {
+                    AttachmentPoint = AttachmentPoint.Default,
+                    Material = Material.Wood,
+                    PathBegin = 0f,
+                    PathCurve = PathCurve.Line,
+                    PathEnd = 1.0f,
+                    PathRadiusOffset = 0.0f,
+                    PathRevolutions = 1.0f,
+                    PathScaleX = 0.0f,
+                    PathScaleY = 0.0f,
+                    PathShearX = 0.0f,
+                    PathShearY = 0.0f,
+                    PathSkew = 0.0f,
+                    PathTaperX = 0.0f,
+                    PathTaperY = 0.0f,
+                    PathTwistBegin = 0.0f,
+                    PCode = PCode.Prim,
+                    ProfileBegin = 0.25f,
+                    ProfileCurve = ProfileCurve.Circle,
+                    ProfileEnd = 0.75f,
+                    ProfileHole = HoleType.Same,
+                    ProfileHollow = 0.0f,
+                    State = 0
+                };
+
+                [Description("sphere")] public static readonly Primitive.ConstructionData SPHERE = new Primitive.
+                    ConstructionData
+                {
+                    AttachmentPoint = AttachmentPoint.Default,
+                    Material = Material.Wood,
+                    PathBegin = 0.0f,
+                    PathCurve = PathCurve.Circle,
+                    PathEnd = 1.0f,
+                    PathRadiusOffset = 0.0f,
+                    PathRevolutions = 1.0f,
+                    PathScaleX = 1.0f,
+                    PathScaleY = 1.0f,
+                    PathShearX = 0.0f,
+                    PathShearY = 0.0f,
+                    PathSkew = 0.0f,
+                    PathTaperX = 0.0f,
+                    PathTaperY = 0.0f,
+                    PathTwistBegin = 0.0f,
+                    PCode = PCode.Prim,
+                    ProfileBegin = 0.0f,
+                    ProfileCurve = ProfileCurve.HalfCircle,
+                    ProfileEnd = 1.0f,
+                    ProfileHole = HoleType.Same,
+                    ProfileHollow = 0.0f,
+                    State = 0
+                };
+
+                [Description("hemisphere")] public static readonly Primitive.ConstructionData HEMISPHERE = new Primitive
+                    .ConstructionData
+                {
+                    AttachmentPoint = AttachmentPoint.Default,
+                    Material = Material.Wood,
+                    PathBegin = 0.0f,
+                    PathCurve = PathCurve.Circle,
+                    PathEnd = 0.5f,
+                    PathRadiusOffset = 0.0f,
+                    PathRevolutions = 1.0f,
+                    PathScaleX = 1.0f,
+                    PathScaleY = 1.0f,
+                    PathShearX = 0.0f,
+                    PathShearY = 0.0f,
+                    PathSkew = 0.0f,
+                    PathTaperX = 0.0f,
+                    PathTaperY = 0.0f,
+                    PathTwistBegin = 0.0f,
+                    PCode = PCode.Prim,
+                    ProfileBegin = 0.0f,
+                    ProfileCurve = ProfileCurve.HalfCircle,
+                    ProfileEnd = 1.0f,
+                    ProfileHole = HoleType.Same,
+                    ProfileHollow = 0.0f,
+                    State = 0
+                };
+
+                [Description("torus")] public static readonly Primitive.ConstructionData TORUS = new Primitive.
+                    ConstructionData
+                {
+                    AttachmentPoint = AttachmentPoint.Default,
+                    Material = Material.Wood,
+                    PathBegin = 0.0f,
+                    PathCurve = PathCurve.Circle,
+                    PathEnd = 1.0f,
+                    PathRadiusOffset = 0.0f,
+                    PathRevolutions = 1.0f,
+                    PathScaleX = 1.0f,
+                    PathScaleY = 0.25f,
+                    PathShearX = 0.0f,
+                    PathShearY = 0.0f,
+                    PathSkew = 0.0f,
+                    PathTaperX = 0.0f,
+                    PathTaperY = 0.0f,
+                    PathTwistBegin = 0.0f,
+                    PCode = PCode.Prim,
+                    ProfileBegin = 0.0f,
+                    ProfileCurve = ProfileCurve.Circle,
+                    ProfileEnd = 1.0f,
+                    ProfileHole = HoleType.Same,
+                    ProfileHollow = 0.0f,
+                    State = 0
+                };
+
+                [Description("ring")] public static readonly Primitive.ConstructionData RING = new Primitive.
+                    ConstructionData
+                {
+                    AttachmentPoint = AttachmentPoint.Default,
+                    Material = Material.Wood,
+                    PathBegin = 0.0f,
+                    PathCurve = PathCurve.Circle,
+                    PathEnd = 1.0f,
+                    PathRadiusOffset = 0.0f,
+                    PathRevolutions = 1.0f,
+                    PathScaleX = 1.0f,
+                    PathScaleY = 0.25f,
+                    PathShearX = 0.0f,
+                    PathShearY = 0.0f,
+                    PathSkew = 0.0f,
+                    PathTaperX = 0.0f,
+                    PathTaperY = 0.0f,
+                    PathTwistBegin = 0.0f,
+                    PCode = PCode.Prim,
+                    ProfileBegin = 0.0f,
+                    ProfileCurve = ProfileCurve.EqualTriangle,
+                    ProfileEnd = 1.0f,
+                    ProfileHole = HoleType.Same,
+                    ProfileHollow = 0.0f,
+                    State = 0
+                };
+            }
+
             /// <summary>
             ///     Corrade version.
             /// </summary>
@@ -23031,6 +24071,17 @@ namespace Corrade
                                         break;
                                 }
                                 break;
+                            case Notifications.NOTIFICATION_SCRIPT_CONTROL:
+                                switch (enabled)
+                                {
+                                    case true:
+                                        Client.Self.ScriptControlChange += HandleScriptControlChange;
+                                        break;
+                                    default:
+                                        Client.Self.ScriptControlChange -= HandleScriptControlChange;
+                                        break;
+                                }
+                                break;
                         }
                     });
 
@@ -23185,6 +24236,7 @@ namespace Corrade
                 Client.Self.Movement.Camera.Far = RANGE;
                 Client.Settings.LOGIN_TIMEOUT = (int) SERVICES_TIMEOUT;
                 Client.Settings.LOGOUT_TIMEOUT = (int) SERVICES_TIMEOUT;
+                Client.Settings.SIMULATOR_TIMEOUT = (int) SERVICES_TIMEOUT;
 
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
             }
@@ -23330,7 +24382,8 @@ namespace Corrade
             [Description("error setting up configuration watcher")] ERROR_SETTING_UP_CONFIGURATION_WATCHER,
             [Description("error setting up AIML configuration watcher")] ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER,
             [Description("callback throttled")] CALLBACK_THROTTLED,
-            [Description("notification throttled")] NOTIFICATION_THROTTLED
+            [Description("notification throttled")] NOTIFICATION_THROTTLED,
+            [Description("error updating inventory")] ERROR_UPDATING_INVENTORY
         }
 
         /// <summary>
@@ -24319,7 +25372,8 @@ namespace Corrade
             [Description("invalid number of items specified")] INVALID_NUMBER_OF_ITEMS_SPECIFIED,
             [Description("timeout requesting price")] TIMEOUT_REQUESTING_PRICE,
             [Description("primitive not for sale")] PRIMITIVE_NOT_FOR_SALE,
-            [Description("teleport throttled")] TELEPORT_THROTTLED
+            [Description("teleport throttled")] TELEPORT_THROTTLED,
+            [Description("no matching dialog found")] NO_MATCHING_DIALOG_FOUND
         }
 
         /// <summary>
@@ -24329,6 +25383,38 @@ namespace Corrade
         {
             [Description("none")] NONE = 0,
 
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setprimitivetexturedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[index=<INTEGER>]&<data=<TextureEntryFace [,TextureEntryFace ...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitivetexturedata")] SETPRIMITIVETEXTUREDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getprimitivetexturedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<TextureEntry[,TextureEntry ...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivetexturedata")] GETPRIMITIVETEXTUREDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setprimitivesculptdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<SculptData[,SculptData...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitivesculptdata")] SETPRIMITIVESCULPTDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getprimitivesculptdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<SculptData[,SculptData...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivesculptdata")] GETPRIMITIVESCULPTDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setprimitiveshapedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[type=<CorradePrimitiveShape>]&<data=<ConstructionData[,ConstructionData...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitiveshapedata")] SETPRIMITIVESHAPEDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getprimitiveshapedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<ConstructionData[,ConstructionData...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitiveshapedata")] GETPRIMITIVESHAPEDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=createprimitive>&<group=<UUID|STRING>>&<password=<STRING>>>&[region=<STRING>]&<position=<VECTOR3>>&<rotation=<Quaternion>>&[type=<CorradePrimitiveShape>]&[data=<ConstructionData>]&[flags=<PrimFlags>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("createprimitive")] CREATEPRIMITIVE,
+
+            [Description("flags")] FLAGS,
+            [Description("take")] TAKE,
+            [Description("pass")] PASS,
+            [Description("controls")] CONTROLS,
             [Description("afterburn")] AFTERBURN,
 
             [IsCommand(true)] [CommandInputSyntax(
@@ -25827,84 +26913,95 @@ namespace Corrade
         {
             Thread updateInventoryRecursiveThread = new Thread(() =>
             {
-                // Create the queue of folders.
-                Dictionary<UUID, ManualResetEvent> inventoryFolders = new Dictionary<UUID, ManualResetEvent>();
-                Dictionary<UUID, Stopwatch> inventoryStopwatch = new Dictionary<UUID, Stopwatch>();
-                HashSet<long> times = new HashSet<long>(new[] {(long) Client.Settings.CAPS_TIMEOUT});
-                // Enqueue the first folder (as the root).
-                inventoryFolders.Add(o.UUID, new ManualResetEvent(false));
-                inventoryStopwatch.Add(o.UUID, new Stopwatch());
-
-                object LockObject = new object();
-
-                EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
+                try
                 {
-                    // Enqueue all the new folders.
-                    Client.Inventory.Store.GetContents(q.FolderID).ForEach(r =>
+                    // Create the queue of folders.
+                    Dictionary<UUID, ManualResetEvent> inventoryFolders = new Dictionary<UUID, ManualResetEvent>();
+                    Dictionary<UUID, Stopwatch> inventoryStopwatch = new Dictionary<UUID, Stopwatch>();
+                    HashSet<long> times = new HashSet<long>(new[] {(long) Client.Settings.CAPS_TIMEOUT});
+                    // Enqueue the first folder (as the root).
+                    inventoryFolders.Add(o.UUID, new ManualResetEvent(false));
+                    inventoryStopwatch.Add(o.UUID, new Stopwatch());
+
+                    object LockObject = new object();
+
+                    EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
                     {
-                        if (r is InventoryFolder)
+                        // Enqueue all the new folders.
+                        Client.Inventory.Store.GetContents(q.FolderID).ForEach(r =>
                         {
-                            UUID inventoryFolderUUID = (r as InventoryFolder).UUID;
-                            lock (LockObject)
+                            if (r is InventoryFolder)
                             {
-                                inventoryFolders.Add(inventoryFolderUUID, new ManualResetEvent(false));
-                                inventoryStopwatch.Add(inventoryFolderUUID, new Stopwatch());
+                                UUID inventoryFolderUUID = (r as InventoryFolder).UUID;
+                                lock (LockObject)
+                                {
+                                    inventoryFolders.Add(inventoryFolderUUID, new ManualResetEvent(false));
+                                    inventoryStopwatch.Add(inventoryFolderUUID, new Stopwatch());
+                                }
                             }
-                        }
-                    });
-                    inventoryFolders[q.FolderID].Set();
-                    inventoryStopwatch[q.FolderID].Stop();
-                    times.Add(inventoryStopwatch[q.FolderID].ElapsedMilliseconds);
-                };
-
-                do
-                {
-                    // Don't choke the chicken.
-                    Thread.Yield();
-                    Dictionary<UUID, ManualResetEvent> closureFolders;
-                    lock (LockObject)
-                    {
-                        closureFolders =
-                            new Dictionary<UUID, ManualResetEvent>(
-                                inventoryFolders.Where(p => !p.Key.Equals(UUID.Zero))
-                                    .ToDictionary(p => p.Key, q => q.Value));
-                    }
-                    lock (ClientInstanceInventoryLock)
-                    {
-                        Parallel.ForEach(closureFolders,
-                            new ParallelOptions
-                            {
-                                MaxDegreeOfParallelism =
-                                    Environment.ProcessorCount > 1 ? Environment.ProcessorCount - 1 : 1
-                            },
-                            p =>
-                            {
-                                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                                inventoryStopwatch[p.Key].Start();
-                                Client.Inventory.RequestFolderContents(p.Key, Client.Self.AgentID, true, true,
-                                    InventorySortOrder.ByDate);
-                                closureFolders[p.Key].WaitOne((int) times.Average(), false);
-                                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                            });
-                    }
-                    Parallel.ForEach(closureFolders, new ParallelOptions
-                    {
-                        MaxDegreeOfParallelism = Environment.ProcessorCount > 1 ? Environment.ProcessorCount - 1 : 1
-                    }, p =>
-                    {
+                        });
                         lock (LockObject)
                         {
-                            if (inventoryFolders.ContainsKey(p.Key))
-                            {
-                                inventoryFolders.Remove(p.Key);
-                            }
-                            if (inventoryStopwatch.ContainsKey(p.Key))
-                            {
-                                inventoryStopwatch.Remove(p.Key);
-                            }
+                            inventoryFolders[q.FolderID].Set();
+                            inventoryStopwatch[q.FolderID].Stop();
+                            times.Add(inventoryStopwatch[q.FolderID].ElapsedMilliseconds);
                         }
-                    });
-                } while (!inventoryFolders.Count.Equals(0));
+                    };
+
+                    do
+                    {
+                        // Don't choke the chicken.
+                        Thread.Yield();
+                        Dictionary<UUID, ManualResetEvent> closureFolders;
+                        lock (LockObject)
+                        {
+                            closureFolders =
+                                new Dictionary<UUID, ManualResetEvent>(
+                                    inventoryFolders.Where(p => !p.Key.Equals(UUID.Zero))
+                                        .ToDictionary(p => p.Key, q => q.Value));
+                        }
+                        lock (ClientInstanceInventoryLock)
+                        {
+                            Parallel.ForEach(closureFolders, p =>
+                            {
+                                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                                lock (LockObject)
+                                {
+                                    inventoryStopwatch[p.Key].Start();
+                                }
+                                Client.Inventory.RequestFolderContents(p.Key, Client.Self.AgentID, true, true,
+                                    InventorySortOrder.ByDate);
+                                ManualResetEvent folderEvent;
+                                int averageTime;
+                                lock (LockObject)
+                                {
+                                    folderEvent = closureFolders[p.Key];
+                                    averageTime = (int) times.Average();
+                                }
+                                folderEvent.WaitOne(averageTime, false);
+                                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                            });
+                        }
+                        Parallel.ForEach(closureFolders, p =>
+                        {
+                            lock (LockObject)
+                            {
+                                if (inventoryFolders.ContainsKey(p.Key))
+                                {
+                                    inventoryFolders.Remove(p.Key);
+                                }
+                                if (inventoryStopwatch.ContainsKey(p.Key))
+                                {
+                                    inventoryStopwatch.Remove(p.Key);
+                                }
+                            }
+                        });
+                    } while (!inventoryFolders.Count.Equals(0));
+                }
+                catch (Exception)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                }
             }) {IsBackground = true, Priority = ThreadPriority.Lowest};
 
             updateInventoryRecursiveThread.Start();
