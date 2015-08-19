@@ -1064,6 +1064,22 @@ namespace Corrade
                 wasSetInfoValue(info, ref @object, attachmentPoint);
                 return;
             }
+            if (wasGetInfoValue(info, value) is Tree)
+            {
+                byte tree;
+                switch (!byte.TryParse(setting, out tree))
+                {
+                    case true:
+                        FieldInfo treeFieldInfo = typeof (Tree).GetFields(BindingFlags.Public |
+                                                                          BindingFlags.Static)
+                            .AsParallel().FirstOrDefault(p => p.Name.Equals(setting, StringComparison.Ordinal));
+                        if (treeFieldInfo == null) break;
+                        tree = (byte) treeFieldInfo.GetValue(null);
+                        break;
+                }
+                wasSetInfoValue(info, ref @object, tree);
+                return;
+            }
             if (wasGetInfoValue(info, value) is Material)
             {
                 byte material;
@@ -12778,7 +12794,7 @@ namespace Corrade
                                         message)),
                                 out scale))
                         {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_SCALE));
+                            scale = new Vector3(0.5f, 0.5f, 0.5f);
                         }
                         if (IsSecondLife() &&
                             ((scale.X < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_X ||
@@ -12792,7 +12808,7 @@ namespace Corrade
                                 wasGetDescriptionFromEnumValue(ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS));
                         }
                         // build the primitive shape from presets by supplying "type" (or not)...
-                        FieldInfo primitiveShapesFieldInfo = typeof (CORRADE_CONSTANTS.PRIMTIVE_SHAPES).GetFields(
+                        FieldInfo primitiveShapesFieldInfo = typeof (CORRADE_CONSTANTS.PRIMTIVE_BODIES).GetFields(
                             BindingFlags.Public |
                             BindingFlags.Static)
                             .AsParallel().FirstOrDefault(
@@ -12811,7 +12827,7 @@ namespace Corrade
                                 break;
                             default:
                                 // Build the construction data as a default primitive box.
-                                constructionData = CORRADE_CONSTANTS.PRIMTIVE_SHAPES.CUBE;
+                                constructionData = CORRADE_CONSTANTS.PRIMTIVE_BODIES.CUBE;
                                 break;
                         }
                         // ... and overwrite with manual data settings.
@@ -12833,6 +12849,114 @@ namespace Corrade
                         // Finally, add the primitive to the simulator.
                         Client.Objects.AddPrim(simulator, constructionData, commandGroup.UUID, position, scale, rotation,
                             (PrimFlags) primFlags);
+                    };
+                    break;
+                case ScriptKeys.CREATETREE:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        Vector3 position;
+                        if (
+                            !Vector3.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
+                                out position))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
+                        }
+                        if (IsSecondLife() &&
+                            position.Z > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(
+                                    ScriptError.POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE));
+                        }
+                        Quaternion rotation;
+                        if (
+                            !Quaternion.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION)),
+                                        message)),
+                                out rotation))
+                        {
+                            rotation = Quaternion.CreateFromEulers(0, 0, 0);
+                        }
+                        string region =
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                                message));
+                        Simulator simulator =
+                            Client.Network.Simulators.FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (simulator == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
+                        }
+                        Parcel parcel = null;
+                        if (!GetParcelAtPosition(simulator, position, ref parcel))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.COULD_NOT_FIND_PARCEL));
+                        }
+                        if (!parcel.OwnerID.Equals(Client.Self.AgentID))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PARCEL_MUST_BE_OWNED));
+                        }
+                        Vector3 scale;
+                        if (
+                            !Vector3.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SCALE)),
+                                        message)),
+                                out scale))
+                        {
+                            scale = new Vector3(0.5f, 0.5f, 0.5f);
+                        }
+                        if (IsSecondLife() &&
+                            ((scale.X < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_X ||
+                              scale.Y < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_Y ||
+                              scale.Z < LINDEN_CONSTANTS.PRIMITIVES.MINIMUM_SIZE_Z ||
+                              scale.X > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_X ||
+                              scale.Y > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_Y ||
+                              scale.Z > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_SIZE_Z)))
+                        {
+                            throw new Exception(
+                                wasGetDescriptionFromEnumValue(ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS));
+                        }
+                        bool newTree;
+                        if (
+                            !bool.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NEW)),
+                                        message)),
+                                out newTree))
+                        {
+                            newTree = true;
+                        }
+                        FieldInfo treeFieldInfo = typeof (Tree).GetFields(
+                            BindingFlags.Public |
+                            BindingFlags.Static)
+                            .AsParallel().FirstOrDefault(
+                                o =>
+                                    o.Name.Equals(
+                                        wasInput(
+                                            wasKeyValueGet(
+                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                                message)),
+                                        StringComparison.OrdinalIgnoreCase));
+                        if (treeFieldInfo == null)
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.UNKNOWN_TREE_TYPE));
+                        }
+                        // Finally, add the tree to the simulator.
+                        Client.Objects.AddTree(simulator, scale, rotation, position, (Tree) treeFieldInfo.GetValue(null),
+                            commandGroup.UUID, newTree);
                     };
                     break;
                 case ScriptKeys.SETSCRIPTRUNNING:
@@ -17465,7 +17589,7 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         // build the primitive shape from presets by supplying "type" (or not)...
-                        FieldInfo primitiveShapesFieldInfo = typeof (CORRADE_CONSTANTS.PRIMTIVE_SHAPES).GetFields(
+                        FieldInfo primitiveShapesFieldInfo = typeof (CORRADE_CONSTANTS.PRIMTIVE_BODIES).GetFields(
                             BindingFlags.Public |
                             BindingFlags.Static)
                             .AsParallel().FirstOrDefault(
@@ -17484,7 +17608,7 @@ namespace Corrade
                                 break;
                             default:
                                 // Build the construction data as a default primitive box.
-                                constructionData = CORRADE_CONSTANTS.PRIMTIVE_SHAPES.CUBE;
+                                constructionData = CORRADE_CONSTANTS.PRIMTIVE_BODIES.CUBE;
                                 break;
                         }
                         // ... and overwrite with manual data settings.
@@ -21021,7 +21145,7 @@ namespace Corrade
                 public const string NONE = @"------------------------------";
             }
 
-            public struct PRIMTIVE_SHAPES
+            public struct PRIMTIVE_BODIES
             {
                 [Description("cube")] public static readonly Primitive.ConstructionData CUBE = new Primitive.
                     ConstructionData
@@ -25373,7 +25497,9 @@ namespace Corrade
             [Description("timeout requesting price")] TIMEOUT_REQUESTING_PRICE,
             [Description("primitive not for sale")] PRIMITIVE_NOT_FOR_SALE,
             [Description("teleport throttled")] TELEPORT_THROTTLED,
-            [Description("no matching dialog found")] NO_MATCHING_DIALOG_FOUND
+            [Description("no matching dialog found")] NO_MATCHING_DIALOG_FOUND,
+            [Description("unknown tree type")] UNKNOWN_TREE_TYPE,
+            [Description("parcel must be owned")] PARCEL_MUST_BE_OWNED
         }
 
         /// <summary>
@@ -25384,31 +25510,35 @@ namespace Corrade
             [Description("none")] NONE = 0,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=setprimitivetexturedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[index=<INTEGER>]&<data=<TextureEntryFace [,TextureEntryFace ...]>>&[callback=<STRING>]"
+                "<command=createtree>&<group=<UUID|STRING>>&<password=<STRING>>>&[region=<STRING>]&<position=<VECTOR3>>&[rotation=<Quaternion>]&<type=<Tree>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("createtree")] CREATETREE,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setprimitivetexturedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[index=<INTEGER>]&[data=<TextureEntryFace [,TextureEntryFace ...]>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitivetexturedata")] SETPRIMITIVETEXTUREDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getprimitivetexturedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<TextureEntry[,TextureEntry ...]>>&[callback=<STRING>]"
+                "<command=getprimitivetexturedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<TextureEntry[,TextureEntry ...]>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivetexturedata")] GETPRIMITIVETEXTUREDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=setprimitivesculptdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<SculptData[,SculptData...]>>&[callback=<STRING>]"
+                "<command=setprimitivesculptdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<SculptData[,SculptData...]>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitivesculptdata")] SETPRIMITIVESCULPTDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getprimitivesculptdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<SculptData[,SculptData...]>>&[callback=<STRING>]"
+                "<command=getprimitivesculptdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<SculptData[,SculptData...]>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivesculptdata")] GETPRIMITIVESCULPTDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=setprimitiveshapedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[type=<CorradePrimitiveShape>]&<data=<ConstructionData[,ConstructionData...]>>&[callback=<STRING>]"
+                "<command=setprimitiveshapedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[type=<CorradePrimitiveShape>]&[data=<ConstructionData[,ConstructionData...]>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitiveshapedata")] SETPRIMITIVESHAPEDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getprimitiveshapedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<ConstructionData[,ConstructionData...]>>&[callback=<STRING>]"
+                "<command=getprimitiveshapedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<ConstructionData[,ConstructionData...]>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitiveshapedata")] GETPRIMITIVESHAPEDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=createprimitive>&<group=<UUID|STRING>>&<password=<STRING>>>&[region=<STRING>]&<position=<VECTOR3>>&<rotation=<Quaternion>>&[type=<CorradePrimitiveShape>]&[data=<ConstructionData>]&[flags=<PrimFlags>]&[callback=<STRING>]"
+                "<command=createprimitive>&<group=<UUID|STRING>>&<password=<STRING>>>&[region=<STRING>]&<position=<VECTOR3>>&[rotation=<Quaternion>]&[type=<CorradePrimitiveShape>]&[data=<ConstructionData>]&[flags=<PrimFlags>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("createprimitive")] CREATEPRIMITIVE,
 
             [Description("flags")] FLAGS,
