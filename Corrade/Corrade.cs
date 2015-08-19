@@ -10975,6 +10975,81 @@ namespace Corrade
                         Client.Self.Touch(primitive.LocalID);
                     };
                     break;
+                case ScriptKeys.GRAB:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        Vector3 uvCoord;
+                        if (!Vector3.TryParse(wasInput(wasKeyValueGet(
+                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TEXTURE)), message)), out uvCoord))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_TEXTURE_COORDINATES));
+                        }
+                        Vector3 stCoord;
+                        if (!Vector3.TryParse(wasInput(wasKeyValueGet(
+                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SURFACE)), message)), out stCoord))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_SURFACE_COORDINATES));
+                        }
+                        int faceIndex;
+                        if (!int.TryParse(wasInput(wasKeyValueGet(
+                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FACE)), message)), out faceIndex))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_FACE_INDEX));
+                        }
+                        Vector3 position;
+                        if (
+                            !Vector3.TryParse(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                    message)), out position))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
+                        }
+                        Vector3 normal;
+                        if (
+                            !Vector3.TryParse(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NORMAL)),
+                                    message)), out normal))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_NORMAL_VECTOR));
+                        }
+                        Vector3 binormal;
+                        if (
+                            !Vector3.TryParse(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.BINORMAL)),
+                                    message)), out binormal))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_BINORMAL_VECTOR));
+                        }
+                        Client.Objects.ClickObject(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, uvCoord, stCoord, faceIndex, position,
+                            normal, binormal);
+                    };
+                    break;
                 case ScriptKeys.MODERATE:
                     execute = () =>
                     {
@@ -11290,7 +11365,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
@@ -11465,7 +11539,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-
                         string region =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
                                 message));
@@ -11777,6 +11850,82 @@ namespace Corrade
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                         }
                         List<string> data = new List<string>(GetStructuredData(primitive.Sculpt,
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                message))));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                wasEnumerableToCSV(data));
+                        }
+                    };
+                    break;
+                case ScriptKeys.GETPRIMITIVEPHYSICSDATA:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(commandGroup.Name,
+                                (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        List<string> data = new List<string>(GetStructuredData(primitive.PhysicsProps,
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                message))));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                wasEnumerableToCSV(data));
+                        }
+                    };
+                    break;
+                case ScriptKeys.GETPRIMITIVEPROPERTIESDATA:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(commandGroup.Name,
+                                (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        List<string> data = new List<string>(GetStructuredData(primitive.Properties,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
                         if (!data.Count.Equals(0))
@@ -17204,6 +17353,149 @@ namespace Corrade
                             primitive.LocalID, position);
                     };
                     break;
+                case ScriptKeys.SETPRIMITIVEFLAGS:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
+                        }
+                        Vector3 position;
+                        if (
+                            !Vector3.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        message)),
+                                out position))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.INVALID_POSITION));
+                        }
+                        bool physics;
+                        if (
+                            !bool.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PHYSICS)),
+                                        message)),
+                                out physics))
+                        {
+                            physics = !(primitive.Flags & PrimFlags.Physics).Equals(0);
+                        }
+                        bool temporary;
+                        if (
+                            !bool.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TEMPORARY)),
+                                        message)),
+                                out temporary))
+                        {
+                            temporary = !(primitive.Flags & PrimFlags.Temporary).Equals(0);
+                        }
+                        bool phantom;
+                        if (
+                            !bool.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PHANTOM)),
+                                        message)),
+                                out phantom))
+                        {
+                            phantom = !(primitive.Flags & PrimFlags.Phantom).Equals(0);
+                        }
+                        bool shadows;
+                        if (
+                            !bool.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SHADOWS)),
+                                        message)),
+                                out shadows))
+                        {
+                            shadows = !(primitive.Flags & PrimFlags.CastShadows).Equals(0);
+                        }
+                        FieldInfo physicsShapeFieldInfo = typeof (PhysicsShapeType).GetFields(BindingFlags.Public |
+                                                                                              BindingFlags.Static)
+                            .AsParallel().FirstOrDefault(p => p.Name.Equals(wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                    message)), StringComparison.Ordinal));
+                        PhysicsShapeType physicsShapeType;
+                        switch (physicsShapeFieldInfo != null)
+                        {
+                            case true:
+                                physicsShapeType = (PhysicsShapeType) physicsShapeFieldInfo.GetValue(null);
+                                break;
+                            default:
+                                physicsShapeType = primitive.PhysicsProps.PhysicsShapeType;
+                                break;
+                        }
+                        float density;
+                        if (
+                            !float.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DENSITY)),
+                                        message)),
+                                out density))
+                        {
+                            density = primitive.PhysicsProps.Density;
+                        }
+                        float friction;
+                        if (
+                            !float.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FRICTION)),
+                                        message)),
+                                out friction))
+                        {
+                            friction = primitive.PhysicsProps.Friction;
+                        }
+                        float restitution;
+                        if (
+                            !float.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RESTITUTION)),
+                                        message)),
+                                out restitution))
+                        {
+                            restitution = primitive.PhysicsProps.Restitution;
+                        }
+                        float gravity;
+                        if (
+                            !float.TryParse(
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GRAVITY)),
+                                        message)),
+                                out gravity))
+                        {
+                            gravity = primitive.PhysicsProps.GravityMultiplier;
+                        }
+                        Client.Objects.SetFlags(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID,
+                            physics,
+                            temporary,
+                            phantom,
+                            shadows,
+                            physicsShapeType, density,
+                            friction, restitution,
+                            gravity);
+                    };
+                    break;
                 case ScriptKeys.SETPRIMITIVEPOSITION:
                     execute = () =>
                     {
@@ -17556,19 +17848,6 @@ namespace Corrade
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
                         }
-                        string region =
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                                message));
-                        Simulator simulator =
-                            Client.Network.Simulators.FirstOrDefault(
-                                o =>
-                                    o.Name.Equals(
-                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                        StringComparison.InvariantCultureIgnoreCase));
-                        if (simulator == null)
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
-                        }
                         float range;
                         if (
                             !float.TryParse(
@@ -17615,7 +17894,9 @@ namespace Corrade
                         wasCSVToStructure(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)), message)),
                             ref constructionData);
-                        Client.Objects.SetShape(simulator, primitive.LocalID, constructionData);
+                        Client.Objects.SetShape(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, constructionData);
                     };
                     break;
                 case ScriptKeys.SETPRIMITIVESCULPTDATA:
@@ -17624,19 +17905,6 @@ namespace Corrade
                         if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
-                        }
-                        string region =
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                                message));
-                        Simulator simulator =
-                            Client.Network.Simulators.FirstOrDefault(
-                                o =>
-                                    o.Name.Equals(
-                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                        StringComparison.InvariantCultureIgnoreCase));
-                        if (simulator == null)
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
                         }
                         float range;
                         if (
@@ -17661,7 +17929,9 @@ namespace Corrade
                         wasCSVToStructure(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)), message)),
                             ref sculptData);
-                        Client.Objects.SetSculpt(simulator, primitive.LocalID, sculptData);
+                        Client.Objects.SetSculpt(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, sculptData);
                     };
                     break;
                 case ScriptKeys.SETPRIMITIVETEXTUREDATA:
@@ -17670,19 +17940,6 @@ namespace Corrade
                         if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
-                        }
-                        string region =
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                                message));
-                        Simulator simulator =
-                            Client.Network.Simulators.FirstOrDefault(
-                                o =>
-                                    o.Name.Equals(
-                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                        StringComparison.InvariantCultureIgnoreCase));
-                        if (simulator == null)
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
                         }
                         float range;
                         if (
@@ -17731,7 +17988,9 @@ namespace Corrade
                                     ref primitive.Textures.FaceTextures[index]);
                                 break;
                         }
-                        Client.Objects.SetTextures(simulator, primitive.LocalID, primitive.Textures);
+                        Client.Objects.SetTextures(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, primitive.Textures);
                     };
                     break;
                 case ScriptKeys.CHANGEPRIMITIVELINK:
@@ -17740,19 +17999,6 @@ namespace Corrade
                         if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
-                        }
-                        string region =
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                                message));
-                        Simulator simulator =
-                            Client.Network.Simulators.FirstOrDefault(
-                                o =>
-                                    o.Name.Equals(
-                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                        StringComparison.InvariantCultureIgnoreCase));
-                        if (simulator == null)
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
                         }
                         float range;
                         if (
@@ -17790,7 +18036,7 @@ namespace Corrade
                                     wasGetDescriptionFromEnumValue(ScriptError.LINK_WOULD_EXCEED_MAXIMUM_LINK_LIMIT));
                             }
                         }
-                        List<uint> primIDs = new List<uint>();
+                        List<Primitive> primitives = new List<Primitive>();
                         foreach (string item in items)
                         {
                             Primitive primitive = null;
@@ -17802,7 +18048,12 @@ namespace Corrade
                             {
                                 throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVE_NOT_FOUND));
                             }
-                            primIDs.Add(primitive.LocalID);
+                            primitives.Add(primitive);
+                        }
+                        Primitive rootPrimitive = primitives.First();
+                        if (!primitives.AsParallel().All(o => o.RegionHandle.Equals(rootPrimitive.RegionHandle)))
+                        {
+                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.PRIMITIVES_NOT_IN_SAME_REGION));
                         }
                         object LockObject = new object();
                         ManualResetEvent PrimChangeLinkEvent = new ManualResetEvent(false);
@@ -17810,7 +18061,7 @@ namespace Corrade
                         {
                             lock (LockObject)
                             {
-                                if (primIDs.Count.Equals(0))
+                                if (primitives.Count.Equals(0))
                                 {
                                     PrimChangeLinkEvent.Set();
                                     return;
@@ -17818,9 +18069,9 @@ namespace Corrade
                             }
                             lock (LockObject)
                             {
-                                if (primIDs.Contains(args.Prim.LocalID))
+                                if (primitives.Any(o => o.LocalID.Equals(args.Prim.LocalID)))
                                 {
-                                    primIDs.Remove(args.Prim.LocalID);
+                                    primitives.RemoveAll(o => o.LocalID.Equals(args.Prim.LocalID));
                                 }
                             }
                         };
@@ -17830,10 +18081,16 @@ namespace Corrade
                             switch (action)
                             {
                                 case Action.LINK:
-                                    Client.Objects.LinkPrims(simulator, primIDs);
+                                    Client.Objects.LinkPrims(
+                                        Client.Network.Simulators.FirstOrDefault(
+                                            o => o.Handle.Equals(rootPrimitive.RegionHandle)),
+                                        primitives.Select(o => o.LocalID).ToList());
                                     break;
                                 case Action.DELINK:
-                                    Client.Objects.DelinkPrims(simulator, primIDs);
+                                    Client.Objects.DelinkPrims(
+                                        Client.Network.Simulators.FirstOrDefault(
+                                            o => o.Handle.Equals(rootPrimitive.RegionHandle)),
+                                        primitives.Select(o => o.LocalID).ToList());
                                     break;
                             }
                             if (!PrimChangeLinkEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
@@ -17852,20 +18109,6 @@ namespace Corrade
                         if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
-                        }
-
-                        string region =
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                                message));
-                        Simulator simulator =
-                            Client.Network.Simulators.FirstOrDefault(
-                                o =>
-                                    o.Name.Equals(
-                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                        StringComparison.InvariantCultureIgnoreCase));
-                        if (simulator == null)
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
                         }
                         float range;
                         if (
@@ -17904,7 +18147,9 @@ namespace Corrade
                         {
                             folderUUID = Client.Inventory.Store.RootFolder.UUID;
                         }
-                        Client.Objects.BuyObject(simulator, primitive.LocalID, primitive.Properties.SaleType,
+                        Client.Objects.BuyObject(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, primitive.Properties.SaleType,
                             primitive.Properties.SalePrice,
                             commandGroup.UUID, folderUUID);
                     };
@@ -17915,19 +18160,6 @@ namespace Corrade
                         if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
                         {
                             throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.NO_CORRADE_PERMISSIONS));
-                        }
-                        string region =
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                                message));
-                        Simulator simulator =
-                            Client.Network.Simulators.FirstOrDefault(
-                                o =>
-                                    o.Name.Equals(
-                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                        StringComparison.InvariantCultureIgnoreCase));
-                        if (simulator == null)
-                        {
-                            throw new Exception(wasGetDescriptionFromEnumValue(ScriptError.REGION_NOT_FOUND));
                         }
                         float range;
                         if (
@@ -17963,7 +18195,9 @@ namespace Corrade
                         lock (ClientInstanceObjectsLock)
                         {
                             Client.Objects.PayPriceReply += PayPriceReplyEventHandler;
-                            Client.Objects.RequestPayPrice(simulator, primitive.ID);
+                            Client.Objects.RequestPayPrice(
+                                Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                                primitive.ID);
                             if (!PayPrceReceivedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
                             {
                                 Client.Objects.PayPriceReply -= PayPriceReplyEventHandler;
@@ -25499,7 +25733,13 @@ namespace Corrade
             [Description("teleport throttled")] TELEPORT_THROTTLED,
             [Description("no matching dialog found")] NO_MATCHING_DIALOG_FOUND,
             [Description("unknown tree type")] UNKNOWN_TREE_TYPE,
-            [Description("parcel must be owned")] PARCEL_MUST_BE_OWNED
+            [Description("parcel must be owned")] PARCEL_MUST_BE_OWNED,
+            [Description("invalid texture coordinates")] INVALID_TEXTURE_COORDINATES,
+            [Description("invalid surface coordinates")] INVALID_SURFACE_COORDINATES,
+            [Description("invalid normal vector")] INVALID_NORMAL_VECTOR,
+            [Description("invalid face index")] INVALID_FACE_INDEX,
+            [Description("invalid binormal vector")] INVALID_BINORMAL_VECTOR,
+            [Description("primitives not in same region")] PRIMITIVES_NOT_IN_SAME_REGION
         }
 
         /// <summary>
@@ -25508,6 +25748,36 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getprimitivephysicsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<Primitive.PhysicsProperties[,Primitive.PhysicsProperties ...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivephysicsdata")] GETPRIMITIVEPHYSICSDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getprimitivepropertiesdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<ObjectProperties[,ObjectProperties ...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivepropertiesdata")] GETPRIMITIVEPROPERTIESDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setprimitiveflags>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<SINGLE>]&[temporary=<BOOL>]&[shadows=<BOOL>]&[restitution=<SINGLE>]&[phantom=<BOOL>]&[gravity=<SINGLE>]&[friction=<SINGLE>]&[density=<SINGLE>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitiveflags")] SETPRIMITIVEFLAGS,
+
+            [Description("temporary")] TEMPORARY,
+            [Description("shadows")] SHADOWS,
+            [Description("restitution")] RESTITUTION,
+            [Description("phantom")] PHANTOM,
+            [Description("gravity")] GRAVITY,
+            [Description("friction")] FRICTION,
+            [Description("density")] DENSITY,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=grab>&<group=<UUID|STRING>>&<password=<STRING>>&[region=<STRING>]&<item=<UUID|STRING>>&[range=<FLOAT>]&<texture=<VECTOR3>&<surface=<VECTOR3>>&<normal=<VECTOR3>>&<binormal=<VECTOR3>>&<face=<INTEGER>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("grab")] GRAB,
+
+            [Description("texture")] TEXTURE,
+            [Description("surface")] SURFACE,
+            [Description("normal")] NORMAL,
+            [Description("binormal")] BINORMAL,
+            [Description("face")] FACE,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=createtree>&<group=<UUID|STRING>>&<password=<STRING>>>&[region=<STRING>]&<position=<VECTOR3>>&[rotation=<Quaternion>]&<type=<Tree>>&[callback=<STRING>]"
@@ -25548,15 +25818,15 @@ namespace Corrade
             [Description("afterburn")] AFTERBURN,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getprimitivepayprices>&<group=<UUID|STRING>>&<password=<STRING>>>&item=<STRING|UUID>>&[range=<FLOAT>]&[region=<STRING>]&[callback=<STRING>]"
+                "<command=getprimitivepayprices>&<group=<UUID|STRING>>&<password=<STRING>>>&item=<STRING|UUID>>&[range=<FLOAT>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivepayprices")] GETPRIMITIVEPAYPRICES,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=primitivebuy>&<group=<UUID|STRING>>&<password=<STRING>>>&item=<STRING|UUID>>&[range=<FLOAT>]&[region=<STRING>]&[callback=<STRING>]"
+                "<command=primitivebuy>&<group=<UUID|STRING>>&<password=<STRING>>>&item=<STRING|UUID>>&[range=<FLOAT>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT | (uint) Permissions.PERMISSION_ECONOMY)] [Description("primitivebuy")] PRIMITIVEBUY,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=changeprimitivelink>&<group=<UUID|STRING>>&<password=<STRING>>>&<action=<link|delink>>&action=link:<item=<STRING|UUID,STRING|UUID[,STRING|UUID...>>&action=delink:<item=<STRING|UUID[,STRING|UUID...>>&[range=<FLOAT>]&[region=<STRING>]&[callback=<STRING>]"
+                "<command=changeprimitivelink>&<group=<UUID|STRING>>&<password=<STRING>>>&<action=<link|delink>>&action=link:<item=<STRING|UUID,STRING|UUID[,STRING|UUID...>>&action=delink:<item=<STRING|UUID[,STRING|UUID...>>&[range=<FLOAT>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("changeprimitivelink")] CHANGEPRIMITIVELINK,
 
             [IsCommand(true)] [CommandInputSyntax(
