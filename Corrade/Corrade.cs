@@ -27,7 +27,6 @@ using System.ServiceProcess;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Web;
 using System.Xml;
 using System.Xml.Schema;
@@ -245,7 +244,7 @@ namespace Corrade
             [Status(12320)] [Description("unable to upload item data")] UNABLE_TO_UPLOAD_ITEM_DATA,
             [Status(55979)] [Description("unknown direction")] UNKNOWN_DIRECTION,
             [Status(22576)] [Description("timeout requesting to set home")] TIMEOUT_REQUESTING_TO_SET_HOME,
-            [Status(07255)] [Description("timeout traferring asset")] TIMEOUT_TRANSFERRING_ASSET,
+            [Status(07255)] [Description("timeout transferring asset")] TIMEOUT_TRANSFERRING_ASSET,
             [Status(60269)] [Description("asset upload failed")] ASSET_UPLOAD_FAILED,
             [Status(57085)] [Description("failed to download asset")] FAILED_TO_DOWNLOAD_ASSET,
             [Status(60025)] [Description("unknown asset type")] UNKNOWN_ASSET_TYPE,
@@ -300,7 +299,7 @@ namespace Corrade
             [Status(19325)] [Description("too many characters for group title")] TOO_MANY_CHARACTERS_FOR_GROUP_TITLE,
             [Status(26178)] [Description("too many characters for notice message")] TOO_MANY_CHARACTERS_FOR_NOTICE_MESSAGE,
             [Status(35277)] [Description("notecard message body too large")] NOTECARD_MESSAGE_BODY_TOO_LARGE,
-            [Status(47571)] [Description("too many or twoo few characters for display name")] TOO_MANY_OR_TOO_FEW_CHARACTERS_FOR_DISPLAY_NAME,
+            [Status(47571)] [Description("too many or too few characters for display name")] TOO_MANY_OR_TOO_FEW_CHARACTERS_FOR_DISPLAY_NAME,
             [Status(30293)] [Description("name too large")] NAME_TOO_LARGE,
             [Status(60515)] [Description("position would exceed maximum rez altitude")] POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE,
             [Status(43683)] [Description("description too large")] DESCRIPTION_TOO_LARGE,
@@ -329,14 +328,15 @@ namespace Corrade
             [Status(62130)] [Description("invalid texture coordinates")] INVALID_TEXTURE_COORDINATES,
             [Status(10945)] [Description("invalid surface coordinates")] INVALID_SURFACE_COORDINATES,
             [Status(28487)] [Description("invalid normal vector")] INVALID_NORMAL_VECTOR,
-            [Status(64431)] [Description("invalid face index")] INVALID_FACE_INDEX,
             [Status(13296)] [Description("invalid binormal vector")] INVALID_BINORMAL_VECTOR,
             [Status(44554)] [Description("primitives not in same region")] PRIMITIVES_NOT_IN_SAME_REGION,
             [Status(38798)] [Description("invalid face specified")] INVALID_FACE_SPECIFIED,
             [Status(61473)] [Description("invalid status supplied")] INVALID_STATUS_SUPPLIED,
             [Status(13764)] [Description("status not found")] STATUS_NOT_FOUND,
             [Status(30556)] [Description("no description for status")] NO_DESCRIPTION_FOR_STATUS,
-            [Status(64368)] [Description("unknown grass type")] UNKNOWN_GRASS_TYPE
+            [Status(64368)] [Description("unknown grass type")] UNKNOWN_GRASS_TYPE,
+            [Status(53274)] [Description("unknown material type")] UNKNOWN_MATERIAL_TYPE,
+            [Status(18463)] [Description("could not retrieve object media")] COULD_NOT_RETRIEVE_OBJECT_MEDIA
         }
 
         public Corrade()
@@ -1813,23 +1813,21 @@ namespace Corrade
         /// <param name="agentUUID">the UUID of the agent</param>
         /// <param name="groupUUID">the UUID of the groupt</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
-        /// <param name="dataTimeout">timeout for receiving answers from services</param>
         /// <returns>true if the agent is in the group</returns>
-        private static bool AgentInGroup(UUID agentUUID, UUID groupUUID, uint millisecondsTimeout, uint dataTimeout)
+        private static bool AgentInGroup(UUID agentUUID, UUID groupUUID, uint millisecondsTimeout)
         {
             bool agentInGroup = false;
-            wasAdaptiveAlarm GroupMembersReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+            ManualResetEvent groupMembersReceivedEvent = new ManualResetEvent(false);
             EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
             {
-                GroupMembersReceivedAlarm.Alarm(dataTimeout);
                 agentInGroup = args.Members.AsParallel().Any(o => o.Value.ID.Equals(agentUUID));
-                if (agentInGroup) GroupMembersReceivedAlarm.Signal.Set();
+                groupMembersReceivedEvent.Set();
             };
             lock (ClientInstanceGroupsLock)
             {
                 Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                 Client.Groups.RequestGroupMembers(groupUUID);
-                if (!GroupMembersReceivedAlarm.Signal.WaitOne((int) millisecondsTimeout, false))
+                if (!groupMembersReceivedEvent.WaitOne((int) millisecondsTimeout, false))
                 {
                     Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                     return false;
@@ -7601,7 +7599,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.Invite,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
@@ -7624,8 +7621,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
-                        if (AgentInGroup(agentUUID, commandGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                            Configuration.DATA_TIMEOUT))
+                        if (AgentInGroup(agentUUID, commandGroup.UUID, Configuration.SERVICES_TIMEOUT))
                         {
                             throw new ScriptException(ScriptError.ALREADY_IN_GROUP);
                         }
@@ -7661,6 +7657,108 @@ namespace Corrade
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
                         Client.Groups.Invite(commandGroup.UUID, roleUUIDs.ToList(), agentUUID);
+                    };
+                    break;
+                case ScriptKeys.BATCHINVITE:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        if (
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.Invite,
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                        }
+                        // Get the roles to invite to.
+                        HashSet<UUID> roleUUIDs = new HashSet<UUID>();
+                        foreach (
+                            string role in
+                                wasCSVToEnumerable(
+                                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
+                                        message)))
+                                    .AsParallel().Where(o => !string.IsNullOrEmpty(o)))
+                        {
+                            UUID roleUUID;
+                            if (!UUID.TryParse(role, out roleUUID) &&
+                                !RoleNameToUUID(role, commandGroup.UUID,
+                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref roleUUID))
+                            {
+                                throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
+                            }
+                            if (!roleUUIDs.Contains(roleUUID))
+                            {
+                                roleUUIDs.Add(roleUUID);
+                            }
+                        }
+                        // No roles specified, so assume everyone role.
+                        if (roleUUIDs.Count.Equals(0))
+                        {
+                            roleUUIDs.Add(UUID.Zero);
+                        }
+                        if (!roleUUIDs.All(o => o.Equals(UUID.Zero)) &&
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AssignMember,
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                        }
+                        // Get the group members.
+                        Dictionary<UUID, GroupMember> groupMembers = null;
+                        ManualResetEvent groupMembersReceivedEvent = new ManualResetEvent(false);
+                        EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
+                        {
+                            groupMembers = args.Members;
+                            groupMembersReceivedEvent.Set();
+                        };
+                        lock (ClientInstanceGroupsLock)
+                        {
+                            Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+                            Client.Groups.RequestGroupMembers(commandGroup.UUID);
+                            if (!groupMembersReceivedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            {
+                                Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+                                throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
+                            }
+                            Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+                        }
+                        HashSet<string> data = new HashSet<string>();
+                        foreach (
+                            string invitee in
+                                wasCSVToEnumerable(
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AVATARS)),
+                                            message))))
+                        {
+                            UUID agentUUID;
+                            if (!UUID.TryParse(invitee, out agentUUID))
+                            {
+                                List<string> fullName = new List<string>(GetAvatarNames(invitee));
+                                if (!AgentNameToUUID(fullName.First(), fullName.Last(), Configuration.SERVICES_TIMEOUT,
+                                    Configuration.DATA_TIMEOUT, ref agentUUID))
+                                {
+                                    // Add all the unrecognized agents to the returned list.
+                                    data.Add(invitee);
+                                    continue;
+                                }
+                            }
+                            // Check if they are in the group already.
+                            switch (groupMembers.AsParallel().Any(o => o.Value.ID.Equals(agentUUID)))
+                            {
+                                case true: // if they are add to the returned list
+                                    data.Add(invitee);
+                                    break;
+                                default:
+                                    Client.Groups.Invite(commandGroup.UUID, roleUUIDs.ToList(), agentUUID);
+                                    break;
+                            }
+                        }
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                wasEnumerableToCSV(data));
+                        }
                     };
                     break;
                 case ScriptKeys.REPLYTOGROUPINVITE:
@@ -7809,8 +7907,7 @@ namespace Corrade
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
                         if (
-                            !AgentInGroup(agentUUID, commandGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT))
+                            !AgentInGroup(agentUUID, commandGroup.UUID, Configuration.SERVICES_TIMEOUT))
                         {
                             throw new ScriptException(ScriptError.NOT_IN_GROUP);
                         }
@@ -8247,8 +8344,7 @@ namespace Corrade
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
                         if (
-                            !AgentInGroup(agentUUID, commandGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT))
+                            !AgentInGroup(agentUUID, commandGroup.UUID, Configuration.SERVICES_TIMEOUT))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_IN_GROUP);
                         }
@@ -10147,7 +10243,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -10202,7 +10297,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -10340,7 +10434,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -10421,7 +10514,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -11198,7 +11290,7 @@ namespace Corrade
                         if (!int.TryParse(wasInput(wasKeyValueGet(
                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FACE)), message)), out faceIndex))
                         {
-                            throw new ScriptException(ScriptError.INVALID_FACE_INDEX);
+                            throw new ScriptException(ScriptError.INVALID_FACE_SPECIFIED);
                         }
                         Vector3 position;
                         if (
@@ -11237,7 +11329,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.ModerateChat,
                                 Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
@@ -11872,7 +11963,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
@@ -12053,6 +12143,82 @@ namespace Corrade
                         }
                     };
                     break;
+                case ScriptKeys.GETPRIMITIVELIGHTDATA:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(commandGroup.Name,
+                                (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                        }
+                        List<string> data = new List<string>(GetStructuredData(primitive.Light,
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                message))));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                wasEnumerableToCSV(data));
+                        }
+                    };
+                    break;
+                case ScriptKeys.GETPRIMITIVEFLEXIBLEDATA:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(commandGroup.Name,
+                                (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                        }
+                        List<string> data = new List<string>(GetStructuredData(primitive.Flexible,
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                message))));
+                        if (!data.Count.Equals(0))
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                wasEnumerableToCSV(data));
+                        }
+                    };
+                    break;
                 case ScriptKeys.GETPRIMITIVEPHYSICSDATA:
                     execute = () =>
                     {
@@ -12219,7 +12385,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -17265,6 +17430,62 @@ namespace Corrade
                             wasEnumerableToCSV(new[] {regionName, position.ToString()}));
                     };
                     break;
+                case ScriptKeys.GETOBJECTMEDIADATA:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(commandGroup.Name,
+                                (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                        }
+                        // if the primitive is not an object (the root) or the primitive 
+                        // is not an object as an avatar attachment then bail out
+                        if (!primitive.ParentID.Equals(0) && !primitive.ParentID.Equals(Client.Self.LocalID))
+                        {
+                            throw new ScriptException(ScriptError.ITEM_IS_NOT_AN_OBJECT);
+                        }
+                        List<string> data = new List<string>();
+                        Client.Objects.RequestObjectMedia(primitive.ID,
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            (succeeded, version, faceMedia) =>
+                            {
+                                switch (succeeded)
+                                {
+                                    case true:
+                                        data.AddRange(GetStructuredData(faceMedia,
+                                            wasInput(
+                                                wasKeyValueGet(
+                                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                                    message))));
+                                        break;
+                                    default:
+                                        throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_OBJECT_MEDIA);
+                                }
+                            });
+                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                            wasEnumerableToCSV(data));
+                    };
+                    break;
                 case ScriptKeys.GETOBJECTPERMISSIONS:
                     execute = () =>
                     {
@@ -17299,8 +17520,71 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.ITEM_IS_NOT_AN_OBJECT);
                         }
-                        result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS),
+                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                             wasPermissionsToString(primitive.Properties.Permissions));
+                    };
+                    break;
+                case ScriptKeys.SETOBJECTMEDIADATA:
+                    execute = () =>
+                    {
+                        if (
+                            !HasCorradePermission(commandGroup.Name,
+                                (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                        }
+                        // if the primitive is not an object (the root) or the primitive 
+                        // is not an object as an avatar attachment then bail out
+                        if (!primitive.ParentID.Equals(0) && !primitive.ParentID.Equals(Client.Self.LocalID))
+                        {
+                            throw new ScriptException(ScriptError.ITEM_IS_NOT_AN_OBJECT);
+                        }
+                        uint face;
+                        if (
+                            !uint.TryParse(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FACE)),
+                                    message)), out face))
+                            throw new ScriptException(ScriptError.INVALID_FACE_SPECIFIED);
+                        MediaEntry[] faceMediaEntries = null;
+                        Client.Objects.RequestObjectMedia(primitive.ID,
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            (succeeded, version, faceMedia) =>
+                            {
+                                switch (succeeded)
+                                {
+                                    case true:
+                                        if (face >= faceMedia.Length)
+                                            throw new ScriptException(ScriptError.INVALID_FACE_SPECIFIED);
+                                        faceMediaEntries = faceMedia;
+                                        break;
+                                    default:
+                                        throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_OBJECT_MEDIA);
+                                }
+                            });
+                        wasCSVToStructure(
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)), message)),
+                            ref faceMediaEntries[face]);
+                        Client.Objects.UpdateObjectMedia(primitive.ID, faceMediaEntries,
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)));
                     };
                     break;
                 case ScriptKeys.SETOBJECTPERMISSIONS:
@@ -17375,7 +17659,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         float range;
                         if (
                             !float.TryParse(
@@ -18084,8 +18367,7 @@ namespace Corrade
                                 constructionData = (Primitive.ConstructionData) primitiveShapesFieldInfo.GetValue(null);
                                 break;
                             default:
-                                // Build the construction data as a default primitive box.
-                                constructionData = CORRADE_CONSTANTS.PRIMTIVE_BODIES.CUBE;
+                                constructionData = primitive.PrimData;
                                 break;
                         }
                         // ... and overwrite with manual data settings.
@@ -18095,6 +18377,114 @@ namespace Corrade
                         Client.Objects.SetShape(
                             Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                             primitive.LocalID, constructionData);
+                    };
+                    break;
+                case ScriptKeys.SETPRIMITIVEFLEXIBLEDATA:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                        }
+                        wasCSVToStructure(
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)), message)),
+                            ref primitive.Flexible);
+                        Client.Objects.SetFlexible(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, primitive.Flexible);
+                    };
+                    break;
+                case ScriptKeys.SETPRIMITIVELIGHTDATA:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                        }
+                        wasCSVToStructure(
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)), message)),
+                            ref primitive.Light);
+                        Client.Objects.SetLight(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, primitive.Light);
+                    };
+                    break;
+                case ScriptKeys.SETPRIMITIVEMATERIAL:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        {
+                            throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        float range;
+                        if (
+                            !float.TryParse(
+                                wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                out range))
+                        {
+                            range = Configuration.RANGE;
+                        }
+                        Primitive primitive = null;
+                        if (
+                            !FindPrimitive(
+                                StringOrUUID(wasInput(wasKeyValueGet(
+                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                range,
+                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                        }
+                        FieldInfo materialFieldInfo = typeof (Material).GetFields(BindingFlags.Public |
+                                                                                  BindingFlags.Static)
+                            .AsParallel().FirstOrDefault(
+                                o =>
+                                    string.Equals(o.Name, wasInput(wasKeyValueGet(
+                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MATERIAL)), message)),
+                                        StringComparison.InvariantCultureIgnoreCase));
+                        if (materialFieldInfo == null)
+                            throw new ScriptException(ScriptError.UNKNOWN_MATERIAL_TYPE);
+                        Client.Objects.SetMaterial(
+                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            primitive.LocalID, (Material) materialFieldInfo.GetValue(null));
                     };
                     break;
                 case ScriptKeys.SETPRIMITIVESCULPTDATA:
@@ -18123,13 +18513,12 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
-                        Primitive.SculptData sculptData = new Primitive.SculptData();
                         wasCSVToStructure(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)), message)),
-                            ref sculptData);
+                            ref primitive.Sculpt);
                         Client.Objects.SetSculpt(
                             Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
-                            primitive.LocalID, sculptData);
+                            primitive.LocalID, primitive.Sculpt);
                     };
                     break;
                 case ScriptKeys.SETPRIMITIVETEXTUREDATA:
@@ -26041,6 +26430,42 @@ namespace Corrade
             [Description("none")] NONE = 0,
 
             [IsCommand(true)] [CommandInputSyntax(
+                "<command=batchinvite>&<group=<UUID|STRING>>&<password=<STRING>>&[avatars=<UUID|STRING[,UUID|STRING...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("batchinvite")] BATCHINVITE,
+
+            [Description("avatars")] AVATARS,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setobjectmediadata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<face=<INTEGER>>&[data=<MediaEntry[,MediaEntry...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setobjectmediadata")] SETOBJECTMEDIADATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getobjectmediadata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<MediaEntry[,MediaEntry...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getobjectmediadata")] GETOBJECTMEDIADATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setprimitivematerial>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[material=<Material>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitivematerial")] SETPRIMITIVEMATERIAL,
+
+            [Description("material")] MATERIAL,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setprimitivelightdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<LightData[,LightData...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitivelightdata")] SETPRIMITIVELIGHTDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getprimitivelightdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<LightData [,LightData...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivelightdata")] GETPRIMITIVELIGHTDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=setprimitiveflexibledata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<FlexibleData[,FlexibleData...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitiveflexibledata")] SETPRIMITIVEFLEXIBLEDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getprimitiveflexibledata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<FlexibleData[,FlexibleData ...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitiveflexibledata")] GETPRIMITIVEFLEXIBLEDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
                 "<command=creategrass>&<group=<UUID|STRING>>&<password=<STRING>>>&[region=<STRING>]&<position=<VECTOR3>>&[rotation=<Quaternion>]&<type=<Grass>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("creategrass")] CREATEGRASS,
 
@@ -26053,7 +26478,7 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivebodytypes")] GETPRIMITIVEBODYTYPES,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getprimitivephysicsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<Primitive.PhysicsProperties[,Primitive.PhysicsProperties ...]>]&[callback=<STRING>]"
+                "<command=getprimitivephysicsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<PhysicsProperties[,PhysicsProperties ...]>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivephysicsdata")] GETPRIMITIVEPHYSICSDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
