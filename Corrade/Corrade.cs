@@ -4035,7 +4035,11 @@ namespace Corrade
                 if (string.IsNullOrEmpty(message)) return;
                 commandGroup = GetCorradeGroupFromMessage(message);
                 // do not process anything from unknown groups.
-                if (commandGroup.Equals(default(Group))) return;
+                switch (!commandGroup.Equals(default(Group)))
+                {
+                    case false:
+                        return;
+                }
             }
             catch (HttpListenerException)
             {
@@ -5593,7 +5597,11 @@ namespace Corrade
                     }
                     // If the group was not set properly, then bail.
                     Group commandGroup = GetCorradeGroupFromMessage(e.Message);
-                    if (commandGroup.Equals(default(Group))) return;
+                    switch (!commandGroup.Equals(default(Group)))
+                    {
+                        case false:
+                            return;
+                    }
                     // Spawn the command.
                     CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
                         () => HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString(), commandGroup),
@@ -6263,7 +6271,11 @@ namespace Corrade
 
             // If the group was not set properly, then bail.
             Group commandGroup = GetCorradeGroupFromMessage(args.IM.Message);
-            if (commandGroup.Equals(default(Group))) return;
+            switch (!commandGroup.Equals(default(Group)))
+            {
+                case false:
+                    return;
+            }
             // Otherwise process the command.
             CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
                 () =>
@@ -15452,37 +15464,41 @@ namespace Corrade
                                                 o.GroupName.Equals(commandGroup.Name,
                                                     StringComparison.OrdinalIgnoreCase));
                                 }
-                                // Get any afterburn messages.
+                                // Get any afterburn data.
+                                string afterBurnData =
+                                    wasInput(
+                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AFTERBURN)),
+                                            message));
                                 SerializableDictionary<string, string> afterburn =
                                     new SerializableDictionary<string, string>();
-                                HashSet<string> results = new HashSet<string>(wasGetEnumDescriptions<ResultKeys>());
-                                HashSet<string> scripts = new HashSet<string>(wasGetEnumDescriptions<ScriptKeys>());
-                                Parallel.ForEach(wasCSVToEnumerable(wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AFTERBURN)),
-                                        message)))
-                                    .AsParallel()
-                                    .Select((o, p) => new {o, p})
-                                    .GroupBy(q => q.p/2, q => q.o)
-                                    .Select(o => o.ToList())
-                                    .TakeWhile(o => o.Count%2 == 0)
-                                    .ToDictionary(o => o.First(), p => p.Last()), o =>
-                                    {
-                                        // remove keys that are script keys, result keys or invalid key-value pairs
-                                        if (string.IsNullOrEmpty(o.Key) || results.Contains(wasInput(o.Key)) ||
-                                            scripts.Contains(wasInput(o.Key)) ||
-                                            string.IsNullOrEmpty(o.Value))
-                                            return;
-                                        lock (LockObject)
+                                if (!string.IsNullOrEmpty(afterBurnData))
+                                {
+                                    HashSet<string> results = new HashSet<string>(wasGetEnumDescriptions<ResultKeys>());
+                                    HashSet<string> scripts = new HashSet<string>(wasGetEnumDescriptions<ScriptKeys>());
+                                    Parallel.ForEach(wasCSVToEnumerable(afterBurnData)
+                                        .AsParallel()
+                                        .Select((o, p) => new {o, p})
+                                        .GroupBy(q => q.p/2, q => q.o)
+                                        .Select(o => o.ToList())
+                                        .TakeWhile(o => o.Count%2 == 0)
+                                        .ToDictionary(o => o.First(), p => p.Last()), o =>
                                         {
-                                            afterburn.Add(o.Key, o.Value);
-                                        }
-                                    });
+                                            // remove keys that are script keys, result keys or invalid key-value pairs
+                                            if (string.IsNullOrEmpty(o.Key) || results.Contains(wasInput(o.Key)) ||
+                                                scripts.Contains(wasInput(o.Key)) ||
+                                                string.IsNullOrEmpty(o.Value))
+                                                return;
+                                            lock (LockObject)
+                                            {
+                                                afterburn.Add(o.Key, o.Value);
+                                            }
+                                        });
+                                }
                                 // Build any requested data for raw notifications.
-                                HashSet<string> data = new HashSet<string>();
-                                string fields = wasInput(
-                                    wasKeyValueGet(
-                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                string fields =
+                                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                         message));
+                                HashSet<string> data = new HashSet<string>();
                                 if (!string.IsNullOrEmpty(fields))
                                 {
                                     Parallel.ForEach(wasCSVToEnumerable(fields), o =>
@@ -15592,6 +15608,7 @@ namespace Corrade
                                         SerializableDictionary<Notifications, HashSet<string>>
                                             notificationDestination =
                                                 new SerializableDictionary<Notifications, HashSet<string>>();
+                                        object NotficatinDestinationLock = new object();
                                         Parallel.ForEach(o.NotificationDestination, p =>
                                         {
                                             switch (!wasCSVToEnumerable(notificationTypes)
@@ -15602,7 +15619,7 @@ namespace Corrade
                                                             .Equals(p.Key)))
                                             {
                                                 case true:
-                                                    lock (LockObject)
+                                                    lock (NotficatinDestinationLock)
                                                     {
                                                         notificationDestination.Add(p.Key, p.Value);
                                                     }
@@ -15610,9 +15627,10 @@ namespace Corrade
                                                 default:
                                                     HashSet<string> URLs =
                                                         new HashSet<string>(
-                                                            p.Value.AsParallel().Where(q => !q.Equals(url)));
+                                                            p.Value.AsParallel()
+                                                                .Where(q => !q.Equals(url, StringComparison.Ordinal)));
                                                     if (URLs.Count.Equals(0)) return;
-                                                    lock (LockObject)
+                                                    lock (NotficatinDestinationLock)
                                                     {
                                                         notificationDestination.Add(p.Key, URLs);
                                                     }
@@ -15902,11 +15920,14 @@ namespace Corrade
                                     o =>
                                         o.Item.Equals(itemUUID) && o.Channel.Equals(channel) &&
                                         !o.Button.IndexOf(label).Equals(-1));
-                            if (scriptDialog.Equals(default(ScriptDialog)))
+                            switch (!scriptDialog.Equals(default(ScriptDialog)))
                             {
-                                throw new ScriptException(ScriptError.NO_MATCHING_DIALOG_FOUND);
+                                case true:
+                                    ScriptDialogs.Remove(scriptDialog);
+                                    break;
+                                default:
+                                    throw new ScriptException(ScriptError.NO_MATCHING_DIALOG_FOUND);
                             }
-                            ScriptDialogs.Remove(scriptDialog);
                         }
                         Client.Self.ReplyToScriptDialog(channel, index, label, itemUUID);
                     };
@@ -21510,12 +21531,15 @@ namespace Corrade
                         (matchGroups, i) => new {matchGroups, i})
                     .SelectMany(@t => Enumerable.Range(0, @t.matchGroups[@t.i].Captures.Count),
                         (@t, j) => @t.matchGroups[@t.i].Captures[j].Value)));
-                if (string.IsNullOrEmpty(data))
+                switch (!string.IsNullOrEmpty(data))
                 {
-                    result.Remove(wasGetDescriptionFromEnumValue(ResultKeys.DATA));
-                    return;
+                    case true:
+                        result[wasGetDescriptionFromEnumValue(ResultKeys.DATA)] = data;
+                        break;
+                    default:
+                        result.Remove(wasGetDescriptionFromEnumValue(ResultKeys.DATA));
+                        break;
                 }
-                result[wasGetDescriptionFromEnumValue(ResultKeys.DATA)] = data;
             };
 
             // execute command, sift data and check for errors
@@ -21581,7 +21605,7 @@ namespace Corrade
                 case false:
                     return result.SelectMany(o => o);
             }
-            List<string> data = new List<string>();
+            List<string> data;
             object LockObject = new object();
             Parallel.ForEach(wasCSVToEnumerable(query), name =>
             {
@@ -21669,33 +21693,51 @@ namespace Corrade
         /// <param name="millisecondsTimeout">the time in milliseconds for the request to timeout</param>
         private static void wasPOST(string URL, Dictionary<string, string> message, uint millisecondsTimeout)
         {
-            HttpWebRequest request = (HttpWebRequest) WebRequest.Create(URL);
-            request.Proxy = WebRequest.DefaultWebProxy;
-            request.Timeout = (int) millisecondsTimeout;
-            request.AllowAutoRedirect = true;
-            request.AllowWriteStreamBuffering = true;
-            request.Pipelined = true;
-            request.KeepAlive = true;
-            request.ProtocolVersion = HttpVersion.Version11;
-            request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
-            request.Method = WebRequestMethods.Http.Post;
-            // set the content type based on chosen output filers
-            switch (Configuration.OUTPUT_FILTERS.Last())
+            HttpWebRequest request;
+            byte[] byteArray;
+            try
             {
-                case Filter.RFC1738:
-                    request.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
-                    break;
-                default:
-                    request.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.TEXT_PLAIN;
-                    break;
+                request = (HttpWebRequest) WebRequest.Create(URL);
+                request.Proxy = WebRequest.DefaultWebProxy;
+                request.Timeout = (int) millisecondsTimeout;
+                request.AllowAutoRedirect = true;
+                request.AllowWriteStreamBuffering = true;
+                request.Pipelined = true;
+                request.KeepAlive = true;
+                request.ProtocolVersion = HttpVersion.Version11;
+                request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+                request.Method = WebRequestMethods.Http.Post;
+                // set the content type based on chosen output filers
+                switch (Configuration.OUTPUT_FILTERS.Last())
+                {
+                    case Filter.RFC1738:
+                        request.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
+                        break;
+                    default:
+                        request.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.TEXT_PLAIN;
+                        break;
+                }
+                request.UserAgent = CORRADE_CONSTANTS.USER_AGENT;
+                byteArray =
+                    Encoding.UTF8.GetBytes(wasKeyValueEncode(message));
+                request.ContentLength = byteArray.Length;
             }
-            request.UserAgent = CORRADE_CONSTANTS.USER_AGENT;
-            byte[] byteArray =
-                Encoding.UTF8.GetBytes(wasKeyValueEncode(message));
-            request.ContentLength = byteArray.Length;
-            using (Stream dataStream = request.GetRequestStream())
+            catch (Exception ex)
             {
-                dataStream.Write(byteArray, 0, byteArray.Length);
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_BUILDING_POST_REQUEST), URL, ex.Message);
+                return;
+            }
+
+            try
+            {
+                using (Stream dataStream = request.GetRequestStream())
+                {
+                    dataStream.Write(byteArray, 0, byteArray.Length);
+                }
+            }
+            catch (WebException ex)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SENDING_POST_REQUEST), URL, ex.Message);
             }
         }
 
@@ -25697,7 +25739,9 @@ namespace Corrade
             [Description("notification throttled")] NOTIFICATION_THROTTLED,
             [Description("error updating inventory")] ERROR_UPDATING_INVENTORY,
             [Description("unable to load group members state")] UNABLE_TO_LOAD_GROUP_MEMBERS_STATE,
-            [Description("unable to save group members state")] UNABLE_TO_SAVE_GROUP_MEMBERS_STATE
+            [Description("unable to save group members state")] UNABLE_TO_SAVE_GROUP_MEMBERS_STATE,
+            [Description("error sending POST request")] ERROR_SENDING_POST_REQUEST,
+            [Description("error building POST request")] ERROR_BUILDING_POST_REQUEST
         }
 
         /// <summary>
