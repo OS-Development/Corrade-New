@@ -391,44 +391,33 @@ namespace Corrade
             {
                 lock (GroupMembersLock)
                 {
-                    if (!GroupMembers.ContainsKey(args.GroupID))
+                    if (GroupMembers.ContainsKey(args.GroupID))
                     {
-                        groupMembers.UnionWith(args.Members.Values.Select(o => o.ID));
-                        GroupMembersReplyEvent.Set();
-                        return;
+                        object LockObject = new object();
+                        Parallel.ForEach(
+                            args.Members.Values,
+                            o =>
+                            {
+                                if (GroupMembers[args.GroupID].Contains(o.ID)) return;
+                                lock (LockObject)
+                                {
+                                    joinedMembers.Add(o.ID);
+                                }
+                            });
+                        Parallel.ForEach(
+                            GroupMembers[args.GroupID],
+                            o =>
+                            {
+                                if (args.Members.Values.Any(p => p.ID.Equals(o))) return;
+                                lock (LockObject)
+                                {
+                                    partedMembers.Add(o);
+                                }
+                            });
                     }
                 }
-                object LockObject = new object();
-                Parallel.ForEach(
-                    args.Members.Values,
-                    o =>
-                    {
-                        lock (GroupMembersLock)
-                        {
-                            if (GroupMembers[args.GroupID].Contains(o.ID)) return;
-                        }
-                        lock (LockObject)
-                        {
-                            joinedMembers.Add(o.ID);
-                        }
-                    });
-                lock (GroupMembersLock)
-                {
-                    Parallel.ForEach(
-                        GroupMembers[args.GroupID],
-                        o =>
-                        {
-                            switch (!args.Members.Values.AsParallel().Any(p => p.ID.Equals(o)))
-                            {
-                                case true:
-                                    lock (LockObject)
-                                    {
-                                        partedMembers.Add(o);
-                                    }
-                                    break;
-                            }
-                        });
-                }
+                groupMembers.UnionWith(args.Members.Values.Select(o => o.ID));
+                GroupMembersReplyEvent.Set();
             };
 
             while (runGroupMembershipSweepThread)
@@ -498,14 +487,16 @@ namespace Corrade
                         }
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                     }
-                    lock (GroupMembersLock)
+
+                    if (!GroupMembers.ContainsKey(groupUUID))
                     {
-                        if (!GroupMembers.ContainsKey(groupUUID))
+                        lock (GroupMembersLock)
                         {
                             GroupMembers.Add(groupUUID, new HashSet<UUID>(groupMembers));
-                            continue;
                         }
+                        continue;
                     }
+
                     if (!memberCount.Count.Equals(0))
                     {
                         if (!memberCount.Dequeue().Equals(groupMembers.Count))
@@ -577,10 +568,13 @@ namespace Corrade
                     lock (GroupMembersLock)
                     {
                         GroupMembers[groupUUID].Clear();
-                        foreach (UUID member in groupMembers)
+                        Parallel.ForEach(groupMembers, o =>
                         {
-                            GroupMembers[groupUUID].Add(member);
-                        }
+                            lock (LockObject)
+                            {
+                                GroupMembers[groupUUID].Add(o);
+                            }
+                        });
                     }
                     groupMembers.Clear();
                 } while (!groupUUIDs.Count.Equals(0) && runGroupMembershipSweepThread);
@@ -2042,6 +2036,7 @@ namespace Corrade
             HashSet<Primitive> objectsPrimitives =
                 new HashSet<Primitive>(GetPrimitives(range, millisecondsTimeout, dataTimeout));
             HashSet<Avatar> objectsAvatars = new HashSet<Avatar>(GetAvatars(range, millisecondsTimeout, dataTimeout));
+            object LockObject = new object();
             Parallel.ForEach(objectsPrimitives, o =>
             {
                 switch (o.ParentID)
@@ -2055,14 +2050,20 @@ namespace Corrade
                                 switch (!o.ID.Equals(item))
                                 {
                                     case false:
-                                        selectedPrimitives.Add(o);
+                                        lock (LockObject)
+                                        {
+                                            selectedPrimitives.Add(o);
+                                        }
                                         break;
                                 }
                                 break;
                             }
                             if (item is string)
                             {
-                                selectedPrimitives.Add(o);
+                                lock (LockObject)
+                                {
+                                    selectedPrimitives.Add(o);
+                                }
                             }
                         }
                         break;
@@ -2081,14 +2082,20 @@ namespace Corrade
                                     switch (!o.ID.Equals(item))
                                     {
                                         case false:
-                                            selectedPrimitives.Add(o);
+                                            lock (LockObject)
+                                            {
+                                                selectedPrimitives.Add(o);
+                                            }
                                             break;
                                     }
                                     break;
                                 }
                                 if (item is string)
                                 {
-                                    selectedPrimitives.Add(o);
+                                    lock (LockObject)
+                                    {
+                                        selectedPrimitives.Add(o);
+                                    }
                                 }
                                 break;
                             }
@@ -2107,14 +2114,20 @@ namespace Corrade
                                     switch (!o.ID.Equals(item))
                                     {
                                         case false:
-                                            selectedPrimitives.Add(o);
+                                            lock (LockObject)
+                                            {
+                                                selectedPrimitives.Add(o);
+                                            }
                                             break;
                                     }
                                     break;
                                 }
                                 if (item is string)
                                 {
-                                    selectedPrimitives.Add(o);
+                                    lock (LockObject)
+                                    {
+                                        selectedPrimitives.Add(o);
+                                    }
                                 }
                             }
                         }
@@ -2766,6 +2779,7 @@ namespace Corrade
                 scansPrimitives
                     .AsParallel().ToDictionary(o => o.ID, p => new Stopwatch()));
             HashSet<long> times = new HashSet<long>(new[] {(long) dataTimeout});
+            object LockObject = new object();
             EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler = (sender, args) =>
             {
                 KeyValuePair<UUID, ManualResetEvent> queueElement =
@@ -2777,10 +2791,13 @@ namespace Corrade
                             scansPrimitives.AsParallel().FirstOrDefault(o => o.ID.Equals(args.Properties.ObjectID));
                         if (updatedPrimitive == null) return;
                         updatedPrimitive.Properties = args.Properties;
-                        localPrimitives.Add(updatedPrimitive);
-                        stopWatch[queueElement.Key].Stop();
-                        times.Add(stopWatch[queueElement.Key].ElapsedMilliseconds);
-                        queueElement.Value.Set();
+                        lock (LockObject)
+                        {
+                            localPrimitives.Add(updatedPrimitive);
+                            stopWatch[queueElement.Key].Stop();
+                            times.Add(stopWatch[queueElement.Key].ElapsedMilliseconds);
+                            queueElement.Value.Set();
+                        }
                         break;
                 }
             };
@@ -2791,15 +2808,23 @@ namespace Corrade
                     Primitive queryPrimitive =
                         scansPrimitives.AsParallel().SingleOrDefault(p => p.ID.Equals(o.Key));
                     if (queryPrimitive == null) return;
-                    stopWatch[queryPrimitive.ID].Start();
+                    lock (LockObject)
+                    {
+                        stopWatch[queryPrimitive.ID].Start();
+                    }
                     Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
                     Client.Objects.SelectObject(
                         Client.Network.Simulators.FirstOrDefault(p => p.Handle.Equals(queryPrimitive.RegionHandle)),
                         queryPrimitive.LocalID,
                         true);
-                    uint average = (uint) times.Average();
-                    primitiveEvents[queryPrimitive.ID].WaitOne((int)
-                        (average != 0 ? average : dataTimeout), false);
+                    ManualResetEvent primitiveEvent;
+                    int averageTime;
+                    lock (LockObject)
+                    {
+                        primitiveEvent = primitiveEvents[queryPrimitive.ID];
+                        averageTime = (int) times.Average();
+                    }
+                    primitiveEvent.WaitOne(averageTime != 0 ? averageTime : (int) dataTimeout, false);
                     Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
                 });
             }
@@ -3559,11 +3584,10 @@ namespace Corrade
             }
             // Load Corrade caches.
             LoadCorradeCache.Invoke();
+            // Load group members.
+            LoadGroupMembersState.Invoke();
             // Load Corrade states.
-            lock (GroupNotificationsLock)
-            {
-                LoadNotificationState.Invoke();
-            }
+            LoadNotificationState.Invoke();
             // Start the callback thread to send callbacks.
             Thread CallbackThread = new Thread(() =>
             {
@@ -3680,6 +3704,11 @@ namespace Corrade
             lock (GroupNotificationsLock)
             {
                 SaveNotificationState.Invoke();
+            }
+            // Save group members.
+            lock (GroupMembersLock)
+            {
+                SaveGroupMembersState.Invoke();
             }
             // Save Corrade caches.
             SaveCorradeCache.Invoke();
@@ -13954,13 +13983,20 @@ namespace Corrade
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         HashSet<AssetType> assetTypes = new HashSet<AssetType>();
+                        object LockObject = new object();
                         Parallel.ForEach(wasCSVToEnumerable(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
                                 message))),
                             o => Parallel.ForEach(
                                 typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
-                                q => assetTypes.Add((AssetType) q.GetValue(null))));
+                                q =>
+                                {
+                                    lock (LockObject)
+                                    {
+                                        assetTypes.Add((AssetType) q.GetValue(null));
+                                    }
+                                }));
                         string pattern =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATTERN)),
                                 message));
@@ -13978,7 +14014,6 @@ namespace Corrade
                             throw new ScriptException(ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                         }
                         List<string> csv = new List<string>();
-                        object LockObject = new object();
                         Parallel.ForEach(FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, search
                             ),
                             o =>
@@ -14009,13 +14044,20 @@ namespace Corrade
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         HashSet<AssetType> assetTypes = new HashSet<AssetType>();
+                        object LockObject = new object();
                         Parallel.ForEach(wasCSVToEnumerable(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
                                 message))),
                             o => Parallel.ForEach(
                                 typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
-                                q => assetTypes.Add((AssetType) q.GetValue(null))));
+                                q =>
+                                {
+                                    lock (LockObject)
+                                    {
+                                        assetTypes.Add((AssetType) q.GetValue(null));
+                                    }
+                                }));
                         string pattern =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATTERN)),
                                 message));
@@ -14035,7 +14077,13 @@ namespace Corrade
                         List<string> csv = new List<string>();
                         Parallel.ForEach(FindInventoryPath<InventoryBase>(Client.Inventory.Store.RootNode,
                             search, new LinkedList<string>()).AsParallel().Select(o => o.Value),
-                            o => csv.Add(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR, o.ToArray())));
+                            o =>
+                            {
+                                lock (LockObject)
+                                {
+                                    csv.Add(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR, o.ToArray()));
+                                }
+                            });
                         if (!csv.Count.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -15477,8 +15525,11 @@ namespace Corrade
                                                 (Notifications) notificationValue))
                                         {
                                             case true:
-                                                notification.NotificationDestination.Add(
-                                                    (Notifications) notificationValue, new HashSet<string> {url});
+                                                lock (LockObject)
+                                                {
+                                                    notification.NotificationDestination.Add(
+                                                        (Notifications) notificationValue, new HashSet<string> {url});
+                                                }
                                                 break;
                                             default:
                                                 // notification destination is already there
@@ -15487,16 +15538,22 @@ namespace Corrade
                                                 switch (action)
                                                 {
                                                     case Action.ADD:
-                                                        notification.NotificationDestination[
-                                                            (Notifications) notificationValue]
-                                                            .Add(url);
+                                                        lock (LockObject)
+                                                        {
+                                                            notification.NotificationDestination[
+                                                                (Notifications) notificationValue]
+                                                                .Add(url);
+                                                        }
                                                         break;
                                                     case Action.SET:
-                                                        notification.NotificationDestination[
-                                                            (Notifications) notificationValue] = new HashSet<string>
-                                                            {
-                                                                url
-                                                            };
+                                                        lock (LockObject)
+                                                        {
+                                                            notification.NotificationDestination[
+                                                                (Notifications) notificationValue] = new HashSet<string>
+                                                                {
+                                                                    url
+                                                                };
+                                                        }
                                                         break;
                                                 }
 
@@ -15526,7 +15583,10 @@ namespace Corrade
                                              !o.NotificationDestination.Values.Any(p => p.Contains(url))) ||
                                             !o.GroupName.Equals(commandGroup.Name, StringComparison.OrdinalIgnoreCase))
                                         {
-                                            groupNotifications.Add(o);
+                                            lock (LockObject)
+                                            {
+                                                groupNotifications.Add(o);
+                                            }
                                             return;
                                         }
                                         SerializableDictionary<Notifications, HashSet<string>>
@@ -15542,29 +15602,43 @@ namespace Corrade
                                                             .Equals(p.Key)))
                                             {
                                                 case true:
-                                                    notificationDestination.Add(p.Key, p.Value);
+                                                    lock (LockObject)
+                                                    {
+                                                        notificationDestination.Add(p.Key, p.Value);
+                                                    }
                                                     break;
                                                 default:
                                                     HashSet<string> URLs =
-                                                        new HashSet<string>(p.Value.Where(q => !q.Equals(url)));
+                                                        new HashSet<string>(
+                                                            p.Value.AsParallel().Where(q => !q.Equals(url)));
                                                     if (URLs.Count.Equals(0)) return;
-                                                    notificationDestination.Add(p.Key, URLs);
+                                                    lock (LockObject)
+                                                    {
+                                                        notificationDestination.Add(p.Key, URLs);
+                                                    }
                                                     break;
                                             }
                                         });
-                                        groupNotifications.Add(new Notification
+                                        lock (LockObject)
                                         {
-                                            GroupName = o.GroupName,
-                                            GroupUUID = o.GroupUUID,
-                                            NotificationMask =
-                                                notificationDestination.Keys.Cast<uint>().Aggregate((p, q) => p |= q),
-                                            NotificationDestination = notificationDestination,
-                                            Data = o.Data,
-                                            Afterburn = o.Afterburn
-                                        });
+                                            groupNotifications.Add(new Notification
+                                            {
+                                                GroupName = o.GroupName,
+                                                GroupUUID = o.GroupUUID,
+                                                NotificationMask =
+                                                    notificationDestination.Keys.Cast<uint>()
+                                                        .Aggregate((p, q) => p |= q),
+                                                NotificationDestination = notificationDestination,
+                                                Data = o.Data,
+                                                Afterburn = o.Afterburn
+                                            });
+                                        }
                                     });
                                     // Now assign the new notifications.
-                                    GroupNotifications = groupNotifications;
+                                    lock (GroupNotificationsLock)
+                                    {
+                                        GroupNotifications = groupNotifications;
+                                    }
                                 }
                                 break;
                             case Action.LIST:
@@ -20399,28 +20473,33 @@ namespace Corrade
                         HashSet<UUID> exportTexturesSet = new HashSet<UUID>();
                         Parallel.ForEach(exportPrimitivesSet, o =>
                         {
-                            lock (LockObject)
-                            {
-                                if (!o.Textures.DefaultTexture.TextureID.Equals(Primitive.TextureEntry.WHITE_TEXTURE) &&
-                                    !exportTexturesSet.Contains(o.Textures.DefaultTexture.TextureID))
-                                    exportTexturesSet.Add(new UUID(o.Textures.DefaultTexture.TextureID));
-                            }
-                            Parallel.ForEach(o.Textures.FaceTextures, p =>
+                            if (!o.Textures.DefaultTexture.TextureID.Equals(Primitive.TextureEntry.WHITE_TEXTURE) &&
+                                !exportTexturesSet.Contains(o.Textures.DefaultTexture.TextureID))
                             {
                                 lock (LockObject)
                                 {
-                                    if (p != null &&
-                                        !p.TextureID.Equals(Primitive.TextureEntry.WHITE_TEXTURE) &&
-                                        !exportTexturesSet.Contains(p.TextureID))
+                                    exportTexturesSet.Add(new UUID(o.Textures.DefaultTexture.TextureID));
+                                }
+                            }
+                            Parallel.ForEach(o.Textures.FaceTextures, p =>
+                            {
+                                if (p != null &&
+                                    !p.TextureID.Equals(Primitive.TextureEntry.WHITE_TEXTURE) &&
+                                    !exportTexturesSet.Contains(p.TextureID))
+                                {
+                                    lock (LockObject)
+                                    {
                                         exportTexturesSet.Add(new UUID(p.TextureID));
+                                    }
                                 }
                             });
-
-                            lock (LockObject)
+                            if (o.Sculpt != null && !o.Sculpt.SculptTexture.Equals(UUID.Zero) &&
+                                !exportTexturesSet.Contains(o.Sculpt.SculptTexture))
                             {
-                                if (o.Sculpt != null && !o.Sculpt.SculptTexture.Equals(UUID.Zero) &&
-                                    !exportTexturesSet.Contains(o.Sculpt.SculptTexture))
+                                lock (LockObject)
+                                {
                                     exportTexturesSet.Add(new UUID(o.Sculpt.SculptTexture));
+                                }
                             }
                         });
 
@@ -20681,21 +20760,20 @@ namespace Corrade
                         Parallel.ForEach(exportPrimitivesSet, o =>
                         {
                             Primitive.TextureEntryFace defaultTexture = o.Textures.DefaultTexture;
-                            lock (LockObject)
+                            if (defaultTexture != null && !exportTexturesSet.Contains(defaultTexture.TextureID))
                             {
-                                if (defaultTexture != null && !exportTexturesSet.Contains(defaultTexture.TextureID))
+                                lock (LockObject)
+                                {
                                     exportTexturesSet.Add(defaultTexture.TextureID);
+                                }
                             }
                             Parallel.ForEach(o.Textures.FaceTextures, p =>
                             {
-                                if (p != null)
+                                if (p != null && !exportTexturesSet.Contains(p.TextureID))
                                 {
                                     lock (LockObject)
                                     {
-                                        if (!exportTexturesSet.Contains(p.TextureID))
-                                        {
-                                            exportTexturesSet.Add(p.TextureID);
-                                        }
+                                        exportTexturesSet.Add(p.TextureID);
                                     }
                                 }
                             });
@@ -21503,17 +21581,19 @@ namespace Corrade
                 case false:
                     return result.SelectMany(o => o);
             }
+            List<string> data = new List<string>();
             object LockObject = new object();
             Parallel.ForEach(wasCSVToEnumerable(query), name =>
             {
                 KeyValuePair<FieldInfo, object> fi = wasGetFields(structure, structure.GetType().Name)
                     .AsParallel().FirstOrDefault(o => o.Key.Name.Equals(name, StringComparison.Ordinal));
 
-                lock (LockObject)
+
+                data = new List<string> {name};
+                data.AddRange(wasGetInfo(fi.Key, fi.Value));
+                if (data.Count >= 2)
                 {
-                    List<string> data = new List<string> {name};
-                    data.AddRange(wasGetInfo(fi.Key, fi.Value));
-                    if (data.Count >= 2)
+                    lock (LockObject)
                     {
                         result.Add(data.ToArray());
                     }
@@ -21523,11 +21603,12 @@ namespace Corrade
                     wasGetProperties(structure, structure.GetType().Name)
                         .AsParallel().FirstOrDefault(
                             o => o.Key.Name.Equals(name, StringComparison.Ordinal));
-                lock (LockObject)
+
+                data = new List<string> {name};
+                data.AddRange(wasGetInfo(pi.Key, pi.Value));
+                if (data.Count >= 2)
                 {
-                    List<string> data = new List<string> {name};
-                    data.AddRange(wasGetInfo(pi.Key, pi.Value));
-                    if (data.Count >= 2)
+                    lock (LockObject)
                     {
                         result.Add(data.ToArray());
                     }
@@ -21969,6 +22050,7 @@ namespace Corrade
             public const string LOG_FILE_EXTENSION = @"log";
             public const string STATE_DIRECTORY = @"state";
             public const string NOTIFICATIONS_STATE_FILE = @"Notifications.state";
+            public const string GROUP_MEMBERS_STATE_FILE = @"GroupMembers.state";
 
             public static readonly Regex AvatarFullNameRegex = new Regex(@"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$",
                 RegexOptions.Compiled);
@@ -25310,6 +25392,8 @@ namespace Corrade
                         .Any(o => !(o.NotificationMask & (uint) Notifications.NOTIFICATION_VIEWER_EFFECT).Equals(0)))
                 {
                     case true:
+                        // Don't start if the expiration thread is already started.
+                        if (EffectsExpirationThread != null) return;
                         // Start sphere and beam effect expiration thread
                         runEffectsExpirationThread = true;
                         EffectsExpirationThread = new Thread(() =>
@@ -25387,6 +25471,8 @@ namespace Corrade
                         switch (ENABLE_HTTP_SERVER)
                         {
                             case true:
+                                // Don't start if the HTTP server is already started.
+                                if (HTTPListenerThread != null) return;
                                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.STARTING_HTTP_SERVER));
                                 runHTTPServer = true;
                                 HTTPListenerThread = new Thread(() =>
@@ -25609,7 +25695,9 @@ namespace Corrade
             [Description("error setting up AIML configuration watcher")] ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER,
             [Description("callback throttled")] CALLBACK_THROTTLED,
             [Description("notification throttled")] NOTIFICATION_THROTTLED,
-            [Description("error updating inventory")] ERROR_UPDATING_INVENTORY
+            [Description("error updating inventory")] ERROR_UPDATING_INVENTORY,
+            [Description("unable to load group members state")] UNABLE_TO_LOAD_GROUP_MEMBERS_STATE,
+            [Description("unable to save group members state")] UNABLE_TO_SAVE_GROUP_MEMBERS_STATE
         }
 
         /// <summary>
@@ -25762,14 +25850,24 @@ namespace Corrade
                         lock (GroupExecutionTimeLock)
                         {
                             List<UUID> RemoveGroups = new List<UUID>();
+                            object LockObject = new object();
                             Parallel.ForEach(GroupExecutionTime, o =>
                             {
                                 if ((DateTime.Now - o.Value.TimeStamp).Milliseconds > expiration)
                                 {
-                                    RemoveGroups.Add(o.Key);
+                                    lock (LockObject)
+                                    {
+                                        RemoveGroups.Add(o.Key);
+                                    }
                                 }
                             });
-                            Parallel.ForEach(RemoveGroups, o => { GroupExecutionTime.Remove(o); });
+                            Parallel.ForEach(RemoveGroups, o =>
+                            {
+                                lock (LockObject)
+                                {
+                                    GroupExecutionTime.Remove(o);
+                                }
+                            });
                         }
                         int sleepTime = 0;
                         List<KeyValuePair<UUID, GroupExecution>> sortedTimeGroups;
@@ -27782,8 +27880,8 @@ namespace Corrade
         private static readonly HashSet<ScriptDialog> ScriptDialogs = new HashSet<ScriptDialog>();
         private static readonly object ScriptDialogLock = new object();
 
-        private static readonly Dictionary<UUID, HashSet<UUID>> GroupMembers =
-            new Dictionary<UUID, HashSet<UUID>>();
+        private static readonly SerializableDictionary<UUID, HashSet<UUID>> GroupMembers =
+            new SerializableDictionary<UUID, HashSet<UUID>>();
 
         private static readonly object GroupMembersLock = new object();
         private static readonly Hashtable GroupWorkers = new Hashtable();
@@ -28112,13 +28210,16 @@ namespace Corrade
                         }
                         Parallel.ForEach(closureFolders, p =>
                         {
-                            lock (LockObject)
+                            if (inventoryFolders.ContainsKey(p.Key))
                             {
-                                if (inventoryFolders.ContainsKey(p.Key))
+                                lock (LockObject)
                                 {
                                     inventoryFolders.Remove(p.Key);
                                 }
-                                if (inventoryStopwatch.ContainsKey(p.Key))
+                            }
+                            if (inventoryStopwatch.ContainsKey(p.Key))
+                            {
+                                lock (LockObject)
                                 {
                                     inventoryStopwatch.Remove(p.Key);
                                 }
@@ -28200,6 +28301,70 @@ namespace Corrade
         };
 
         /// <summary>
+        ///     Saves Corrade group members.
+        /// </summary>
+        private static readonly System.Action SaveGroupMembersState = () =>
+        {
+            if (!GroupMembers.Count.Equals(0))
+            {
+                try
+                {
+                    using (
+                        StreamWriter writer =
+                            new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                                CORRADE_CONSTANTS.GROUP_MEMBERS_STATE_FILE), false, Encoding.UTF8))
+                    {
+                        XmlSerializer serializer =
+                            new XmlSerializer(typeof (SerializableDictionary<UUID, HashSet<UUID>>));
+                        serializer.Serialize(writer, GroupMembers);
+                        writer.Flush();
+                    }
+                }
+                catch (Exception e)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_GROUP_MEMBERS_STATE),
+                        e.Message);
+                }
+            }
+        };
+
+        /// <summary>
+        ///     Loads Corrade notifications.
+        /// </summary>
+        private static readonly System.Action LoadGroupMembersState = () =>
+        {
+            string groupMembersStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                CORRADE_CONSTANTS.GROUP_MEMBERS_STATE_FILE);
+            if (File.Exists(groupMembersStateFile))
+            {
+                try
+                {
+                    using (StreamReader stream = new StreamReader(groupMembersStateFile, Encoding.UTF8))
+                    {
+                        XmlSerializer serializer =
+                            new XmlSerializer(typeof (SerializableDictionary<UUID, HashSet<UUID>>));
+                        Parallel.ForEach((SerializableDictionary<UUID, HashSet<UUID>>) serializer.Deserialize(stream),
+                            o =>
+                            {
+                                if (!Configuration.GROUPS.AsParallel().Any(p => p.UUID.Equals(o.Key)) ||
+                                    GroupMembers.Contains(o)) return;
+                                lock (GroupMembersLock)
+                                {
+                                    GroupMembers.Add(o.Key, o.Value);
+                                }
+                            });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_GROUP_MEMBERS_STATE),
+                        ex.Message);
+                }
+            }
+        };
+
+        /// <summary>
         ///     Saves Corrade notifications.
         /// </summary>
         private static readonly System.Action SaveNotificationState = () =>
@@ -28245,7 +28410,10 @@ namespace Corrade
                             {
                                 if (!Configuration.GROUPS.AsParallel().Any(p => p.Name.Equals(o.GroupName)) ||
                                     GroupNotifications.Contains(o)) return;
-                                GroupNotifications.Add(o);
+                                lock (GroupNotificationsLock)
+                                {
+                                    GroupNotifications.Add(o);
+                                }
                             });
                     }
                 }
