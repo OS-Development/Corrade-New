@@ -444,7 +444,7 @@ namespace Corrade
 
 
                 // Bail if no configured groups are also joined.
-                if (groupUUIDs.Count.Equals(0)) continue;
+                if (!groupUUIDs.Any()) continue;
 
                 // Get the last member count.
                 memberCount.Clear();
@@ -497,11 +497,11 @@ namespace Corrade
                         continue;
                     }
 
-                    if (!memberCount.Count.Equals(0))
+                    if (memberCount.Any())
                     {
                         if (!memberCount.Dequeue().Equals(groupMembers.Count))
                         {
-                            if (!joinedMembers.Count.Equals(0))
+                            if (joinedMembers.Any())
                             {
                                 Parallel.ForEach(
                                     joinedMembers,
@@ -532,7 +532,7 @@ namespace Corrade
                                     });
                             }
                             joinedMembers.Clear();
-                            if (!partedMembers.Count.Equals(0))
+                            if (partedMembers.Any())
                             {
                                 Parallel.ForEach(
                                     partedMembers,
@@ -577,7 +577,7 @@ namespace Corrade
                         });
                     }
                     groupMembers.Clear();
-                } while (!groupUUIDs.Count.Equals(0) && runGroupMembershipSweepThread);
+                } while (groupUUIDs.Any() && runGroupMembershipSweepThread);
             }
         }
 
@@ -634,7 +634,7 @@ namespace Corrade
         /// <returns>a combined path</returns>
         private static string wasPathCombine(params string[] paths)
         {
-            return !paths.Length.Equals(0)
+            return paths.Any()
                 ? paths.Length < 2
                     ? paths[0]
                     : Path.Combine(Path.Combine(paths[0], paths[1]), wasPathCombine(paths.Skip(2).ToArray()))
@@ -1035,7 +1035,7 @@ namespace Corrade
             PropertyInfo pi = (object) info as PropertyInfo;
             if (pi != null)
             {
-                if (!pi.GetIndexParameters().Length.Equals(0))
+                if (pi.GetIndexParameters().Any())
                 {
                     return value;
                 }
@@ -1062,7 +1062,6 @@ namespace Corrade
             if (data is Array || data is IList)
             {
                 IList iList = (IList) data;
-                if (iList.Count.Equals(0)) yield break;
                 foreach (object item in iList.Cast<object>().Where(o => o != null))
                 {
                     // These are index collections so pre-prend an index.
@@ -1101,8 +1100,7 @@ namespace Corrade
             // Handle Dictionary
             if (data is IDictionary)
             {
-                Hashtable dictionary = new Hashtable(data as IDictionary);
-                if (dictionary.Count.Equals(0)) yield break;
+                IDictionary dictionary = (IDictionary) data;
                 foreach (DictionaryEntry entry in dictionary)
                 {
                     // First the keys.
@@ -1166,9 +1164,7 @@ namespace Corrade
             {
                 IDictionary iDictionary = internalDictionaryInfo.GetValue(data) as IDictionary;
                 if (iDictionary == null) yield break;
-                Hashtable internalDictionary = new Hashtable(iDictionary);
-                if (internalDictionary.Count.Equals(0)) yield break;
-                foreach (DictionaryEntry entry in internalDictionary)
+                foreach (DictionaryEntry entry in iDictionary)
                 {
                     // First the keys.
                     foreach (KeyValuePair<FieldInfo, object> fi in wasGetFields(entry.Key, entry.Key.GetType().Name))
@@ -1879,13 +1875,10 @@ namespace Corrade
             string group =
                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)), message));
             UUID groupUUID;
-            switch (UUID.TryParse(group, out groupUUID))
-            {
-                case true:
-                    return Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
-                default:
-                    return Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.Name.Equals(group));
-            }
+            return UUID.TryParse(group, out groupUUID)
+                ? Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID))
+                : Configuration.GROUPS.AsParallel()
+                    .FirstOrDefault(o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>
@@ -1912,10 +1905,7 @@ namespace Corrade
         /// <returns>true if the connected grid is Second Life</returns>
         private static bool IsSecondLife()
         {
-            lock (ClientInstanceNetworkLock)
-            {
-                return Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE);
-            }
+            return Client.Network.CurrentSim.SimVersion.Contains(LINDEN_CONSTANTS.GRID.SECOND_LIFE);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1965,7 +1955,6 @@ namespace Corrade
         private static bool GetParcelAtPosition(Simulator simulator, Vector3 position,
             ref Parcel parcel)
         {
-            HashSet<Parcel> localParcels = new HashSet<Parcel>();
             ManualResetEvent RequestAllSimParcelsEvent = new ManualResetEvent(false);
             EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedDelegate =
                 (sender, args) => RequestAllSimParcelsEvent.Set();
@@ -1987,19 +1976,24 @@ namespace Corrade
                     return false;
                 }
                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;
-                simulator.Parcels.ForEach(currentParcel =>
-                {
-                    if (!(position.X >= currentParcel.AABBMin.X) || !(position.X <= currentParcel.AABBMax.X) ||
-                        !(position.Y >= currentParcel.AABBMin.Y) || !(position.Y <= currentParcel.AABBMax.Y))
-                        return;
-                    localParcels.Add(currentParcel);
-                });
             }
+            HashSet<Parcel> localParcels = new HashSet<Parcel>();
+            simulator.Parcels.ForEach(o =>
+            {
+                if (!(position.X >= o.AABBMin.X) || !(position.X <= o.AABBMax.X) ||
+                    !(position.Y >= o.AABBMin.Y) || !(position.Y <= o.AABBMax.Y))
+                    return;
+                localParcels.Add(o);
+            });
             Parcel localParcel = localParcels.OrderBy(o => Vector3.Distance(o.AABBMin, o.AABBMax)).FirstOrDefault();
-            if (localParcel == null)
-                return false;
-            parcel = localParcel;
-            return true;
+            switch (localParcel != null)
+            {
+                case true:
+                    parcel = localParcel;
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -2134,7 +2128,7 @@ namespace Corrade
                         break;
                 }
             });
-            if (selectedPrimitives.Count.Equals(0)) return false;
+            if (!selectedPrimitives.Any()) return false;
             if (!UpdatePrimitives(ref selectedPrimitives, dataTimeout))
                 return false;
             primitive =
@@ -2216,11 +2210,14 @@ namespace Corrade
                     return false;
             }
 
-            if (localFacetedMesh == null)
-                return false;
-
-            facetedMesh = localFacetedMesh;
-            return true;
+            switch (localFacetedMesh != null)
+            {
+                case true:
+                    facetedMesh = localFacetedMesh;
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         /// <summary>
@@ -2856,27 +2853,45 @@ namespace Corrade
             object LockObject = new object();
             EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
             {
-                avatarAlarms[args.AvatarID].Alarm(dataTimeout);
-                avatarUpdates[args.AvatarID].ProfileInterests = args.Interests;
+                lock (LockObject)
+                {
+                    avatarAlarms[args.AvatarID].Alarm(dataTimeout);
+                    avatarUpdates[args.AvatarID].ProfileInterests = args.Interests;
+                }
             };
             EventHandler<AvatarPropertiesReplyEventArgs> AvatarPropertiesReplyEventHandler =
                 (sender, args) =>
                 {
-                    avatarAlarms[args.AvatarID].Alarm(dataTimeout);
-                    avatarUpdates[args.AvatarID].ProfileProperties = args.Properties;
+                    lock (LockObject)
+                    {
+                        avatarAlarms[args.AvatarID].Alarm(dataTimeout);
+                        avatarUpdates[args.AvatarID].ProfileProperties = args.Properties;
+                    }
                 };
             EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
             {
-                avatarAlarms[args.AvatarID].Alarm(dataTimeout);
                 lock (LockObject)
                 {
+                    avatarAlarms[args.AvatarID].Alarm(dataTimeout);
                     avatarUpdates[args.AvatarID].Groups.AddRange(args.Groups.Select(o => o.GroupID));
                 }
             };
             EventHandler<AvatarPicksReplyEventArgs> AvatarPicksReplyEventHandler =
-                (sender, args) => avatarAlarms[args.AvatarID].Alarm(dataTimeout);
+                (sender, args) =>
+                {
+                    lock (LockObject)
+                    {
+                        avatarAlarms[args.AvatarID].Alarm(dataTimeout);
+                    }
+                };
             EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedReplyEventHandler =
-                (sender, args) => avatarAlarms[args.AvatarID].Alarm(dataTimeout);
+                (sender, args) =>
+                {
+                    lock (LockObject)
+                    {
+                        avatarAlarms[args.AvatarID].Alarm(dataTimeout);
+                    }
+                };
             lock (ClientInstanceAvatarsLock)
             {
                 Parallel.ForEach(scansAvatars, o =>
@@ -2889,7 +2904,12 @@ namespace Corrade
                     Client.Avatars.RequestAvatarProperties(o.ID);
                     Client.Avatars.RequestAvatarPicks(o.ID);
                     Client.Avatars.RequestAvatarClassified(o.ID);
-                    avatarAlarms[o.ID].Signal.WaitOne((int) millisecondsTimeout, false);
+                    wasAdaptiveAlarm avatarAlarm;
+                    lock (LockObject)
+                    {
+                        avatarAlarm = avatarAlarms[o.ID];
+                    }
+                    avatarAlarm.Signal.WaitOne((int) millisecondsTimeout, false);
                     Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
                     Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
                     Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
@@ -2898,15 +2918,19 @@ namespace Corrade
                 });
             }
 
-            avatars = new HashSet<Avatar>(avatarUpdates.Values);
-
-            return
+            switch (
                 avatarUpdates.Values.AsParallel()
                     .Any(
                         o =>
-                            o != null &&
-                            !o.ProfileInterests.Equals(default(Avatar.Interests)) &&
-                            !o.ProfileProperties.Equals(default(Avatar.AvatarProperties)));
+                            o != null && !o.ProfileInterests.Equals(default(Avatar.Interests)) &&
+                            !o.ProfileProperties.Equals(default(Avatar.AvatarProperties))))
+            {
+                case true:
+                    avatars = new HashSet<Avatar>(avatarUpdates.Values);
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -2942,10 +2966,15 @@ namespace Corrade
             Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
             lock (LockObject)
             {
-                if (currentGroups.Count.Equals(0)) return false;
-                groups = new HashSet<UUID>(currentGroups);
+                switch (currentGroups.Any())
+                {
+                    case true:
+                        groups = new HashSet<UUID>(currentGroups);
+                        return true;
+                    default:
+                        return false;
+                }
             }
-            return true;
         }
 
         /// <summary>
@@ -2959,7 +2988,7 @@ namespace Corrade
         {
             lock (Cache.Locks.CurrentGroupsCacheLock)
             {
-                if (!Cache.CurrentGroupsCache.Count.Equals(0))
+                if (Cache.CurrentGroupsCache.Any())
                 {
                     groups = Cache.CurrentGroupsCache;
                     return true;
@@ -2998,12 +3027,12 @@ namespace Corrade
                     new HashSet<Primitive>(Client.Network.CurrentSim.ObjectsPrimitives.FindAll(
                         o => o.ParentID.Equals(Client.Self.LocalID)));
             }
-            Hashtable primitiveQueue = new Hashtable(primitives.ToDictionary(o => o.ID, o => o.LocalID));
+            Dictionary<UUID, uint> primitiveQueue = primitives.ToDictionary(o => o.ID, o => o.LocalID);
             ManualResetEvent ObjectPropertiesEvent = new ManualResetEvent(false);
             EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler = (sender, args) =>
             {
                 primitiveQueue.Remove(args.Properties.ObjectID);
-                if (!primitiveQueue.Count.Equals(0)) return;
+                if (primitiveQueue.Any()) return;
                 ObjectPropertiesEvent.Set();
             };
             lock (ClientInstanceObjectsLock)
@@ -3169,7 +3198,9 @@ namespace Corrade
             foreach (
                 InventoryNode node in
                     rootFolder.Nodes.Values.AsParallel()
-                        .Where(node => node.Data is InventoryFolder && node.Data.Name.Equals(folder))
+                        .Where(
+                            node =>
+                                node.Data is InventoryFolder && node.Data.Name.Equals(folder, StringComparison.Ordinal))
                 )
             {
                 foreach (InventoryNode item in node.Nodes.Values)
@@ -3331,7 +3362,7 @@ namespace Corrade
         {
             if (Environment.UserInteractive)
             {
-                if (!args.Length.Equals(0))
+                if (args.Any())
                 {
                     string action = string.Empty;
                     for (int i = 0; i < args.Length; ++i)
@@ -3596,7 +3627,7 @@ namespace Corrade
                     try
                     {
                         Thread.Sleep((int) Configuration.CALLBACK_THROTTLE);
-                        if (CallbackQueue.Count.Equals(0)) continue;
+                        if (!CallbackQueue.Any()) continue;
                         CallbackQueueElement callbackQueueElement = CallbackQueue.Dequeue();
                         if (!callbackQueueElement.Equals(default(CallbackQueueElement)))
                         {
@@ -3621,7 +3652,7 @@ namespace Corrade
                     try
                     {
                         Thread.Sleep((int) Configuration.NOTIFICATION_THROTTLE);
-                        if (NotificationQueue.Count.Equals(0)) continue;
+                        if (!NotificationQueue.Any()) continue;
                         NotificationQueueElement notificationQueueElement = NotificationQueue.Dequeue();
                         if (!notificationQueueElement.Equals(default(NotificationQueueElement)))
                         {
@@ -4073,7 +4104,7 @@ namespace Corrade
                                 response.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.TEXT_PLAIN;
                                 break;
                         }
-                        byte[] data = !result.Count.Equals(0)
+                        byte[] data = result.Any()
                             ? Encoding.UTF8.GetBytes(wasKeyValueEncode(wasKeyValueEscape(result)))
                             : new byte[0];
                         response.StatusCode = (int) HttpStatusCode.OK;
@@ -4120,7 +4151,7 @@ namespace Corrade
                 }
                 catch (HttpListenerException)
                 {
-                    /* This happens when the server goes down, so do not scare the user since it is completely harmelss. */
+                    /* This happens when the server goes down, so do not scare the user since it is completely harmless. */
                 }
                 catch (Exception ex)
                 {
@@ -4150,7 +4181,7 @@ namespace Corrade
             }
 
             // No groups to notify so bail directly.
-            if (notifyGroups.Count.Equals(0)) return;
+            if (!notifyGroups.Any()) return;
 
             // For each group build the notification.
             Parallel.ForEach(notifyGroups, z =>
@@ -4169,7 +4200,7 @@ namespace Corrade
                         {
                             ScriptDialogEventArgs scriptDialogEventArgs = (ScriptDialogEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(scriptDialogEventArgs,
@@ -4199,7 +4230,7 @@ namespace Corrade
                         {
                             ChatEventArgs localChatEventArgs = (ChatEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(localChatEventArgs,
@@ -4239,7 +4270,7 @@ namespace Corrade
                         {
                             BalanceEventArgs balanceEventArgs = (BalanceEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(balanceEventArgs,
@@ -4255,7 +4286,7 @@ namespace Corrade
                         {
                             AlertMessageEventArgs alertMessageEventArgs = (AlertMessageEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(alertMessageEventArgs,
@@ -4274,7 +4305,7 @@ namespace Corrade
                             {
                                 InstantMessageEventArgs inventoryOfferEventArgs = (InstantMessageEventArgs) args;
                                 // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && !z.Data.Count.Equals(0))
+                                if (z.Data != null && z.Data.Any())
                                 {
                                     notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                         wasEnumerableToCSV(GetStructuredData(inventoryOfferEventArgs,
@@ -4375,7 +4406,7 @@ namespace Corrade
                                 InventoryObjectOfferedEventArgs inventoryObjectOfferedEventArgs =
                                     (InventoryObjectOfferedEventArgs) args;
                                 // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && !z.Data.Count.Equals(0))
+                                if (z.Data != null && z.Data.Any())
                                 {
                                     notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                         wasEnumerableToCSV(GetStructuredData(inventoryObjectOfferedEventArgs,
@@ -4437,7 +4468,7 @@ namespace Corrade
                         {
                             ScriptQuestionEventArgs scriptQuestionEventArgs = (ScriptQuestionEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(scriptQuestionEventArgs,
@@ -4468,7 +4499,7 @@ namespace Corrade
                             {
                                 FriendInfoEventArgs friendInfoEventArgs = (FriendInfoEventArgs) args;
                                 // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && !z.Data.Count.Equals(0))
+                                if (z.Data != null && z.Data.Any())
                                 {
                                     notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                         wasEnumerableToCSV(GetStructuredData(friendInfoEventArgs,
@@ -4513,7 +4544,7 @@ namespace Corrade
                                 FriendshipResponseEventArgs friendshipResponseEventArgs =
                                     (FriendshipResponseEventArgs) args;
                                 // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && !z.Data.Count.Equals(0))
+                                if (z.Data != null && z.Data.Any())
                                 {
                                     notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                         wasEnumerableToCSV(GetStructuredData(friendshipResponseEventArgs,
@@ -4543,7 +4574,7 @@ namespace Corrade
                                 FriendshipOfferedEventArgs friendshipOfferedEventArgs =
                                     (FriendshipOfferedEventArgs) args;
                                 // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && !z.Data.Count.Equals(0))
+                                if (z.Data != null && z.Data.Any())
                                 {
                                     notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                         wasEnumerableToCSV(GetStructuredData(friendshipOfferedEventArgs,
@@ -4574,7 +4605,7 @@ namespace Corrade
                         {
                             InstantMessageEventArgs teleportLureEventArgs = (InstantMessageEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(teleportLureEventArgs,
@@ -4605,7 +4636,7 @@ namespace Corrade
                             InstantMessageEventArgs notificationGroupNoticeEventArgs =
                                 (InstantMessageEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(notificationGroupNoticeEventArgs,
@@ -4660,7 +4691,7 @@ namespace Corrade
                             InstantMessageEventArgs notificationInstantMessage =
                                 (InstantMessageEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(notificationInstantMessage,
@@ -4691,7 +4722,7 @@ namespace Corrade
                             InstantMessageEventArgs notificationRegionMessage =
                                 (InstantMessageEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(notificationRegionMessage,
@@ -4723,7 +4754,7 @@ namespace Corrade
                             // Set-up filters.
                             if (!notificationGroupMessage.GroupUUID.Equals(z.GroupUUID)) return;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(notificationGroupMessage,
@@ -4751,7 +4782,7 @@ namespace Corrade
                                 ViewerEffectEventArgs notificationViewerEffectEventArgs =
                                     (ViewerEffectEventArgs) args;
                                 // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && !z.Data.Count.Equals(0))
+                                if (z.Data != null && z.Data.Any())
                                 {
                                     notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                         wasEnumerableToCSV(GetStructuredData(notificationViewerEffectEventArgs,
@@ -4780,7 +4811,7 @@ namespace Corrade
                                 ViewerEffectPointAtEventArgs notificationViewerPointAtEventArgs =
                                     (ViewerEffectPointAtEventArgs) args;
                                 // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && !z.Data.Count.Equals(0))
+                                if (z.Data != null && z.Data.Any())
                                 {
                                     notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                         wasEnumerableToCSV(GetStructuredData(notificationViewerPointAtEventArgs,
@@ -4807,7 +4838,7 @@ namespace Corrade
                                 ViewerEffectLookAtEventArgs notificationViewerLookAtEventArgs =
                                     (ViewerEffectLookAtEventArgs) args;
                                 // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && !z.Data.Count.Equals(0))
+                                if (z.Data != null && z.Data.Any())
                                 {
                                     notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                         wasEnumerableToCSV(GetStructuredData(notificationViewerLookAtEventArgs,
@@ -4836,7 +4867,7 @@ namespace Corrade
                             MeanCollisionEventArgs meanCollisionEventArgs =
                                 (MeanCollisionEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(meanCollisionEventArgs,
@@ -4863,7 +4894,7 @@ namespace Corrade
                             {
                                 SimChangedEventArgs simChangedEventArgs = (SimChangedEventArgs) args;
                                 // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && !z.Data.Count.Equals(0))
+                                if (z.Data != null && z.Data.Any())
                                 {
                                     notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                         wasEnumerableToCSV(GetStructuredData(simChangedEventArgs,
@@ -4886,7 +4917,7 @@ namespace Corrade
                                 RegionCrossedEventArgs regionCrossedEventArgs =
                                     (RegionCrossedEventArgs) args;
                                 // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && !z.Data.Count.Equals(0))
+                                if (z.Data != null && z.Data.Any())
                                 {
                                     notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                         wasEnumerableToCSV(GetStructuredData(regionCrossedEventArgs,
@@ -4911,7 +4942,7 @@ namespace Corrade
                             TerseObjectUpdateEventArgs terseObjectUpdateEventArgs =
                                 (TerseObjectUpdateEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(terseObjectUpdateEventArgs,
@@ -4934,7 +4965,7 @@ namespace Corrade
                             InstantMessageEventArgs notificationTypingMessageEventArgs =
                                 (InstantMessageEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(notificationTypingMessageEventArgs,
@@ -4975,7 +5006,7 @@ namespace Corrade
                             InstantMessageEventArgs notificationGroupInviteEventArgs =
                                 (InstantMessageEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(notificationGroupInviteEventArgs,
@@ -5013,7 +5044,7 @@ namespace Corrade
                             MoneyBalanceReplyEventArgs notificationMoneyBalanceEventArgs =
                                 (MoneyBalanceReplyEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(notificationMoneyBalanceEventArgs,
@@ -5052,7 +5083,7 @@ namespace Corrade
                             // Set-up filters.
                             if (!groupMembershipEventArgs.GroupUUID.Equals(z.GroupUUID)) return;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(groupMembershipEventArgs,
@@ -5093,7 +5124,7 @@ namespace Corrade
                         {
                             LoadUrlEventArgs loadURLEventArgs = (LoadUrlEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(loadURLEventArgs,
@@ -5119,7 +5150,7 @@ namespace Corrade
                         {
                             ChatEventArgs ownerSayEventArgs = (ChatEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(ownerSayEventArgs,
@@ -5141,7 +5172,7 @@ namespace Corrade
                         {
                             ChatEventArgs regionSayToEventArgs = (ChatEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(regionSayToEventArgs,
@@ -5166,7 +5197,7 @@ namespace Corrade
                             InstantMessageEventArgs notificationObjectInstantMessage =
                                 (InstantMessageEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(notificationObjectInstantMessage,
@@ -5188,7 +5219,7 @@ namespace Corrade
                         {
                             ChatEventArgs RLVEventArgs = (ChatEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(RLVEventArgs,
@@ -5210,7 +5241,7 @@ namespace Corrade
                         {
                             ChatEventArgs DebugEventArgs = (ChatEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(DebugEventArgs,
@@ -5241,7 +5272,7 @@ namespace Corrade
                                     RadarObjects.Add(avatarUpdateEventArgs.Avatar.ID, avatarUpdateEventArgs.Avatar);
                                 }
                                 // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && !z.Data.Count.Equals(0))
+                                if (z.Data != null && z.Data.Any())
                                 {
                                     notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                         wasEnumerableToCSV(GetStructuredData(avatarUpdateEventArgs,
@@ -5286,7 +5317,7 @@ namespace Corrade
                                     avatar = tracked.Value as Avatar;
                                 }
                                 // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && !z.Data.Count.Equals(0))
+                                if (z.Data != null && z.Data.Any())
                                 {
                                     notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                         wasEnumerableToCSV(GetStructuredData(killObjectEventArgs,
@@ -5324,7 +5355,7 @@ namespace Corrade
                                     RadarObjects.Add(primEventArgs.Prim.ID, primEventArgs.Prim);
                                 }
                                 // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && !z.Data.Count.Equals(0))
+                                if (z.Data != null && z.Data.Any())
                                 {
                                     notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                         wasEnumerableToCSV(GetStructuredData(primEventArgs,
@@ -5366,7 +5397,7 @@ namespace Corrade
                                     }
                                 }
                                 // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && !z.Data.Count.Equals(0))
+                                if (z.Data != null && z.Data.Any())
                                 {
                                     notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                         wasEnumerableToCSV(GetStructuredData(killObjectEventArgs,
@@ -5394,7 +5425,7 @@ namespace Corrade
                             ScriptControlEventArgs scriptControlEventArgs =
                                 (ScriptControlEventArgs) args;
                             // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && !z.Data.Count.Equals(0))
+                            if (z.Data != null && z.Data.Any())
                             {
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
                                     wasEnumerableToCSV(GetStructuredData(scriptControlEventArgs,
@@ -5435,14 +5466,14 @@ namespace Corrade
                 }
 
                 // Do not send empty notifications.
-                if (notificationData.Count.Equals(0)) return;
+                if (!notificationData.Any()) return;
 
                 // Add the notification type.
                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
                     wasGetDescriptionFromEnumValue(notification));
 
                 // Build the afterburn.
-                if (z.Afterburn != null && !z.Afterburn.Count.Equals(0))
+                if (z.Afterburn != null && z.Afterburn.Any())
                 {
                     object LockObject = new object();
                     Parallel.ForEach(z.Afterburn, o =>
@@ -6643,9 +6674,10 @@ namespace Corrade
                         HashSet<Primitive> attachments = new HashSet<Primitive>(
                             GetAttachments(Configuration.SERVICES_TIMEOUT).AsParallel().Select(o => o.Key));
                         StringBuilder response = new StringBuilder();
-                        if (attachments.Count.Equals(0))
+                        if (!attachments.Any())
                         {
                             Client.Self.Chat(response.ToString(), channel, ChatType.Normal);
+                            return;
                         }
                         HashSet<AttachmentPoint> attachmentPoints =
                             new HashSet<AttachmentPoint>(attachments.AsParallel()
@@ -7103,7 +7135,7 @@ namespace Corrade
                                             folders.Add(o.Key.Name);
                                         }
                                     });
-                        if (!folders.Count.Equals(0))
+                        if (folders.Any())
                         {
                             Client.Self.Chat(string.Join(RLV_CONSTANTS.PATH_SEPARATOR, folders.ToArray()),
                                 channel,
@@ -7687,7 +7719,7 @@ namespace Corrade
                             }
                         }
                         // No roles specified, so assume everyone role.
-                        if (roleUUIDs.Count.Equals(0))
+                        if (!roleUUIDs.Any())
                         {
                             roleUUIDs.Add(UUID.Zero);
                         }
@@ -7735,7 +7767,7 @@ namespace Corrade
                             }
                         }
                         // No roles specified, so assume everyone role.
-                        if (roleUUIDs.Count.Equals(0))
+                        if (!roleUUIDs.Any())
                         {
                             roleUUIDs.Add(UUID.Zero);
                         }
@@ -7765,37 +7797,45 @@ namespace Corrade
                             Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                         }
                         HashSet<string> data = new HashSet<string>();
-                        foreach (
-                            string invitee in
-                                wasCSVToEnumerable(
-                                    wasInput(
-                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AVATARS)),
-                                            message))))
-                        {
-                            UUID agentUUID;
-                            if (!UUID.TryParse(invitee, out agentUUID))
-                            {
-                                List<string> fullName = new List<string>(GetAvatarNames(invitee));
-                                if (!AgentNameToUUID(fullName.First(), fullName.Last(), Configuration.SERVICES_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT, ref agentUUID))
-                                {
-                                    // Add all the unrecognized agents to the returned list.
-                                    data.Add(invitee);
-                                    continue;
-                                }
-                            }
-                            // Check if they are in the group already.
-                            switch (groupMembers.AsParallel().Any(o => o.Value.ID.Equals(agentUUID)))
-                            {
-                                case true: // if they are add to the returned list
-                                    data.Add(invitee);
-                                    break;
-                                default:
-                                    Client.Groups.Invite(commandGroup.UUID, roleUUIDs.ToList(), agentUUID);
-                                    break;
-                            }
-                        }
-                        if (!data.Count.Equals(0))
+                        object LockObject = new object();
+                        Parallel.ForEach(
+                            wasCSVToEnumerable(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AVATARS)),
+                                    message))), o =>
+                                    {
+                                        UUID agentUUID;
+                                        if (!UUID.TryParse(o, out agentUUID))
+                                        {
+                                            List<string> fullName = new List<string>(GetAvatarNames(o));
+                                            if (
+                                                !AgentNameToUUID(fullName.First(), fullName.Last(),
+                                                    Configuration.SERVICES_TIMEOUT,
+                                                    Configuration.DATA_TIMEOUT, ref agentUUID))
+                                            {
+                                                // Add all the unrecognized agents to the returned list.
+                                                lock (LockObject)
+                                                {
+                                                    data.Add(o);
+                                                }
+                                                return;
+                                            }
+                                        }
+                                        // Check if they are in the group already.
+                                        switch (groupMembers.AsParallel().Any(p => p.Value.ID.Equals(agentUUID)))
+                                        {
+                                            case true: // if they are add to the returned list
+                                                lock (LockObject)
+                                                {
+                                                    data.Add(o);
+                                                }
+                                                break;
+                                            default:
+                                                Client.Groups.Invite(commandGroup.UUID, roleUUIDs.ToList(),
+                                                    agentUUID);
+                                                break;
+                                        }
+                                    });
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -7908,7 +7948,7 @@ namespace Corrade
                                 }
                             });
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -8008,6 +8048,153 @@ namespace Corrade
                         }
                     };
                     break;
+                case ScriptKeys.BATCHEJECT:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        {
+                            throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        if (
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.Eject,
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT) ||
+                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.RemoveMember,
+                                Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                        {
+                            throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                        }
+                        // Get the group members.
+                        Dictionary<UUID, GroupMember> groupMembers = null;
+                        ManualResetEvent groupMembersReceivedEvent = new ManualResetEvent(false);
+                        EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
+                        {
+                            groupMembers = args.Members;
+                            groupMembersReceivedEvent.Set();
+                        };
+                        lock (ClientInstanceGroupsLock)
+                        {
+                            Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
+                            Client.Groups.RequestGroupMembers(commandGroup.UUID);
+                            if (!groupMembersReceivedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            {
+                                Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+                                throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
+                            }
+                            Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
+                        }
+                        OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
+                        if (!RequestGroup(commandGroup.UUID, Configuration.SERVICES_TIMEOUT, ref targetGroup))
+                        {
+                            throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
+                        }
+                        // Get roles members.
+                        List<KeyValuePair<UUID, UUID>> groupRolesMembers = null;
+                        ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                        EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler = (sender, args) =>
+                        {
+                            groupRolesMembers = args.RolesMembers;
+                            GroupRoleMembersReplyEvent.Set();
+                        };
+                        lock (ClientInstanceGroupsLock)
+                        {
+                            Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
+                            Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
+                            if (!GroupRoleMembersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            {
+                                Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
+                                throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
+                            }
+                            Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
+                        }
+                        HashSet<string> data = new HashSet<string>();
+                        object LockObject = new object();
+                        Parallel.ForEach(
+                            wasCSVToEnumerable(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AVATARS)),
+                                    message))), o =>
+                                    {
+                                        UUID agentUUID;
+                                        if (!UUID.TryParse(o, out agentUUID))
+                                        {
+                                            List<string> fullName = new List<string>(GetAvatarNames(o));
+                                            if (
+                                                !AgentNameToUUID(fullName.First(), fullName.Last(),
+                                                    Configuration.SERVICES_TIMEOUT,
+                                                    Configuration.DATA_TIMEOUT, ref agentUUID))
+                                            {
+                                                // Add all the unrecognized agents to the returned list.
+                                                lock (LockObject)
+                                                {
+                                                    data.Add(o);
+                                                }
+                                                return;
+                                            }
+                                        }
+                                        // Check if they are in the group.
+                                        switch (!groupMembers.AsParallel().Any(p => p.Value.ID.Equals(agentUUID)))
+                                        {
+                                            case true: // if they are not, add them to the returned list
+                                                lock (LockObject)
+                                                {
+                                                    data.Add(o);
+                                                }
+                                                return;
+                                        }
+                                        // The agent could be resolved and they are in the group.
+                                        // Check their status.
+                                        switch (
+                                            !groupRolesMembers.AsParallel()
+                                                .Any(
+                                                    p =>
+                                                        p.Key.Equals(targetGroup.OwnerRole) && p.Value.Equals(agentUUID))
+                                            )
+                                        {
+                                            case false: // cannot demote owners
+                                                lock (LockObject)
+                                                {
+                                                    data.Add(o);
+                                                }
+                                                return;
+                                        }
+                                        // Demote them.
+                                        Parallel.ForEach(
+                                            groupRolesMembers.AsParallel().Where(
+                                                p => p.Value.Equals(agentUUID)),
+                                            p => Client.Groups.RemoveFromRole(commandGroup.UUID, p.Key, agentUUID));
+                                        // And eject them.
+                                        ManualResetEvent GroupEjectEvent = new ManualResetEvent(false);
+                                        bool succeeded = false;
+                                        EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
+                                            (sender, args) =>
+                                            {
+                                                succeeded = args.Success;
+                                                GroupEjectEvent.Set();
+                                            };
+                                        lock (ClientInstanceGroupsLock)
+                                        {
+                                            Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
+                                            Client.Groups.EjectUser(commandGroup.UUID, agentUUID);
+                                            GroupEjectEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false);
+                                            Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
+                                        }
+                                        // If the eject was not successful, add them to the output.
+                                        switch (succeeded)
+                                        {
+                                            case false:
+                                                lock (LockObject)
+                                                {
+                                                    data.Add(o);
+                                                }
+                                                break;
+                                        }
+                                    });
+                        if (data.Any())
+                        {
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                wasEnumerableToCSV(data));
+                        }
+                    };
+                    break;
                 case ScriptKeys.GETGROUPACCOUNTSUMMARYDATA:
                     execute = () =>
                     {
@@ -8058,7 +8245,7 @@ namespace Corrade
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message)))
                             );
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -8072,7 +8259,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
                             !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -8283,7 +8469,7 @@ namespace Corrade
                             }
                             Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -8342,7 +8528,7 @@ namespace Corrade
                                     break;
                             }
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -8356,7 +8542,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
                             !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -8426,7 +8611,7 @@ namespace Corrade
                                     break;
                             }
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -8440,7 +8625,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
                             !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -8502,7 +8686,7 @@ namespace Corrade
                                     break;
                             }
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -8516,7 +8700,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
                             !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -8584,7 +8767,7 @@ namespace Corrade
                                     break;
                             }
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -8598,7 +8781,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
                             !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -8651,7 +8833,7 @@ namespace Corrade
                             }
                             Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -8665,7 +8847,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
                             !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -8737,7 +8918,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
                             !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -8795,7 +8975,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
                             !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -8896,10 +9075,10 @@ namespace Corrade
                                 {
                                     throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                                 }
-                                if (
-                                    IsSecondLife() &&
-                                    Encoding.UTF8.GetByteCount(data) >
-                                    LINDEN_CONSTANTS.CHAT.MAXIMUM_MESSAGE_LENGTH || data.Count().Equals(0))
+                                if (string.IsNullOrEmpty(data) ||
+                                    (IsSecondLife() &&
+                                     Encoding.UTF8.GetByteCount(data) >
+                                     LINDEN_CONSTANTS.CHAT.MAXIMUM_MESSAGE_LENGTH))
                                 {
                                     throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
                                 }
@@ -8965,9 +9144,9 @@ namespace Corrade
                                 {
                                     throw new ScriptException(ScriptError.NOT_IN_GROUP);
                                 }
-                                if (IsSecondLife() &&
-                                    Encoding.UTF8.GetByteCount(data) >
-                                    LINDEN_CONSTANTS.CHAT.MAXIMUM_MESSAGE_LENGTH || data.Count().Equals(0))
+                                if (string.IsNullOrEmpty(data) || (IsSecondLife() &&
+                                                                   Encoding.UTF8.GetByteCount(data) >
+                                                                   LINDEN_CONSTANTS.CHAT.MAXIMUM_MESSAGE_LENGTH))
                                 {
                                     throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
                                 }
@@ -9024,9 +9203,9 @@ namespace Corrade
                                     });
                                 break;
                             case Entity.LOCAL:
-                                if (IsSecondLife() &&
-                                    Encoding.UTF8.GetByteCount(data) >
-                                    LINDEN_CONSTANTS.CHAT.MAXIMUM_MESSAGE_LENGTH || data.Count().Equals(0))
+                                if (string.IsNullOrEmpty(data) || (IsSecondLife() &&
+                                                                   Encoding.UTF8.GetByteCount(data) >
+                                                                   LINDEN_CONSTANTS.CHAT.MAXIMUM_MESSAGE_LENGTH))
                                 {
                                     throw new ScriptException(ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
                                 }
@@ -9206,7 +9385,6 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-
                         HashSet<UUID> currentGroups = new HashSet<UUID>();
                         if (
                             !GetCurrentGroups(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
@@ -9603,7 +9781,7 @@ namespace Corrade
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message)))
                             );
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -9652,7 +9830,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(gridRegion,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -9669,7 +9847,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(Client.Network,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -9711,7 +9889,7 @@ namespace Corrade
                                 }
                             }
                         });
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), wasEnumerableToCSV(data));
                         }
@@ -9787,7 +9965,7 @@ namespace Corrade
                                         data.Add(o);
                                     }
                                 });
-                                if (!data.Count.Equals(0))
+                                if (data.Any())
                                 {
                                     result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), wasEnumerableToCSV(data));
                                 }
@@ -10173,7 +10351,7 @@ namespace Corrade
                             }
                             Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -10795,7 +10973,7 @@ namespace Corrade
                         {
                             csv.AddRange(GetStructuredData(classifieds, fields));
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -10908,7 +11086,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message)))
                                 ).Cast<InventoryItem>());
-                        if (items.Count.Equals(0))
+                        if (!items.Any())
                         {
                             throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
                         }
@@ -11458,7 +11636,7 @@ namespace Corrade
                                     o.Value.ToString(),
                                     Client.Inventory.Store[o.Key.ItemID].Name
                                 }).SelectMany(o => o));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -11544,7 +11722,7 @@ namespace Corrade
                                 o.Value.ToString(),
                                 o.Key.Properties.Name
                             }).SelectMany(o => o).ToList();
-                        if (!attachments.Count.Equals(0))
+                        if (attachments.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(attachments));
@@ -11961,13 +12139,13 @@ namespace Corrade
                                 Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
                             }
                         }
-                        if (primitives.Count.Equals(0))
+                        if (!primitives.Any())
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_LAND_USERS);
                         }
                         List<string> data = new List<string>(primitives.AsParallel().Select(
                             p => wasEnumerableToCSV(new[] {p.Key, p.Value.ToString(CultureInfo.InvariantCulture)})));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -11990,7 +12168,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(dataGroup,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -12041,7 +12219,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(avatarGroup,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -12079,7 +12257,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(primitive,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -12101,7 +12279,7 @@ namespace Corrade
                             .AsParallel().Select(
                                 o =>
                                     wasGetStructureMemberDescription(primitiveBodies, o)));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -12139,7 +12317,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(primitive.PrimData,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -12177,7 +12355,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(primitive.Sculpt,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -12215,7 +12393,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(primitive.Light,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -12253,7 +12431,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(primitive.Flexible,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -12291,7 +12469,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(primitive.PhysicsProps,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -12329,7 +12507,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(primitive.Properties,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -12367,7 +12545,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(primitive.Textures,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -12412,7 +12590,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(parcel,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -12524,7 +12702,7 @@ namespace Corrade
                         }
                         List<Vector3> csv = new List<Vector3>();
                         simulator.Parcels.ForEach(o => csv.AddRange(new[] {o.AABBMin, o.AABBMax}));
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv.Select(o => o.ToString())));
@@ -13785,7 +13963,7 @@ namespace Corrade
                                     o.Name,
                                     o.UUID.ToString()
                                 }).SelectMany(o => o));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -13843,7 +14021,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(item,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -13980,7 +14158,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(inventoryBaseItem as InventoryItem,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -14032,7 +14210,7 @@ namespace Corrade
                             {
                                 InventoryItem inventoryItem = o as InventoryItem;
                                 if (inventoryItem == null) return;
-                                if (!assetTypes.Count.Equals(0) && !assetTypes.Contains(inventoryItem.AssetType))
+                                if (assetTypes.Any() && !assetTypes.Contains(inventoryItem.AssetType))
                                     return;
                                 lock (LockObject)
                                 {
@@ -14041,7 +14219,7 @@ namespace Corrade
                                     csv.Add(inventoryItem.AssetUUID.ToString());
                                 }
                             });
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -14096,7 +14274,7 @@ namespace Corrade
                                     csv.Add(string.Join(CORRADE_CONSTANTS.PATH_SEPARATOR, o.ToArray()));
                                 }
                             });
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -14517,7 +14695,7 @@ namespace Corrade
                             csv.Add(roleName);
                             csv.Add(title.Value.RoleID.ToString());
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -15061,7 +15239,7 @@ namespace Corrade
                             default:
                                 throw new ScriptException(ScriptError.UNKNOWN_EFFECT);
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -15267,7 +15445,7 @@ namespace Corrade
                             o.Value.Name,
                             o.Value.ID.ToString()
                         }).SelectMany(o => o));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -15629,7 +15807,7 @@ namespace Corrade
                                                         new HashSet<string>(
                                                             p.Value.AsParallel()
                                                                 .Where(q => !q.Equals(url, StringComparison.Ordinal)));
-                                                    if (URLs.Count.Equals(0)) return;
+                                                    if (!URLs.Any()) return;
                                                     lock (NotficatinDestinationLock)
                                                     {
                                                         notificationDestination.Add(p.Key, URLs);
@@ -15685,7 +15863,7 @@ namespace Corrade
                                         });
                                     }
                                 }
-                                if (!csv.Count.Equals(0))
+                                if (csv.Any())
                                 {
                                     result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                         wasEnumerableToCSV(csv));
@@ -15774,7 +15952,7 @@ namespace Corrade
                                 }
                             });
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -15864,7 +16042,7 @@ namespace Corrade
                                 }
                             });
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -15966,7 +16144,7 @@ namespace Corrade
                                 }
                             });
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -16070,7 +16248,7 @@ namespace Corrade
                                     o.Key.ToString(),
                                     o.Value.ToString(CultureInfo.InvariantCulture)
                                 }));
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -16242,7 +16420,7 @@ namespace Corrade
                             o.Value.OwnerName,
                             o.Value.Position.ToString()
                         }).SelectMany(o => o));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -16313,7 +16491,7 @@ namespace Corrade
                                                 (sender, args) =>
                                                 {
                                                     EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
-                                                    switch (!args.Count.Equals(0))
+                                                    switch (args.Banned.Any())
                                                     {
                                                         case true:
                                                             estateList.AddRange(args.Banned);
@@ -16387,7 +16565,7 @@ namespace Corrade
                                                 (sender, args) =>
                                                 {
                                                     EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
-                                                    switch (!args.Count.Equals(0))
+                                                    switch (args.AllowedGroups.Any())
                                                     {
                                                         case true:
                                                             estateList.AddRange(args.AllowedGroups);
@@ -16466,7 +16644,7 @@ namespace Corrade
                                                 (sender, args) =>
                                                 {
                                                     EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
-                                                    switch (!args.Count.Equals(0))
+                                                    switch (args.AllowedUsers.Any())
                                                     {
                                                         case true:
                                                             estateList.AddRange(args.AllowedUsers);
@@ -16544,7 +16722,7 @@ namespace Corrade
                                                 (sender, args) =>
                                                 {
                                                     EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
-                                                    switch (!args.Count.Equals(0))
+                                                    switch (args.Managers.Any())
                                                     {
                                                         case true:
                                                             estateList.AddRange(args.Managers);
@@ -16617,7 +16795,7 @@ namespace Corrade
                                 EventHandler<EstateBansReplyEventArgs> EstateBansReplyEventHandler = (sender, args) =>
                                 {
                                     EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
-                                    switch (!args.Count.Equals(0))
+                                    switch (args.Banned.Any())
                                     {
                                         case true:
                                             estateList.AddRange(args.Banned);
@@ -16646,7 +16824,7 @@ namespace Corrade
                                     (sender, args) =>
                                     {
                                         EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
-                                        switch (!args.Count.Equals(0))
+                                        switch (args.AllowedGroups.Any())
                                         {
                                             case true:
                                                 estateList.AddRange(args.AllowedGroups);
@@ -16675,7 +16853,7 @@ namespace Corrade
                                     (sender, args) =>
                                     {
                                         EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
-                                        switch (!args.Count.Equals(0))
+                                        switch (args.Managers.Any())
                                         {
                                             case true:
                                                 estateList.AddRange(args.Managers);
@@ -16704,7 +16882,7 @@ namespace Corrade
                                     (sender, args) =>
                                     {
                                         EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
-                                        switch (!args.Count.Equals(0))
+                                        switch (args.AllowedUsers.Any())
                                         {
                                             case true:
                                                 estateList.AddRange(args.AllowedUsers);
@@ -16732,7 +16910,7 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.UNKNOWN_ESTATE_LIST);
                         }
                         List<string> data = new List<string>(estateList.ConvertAll(o => o.ToString()));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -16829,7 +17007,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(avatar,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -16910,7 +17088,7 @@ namespace Corrade
                             csv.Add(p.Key.ToString());
                             csv.Add(p.Value.ToString());
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -16958,7 +17136,7 @@ namespace Corrade
                         HashSet<MapItem> mapItems =
                             new HashSet<MapItem>(Client.Grid.MapItems(regionHandle, GridItemType.AgentLocations,
                                 GridLayerType.Objects, (int) Configuration.SERVICES_TIMEOUT));
-                        if (mapItems.Count.Equals(0))
+                        if (!mapItems.Any())
                         {
                             throw new ScriptException(ScriptError.NO_MAP_ITEMS_FOUND);
                         }
@@ -16970,7 +17148,7 @@ namespace Corrade
                                     ((MapAgentLocation) o).AvatarCount.ToString(CultureInfo.InvariantCulture),
                                     new Vector3(o.LocalX, o.LocalY, 0).ToString()
                                 }).SelectMany(o => o));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -16987,7 +17165,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(Client.Self,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -17103,7 +17281,7 @@ namespace Corrade
                                 }
                             });
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -17211,7 +17389,7 @@ namespace Corrade
                             csv.Add(o.Name);
                             csv.Add(o.UUID.ToString());
                         });
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -17238,7 +17416,7 @@ namespace Corrade
                             csv.Add(name);
                             csv.Add(o.Key.ToString());
                         });
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -17328,7 +17506,7 @@ namespace Corrade
                         List<string> data = new List<string>(GetStructuredData(friend,
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                 message))));
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -18728,7 +18906,7 @@ namespace Corrade
                         }
                         List<string> items = new List<string>(wasCSVToEnumerable(wasInput(wasKeyValueGet(
                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))));
-                        if (items.Count.Equals(0) || (action.Equals(Action.LINK) && items.Count < 2))
+                        if (!items.Any() || (action.Equals(Action.LINK) && items.Count < 2))
                         {
                             throw new ScriptException(ScriptError.INVALID_NUMBER_OF_ITEMS_SPECIFIED);
                         }
@@ -18764,7 +18942,7 @@ namespace Corrade
                         {
                             lock (LockObject)
                             {
-                                if (primitives.Count.Equals(0))
+                                if (!primitives.Any())
                                 {
                                     PrimChangeLinkEvent.Set();
                                     return;
@@ -18907,7 +19085,7 @@ namespace Corrade
                             }
                             Client.Objects.PayPriceReply -= PayPriceReplyEventHandler;
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -18933,7 +19111,7 @@ namespace Corrade
                             GetInventoryFolderContents<InventoryBase>(Client.Inventory.Store.RootNode, folder)
                                 .AsParallel().Where(CanBeWorn)
                                 .ToList();
-                        if (items.Count.Equals(0))
+                        if (!items.Any())
                         {
                             throw new ScriptException(ScriptError.NO_EQUIPABLE_ITEMS);
                         }
@@ -19097,7 +19275,7 @@ namespace Corrade
                                     Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
                                     Client.Assets.XferReceived -= XferReceivedEventHandler;
                                 }
-                                if (data == null || !data.Length.Equals(0))
+                                if (data == null || !data.Any())
                                 {
                                     throw new ScriptException(ScriptError.EMPTY_ASSET_DATA);
                                 }
@@ -19115,7 +19293,7 @@ namespace Corrade
                                 {
                                     throw new ScriptException(ScriptError.INVALID_ASSET_DATA);
                                 }
-                                if (!data.Length.Equals(0))
+                                if (!data.Any())
                                 {
                                     throw new ScriptException(ScriptError.EMPTY_ASSET_DATA);
                                 }
@@ -19210,8 +19388,7 @@ namespace Corrade
                                 ? height
                                 : -1;
                         }));
-
-                        if (!csv.Length.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv.Select(o => o.ToString(CultureInfo.InvariantCulture))));
@@ -19605,7 +19782,7 @@ namespace Corrade
                                     case Type.INPUT:
                                         lock (InputFiltersLock)
                                         {
-                                            if (!Configuration.INPUT_FILTERS.Count.Equals(0))
+                                            if (Configuration.INPUT_FILTERS.Any())
                                             {
                                                 result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                                     wasEnumerableToCSV(Configuration.INPUT_FILTERS.Select(
@@ -19616,7 +19793,7 @@ namespace Corrade
                                     case Type.OUTPUT:
                                         lock (OutputFiltersLock)
                                         {
-                                            if (!Configuration.OUTPUT_FILTERS.Count.Equals(0))
+                                            if (Configuration.OUTPUT_FILTERS.Any())
                                             {
                                                 result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                                     wasEnumerableToCSV(Configuration.OUTPUT_FILTERS.Select(
@@ -20059,7 +20236,7 @@ namespace Corrade
                             default:
                                 throw new ScriptException(ScriptError.UNKNOWN_ACTION);
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -20221,17 +20398,20 @@ namespace Corrade
 
                         Parallel.ForEach(avatars, o =>
                         {
-                            lock (LockObject)
+                            IEnumerable<string> avatarData = GetStructuredData(o,
+                                wasInput(
+                                    wasKeyValueGet(
+                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                        message)));
+                            if (avatarData.Any())
                             {
-                                data.AddRange(GetStructuredData(o,
-                                    wasInput(
-                                        wasKeyValueGet(
-                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                            message)))
-                                    );
+                                lock (LockObject)
+                                {
+                                    data.AddRange(avatarData);
+                                }
                             }
                         });
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -20414,16 +20594,19 @@ namespace Corrade
                         List<string> data = new List<string>();
                         Parallel.ForEach(updatePrimitives, o =>
                         {
-                            lock (LockObject)
+                            IEnumerable<string> primitiveData = GetStructuredData(o,
+                                wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                        message)));
+                            if (primitiveData.Any())
                             {
-                                data.AddRange(GetStructuredData(o,
-                                    wasInput(
-                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                            message)))
-                                    );
+                                lock (LockObject)
+                                {
+                                    data.AddRange(primitiveData);
+                                }
                             }
                         });
-                        if (!data.Count.Equals(0))
+                        if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(data));
@@ -21503,7 +21686,7 @@ namespace Corrade
                             default:
                                 throw new ScriptException(ScriptError.UNKNOWN_DIRECTORY_SEARCH_TYPE);
                         }
-                        if (!csv.Count.Equals(0))
+                        if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
                                 wasEnumerableToCSV(csv));
@@ -21525,6 +21708,7 @@ namespace Corrade
                 string data;
                 if (!result.TryGetValue(wasGetDescriptionFromEnumValue(ResultKeys.DATA), out data)) return;
                 data = wasEnumerableToCSV((((new Regex(pattern, RegexOptions.Compiled)).Matches(data)
+                    .AsParallel()
                     .Cast<Match>()
                     .Select(m => m.Groups)).SelectMany(
                         matchGroups => Enumerable.Range(0, matchGroups.Count).Skip(1),
@@ -21752,7 +21936,7 @@ namespace Corrade
         {
             lock (RadarObjectsLock)
             {
-                if (!RadarObjects.Count.Equals(0))
+                if (RadarObjects.Any())
                 {
                     RadarObjects.Clear();
                 }
@@ -21841,31 +22025,21 @@ namespace Corrade
         /// <remarks>compliant with RFC 4180</remarks>
         public static string wasEnumerableToCSV(IEnumerable<string> l)
         {
-            List<string> csv = new List<string>();
-            foreach (string s in l)
+            string[] csv = l.Select(o => o.Clone() as string).ToArray();
+            Parallel.ForEach(csv.Select((v, i) => new {i, v}), o =>
             {
-                List<char> cell = new List<char>();
-                foreach (char i in s)
+                string cell = o.v.Replace("\"", "\"\"");
+                switch (new[] {'"', ' ', ',', '\r', '\n'}.Any(p => cell.Contains(p)))
                 {
-                    cell.Add(i);
-                    switch (!i.Equals('"'))
-                    {
-                        case false:
-                            cell.Add(i);
-                            break;
-                    }
-                }
-                switch (!cell.Contains('"') && !cell.Contains(' ') && !cell.Contains(',') && !cell.Contains('\r') &&
-                        !cell.Contains('\n'))
-                {
-                    case false:
-                        cell.Insert(0, '"');
-                        cell.Add('"');
+                    case true:
+                        csv[o.i] = "\"" + cell + "\"";
+                        break;
+                    default:
+                        csv[o.i] = cell;
                         break;
                 }
-                csv.Add(new string(cell.ToArray()));
-            }
-            return string.Join(",", csv.ToArray());
+            });
+            return string.Join(",", csv);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -21886,7 +22060,7 @@ namespace Corrade
                 switch (csv[i])
                 {
                     case ',':
-                        if (s.Count.Equals(0) || !s.Peek().Equals('"'))
+                        if (!s.Any() || !s.Peek().Equals('"'))
                         {
                             yield return m.ToString();
                             m = new StringBuilder();
@@ -21895,13 +22069,13 @@ namespace Corrade
                         m.Append(csv[i]);
                         continue;
                     case '"':
-                        if (i + 1 < csv.Length && csv[i] == csv[i + 1])
+                        if (i + 1 < csv.Length && csv[i].Equals(csv[i + 1]))
                         {
                             m.Append(csv[i]);
                             ++i;
                             continue;
                         }
-                        if (s.Count.Equals(0) || !s.Peek().Equals(csv[i]))
+                        if (!s.Any() || !s.Peek().Equals(csv[i]))
                         {
                             s.Push(csv[i]);
                             continue;
@@ -25527,9 +25701,9 @@ namespace Corrade
                                             HTTPListener.Start();
                                             while (runHTTPServer && HTTPListener.IsListening)
                                             {
-                                                IAsyncResult result = HTTPListener.BeginGetContext(ProcessHTTPRequest,
-                                                    HTTPListener);
-                                                result.AsyncWaitHandle.WaitOne((int) HTTP_SERVER_TIMEOUT, false);
+                                                (HTTPListener.BeginGetContext(ProcessHTTPRequest,
+                                                    HTTPListener)).AsyncWaitHandle.WaitOne((int) HTTP_SERVER_TIMEOUT,
+                                                        false);
                                             }
                                         }
                                     }
@@ -26557,7 +26731,8 @@ namespace Corrade
                 Status = wasGetAttributeFromEnumValue<StatusAttribute>(error);
             }
 
-            protected ScriptException(SerializationInfo info, StreamingContext context) : base(info, context)
+            protected ScriptException(SerializationInfo info, StreamingContext context)
+                : base(info, context)
             {
             }
 
@@ -26572,7 +26747,11 @@ namespace Corrade
             [Description("none")] NONE = 0,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=batchinvite>&<group=<UUID|STRING>>&<password=<STRING>>&[avatars=<UUID|STRING[,UUID|STRING...]>]&[callback=<STRING>]"
+                "<command=batcheject>&<group=<UUID|STRING>>&<password=<STRING>>&[avatars=<UUID|STRING[,UUID|STRING...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("batcheject")] BATCHEJECT,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=batchinvite>&<group=<UUID|STRING>>&<password=<STRING>>&[role=<UUID[,STRING...]>]&[avatars=<UUID|STRING[,UUID|STRING...]>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("batchinvite")] BATCHINVITE,
 
             [Description("avatars")] AVATARS,
@@ -28147,7 +28326,7 @@ namespace Corrade
         private static readonly Func<string, bool> IsCorradeCommand = o =>
         {
             Dictionary<string, string> data = wasKeyValueDecode(o);
-            return !data.Count.Equals(0) && data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND)) &&
+            return data.Any() && data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND)) &&
                    data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)) &&
                    data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD));
         };
@@ -28269,7 +28448,7 @@ namespace Corrade
                                 }
                             }
                         });
-                    } while (!inventoryFolders.Count.Equals(0));
+                    } while (inventoryFolders.Any());
                 }
                 catch (Exception)
                 {
@@ -28349,7 +28528,7 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action SaveGroupMembersState = () =>
         {
-            if (!GroupMembers.Count.Equals(0))
+            if (GroupMembers.Any())
             {
                 try
                 {
@@ -28413,7 +28592,7 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action SaveNotificationState = () =>
         {
-            if (!GroupNotifications.Count.Equals(0))
+            if (GroupNotifications.Any())
             {
                 try
                 {
