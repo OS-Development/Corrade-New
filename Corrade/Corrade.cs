@@ -15702,14 +15702,17 @@ namespace Corrade
                                         };
                                         break;
                                 }
+                                bool succeeded = true;
                                 Parallel.ForEach(wasCSVToEnumerable(
                                     notificationTypes),
-                                    o =>
+                                    (o, state) =>
                                     {
                                         uint notificationValue = (uint) wasGetEnumValueFromDescription<Notifications>(o);
                                         if (!GroupHasNotification(commandGroup.Name, notificationValue))
                                         {
-                                            throw new ScriptException(ScriptError.NOTIFICATION_NOT_ALLOWED);
+                                            // one of the notification was not allowed, so abort
+                                            succeeded = false;
+                                            state.Break();
                                         }
                                         notification.NotificationMask |= notificationValue;
                                         notification.Data = data;
@@ -15754,6 +15757,11 @@ namespace Corrade
                                                 break;
                                         }
                                     });
+                                switch (succeeded)
+                                {
+                                    case false:
+                                        throw new ScriptException(ScriptError.NOTIFICATION_NOT_ALLOWED);
+                                }
                                 lock (GroupNotificationsLock)
                                 {
                                     // Replace notification.
@@ -26728,7 +26736,7 @@ namespace Corrade
             public ScriptException(ScriptError error)
                 : base(wasGetDescriptionFromEnumValue(error))
             {
-                Status = wasGetAttributeFromEnumValue<StatusAttribute>(error);
+                Status = wasGetAttributeFromEnumValue<StatusAttribute>(error).Status;
             }
 
             protected ScriptException(SerializationInfo info, StreamingContext context)
@@ -26736,7 +26744,7 @@ namespace Corrade
             {
             }
 
-            public StatusAttribute Status { get; private set; }
+            public uint Status { get; private set; }
         }
 
         /// <summary>
