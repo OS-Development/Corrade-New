@@ -3487,19 +3487,32 @@ namespace Corrade
                     break;
             }
             // Set-up watcher for dynamically reading the configuration file.
-            FileSystemWatcher configurationWatcher = null;
             FileSystemEventHandler HandleConfigurationFileChanged = null;
             try
             {
-                configurationWatcher = new FileSystemWatcher
-                {
-                    Path = Directory.GetCurrentDirectory(),
-                    Filter = CORRADE_CONSTANTS.CONFIGURATION_FILE,
-                    NotifyFilter = NotifyFilters.LastWrite
-                };
+                ConfigurationWatcher.Path = Directory.GetCurrentDirectory();
+                ConfigurationWatcher.Filter = CORRADE_CONSTANTS.CONFIGURATION_FILE;
+                ConfigurationWatcher.NotifyFilter = NotifyFilters.LastWrite;
                 HandleConfigurationFileChanged = (sender, args) => ConfigurationChangedTimer.Change(1000, 0);
-                configurationWatcher.Changed += HandleConfigurationFileChanged;
-                configurationWatcher.EnableRaisingEvents = true;
+                ConfigurationWatcher.Changed += HandleConfigurationFileChanged;
+                ConfigurationWatcher.EnableRaisingEvents = true;
+            }
+            catch (Exception ex)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_CONFIGURATION_WATCHER), ex.Message);
+                Environment.Exit(Configuration.EXIT_CODE_ABNORMAL);
+            }
+            // Set-up watcher for dynamically reading the configuration file.
+            FileSystemEventHandler HandleNotificationsFileChanged = null;
+            try
+            {
+                NotificationsWatcher.Path = wasPathCombine(Directory.GetCurrentDirectory(),
+                    CORRADE_CONSTANTS.STATE_DIRECTORY);
+                NotificationsWatcher.Filter = CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE;
+                NotificationsWatcher.NotifyFilter = NotifyFilters.LastWrite;
+                HandleNotificationsFileChanged = (sender, args) => NotificationsChangedTimer.Change(1000, 0);
+                NotificationsWatcher.Changed += HandleNotificationsFileChanged;
+                NotificationsWatcher.EnableRaisingEvents = true;
             }
             catch (Exception ex)
             {
@@ -3862,8 +3875,8 @@ namespace Corrade
             // Disable the configuration watcher.
             try
             {
-                configurationWatcher.EnableRaisingEvents = false;
-                configurationWatcher.Changed -= HandleConfigurationFileChanged;
+                ConfigurationWatcher.EnableRaisingEvents = false;
+                ConfigurationWatcher.Changed -= HandleConfigurationFileChanged;
             }
             catch (Exception)
             {
@@ -15616,6 +15629,7 @@ namespace Corrade
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                                     .ToLowerInvariant());
                         object LockObject = new object();
+                        HashSet<Notification> groupNotifications = new HashSet<Notification>();
                         switch (action)
                         {
                             case Action.SET:
@@ -15694,7 +15708,6 @@ namespace Corrade
                                         {
                                             GroupName = commandGroup.Name,
                                             GroupUUID = commandGroup.UUID,
-                                            NotificationMask = 0,
                                             NotificationDestination =
                                                 new SerializableDictionary<Notifications, HashSet<string>>(),
                                             Data = data,
@@ -15714,7 +15727,6 @@ namespace Corrade
                                             succeeded = false;
                                             state.Break();
                                         }
-                                        notification.NotificationMask |= notificationValue;
                                         notification.Data = data;
                                         notification.Afterburn = afterburn;
                                         switch (
@@ -15772,7 +15784,6 @@ namespace Corrade
                                 }
                                 break;
                             case Action.REMOVE:
-                                HashSet<Notification> groupNotifications = new HashSet<Notification>();
                                 lock (GroupNotificationsLock)
                                 {
                                     Parallel.ForEach(GroupNotifications, o =>
@@ -15829,9 +15840,6 @@ namespace Corrade
                                             {
                                                 GroupName = o.GroupName,
                                                 GroupUUID = o.GroupUUID,
-                                                NotificationMask =
-                                                    notificationDestination.Keys.Cast<uint>()
-                                                        .Aggregate((p, q) => p |= q),
                                                 NotificationDestination = notificationDestination,
                                                 Data = o.Data,
                                                 Afterburn = o.Afterburn
@@ -15880,9 +15888,57 @@ namespace Corrade
                             case Action.CLEAR:
                                 lock (GroupNotificationsLock)
                                 {
-                                    GroupNotifications.RemoveWhere(
-                                        o =>
-                                            o.GroupName.Equals(commandGroup.Name, StringComparison.OrdinalIgnoreCase));
+                                    Parallel.ForEach(GroupNotifications, o =>
+                                    {
+                                        switch (!o.GroupName.Equals(commandGroup.Name))
+                                        {
+                                            case false: // this is our group
+                                                SerializableDictionary<Notifications, HashSet<string>>
+                                                    notificationDestination =
+                                                        new SerializableDictionary<Notifications, HashSet<string>>();
+                                                Parallel.ForEach(o.NotificationDestination, p =>
+                                                {
+                                                    switch (!wasCSVToEnumerable(notificationTypes)
+                                                        .AsParallel()
+                                                        .Any(
+                                                            q =>
+                                                                wasGetEnumValueFromDescription<Notifications>(q)
+                                                                    .Equals(p.Key)))
+                                                    {
+                                                        case true:
+                                                            notificationDestination.Add(p.Key, p.Value);
+                                                            break;
+                                                    }
+                                                });
+                                                groupNotifications.Add(new Notification
+                                                {
+                                                    GroupName = o.GroupName,
+                                                    GroupUUID = o.GroupUUID,
+                                                    NotificationDestination = notificationDestination,
+                                                    Data = o.Data,
+                                                    Afterburn = o.Afterburn
+                                                });
+                                                break;
+                                            default: // not our group
+                                                groupNotifications.Add(o);
+                                                break;
+                                        }
+                                    });
+                                    GroupNotifications = groupNotifications;
+                                }
+                                break;
+                            case Action.PURGE:
+                                lock (GroupNotificationsLock)
+                                {
+                                    Notification groupNotification =
+                                        GroupNotifications.AsParallel().FirstOrDefault(
+                                            o =>
+                                                o.GroupName.Equals(commandGroup.Name,
+                                                    StringComparison.OrdinalIgnoreCase));
+                                    if (!groupNotification.Equals(default(Notification)))
+                                    {
+                                        GroupNotifications.Remove(groupNotification);
+                                    }
                                 }
                                 break;
                             default:
@@ -24111,7 +24167,9 @@ namespace Corrade
             {
                 lock (ConfigurationFileLock)
                 {
+                    ConfigurationWatcher.EnableRaisingEvents = false;
                     File.WriteAllText(file, data, Encoding.UTF8);
+                    ConfigurationWatcher.EnableRaisingEvents = true;
                 }
             }
 
@@ -25923,7 +25981,8 @@ namespace Corrade
             [Description("unable to load group members state")] UNABLE_TO_LOAD_GROUP_MEMBERS_STATE,
             [Description("unable to save group members state")] UNABLE_TO_SAVE_GROUP_MEMBERS_STATE,
             [Description("error sending POST request")] ERROR_SENDING_POST_REQUEST,
-            [Description("error building POST request")] ERROR_BUILDING_POST_REQUEST
+            [Description("error building POST request")] ERROR_BUILDING_POST_REQUEST,
+            [Description("notifications file modified")] NOTIFICATIONS_FILE_MODIFIED
         }
 
         /// <summary>
@@ -26635,7 +26694,18 @@ namespace Corrade
             public string GroupName;
             public UUID GroupUUID;
             public SerializableDictionary<Notifications, HashSet<string>> NotificationDestination;
-            public uint NotificationMask;
+
+            public uint NotificationMask
+            {
+                get
+                {
+                    /* Build the notification mask and send it. */
+                    return NotificationDestination != null && NotificationDestination.Any()
+                        ? NotificationDestination.Keys.Cast<uint>()
+                            .Aggregate((p, q) => p |= q)
+                        : 0;
+                }
+            }
         }
 
         /// <summary>
@@ -28056,6 +28126,8 @@ namespace Corrade
 
         private static readonly User AIMLBotUser = new User(CORRADE_CONSTANTS.CORRADE, AIMLBot);
         private static readonly FileSystemWatcher AIMLBotConfigurationWatcher = new FileSystemWatcher();
+        private static readonly FileSystemWatcher ConfigurationWatcher = new FileSystemWatcher();
+        private static readonly FileSystemWatcher NotificationsWatcher = new FileSystemWatcher();
         private static readonly object AIMLBotLock = new object();
         private static readonly object ClientInstanceGroupsLock = new object();
         private static readonly object ClientInstanceInventoryLock = new object();
@@ -28196,6 +28268,19 @@ namespace Corrade
             {
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
                 Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
+            });
+
+        /// <summary>
+        ///     Schedules a load of the configuration file.
+        /// </summary>
+        private static readonly System.Threading.Timer NotificationsChangedTimer =
+            new System.Threading.Timer(NotificationsChanged =>
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATIONS_FILE_MODIFIED));
+                lock (GroupNotificationsLock)
+                {
+                    LoadNotificationState.Invoke();
+                }
             });
 
         /// <summary>
@@ -28373,12 +28458,18 @@ namespace Corrade
                 try
                 {
                     // Create the queue of folders.
-                    Dictionary<UUID, ManualResetEvent> inventoryFolders = new Dictionary<UUID, ManualResetEvent>();
-                    Dictionary<UUID, Stopwatch> inventoryStopwatch = new Dictionary<UUID, Stopwatch>();
-                    HashSet<long> times = new HashSet<long>(new[] {(long) Client.Settings.CAPS_TIMEOUT});
                     // Enqueue the first folder (as the root).
-                    inventoryFolders.Add(o.UUID, new ManualResetEvent(false));
-                    inventoryStopwatch.Add(o.UUID, new Stopwatch());
+                    Dictionary<UUID, ManualResetEvent> inventoryFolders = new Dictionary<UUID, ManualResetEvent>
+                    {
+                        {o.UUID, new ManualResetEvent(false)}
+                    };
+                    // Create a stopwatch for the root folder.
+                    Dictionary<UUID, Stopwatch> inventoryStopwatch = new Dictionary<UUID, Stopwatch>
+                    {
+                        {o.UUID, new Stopwatch()}
+                    };
+
+                    HashSet<long> times = new HashSet<long>(new[] {(long) Client.Settings.CAPS_TIMEOUT});
 
                     object LockObject = new object();
 
@@ -28399,9 +28490,9 @@ namespace Corrade
                         });
                         lock (LockObject)
                         {
-                            inventoryFolders[q.FolderID].Set();
                             inventoryStopwatch[q.FolderID].Stop();
                             times.Add(inventoryStopwatch[q.FolderID].ElapsedMilliseconds);
+                            inventoryFolders[q.FolderID].Set();
                         }
                     };
 
@@ -28600,26 +28691,25 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action SaveNotificationState = () =>
         {
-            if (GroupNotifications.Any())
+            NotificationsWatcher.EnableRaisingEvents = false;
+            try
             {
-                try
+                using (
+                    StreamWriter writer =
+                        new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                            CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE), false, Encoding.UTF8))
                 {
-                    using (
-                        StreamWriter writer =
-                            new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                                CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE), false, Encoding.UTF8))
-                    {
-                        XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
-                        serializer.Serialize(writer, GroupNotifications);
-                        writer.Flush();
-                    }
-                }
-                catch (Exception e)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE),
-                        e.Message);
+                    XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
+                    serializer.Serialize(writer, GroupNotifications);
+                    writer.Flush();
                 }
             }
+            catch (Exception e)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE),
+                    e.Message);
+            }
+            NotificationsWatcher.EnableRaisingEvents = true;
         };
 
         /// <summary>
