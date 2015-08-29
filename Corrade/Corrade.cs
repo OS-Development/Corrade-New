@@ -339,7 +339,7 @@ namespace Corrade
             [Status(18463)] [Description("could not retrieve object media")] COULD_NOT_RETRIEVE_OBJECT_MEDIA,
             [Status(02193)] [Description("no avatars to ban or unban")] NO_AVATARS_TO_BAN_OR_UNBAN,
             [Status(45568)] [Description("could not retrieve broup ban list")] COULD_NOT_RETRIEVE_GROUP_BAN_LIST,
-            [Status(15719)] [Description("timeout retrieveing group ban list")] TIMEOUT_RETRIEVING_GROUP_BAN_LIST,
+            [Status(15719)] [Description("timeout retrieving group ban list")] TIMEOUT_RETRIEVING_GROUP_BAN_LIST,
             [Status(26749)] [Description("timeout modifying group ban list")] TIMEOUT_MODIFYING_GROUP_BAN_LIST
         }
 
