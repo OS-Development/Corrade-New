@@ -325,23 +325,23 @@ namespace OpenMetaverse
         /// <param name="angle">Angle around the axis, in radians</param>
         public void GetAxisAngle(out Vector3 axis, out float angle)
         {
-            axis = new Vector3();
-            float scale = (float)Math.Sqrt(X * X + Y * Y + Z * Z);
+            Quaternion q = Normalize(this);
 
-            if (scale < Single.Epsilon || W > 1.0f || W < -1.0f)
+            float sin = (float)Math.Sqrt(1.0f - q.W * q.W);
+            if (sin >= 0.001)
             {
-                angle = 0.0f;
-                axis.X = 0.0f;
-                axis.Y = 1.0f;
-                axis.Z = 0.0f;
+                float invSin = 1.0f / sin;
+                if (q.W < 0) invSin = -invSin;
+                axis = new Vector3(q.X, q.Y, q.Z) * invSin;
+
+                angle = 2.0f * (float)Math.Acos(q.W);
+                if (angle > Math.PI)
+                    angle = 2.0f * (float)Math.PI - angle;
             }
             else
             {
-                angle = 2.0f * (float)Math.Acos(W);
-                float ooscale = 1f / scale;
-                axis.X = X * ooscale;
-                axis.Y = Y * ooscale;
-                axis.Z = Z * ooscale;
+                axis = Vector3.UnitX;
+                angle = 0f;
             }
         }
 
@@ -443,74 +443,53 @@ namespace OpenMetaverse
             );
         }
 
-        public static Quaternion CreateFromRotationMatrix(Matrix4 m)
+        public static Quaternion CreateFromRotationMatrix(Matrix4 matrix)
         {
-            Quaternion quat;
-
-            float trace = m.Trace();
-
-            if (trace > Single.Epsilon)
+            float num8 = (matrix.M11 + matrix.M22) + matrix.M33;
+            Quaternion quaternion = new Quaternion();
+            if (num8 > 0f)
             {
-                float s = (float)Math.Sqrt(trace + 1f);
-                quat.W = s * 0.5f;
-                s = 0.5f / s;
-                quat.X = (m.M23 - m.M32) * s;
-                quat.Y = (m.M31 - m.M13) * s;
-                quat.Z = (m.M12 - m.M21) * s;
+                float num = (float)Math.Sqrt((double)(num8 + 1f));
+                quaternion.W = num * 0.5f;
+                num = 0.5f / num;
+                quaternion.X = (matrix.M23 - matrix.M32) * num;
+                quaternion.Y = (matrix.M31 - matrix.M13) * num;
+                quaternion.Z = (matrix.M12 - matrix.M21) * num;
+                return quaternion;
             }
-            else
+            if ((matrix.M11 >= matrix.M22) && (matrix.M11 >= matrix.M33))
             {
-                if (m.M11 > m.M22 && m.M11 > m.M33)
-                {
-                    float s = (float)Math.Sqrt(1f + m.M11 - m.M22 - m.M33);
-                    quat.X = 0.5f * s;
-                    s = 0.5f / s;
-                    quat.Y = (m.M12 + m.M21) * s;
-                    quat.Z = (m.M13 + m.M31) * s;
-                    quat.W = (m.M23 - m.M32) * s;
-                }
-                else if (m.M22 > m.M33)
-                {
-                    float s = (float)Math.Sqrt(1f + m.M22 - m.M11 - m.M33);
-                    quat.Y = 0.5f * s;
-                    s = 0.5f / s;
-                    quat.X = (m.M21 + m.M12) * s;
-                    quat.Z = (m.M32 + m.M23) * s;
-                    quat.W = (m.M31 - m.M13) * s;
-                }
-                else
-                {
-                    float s = (float)Math.Sqrt(1f + m.M33 - m.M11 - m.M22);
-                    quat.Z = 0.5f * s;
-                    s = 0.5f / s;
-                    quat.X = (m.M31 + m.M13) * s;
-                    quat.Y = (m.M32 + m.M23) * s;
-                    quat.W = (m.M12 - m.M21) * s;
-                }
+                float num7 = (float)Math.Sqrt((double)(((1f + matrix.M11) - matrix.M22) - matrix.M33));
+                float num4 = 0.5f / num7;
+                quaternion.X = 0.5f * num7;
+                quaternion.Y = (matrix.M12 + matrix.M21) * num4;
+                quaternion.Z = (matrix.M13 + matrix.M31) * num4;
+                quaternion.W = (matrix.M23 - matrix.M32) * num4;
+                return quaternion;
             }
+            if (matrix.M22 > matrix.M33)
+            {
+                float num6 = (float)Math.Sqrt((double)(((1f + matrix.M22) - matrix.M11) - matrix.M33));
+                float num3 = 0.5f / num6;
+                quaternion.X = (matrix.M21 + matrix.M12) * num3;
+                quaternion.Y = 0.5f * num6;
+                quaternion.Z = (matrix.M32 + matrix.M23) * num3;
+                quaternion.W = (matrix.M31 - matrix.M13) * num3;
+                return quaternion;
+            }
+            float num5 = (float)Math.Sqrt((double)(((1f + matrix.M33) - matrix.M11) - matrix.M22));
+            float num2 = 0.5f / num5;
+            quaternion.X = (matrix.M31 + matrix.M13) * num2;
+            quaternion.Y = (matrix.M32 + matrix.M23) * num2;
+            quaternion.Z = 0.5f * num5;
+            quaternion.W = (matrix.M12 - matrix.M21) * num2;
 
-            return quat;
+            return quaternion;
         }
 
-        public static Quaternion Divide(Quaternion quaternion1, Quaternion quaternion2)
+        public static Quaternion Divide(Quaternion q1, Quaternion q2)
         {
-            float x = quaternion1.X;
-            float y = quaternion1.Y;
-            float z = quaternion1.Z;
-            float w = quaternion1.W;
-
-            float q2lensq = quaternion2.LengthSquared();
-            float ooq2lensq = 1f / q2lensq;
-            float x2 = -quaternion2.X * ooq2lensq;
-            float y2 = -quaternion2.Y * ooq2lensq;
-            float z2 = -quaternion2.Z * ooq2lensq;
-            float w2 = quaternion2.W * ooq2lensq;
-
-            return new Quaternion(
-                ((x * w2) + (x2 * w)) + (y * z2) - (z * y2),
-                ((y * w2) + (y2 * w)) + (z * x2) - (x * z2),
-                ((z * w2) + (z2 * w)) + (x * y2) - (y * x2),
-                (w * w2) - ((x * x2) + (y * y2)) + (z * z2));
+            return Quaternion.Inverse(q1) * q2;
         }
 
         public static float Dot(Quaternion q1, Quaternion q2)

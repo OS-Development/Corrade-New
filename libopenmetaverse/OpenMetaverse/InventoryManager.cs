@@ -1644,7 +1644,7 @@ namespace OpenMetaverse
                                             }
                                             else
                                             {
-                                                folder = (InventoryFolder)_Store[descFolder["category_id"]];
+                                                folder = (InventoryFolder)_Store[folderID];
                                             }
 
                                             folder.OwnerID = descFolder["agent_id"];
@@ -2016,7 +2016,10 @@ namespace OpenMetaverse
                 if (_Store.Contains(itemID))
                 {
                     InventoryBase inv = _Store[itemID];
-                    inv.Name = newName;
+                    if (!string.IsNullOrEmpty(newName))
+                    {
+                        inv.Name = newName;
+                    }
                     inv.ParentUUID = folderID;
                     _Store.UpdateNodeFor(inv);
                 }
