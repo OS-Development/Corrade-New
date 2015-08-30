@@ -2295,7 +2295,7 @@ namespace Corrade
                 StringBuilder sb = new StringBuilder();
                 for (int i = 0; i < vals.Count; i++)
                 {
-                    sb.Append(vals[i].ToString(CultureInfo.InvariantCulture));
+                    sb.Append(vals[i].ToString(CultureInfo.DefaultThreadCurrentCulture));
                     if (i != vals.Count - 1)
                     {
                         sb.Append(" ");
@@ -2529,15 +2529,15 @@ namespace Corrade
                         var diffuseColor = diffuse.AppendChild(Doc.CreateElement("color"));
                         diffuseColor.Attributes.Append(Doc.CreateAttribute("sid")).InnerText = "diffuse";
                         diffuseColor.InnerText = string.Format("{0} {1} {2} {3}",
-                            color.R.ToString(CultureInfo.InvariantCulture),
-                            color.G.ToString(CultureInfo.InvariantCulture),
-                            color.B.ToString(CultureInfo.InvariantCulture),
-                            color.A.ToString(CultureInfo.InvariantCulture));
+                            color.R.ToString(CultureInfo.DefaultThreadCurrentCulture),
+                            color.G.ToString(CultureInfo.DefaultThreadCurrentCulture),
+                            color.B.ToString(CultureInfo.DefaultThreadCurrentCulture),
+                            color.A.ToString(CultureInfo.DefaultThreadCurrentCulture));
                     }
 
                     phong.AppendChild(Doc.CreateElement("transparency"))
                         .AppendChild(Doc.CreateElement("float"))
-                        .InnerText = color.A.ToString(CultureInfo.InvariantCulture);
+                        .InnerText = color.A.ToString(CultureInfo.DefaultThreadCurrentCulture);
                 }
 
                 return true;
@@ -2618,7 +2618,7 @@ namespace Corrade
                 {
                     for (int j = 0; j < 4; j++)
                     {
-                        matrixVal += srt[j*4 + i].ToString(CultureInfo.InvariantCulture) + " ";
+                        matrixVal += srt[j*4 + i].ToString(CultureInfo.DefaultThreadCurrentCulture) + " ";
                     }
                 }
                 matrix.InnerText = matrixVal.TrimEnd();
@@ -3240,8 +3240,9 @@ namespace Corrade
                         !string.IsNullOrEmpty(InstalledServiceName)
                             ? InstalledServiceName
                             : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME,
-                        string.Format(CultureInfo.InvariantCulture, "[{0}]",
-                            DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP, DateTimeFormatInfo.InvariantInfo))
+                        string.Format(CultureInfo.DefaultThreadCurrentCulture, "[{0}]",
+                            DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat))
                     };
 
                     output.AddRange(messages.Select(message => message));
@@ -3265,7 +3266,7 @@ namespace Corrade
                         catch (Exception ex)
                         {
                             // or fail and append the fail message.
-                            output.Add(string.Format(CultureInfo.InvariantCulture, "{0} {1}",
+                            output.Add(string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0} {1}",
                                 wasGetDescriptionFromEnumValue(
                                     ConsoleError.COULD_NOT_WRITE_TO_CLIENT_LOG_FILE),
                                 ex.Message));
@@ -3306,14 +3307,15 @@ namespace Corrade
                 {
                     List<string> output =
                         new List<string>(
-                            messages.Select(o => string.Format(CultureInfo.InvariantCulture, "{0}{1}[{2}]{3}{4}",
-                                !string.IsNullOrEmpty(InstalledServiceName)
-                                    ? InstalledServiceName
-                                    : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME, CORRADE_CONSTANTS.ERROR_SEPARATOR,
-                                DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                    DateTimeFormatInfo.InvariantInfo),
-                                CORRADE_CONSTANTS.ERROR_SEPARATOR,
-                                o)));
+                            messages.Select(
+                                o => string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0}{1}[{2}]{3}{4}",
+                                    !string.IsNullOrEmpty(InstalledServiceName)
+                                        ? InstalledServiceName
+                                        : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME, CORRADE_CONSTANTS.ERROR_SEPARATOR,
+                                    DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                        CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat),
+                                    CORRADE_CONSTANTS.ERROR_SEPARATOR,
+                                    o)));
 
                     // Attempt to write to log file,
                     if (Configuration.CLIENT_LOG_ENABLED)
@@ -3337,7 +3339,7 @@ namespace Corrade
                         catch (Exception ex)
                         {
                             // or fail and append the fail message.
-                            output.Add(string.Format(CultureInfo.InvariantCulture, "{0} {1}",
+                            output.Add(string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0} {1}",
                                 wasGetDescriptionFromEnumValue(
                                     ConsoleError.COULD_NOT_WRITE_TO_CLIENT_LOG_FILE),
                                 ex.Message));
@@ -3391,6 +3393,7 @@ namespace Corrade
                                 break;
                         }
                     }
+
                     switch (action)
                     {
                         case "INSTALL":
@@ -3473,6 +3476,30 @@ namespace Corrade
         {
             // Set the current directory to the service directory.
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
+            // Load the Linden Lab Globalization.
+            try
+            {
+                // If the Linden Lab culture exists, then unregister it (for updates).
+                CultureInfo[] customCultures = CultureInfo.GetCultures(CultureTypes.UserCustomCulture);
+                if (
+                    customCultures.FirstOrDefault(
+                        o => o.Name.Equals(CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_NAME)) != null)
+                {
+                    CultureAndRegionInfoBuilder.Unregister(CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_NAME);
+                }
+                // Create the Linden culture from the globalization file and register it.
+                CultureAndRegionInfoBuilder cultureAndRegionInfoBuilder =
+                    CultureAndRegionInfoBuilder.CreateFromLdml(CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_FILE);
+                cultureAndRegionInfoBuilder.Register();
+                CultureInfo.DefaultThreadCurrentCulture =
+                    CultureInfo.CreateSpecificCulture(CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_NAME);
+            }
+            catch (Exception ex)
+            {
+                // If the culture could not be created and registered then abort everything since we need this.
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_LINDEN_GLOBALIZATION), ex.Message);
+                Environment.Exit(Configuration.EXIT_CODE_ABNORMAL);
+            }
             // Load the configuration file.
             Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
             // Write the logo.
@@ -3603,7 +3630,7 @@ namespace Corrade
                 Configuration.LAST_NAME,
                 Configuration.PASSWORD,
                 CORRADE_CONSTANTS.CLIENT_CHANNEL,
-                CORRADE_CONSTANTS.CORRADE_VERSION.ToString(CultureInfo.InvariantCulture),
+                CORRADE_CONSTANTS.CORRADE_VERSION.ToString(CultureInfo.DefaultThreadCurrentCulture),
                 Configuration.LOGIN_URL)
             {
                 Author = CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS,
@@ -4235,7 +4262,7 @@ namespace Corrade
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                 scriptDialogEventArgs.LastName);
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CHANNEL),
-                                scriptDialogEventArgs.Channel.ToString(CultureInfo.InvariantCulture));
+                                scriptDialogEventArgs.Channel.ToString(CultureInfo.DefaultThreadCurrentCulture));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
                                 scriptDialogEventArgs.ObjectName);
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
@@ -4299,7 +4326,7 @@ namespace Corrade
                                 return;
                             }
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BALANCE),
-                                balanceEventArgs.Balance.ToString(CultureInfo.InvariantCulture));
+                                balanceEventArgs.Balance.ToString(CultureInfo.DefaultThreadCurrentCulture));
                         };
                         break;
                     case Notifications.NOTIFICATION_ALERT_MESSAGE:
@@ -4820,7 +4847,7 @@ namespace Corrade
                                     notificationViewerEffectEventArgs.TargetPosition.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
                                     notificationViewerEffectEventArgs.Duration.ToString(
-                                        CultureInfo.InvariantCulture));
+                                        CultureInfo.DefaultThreadCurrentCulture));
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
                                     notificationViewerEffectEventArgs.EffectID.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
@@ -4847,7 +4874,7 @@ namespace Corrade
                                     notificationViewerPointAtEventArgs.TargetPosition.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
                                     notificationViewerPointAtEventArgs.Duration.ToString(
-                                        CultureInfo.InvariantCulture));
+                                        CultureInfo.DefaultThreadCurrentCulture));
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
                                     notificationViewerPointAtEventArgs.EffectID.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
@@ -4874,7 +4901,7 @@ namespace Corrade
                                     notificationViewerLookAtEventArgs.TargetPosition.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
                                     notificationViewerLookAtEventArgs.Duration.ToString(
-                                        CultureInfo.InvariantCulture));
+                                        CultureInfo.DefaultThreadCurrentCulture));
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
                                     notificationViewerLookAtEventArgs.EffectID.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
@@ -4898,7 +4925,7 @@ namespace Corrade
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGGRESSOR),
                                 meanCollisionEventArgs.Aggressor.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MAGNITUDE),
-                                meanCollisionEventArgs.Magnitude.ToString(CultureInfo.InvariantCulture));
+                                meanCollisionEventArgs.Magnitude.ToString(CultureInfo.DefaultThreadCurrentCulture));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TIME),
                                 meanCollisionEventArgs.Time.ToLongDateString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
@@ -5073,21 +5100,23 @@ namespace Corrade
                                 return;
                             }
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BALANCE),
-                                notificationMoneyBalanceEventArgs.Balance.ToString(CultureInfo.InvariantCulture));
+                                notificationMoneyBalanceEventArgs.Balance.ToString(
+                                    CultureInfo.DefaultThreadCurrentCulture));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
                                 notificationMoneyBalanceEventArgs.Description);
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.COMMITTED),
                                 notificationMoneyBalanceEventArgs.MetersCommitted.ToString(
-                                    CultureInfo.InvariantCulture));
+                                    CultureInfo.DefaultThreadCurrentCulture));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CREDIT),
-                                notificationMoneyBalanceEventArgs.MetersCredit.ToString(CultureInfo.InvariantCulture));
+                                notificationMoneyBalanceEventArgs.MetersCredit.ToString(
+                                    CultureInfo.DefaultThreadCurrentCulture));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SUCCESS),
                                 notificationMoneyBalanceEventArgs.Success.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
                                 notificationMoneyBalanceEventArgs.TransactionID.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT),
                                 notificationMoneyBalanceEventArgs.TransactionInfo.Amount.ToString(
-                                    CultureInfo.InvariantCulture));
+                                    CultureInfo.DefaultThreadCurrentCulture));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
                                 notificationMoneyBalanceEventArgs.TransactionInfo.DestID.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
@@ -5618,7 +5647,8 @@ namespace Corrade
                                     {
                                         logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
                                             DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                DateTimeFormatInfo.InvariantInfo), fullName.First(), fullName.Last(),
+                                                CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat),
+                                            fullName.First(), fullName.Last(),
                                             Enum.GetName(typeof (ChatType), e.Type),
                                             e.Message);
                                         //logWriter.Flush();
@@ -5680,7 +5710,7 @@ namespace Corrade
             // Accept anything from master avatars.
             if (
                 Configuration.MASTERS.AsParallel().Select(
-                    o => string.Format(CultureInfo.InvariantCulture, "{0} {1}", o.FirstName, o.LastName))
+                    o => string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0} {1}", o.FirstName, o.LastName))
                     .Any(p => p.Equals(e.Offer.FromAgentName, StringComparison.OrdinalIgnoreCase)))
             {
                 e.Accept = true;
@@ -6175,7 +6205,8 @@ namespace Corrade
                                                 {
                                                     logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                         DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                            DateTimeFormatInfo.InvariantInfo), fullName.First(),
+                                                            CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat),
+                                                        fullName.First(),
                                                         fullName.Last(),
                                                         args.IM.Message);
                                                     //logWriter.Flush();
@@ -6241,7 +6272,8 @@ namespace Corrade
                                             {
                                                 logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                     DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                        DateTimeFormatInfo.InvariantInfo), fullName.First(),
+                                                        CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat),
+                                                    fullName.First(),
                                                     fullName.Last(),
                                                     args.IM.Message);
                                                 //logWriter.Flush();
@@ -6288,7 +6320,8 @@ namespace Corrade
                                             {
                                                 logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                     DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                        DateTimeFormatInfo.InvariantInfo), fullName.First(),
+                                                        CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat),
+                                                    fullName.First(),
                                                     fullName.Last(),
                                                     args.IM.Message);
                                                 //logWriter.Flush();
@@ -6599,7 +6632,7 @@ namespace Corrade
                     {
                         double rotation;
                         if (!RLVrule.Param.Equals(RLV_CONSTANTS.FORCE) ||
-                            !double.TryParse(RLVrule.Option, NumberStyles.Float, CultureInfo.InvariantCulture,
+                            !double.TryParse(RLVrule.Option, NumberStyles.Float, CultureInfo.DefaultThreadCurrentCulture,
                                 out rotation))
                         {
                             return;
@@ -7483,7 +7516,7 @@ namespace Corrade
             }
 
             // Log the command.
-            Feedback(string.Format(CultureInfo.InvariantCulture, "{0} ({1}) : {2}", sender,
+            Feedback(string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0} ({1}) : {2}", sender,
                 identifier,
                 message));
 
@@ -7964,7 +7997,7 @@ namespace Corrade
                                     csv.AddRange(new[]
                                     {
                                         wasGetStructureMemberDescription(o, o.Fee),
-                                        o.Fee.ToString(CultureInfo.InvariantCulture)
+                                        o.Fee.ToString(CultureInfo.DefaultThreadCurrentCulture)
                                     });
                                 }
                             });
@@ -8455,7 +8488,7 @@ namespace Corrade
                                                         csv.Add(agentName);
                                                         csv.Add(o.Key.ToString());
                                                         csv.Add(
-                                                            o.Value.ToString(CultureInfo.InvariantCulture));
+                                                            o.Value.ToString(CultureInfo.DefaultThreadCurrentCulture));
                                                     }
                                                     break;
                                             }
@@ -9393,7 +9426,8 @@ namespace Corrade
                                                 {
                                                     logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                         DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                            DateTimeFormatInfo.InvariantInfo), myName.First(),
+                                                            CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat),
+                                                        myName.First(),
                                                         myName.Last(),
                                                         data);
                                                     //logWriter.Flush();
@@ -9463,7 +9497,8 @@ namespace Corrade
                                                     {
                                                         logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                             DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                                DateTimeFormatInfo.InvariantInfo), myName.First(),
+                                                                CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat),
+                                                            myName.First(),
                                                             myName.Last(),
                                                             data);
                                                         //logWriter.Flush();
@@ -9540,7 +9575,8 @@ namespace Corrade
                                                 {
                                                     logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
                                                         DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                            DateTimeFormatInfo.InvariantInfo), fullName.First(),
+                                                            CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat),
+                                                        fullName.First(),
                                                         fullName.Last(), Enum.GetName(typeof (ChatType), chatType),
                                                         data);
                                                     //logWriter.Flush();
@@ -9817,7 +9853,7 @@ namespace Corrade
                             throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                         }
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            Client.Self.Balance.ToString(CultureInfo.InvariantCulture));
+                            Client.Self.Balance.ToString(CultureInfo.DefaultThreadCurrentCulture));
                     };
                     break;
                 case ScriptKeys.TELEPORT:
@@ -10616,7 +10652,7 @@ namespace Corrade
                                 csv.Add(agent);
                                 csv.Add(parcelAccess.AgentID.ToString());
                                 csv.Add(parcelAccess.Flags.ToString());
-                                csv.Add(parcelAccess.Time.ToString(CultureInfo.InvariantCulture));
+                                csv.Add(parcelAccess.Time.ToString(CultureInfo.DefaultThreadCurrentCulture));
                             }
                             ParcelAccessListEvent.Set();
                         };
@@ -12425,7 +12461,9 @@ namespace Corrade
                             throw new ScriptException(ScriptError.COULD_NOT_GET_LAND_USERS);
                         }
                         List<string> data = new List<string>(primitives.AsParallel().Select(
-                            p => wasEnumerableToCSV(new[] {p.Key, p.Value.ToString(CultureInfo.InvariantCulture)})));
+                            p =>
+                                wasEnumerableToCSV(new[]
+                                {p.Key, p.Value.ToString(CultureInfo.DefaultThreadCurrentCulture)})));
                         if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -14643,11 +14681,11 @@ namespace Corrade
                             particleSystem.Append(" | PSYS_SRC_PATTERN_ANGLE_CONE_EMPTY");
                         particleSystem.Append(",");
                         particleSystem.Append("PSYS_PART_START_ALPHA, " +
-                                              string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                              string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.PartStartColor.A) +
                                               ",");
                         particleSystem.Append("PSYS_PART_END_ALPHA, " +
-                                              string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                              string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.PartEndColor.A) +
                                               ",");
                         particleSystem.Append("PSYS_PART_START_COLOR, " +
@@ -14656,53 +14694,53 @@ namespace Corrade
                         particleSystem.Append("PSYS_PART_END_COLOR, " + primitive.ParticleSys.PartEndColor.ToRGBString() +
                                               ",");
                         particleSystem.Append("PSYS_PART_START_SCALE, <" +
-                                              string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                              string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.PartStartScaleX) + ", " +
-                                              string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                              string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.PartStartScaleY) +
                                               ", 0>, ");
                         particleSystem.Append("PSYS_PART_END_SCALE, <" +
-                                              string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                              string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.PartEndScaleX) + ", " +
-                                              string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                              string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.PartEndScaleY) +
                                               ", 0>, ");
                         particleSystem.Append("PSYS_PART_MAX_AGE, " +
-                                              string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                              string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.PartMaxAge) +
                                               ",");
                         particleSystem.Append("PSYS_SRC_MAX_AGE, " +
-                                              string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                              string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.MaxAge) +
                                               ",");
                         particleSystem.Append("PSYS_SRC_ACCEL, " + primitive.ParticleSys.PartAcceleration +
                                               ",");
                         particleSystem.Append("PSYS_SRC_BURST_PART_COUNT, " +
-                                              string.Format(CultureInfo.InvariantCulture, "{0:0}",
+                                              string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0:0}",
                                                   primitive.ParticleSys.BurstPartCount) +
                                               ",");
                         particleSystem.Append("PSYS_SRC_BURST_RADIUS, " +
-                                              string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                              string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.BurstRadius) +
                                               ",");
                         particleSystem.Append("PSYS_SRC_BURST_RATE, " +
-                                              string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                              string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.BurstRate) +
                                               ",");
                         particleSystem.Append("PSYS_SRC_BURST_SPEED_MIN, " +
-                                              string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                              string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.BurstSpeedMin) +
                                               ",");
                         particleSystem.Append("PSYS_SRC_BURST_SPEED_MAX, " +
-                                              string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                              string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.BurstSpeedMax) +
                                               ",");
                         particleSystem.Append("PSYS_SRC_INNERANGLE, " +
-                                              string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                              string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.InnerAngle) +
                                               ",");
                         particleSystem.Append("PSYS_SRC_OUTERANGLE, " +
-                                              string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                              string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0:0.00000}",
                                                   primitive.ParticleSys.OuterAngle) +
                                               ",");
                         particleSystem.Append("PSYS_SRC_OMEGA, " + primitive.ParticleSys.AngularVelocity +
@@ -15465,17 +15503,17 @@ namespace Corrade
                                             csv.AddRange(new[]
                                             {
                                                 wasGetStructureMemberDescription(o, o.Alpha),
-                                                o.Alpha.ToString(CultureInfo.InvariantCulture)
+                                                o.Alpha.ToString(CultureInfo.DefaultThreadCurrentCulture)
                                             });
                                             csv.AddRange(new[]
                                             {
                                                 wasGetStructureMemberDescription(o, o.Duration),
-                                                o.Duration.ToString(CultureInfo.InvariantCulture)
+                                                o.Duration.ToString(CultureInfo.DefaultThreadCurrentCulture)
                                             });
                                             csv.AddRange(new[]
                                             {
                                                 wasGetStructureMemberDescription(o, o.Termination),
-                                                o.Termination.ToString(CultureInfo.InvariantCulture)
+                                                o.Termination.ToString(CultureInfo.DefaultThreadCurrentCulture)
                                             });
                                         }
                                     });
@@ -15501,17 +15539,17 @@ namespace Corrade
                                             csv.AddRange(new[]
                                             {
                                                 wasGetStructureMemberDescription(o, o.Alpha),
-                                                o.Alpha.ToString(CultureInfo.InvariantCulture)
+                                                o.Alpha.ToString(CultureInfo.DefaultThreadCurrentCulture)
                                             });
                                             csv.AddRange(new[]
                                             {
                                                 wasGetStructureMemberDescription(o, o.Duration),
-                                                o.Duration.ToString(CultureInfo.InvariantCulture)
+                                                o.Duration.ToString(CultureInfo.DefaultThreadCurrentCulture)
                                             });
                                             csv.AddRange(new[]
                                             {
                                                 wasGetStructureMemberDescription(o, o.Termination),
-                                                o.Termination.ToString(CultureInfo.InvariantCulture)
+                                                o.Termination.ToString(CultureInfo.DefaultThreadCurrentCulture)
                                             });
                                         }
                                     });
@@ -16473,7 +16511,7 @@ namespace Corrade
                                     csv.AddRange(new[]
                                     {
                                         wasGetStructureMemberDescription(o, o.Channel),
-                                        o.Channel.ToString(CultureInfo.InvariantCulture)
+                                        o.Channel.ToString(CultureInfo.DefaultThreadCurrentCulture)
                                     });
                                     csv.AddRange(new[] {wasGetStructureMemberDescription(o, o.Name), o.Name});
                                     csv.AddRange(new[] {wasGetStructureMemberDescription(o, o.Item), o.Item.ToString()});
@@ -16584,7 +16622,7 @@ namespace Corrade
                                 csv.AddRange(new List<string>
                                 {
                                     o.Key.ToString(),
-                                    o.Value.ToString(CultureInfo.InvariantCulture)
+                                    o.Value.ToString(CultureInfo.DefaultThreadCurrentCulture)
                                 }));
                         if (csv.Any())
                         {
@@ -16623,7 +16661,7 @@ namespace Corrade
                                 // Manually override Client.Estate.RestartRegion();
                                 Client.Estate.EstateOwnerMessage(
                                     LINDEN_CONSTANTS.ESTATE.MESSAGES.REGION_RESTART_MESSAGE,
-                                    delay.ToString(CultureInfo.InvariantCulture));
+                                    delay.ToString(CultureInfo.DefaultThreadCurrentCulture));
                                 break;
                             case Action.CANCEL:
                                 Client.Estate.CancelRestart();
@@ -16752,7 +16790,7 @@ namespace Corrade
                         }
                         List<string> data = new List<string>(topTasks.Take(amount).Select(o => new[]
                         {
-                            o.Value.Score.ToString(CultureInfo.InvariantCulture),
+                            o.Value.Score.ToString(CultureInfo.DefaultThreadCurrentCulture),
                             o.Value.TaskName,
                             o.Key.ToString(),
                             o.Value.OwnerName,
@@ -17483,7 +17521,7 @@ namespace Corrade
                                 .Where(o => (o as MapAgentLocation) != null)
                                 .Select(o => new[]
                                 {
-                                    ((MapAgentLocation) o).AvatarCount.ToString(CultureInfo.InvariantCulture),
+                                    ((MapAgentLocation) o).AvatarCount.ToString(CultureInfo.DefaultThreadCurrentCulture),
                                     new Vector3(o.LocalX, o.LocalY, 0).ToString()
                                 }).SelectMany(o => o));
                         if (data.Any())
@@ -19408,8 +19446,9 @@ namespace Corrade
                         ManualResetEvent PayPrceReceivedEvent = new ManualResetEvent(false);
                         EventHandler<PayPriceReplyEventArgs> PayPriceReplyEventHandler = (sender, args) =>
                         {
-                            csv.Add(args.DefaultPrice.ToString(CultureInfo.InvariantCulture));
-                            csv.AddRange(args.ButtonPrices.Select(o => o.ToString(CultureInfo.InvariantCulture)));
+                            csv.Add(args.DefaultPrice.ToString(CultureInfo.DefaultThreadCurrentCulture));
+                            csv.AddRange(
+                                args.ButtonPrices.Select(o => o.ToString(CultureInfo.DefaultThreadCurrentCulture)));
                             PayPrceReceivedEvent.Set();
                         };
                         lock (ClientInstanceObjectsLock)
@@ -19731,7 +19770,7 @@ namespace Corrade
                         if (csv.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                wasEnumerableToCSV(csv.Select(o => o.ToString(CultureInfo.InvariantCulture))));
+                                wasEnumerableToCSV(csv.Select(o => o.ToString(CultureInfo.DefaultThreadCurrentCulture))));
                         }
                     };
                     break;
@@ -22103,7 +22142,7 @@ namespace Corrade
 
             // add the final success status
             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.SUCCESS),
-                success.ToString(CultureInfo.InvariantCulture));
+                success.ToString(CultureInfo.DefaultThreadCurrentCulture));
 
             // build afterburn
             object AfterBurnLock = new object();
@@ -22623,6 +22662,8 @@ namespace Corrade
             public const string STATE_DIRECTORY = @"state";
             public const string NOTIFICATIONS_STATE_FILE = @"Notifications.state";
             public const string GROUP_MEMBERS_STATE_FILE = @"GroupMembers.state";
+            public const string LINDEN_GLOBALIZATION_FILE = @"LindenGlobalization.xml";
+            public const string LINDEN_GLOBALIZATION_NAME = @"Linden-Lab";
 
             public static readonly Regex AvatarFullNameRegex = new Regex(@"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$",
                 RegexOptions.Compiled);
@@ -23011,9 +23052,9 @@ namespace Corrade
                 @"               \  ",
                 @"                 Good day!  ",
                 @"",
-                string.Format(CultureInfo.InvariantCulture, "Version: {0}, Compiled: {1}", CORRADE_VERSION,
+                string.Format(CultureInfo.DefaultThreadCurrentCulture, "Version: {0}, Compiled: {1}", CORRADE_VERSION,
                     CORRADE_COMPILE_DATE),
-                string.Format(CultureInfo.InvariantCulture, "Copyright: {0}", COPYRIGHT)
+                string.Format(CultureInfo.DefaultThreadCurrentCulture, "Copyright: {0}", COPYRIGHT)
             };
         }
 
@@ -26438,7 +26479,8 @@ namespace Corrade
             [Description("unable to save group members state")] UNABLE_TO_SAVE_GROUP_MEMBERS_STATE,
             [Description("error sending POST request")] ERROR_SENDING_POST_REQUEST,
             [Description("error building POST request")] ERROR_BUILDING_POST_REQUEST,
-            [Description("notifications file modified")] NOTIFICATIONS_FILE_MODIFIED
+            [Description("notifications file modified")] NOTIFICATIONS_FILE_MODIFIED,
+            [Description("error setting up Linden globalization")] ERROR_SETTING_UP_LINDEN_GLOBALIZATION
         }
 
         /// <summary>
@@ -27280,11 +27322,9 @@ namespace Corrade
         {
             [Description("none")] NONE = 0,
 
-            [IsCommand(true)]
-            [CommandInputSyntax("<command=ban>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<ban|unban|list>>&action=ban,unban:[avatars=<UUID|STRING[,UUID|STRING...]>]&action=ban:[eject=<BOOL>]&[callback=<STRING>]")]
-            [CommandPermissionMask((uint)Permissions.PERMISSION_GROUP)]
-            [Description("ban")]
-            BAN,
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=ban>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<ban|unban|list>>&action=ban,unban:[avatars=<UUID|STRING[,UUID|STRING...]>]&action=ban:[eject=<BOOL>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("ban")] BAN,
 
             [IsCommand(true)] [CommandInputSyntax("<command=ping>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_NONE)] [Description("ping")] PING,
             [Description("pong")] PONG,
@@ -29039,7 +29079,7 @@ namespace Corrade
                     CORRADE_CONSTANTS.INVENTORY_CACHE_FILE));
 
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_LOADED),
-                itemsLoaded < 0 ? "0" : itemsLoaded.ToString(CultureInfo.InvariantCulture));
+                itemsLoaded < 0 ? "0" : itemsLoaded.ToString(CultureInfo.DefaultThreadCurrentCulture));
         };
 
         /// <summary>
@@ -29053,7 +29093,7 @@ namespace Corrade
             Client.Inventory.Store.SaveToDisk(path);
 
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_SAVED),
-                itemsSaved.ToString(CultureInfo.InvariantCulture));
+                itemsSaved.ToString(CultureInfo.DefaultThreadCurrentCulture));
         };
 
         /// <summary>
@@ -30177,7 +30217,7 @@ namespace Corrade
             };
             Client.Directory.DirPeopleReply += DirPeopleReplyDelegate;
             Client.Directory.StartPeopleSearch(
-                string.Format(CultureInfo.InvariantCulture, "{0} {1}", agentFirstName, agentLastName), 0);
+                string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0} {1}", agentFirstName, agentLastName), 0);
             if (!DirPeopleReceivedAlarm.Signal.WaitOne((int) millisecondsTimeout, false))
             {
                 Client.Directory.DirPeopleReply -= DirPeopleReplyDelegate;

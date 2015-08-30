@@ -79,6 +79,7 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\libopenmetaverse\bin\OpenMetaverseTypes.dll</HintPath>
     </Reference>
+    <Reference Include="sysglobl" />
     <Reference Include="System">
       <Private>False</Private>
     </Reference>
@@ -191,6 +192,13 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="..\libopenmetaverse\bin\openmetaverse_data\avatar_skeleton.xml">
+      <Link>openmetaverse_data\avatar_skeleton.xml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="LindenGlobalization.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <None Include="..\AIMLBot-data\AIML\Adverbs.aiml">
       <Link>AIMLBot\AIML\Adverbs.aiml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
