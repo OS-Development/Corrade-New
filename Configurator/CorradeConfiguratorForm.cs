@@ -122,387 +122,381 @@ namespace Configurator
 
         private readonly Action GetUserConfiguration = () =>
         {
-            mainForm.BeginInvoke((Action) (() =>
+            // client
+            mainForm.Firstname.Text = corradeConfiguration.FirstName;
+            mainForm.Lastname.Text = corradeConfiguration.LastName;
+            mainForm.Password.Text = corradeConfiguration.Password;
+            mainForm.LoginURL.Text = corradeConfiguration.LoginURL;
+            mainForm.StartLocation.Text = corradeConfiguration.StartLocation;
+            mainForm.TOS.Checked = corradeConfiguration.TOSAccepted;
+            mainForm.AutoActivateGroup.Checked = corradeConfiguration.AutoActivateGroup;
+            mainForm.GroupCreateFee.Text = corradeConfiguration.GroupCreateFee.ToString();
+            mainForm.ExpectedExitCode.Value = corradeConfiguration.ExitCodeExpected < -100 ||
+                                              corradeConfiguration.ExitCodeExpected > 100
+                ? -1
+                : corradeConfiguration.ExitCodeExpected;
+            mainForm.AbnomalExitCode.Value = corradeConfiguration.ExitCodeAbnormal < -100 ||
+                                             corradeConfiguration.ExitCodeAbnormal > 100
+                ? -2
+                : corradeConfiguration.ExitCodeAbnormal;
+
+            // logs
+            mainForm.ClientLogFile.Text = corradeConfiguration.ClientLogFile;
+            mainForm.ClientLogFileEnabled.Checked = corradeConfiguration.ClientLogEnabled;
+            mainForm.InstantMessageLogFile.Text = corradeConfiguration.InstantMessageLogDirectory;
+            mainForm.InstantMessageLogFileEnabled.Checked = corradeConfiguration.InstantMessageLogEnabled;
+            mainForm.LocalLogFile.Text = corradeConfiguration.LocalMessageLogDirectory;
+            mainForm.LocalLogFileEnabled.Checked = corradeConfiguration.LocalMessageLogEnabled;
+            mainForm.RegionLogFile.Text = corradeConfiguration.RegionMessageLogDirectory;
+            mainForm.RegionLogFileEnabled.Checked = corradeConfiguration.RegionMessageLogEnabled;
+
+            // filters
+            mainForm.ActiveInputFilters.Items.Clear();
+            foreach (Filter filter in corradeConfiguration.InputFilters)
             {
-                // client
-                mainForm.Firstname.Text = corradeConfiguration.FirstName;
-                mainForm.Lastname.Text = corradeConfiguration.LastName;
-                mainForm.Password.Text = corradeConfiguration.Password;
-                mainForm.LoginURL.Text = corradeConfiguration.LoginURL;
-                mainForm.StartLocation.Text = corradeConfiguration.StartLocation;
-                mainForm.TOS.Checked = corradeConfiguration.TOSAccepted;
-                mainForm.AutoActivateGroup.Checked = corradeConfiguration.AutoActivateGroup;
-                mainForm.GroupCreateFee.Text = corradeConfiguration.GroupCreateFee.ToString();
-                mainForm.ExpectedExitCode.Value = corradeConfiguration.ExitCodeExpected < -100 ||
-                                                  corradeConfiguration.ExitCodeExpected > 100
-                    ? -1
-                    : corradeConfiguration.ExitCodeExpected;
-                mainForm.AbnomalExitCode.Value = corradeConfiguration.ExitCodeAbnormal < -100 ||
-                                                 corradeConfiguration.ExitCodeAbnormal > 100
-                    ? -2
-                    : corradeConfiguration.ExitCodeAbnormal;
-
-                // logs
-                mainForm.ClientLogFile.Text = corradeConfiguration.ClientLogFile;
-                mainForm.ClientLogFileEnabled.Checked = corradeConfiguration.ClientLogEnabled;
-                mainForm.InstantMessageLogFile.Text = corradeConfiguration.InstantMessageLogDirectory;
-                mainForm.InstantMessageLogFileEnabled.Checked = corradeConfiguration.InstantMessageLogEnabled;
-                mainForm.LocalLogFile.Text = corradeConfiguration.LocalMessageLogDirectory;
-                mainForm.LocalLogFileEnabled.Checked = corradeConfiguration.LocalMessageLogEnabled;
-                mainForm.RegionLogFile.Text = corradeConfiguration.RegionMessageLogDirectory;
-                mainForm.RegionLogFileEnabled.Checked = corradeConfiguration.RegionMessageLogEnabled;
-
-                // filters
-                mainForm.ActiveInputFilters.Items.Clear();
-                foreach (Filter filter in corradeConfiguration.InputFilters)
+                mainForm.ActiveInputFilters.Items.Add(new ListViewItem
                 {
-                    mainForm.ActiveInputFilters.Items.Add(new ListViewItem
-                    {
-                        Text = wasGetDescriptionFromEnumValue(filter),
-                        Tag = filter
-                    });
-                }
-                mainForm.ActiveOutputFilters.Items.Clear();
-                mainForm.ActiveInputFilters.DisplayMember = "Text";
-                foreach (Filter filter in corradeConfiguration.OutputFilters)
+                    Text = wasGetDescriptionFromEnumValue(filter),
+                    Tag = filter
+                });
+            }
+            mainForm.ActiveOutputFilters.Items.Clear();
+            mainForm.ActiveInputFilters.DisplayMember = "Text";
+            foreach (Filter filter in corradeConfiguration.OutputFilters)
+            {
+                mainForm.ActiveOutputFilters.Items.Add(new ListViewItem
                 {
-                    mainForm.ActiveOutputFilters.Items.Add(new ListViewItem
-                    {
-                        Text = wasGetDescriptionFromEnumValue(filter),
-                        Tag = filter
-                    });
-                }
-                mainForm.ActiveOutputFilters.DisplayMember = "Text";
+                    Text = wasGetDescriptionFromEnumValue(filter),
+                    Tag = filter
+                });
+            }
+            mainForm.ActiveOutputFilters.DisplayMember = "Text";
 
-                // cryptography
-                mainForm.ENIGMARotorSequence.Items.Clear();
-                foreach (char rotor in corradeConfiguration.ENIGMA.rotors)
+            // cryptography
+            mainForm.ENIGMARotorSequence.Items.Clear();
+            foreach (char rotor in corradeConfiguration.ENIGMA.rotors)
+            {
+                mainForm.ENIGMARotorSequence.Items.Add(new ListViewItem
                 {
-                    mainForm.ENIGMARotorSequence.Items.Add(new ListViewItem
-                    {
-                        Text = rotor.ToString(),
-                        Tag = rotor
-                    });
-                }
-                mainForm.ENIGMARotorSequence.DisplayMember = "Text";
-                mainForm.ENIGMAPlugSequence.Items.Clear();
-                foreach (char plug in corradeConfiguration.ENIGMA.plugs)
+                    Text = rotor.ToString(),
+                    Tag = rotor
+                });
+            }
+            mainForm.ENIGMARotorSequence.DisplayMember = "Text";
+            mainForm.ENIGMAPlugSequence.Items.Clear();
+            foreach (char plug in corradeConfiguration.ENIGMA.plugs)
+            {
+                mainForm.ENIGMAPlugSequence.Items.Add(new ListViewItem
                 {
-                    mainForm.ENIGMAPlugSequence.Items.Add(new ListViewItem
-                    {
-                        Text = plug.ToString(),
-                        Tag = plug
-                    });
-                }
-                mainForm.ENIGMAPlugSequence.DisplayMember = "Text";
-                mainForm.ENIGMAReflector.Text = corradeConfiguration.ENIGMA.reflector.ToString();
-                mainForm.VIGENERESecret.Text = corradeConfiguration.VIGENERESecret;
+                    Text = plug.ToString(),
+                    Tag = plug
+                });
+            }
+            mainForm.ENIGMAPlugSequence.DisplayMember = "Text";
+            mainForm.ENIGMAReflector.Text = corradeConfiguration.ENIGMA.reflector.ToString();
+            mainForm.VIGENERESecret.Text = corradeConfiguration.VIGENERESecret;
 
-                // AIML
-                mainForm.AIMLEnabled.Checked = corradeConfiguration.EnableAIML;
-                // RLV
-                mainForm.RLVEnabled.Checked = corradeConfiguration.EnableRLV;
+            // AIML
+            mainForm.AIMLEnabled.Checked = corradeConfiguration.EnableAIML;
+            // RLV
+            mainForm.RLVEnabled.Checked = corradeConfiguration.EnableRLV;
 
-                // network
-                mainForm.NetworkBindAddress.Text = corradeConfiguration.BindIPAddress;
-                mainForm.NetworkMACAddress.Text = corradeConfiguration.NetworkCardMAC;
-                mainForm.NetworkID0.Text = corradeConfiguration.DriveIdentifierHash;
-                mainForm.NetworkNaggleEnabled.Checked = corradeConfiguration.UseNaggle;
-                mainForm.NetworkExpect100ContinueEnabled.Checked = corradeConfiguration.UseExpect100Continue;
+            // network
+            mainForm.NetworkBindAddress.Text = corradeConfiguration.BindIPAddress;
+            mainForm.NetworkMACAddress.Text = corradeConfiguration.NetworkCardMAC;
+            mainForm.NetworkID0.Text = corradeConfiguration.DriveIdentifierHash;
+            mainForm.NetworkNaggleEnabled.Checked = corradeConfiguration.UseNaggle;
+            mainForm.NetworkExpect100ContinueEnabled.Checked = corradeConfiguration.UseExpect100Continue;
 
-                // throttles
-                mainForm.ThrottlesTotalThrottle.Text = corradeConfiguration.ThrottleTotal.ToString();
-                mainForm.ThrottlesResendThrottle.Text = corradeConfiguration.ThrottleResend.ToString();
-                mainForm.ThrottleLandThrottle.Text = corradeConfiguration.ThrottleLand.ToString();
-                mainForm.ThrottleTaskThrottle.Text = corradeConfiguration.ThrottleTask.ToString();
-                mainForm.ThrottleTextureThrottle.Text = corradeConfiguration.ThrottleTexture.ToString();
-                mainForm.ThrottleWindThrottle.Text = corradeConfiguration.ThrottleWind.ToString();
-                mainForm.ThrottleAssetThrottle.Text = corradeConfiguration.ThrottleAsset.ToString();
-                mainForm.ThrottleCloudThrottle.Text = corradeConfiguration.ThrottleCloud.ToString();
+            // throttles
+            mainForm.ThrottlesTotalThrottle.Text = corradeConfiguration.ThrottleTotal.ToString();
+            mainForm.ThrottlesResendThrottle.Text = corradeConfiguration.ThrottleResend.ToString();
+            mainForm.ThrottleLandThrottle.Text = corradeConfiguration.ThrottleLand.ToString();
+            mainForm.ThrottleTaskThrottle.Text = corradeConfiguration.ThrottleTask.ToString();
+            mainForm.ThrottleTextureThrottle.Text = corradeConfiguration.ThrottleTexture.ToString();
+            mainForm.ThrottleWindThrottle.Text = corradeConfiguration.ThrottleWind.ToString();
+            mainForm.ThrottleAssetThrottle.Text = corradeConfiguration.ThrottleAsset.ToString();
+            mainForm.ThrottleCloudThrottle.Text = corradeConfiguration.ThrottleCloud.ToString();
 
-                // server
-                mainForm.HTTPServerEnabled.Checked = corradeConfiguration.EnableHTTPServer;
-                mainForm.HTTPServerPrefix.Text = corradeConfiguration.HTTPServerPrefix;
-                mainForm.HTTPServerCompression.Text =
-                    wasGetDescriptionFromEnumValue(corradeConfiguration.HTTPServerCompression);
-                mainForm.HTTPServerKeepAliveEnabled.Checked = corradeConfiguration.HTTPServerKeepAlive;
+            // server
+            mainForm.HTTPServerEnabled.Checked = corradeConfiguration.EnableHTTPServer;
+            mainForm.HTTPServerPrefix.Text = corradeConfiguration.HTTPServerPrefix;
+            mainForm.HTTPServerCompression.Text =
+                wasGetDescriptionFromEnumValue(corradeConfiguration.HTTPServerCompression);
+            mainForm.HTTPServerKeepAliveEnabled.Checked = corradeConfiguration.HTTPServerKeepAlive;
 
-                // limits
-                mainForm.LimitsRange.Text = corradeConfiguration.Range.ToString(CultureInfo.DefaultThreadCurrentCulture);
-                mainForm.LimitsPOSTThreads.Text = corradeConfiguration.MaximumPOSTThreads.ToString();
-                mainForm.LimitsSchedulerExpiration.Text = corradeConfiguration.SchedulerExpiration.ToString();
-                mainForm.LimitsLoggingThreads.Text = corradeConfiguration.MaximumLogThreads.ToString();
-                mainForm.LimitsCommandsThreads.Text = corradeConfiguration.MaximumCommandThreads.ToString();
-                mainForm.LimitsRLVThreads.Text = corradeConfiguration.MaximumRLVThreads.ToString();
-                mainForm.LimitsInstantMessageThreads.Text = corradeConfiguration.MaximumInstantMessageThreads.ToString();
-                mainForm.LimitsClientConnections.Text = corradeConfiguration.ConnectionLimit.ToString();
-                mainForm.LimitsClientIdle.Text = corradeConfiguration.ConnectionIdleTime.ToString();
-                mainForm.LimitsCallbacksTimeout.Text = corradeConfiguration.CallbackTimeout.ToString();
-                mainForm.LimitsCallbacksThrottle.Text = corradeConfiguration.CallbackThrottle.ToString();
-                mainForm.LimitsCallbackQueue.Text = corradeConfiguration.CallbackQueueLength.ToString();
-                mainForm.LimitsNotificationsTimeout.Text = corradeConfiguration.NotificationTimeout.ToString();
-                mainForm.LimitsNotificationsThrottle.Text = corradeConfiguration.NotificationThrottle.ToString();
-                mainForm.LimitsNotificationsQueue.Text = corradeConfiguration.NotificationQueueLength.ToString();
-                mainForm.LimitsNotificationsThreads.Text = corradeConfiguration.MaximumNotificationThreads.ToString();
-                mainForm.LimitsHTTPServerDrain.Text = corradeConfiguration.HTTPServerDrainTimeout.ToString();
-                mainForm.LimitsHTTPServerBody.Text = corradeConfiguration.HTTPServerBodyTimeout.ToString();
-                mainForm.LimitsHTTPServerHeader.Text = corradeConfiguration.HTTPServerIdleTimeout.ToString();
-                mainForm.LimitsHTTPServerQueue.Text = corradeConfiguration.HTTPServerQueueTimeout.ToString();
-                mainForm.LimitsHTTPServerTimeout.Text = corradeConfiguration.HTTPServerTimeout.ToString();
-                mainForm.LimitsServicesTimeout.Text = corradeConfiguration.ServicesTimeout.ToString();
-                mainForm.LimitsServicesRebake.Text = corradeConfiguration.RebakeDelay.ToString();
-                mainForm.LimitsServicesActivate.Text = corradeConfiguration.ActivateDelay.ToString();
-                mainForm.LimitsDataTimeout.Text = corradeConfiguration.DataTimeout.ToString();
-                mainForm.LimitsDataDecay.Text = wasGetDescriptionFromEnumValue(corradeConfiguration.DataDecayType);
-                mainForm.LimitsMembershipSweep.Text = corradeConfiguration.MembershipSweepInterval.ToString();
-                mainForm.LimitsLogoutTimeout.Text = corradeConfiguration.LogoutGrace.ToString();
+            // limits
+            mainForm.LimitsRange.Text = corradeConfiguration.Range.ToString(CultureInfo.DefaultThreadCurrentCulture);
+            mainForm.LimitsPOSTThreads.Text = corradeConfiguration.MaximumPOSTThreads.ToString();
+            mainForm.LimitsSchedulerExpiration.Text = corradeConfiguration.SchedulerExpiration.ToString();
+            mainForm.LimitsLoggingThreads.Text = corradeConfiguration.MaximumLogThreads.ToString();
+            mainForm.LimitsCommandsThreads.Text = corradeConfiguration.MaximumCommandThreads.ToString();
+            mainForm.LimitsRLVThreads.Text = corradeConfiguration.MaximumRLVThreads.ToString();
+            mainForm.LimitsInstantMessageThreads.Text = corradeConfiguration.MaximumInstantMessageThreads.ToString();
+            mainForm.LimitsClientConnections.Text = corradeConfiguration.ConnectionLimit.ToString();
+            mainForm.LimitsClientIdle.Text = corradeConfiguration.ConnectionIdleTime.ToString();
+            mainForm.LimitsCallbacksTimeout.Text = corradeConfiguration.CallbackTimeout.ToString();
+            mainForm.LimitsCallbacksThrottle.Text = corradeConfiguration.CallbackThrottle.ToString();
+            mainForm.LimitsCallbackQueue.Text = corradeConfiguration.CallbackQueueLength.ToString();
+            mainForm.LimitsNotificationsTimeout.Text = corradeConfiguration.NotificationTimeout.ToString();
+            mainForm.LimitsNotificationsThrottle.Text = corradeConfiguration.NotificationThrottle.ToString();
+            mainForm.LimitsNotificationsQueue.Text = corradeConfiguration.NotificationQueueLength.ToString();
+            mainForm.LimitsNotificationsThreads.Text = corradeConfiguration.MaximumNotificationThreads.ToString();
+            mainForm.LimitsHTTPServerDrain.Text = corradeConfiguration.HTTPServerDrainTimeout.ToString();
+            mainForm.LimitsHTTPServerBody.Text = corradeConfiguration.HTTPServerBodyTimeout.ToString();
+            mainForm.LimitsHTTPServerHeader.Text = corradeConfiguration.HTTPServerIdleTimeout.ToString();
+            mainForm.LimitsHTTPServerQueue.Text = corradeConfiguration.HTTPServerQueueTimeout.ToString();
+            mainForm.LimitsHTTPServerTimeout.Text = corradeConfiguration.HTTPServerTimeout.ToString();
+            mainForm.LimitsServicesTimeout.Text = corradeConfiguration.ServicesTimeout.ToString();
+            mainForm.LimitsServicesRebake.Text = corradeConfiguration.RebakeDelay.ToString();
+            mainForm.LimitsServicesActivate.Text = corradeConfiguration.ActivateDelay.ToString();
+            mainForm.LimitsDataTimeout.Text = corradeConfiguration.DataTimeout.ToString();
+            mainForm.LimitsDataDecay.Text = wasGetDescriptionFromEnumValue(corradeConfiguration.DataDecayType);
+            mainForm.LimitsMembershipSweep.Text = corradeConfiguration.MembershipSweepInterval.ToString();
+            mainForm.LimitsLogoutTimeout.Text = corradeConfiguration.LogoutGrace.ToString();
 
-                // masters
-                mainForm.Masters.Items.Clear();
-                foreach (Master master in corradeConfiguration.Masters)
+            // masters
+            mainForm.Masters.Items.Clear();
+            foreach (Master master in corradeConfiguration.Masters)
+            {
+                mainForm.Masters.Items.Add(new ListViewItem
                 {
-                    mainForm.Masters.Items.Add(new ListViewItem
-                    {
-                        Text = master.FirstName + " " + master.LastName,
-                        Tag = master
-                    });
-                }
-                mainForm.Masters.DisplayMember = "Text";
+                    Text = master.FirstName + " " + master.LastName,
+                    Tag = master
+                });
+            }
+            mainForm.Masters.DisplayMember = "Text";
 
-                // groups
-                mainForm.Groups.Items.Clear();
-                foreach (Group group in corradeConfiguration.Groups)
+            // groups
+            mainForm.Groups.Items.Clear();
+            foreach (Group group in corradeConfiguration.Groups)
+            {
+                mainForm.Groups.Items.Add(new ListViewItem
                 {
-                    mainForm.Groups.Items.Add(new ListViewItem
-                    {
-                        Text = group.Name,
-                        Tag = group
-                    });
-                }
-                mainForm.Groups.DisplayMember = "Text";
-            }));
+                    Text = group.Name,
+                    Tag = group
+                });
+            }
+            mainForm.Groups.DisplayMember = "Text";
         };
 
         private readonly Action SetUserConfiguration = () =>
         {
-            mainForm.BeginInvoke((Action) (() =>
+            // client
+            corradeConfiguration.FirstName = mainForm.Firstname.Text;
+            corradeConfiguration.LastName = mainForm.Lastname.Text;
+            // Check if the password is an MD5 - if it is, then set it, otherwise make an MD5
+            switch (mainForm.Password.Text.Contains("$1$"))
             {
-                // client
-                corradeConfiguration.FirstName = mainForm.Firstname.Text;
-                corradeConfiguration.LastName = mainForm.Lastname.Text;
-                // Check if the password is an MD5 - if it is, then set it, otherwise make an MD5
-                switch (mainForm.Password.Text.Contains("$1$"))
-                {
-                    case true:
-                        corradeConfiguration.Password = mainForm.Password.Text;
-                        break;
-                    default:
-                        corradeConfiguration.Password = "$1$" + CalculateMD5Hash(mainForm.Password.Text);
-                        break;
-                }
-                corradeConfiguration.LoginURL = mainForm.LoginURL.Text;
-                corradeConfiguration.StartLocation = mainForm.StartLocation.Text;
-                corradeConfiguration.TOSAccepted = mainForm.TOS.Checked;
-                corradeConfiguration.AutoActivateGroup = mainForm.AutoActivateGroup.Checked;
-                uint outUint;
-                if (uint.TryParse(mainForm.GroupCreateFee.Text, out outUint))
-                {
-                    corradeConfiguration.GroupCreateFee = outUint;
-                }
-                corradeConfiguration.ExitCodeExpected = (int) mainForm.ExpectedExitCode.Value;
-                corradeConfiguration.ExitCodeAbnormal = (int) mainForm.AbnomalExitCode.Value;
+                case true:
+                    corradeConfiguration.Password = mainForm.Password.Text;
+                    break;
+                default:
+                    corradeConfiguration.Password = "$1$" + CalculateMD5Hash(mainForm.Password.Text);
+                    break;
+            }
+            corradeConfiguration.LoginURL = mainForm.LoginURL.Text;
+            corradeConfiguration.StartLocation = mainForm.StartLocation.Text;
+            corradeConfiguration.TOSAccepted = mainForm.TOS.Checked;
+            corradeConfiguration.AutoActivateGroup = mainForm.AutoActivateGroup.Checked;
+            uint outUint;
+            if (uint.TryParse(mainForm.GroupCreateFee.Text, out outUint))
+            {
+                corradeConfiguration.GroupCreateFee = outUint;
+            }
+            corradeConfiguration.ExitCodeExpected = (int) mainForm.ExpectedExitCode.Value;
+            corradeConfiguration.ExitCodeAbnormal = (int) mainForm.AbnomalExitCode.Value;
 
-                // logs
-                corradeConfiguration.ClientLogFile = mainForm.ClientLogFile.Text;
-                corradeConfiguration.ClientLogEnabled = mainForm.ClientLogFileEnabled.Checked;
-                corradeConfiguration.InstantMessageLogDirectory = mainForm.InstantMessageLogFile.Text;
-                corradeConfiguration.InstantMessageLogEnabled = mainForm.InstantMessageLogFileEnabled.Checked;
-                corradeConfiguration.LocalMessageLogDirectory = mainForm.LocalLogFile.Text;
-                corradeConfiguration.LocalMessageLogEnabled = mainForm.LocalLogFileEnabled.Checked;
-                corradeConfiguration.RegionMessageLogDirectory = mainForm.RegionLogFile.Text;
-                corradeConfiguration.RegionMessageLogEnabled = mainForm.RegionLogFileEnabled.Checked;
+            // logs
+            corradeConfiguration.ClientLogFile = mainForm.ClientLogFile.Text;
+            corradeConfiguration.ClientLogEnabled = mainForm.ClientLogFileEnabled.Checked;
+            corradeConfiguration.InstantMessageLogDirectory = mainForm.InstantMessageLogFile.Text;
+            corradeConfiguration.InstantMessageLogEnabled = mainForm.InstantMessageLogFileEnabled.Checked;
+            corradeConfiguration.LocalMessageLogDirectory = mainForm.LocalLogFile.Text;
+            corradeConfiguration.LocalMessageLogEnabled = mainForm.LocalLogFileEnabled.Checked;
+            corradeConfiguration.RegionMessageLogDirectory = mainForm.RegionLogFile.Text;
+            corradeConfiguration.RegionMessageLogEnabled = mainForm.RegionLogFileEnabled.Checked;
 
-                // filters
-                corradeConfiguration.InputFilters =
-                    mainForm.ActiveInputFilters.Items.Cast<ListViewItem>().Select(o => (Filter) o.Tag).ToList();
-                corradeConfiguration.OutputFilters =
-                    mainForm.ActiveOutputFilters.Items.Cast<ListViewItem>().Select(o => (Filter) o.Tag).ToList();
+            // filters
+            corradeConfiguration.InputFilters =
+                mainForm.ActiveInputFilters.Items.Cast<ListViewItem>().Select(o => (Filter) o.Tag).ToList();
+            corradeConfiguration.OutputFilters =
+                mainForm.ActiveOutputFilters.Items.Cast<ListViewItem>().Select(o => (Filter) o.Tag).ToList();
 
-                // cryptography
-                corradeConfiguration.ENIGMA = new ENIGMA
-                {
-                    rotors = mainForm.ENIGMARotorSequence.Items.Cast<ListViewItem>().Select(o => (char) o.Tag).ToArray(),
-                    plugs = mainForm.ENIGMAPlugSequence.Items.Cast<ListViewItem>().Select(o => (char) o.Tag).ToArray(),
-                    reflector = mainForm.ENIGMAReflector.Text[0]
-                };
+            // cryptography
+            corradeConfiguration.ENIGMA = new ENIGMA
+            {
+                rotors = mainForm.ENIGMARotorSequence.Items.Cast<ListViewItem>().Select(o => (char) o.Tag).ToArray(),
+                plugs = mainForm.ENIGMAPlugSequence.Items.Cast<ListViewItem>().Select(o => (char) o.Tag).ToArray(),
+                reflector = mainForm.ENIGMAReflector.Text[0]
+            };
 
-                corradeConfiguration.VIGENERESecret = mainForm.VIGENERESecret.Text;
+            corradeConfiguration.VIGENERESecret = mainForm.VIGENERESecret.Text;
 
-                // AIML
-                corradeConfiguration.EnableAIML = mainForm.AIMLEnabled.Checked;
-                // RLV
-                corradeConfiguration.EnableRLV = mainForm.RLVEnabled.Checked;
+            // AIML
+            corradeConfiguration.EnableAIML = mainForm.AIMLEnabled.Checked;
+            // RLV
+            corradeConfiguration.EnableRLV = mainForm.RLVEnabled.Checked;
 
-                // network
-                corradeConfiguration.BindIPAddress = mainForm.NetworkBindAddress.Text;
-                corradeConfiguration.NetworkCardMAC = mainForm.NetworkMACAddress.Text;
-                corradeConfiguration.DriveIdentifierHash = mainForm.NetworkID0.Text;
-                corradeConfiguration.UseNaggle = mainForm.NetworkNaggleEnabled.Checked;
-                corradeConfiguration.UseExpect100Continue = mainForm.NetworkExpect100ContinueEnabled.Checked;
+            // network
+            corradeConfiguration.BindIPAddress = mainForm.NetworkBindAddress.Text;
+            corradeConfiguration.NetworkCardMAC = mainForm.NetworkMACAddress.Text;
+            corradeConfiguration.DriveIdentifierHash = mainForm.NetworkID0.Text;
+            corradeConfiguration.UseNaggle = mainForm.NetworkNaggleEnabled.Checked;
+            corradeConfiguration.UseExpect100Continue = mainForm.NetworkExpect100ContinueEnabled.Checked;
 
-                // throttles
-                if (uint.TryParse(mainForm.ThrottlesTotalThrottle.Text, out outUint))
-                {
-                    corradeConfiguration.ThrottleTotal = outUint;
-                }
-                if (uint.TryParse(mainForm.ThrottlesResendThrottle.Text, out outUint))
-                {
-                    corradeConfiguration.ThrottleResend = outUint;
-                }
-                if (uint.TryParse(mainForm.ThrottleLandThrottle.Text, out outUint))
-                {
-                    corradeConfiguration.ThrottleLand = outUint;
-                }
-                if (uint.TryParse(mainForm.ThrottleTaskThrottle.Text, out outUint))
-                {
-                    corradeConfiguration.ThrottleTask = outUint;
-                }
-                if (uint.TryParse(mainForm.ThrottleTextureThrottle.Text, out outUint))
-                {
-                    corradeConfiguration.ThrottleTexture = outUint;
-                }
-                if (uint.TryParse(mainForm.ThrottleWindThrottle.Text, out outUint))
-                {
-                    corradeConfiguration.ThrottleWind = outUint;
-                }
-                if (uint.TryParse(mainForm.ThrottleAssetThrottle.Text, out outUint))
-                {
-                    corradeConfiguration.ThrottleAsset = outUint;
-                }
-                if (uint.TryParse(mainForm.ThrottleCloudThrottle.Text, out outUint))
-                {
-                    corradeConfiguration.ThrottleCloud = outUint;
-                }
+            // throttles
+            if (uint.TryParse(mainForm.ThrottlesTotalThrottle.Text, out outUint))
+            {
+                corradeConfiguration.ThrottleTotal = outUint;
+            }
+            if (uint.TryParse(mainForm.ThrottlesResendThrottle.Text, out outUint))
+            {
+                corradeConfiguration.ThrottleResend = outUint;
+            }
+            if (uint.TryParse(mainForm.ThrottleLandThrottle.Text, out outUint))
+            {
+                corradeConfiguration.ThrottleLand = outUint;
+            }
+            if (uint.TryParse(mainForm.ThrottleTaskThrottle.Text, out outUint))
+            {
+                corradeConfiguration.ThrottleTask = outUint;
+            }
+            if (uint.TryParse(mainForm.ThrottleTextureThrottle.Text, out outUint))
+            {
+                corradeConfiguration.ThrottleTexture = outUint;
+            }
+            if (uint.TryParse(mainForm.ThrottleWindThrottle.Text, out outUint))
+            {
+                corradeConfiguration.ThrottleWind = outUint;
+            }
+            if (uint.TryParse(mainForm.ThrottleAssetThrottle.Text, out outUint))
+            {
+                corradeConfiguration.ThrottleAsset = outUint;
+            }
+            if (uint.TryParse(mainForm.ThrottleCloudThrottle.Text, out outUint))
+            {
+                corradeConfiguration.ThrottleCloud = outUint;
+            }
 
-                // server
-                corradeConfiguration.EnableHTTPServer = mainForm.HTTPServerEnabled.Checked;
-                corradeConfiguration.HTTPServerPrefix = mainForm.HTTPServerPrefix.Text;
-                corradeConfiguration.HTTPServerCompression =
-                    wasGetEnumValueFromDescription<HTTPCompressionMethod>(mainForm.HTTPServerCompression.Text);
-                corradeConfiguration.HTTPServerKeepAlive = mainForm.HTTPServerKeepAliveEnabled.Checked;
+            // server
+            corradeConfiguration.EnableHTTPServer = mainForm.HTTPServerEnabled.Checked;
+            corradeConfiguration.HTTPServerPrefix = mainForm.HTTPServerPrefix.Text;
+            corradeConfiguration.HTTPServerCompression =
+                wasGetEnumValueFromDescription<HTTPCompressionMethod>(mainForm.HTTPServerCompression.Text);
+            corradeConfiguration.HTTPServerKeepAlive = mainForm.HTTPServerKeepAliveEnabled.Checked;
 
-                // limits
-                if (uint.TryParse(mainForm.LimitsRange.Text, out outUint))
-                {
-                    corradeConfiguration.Range = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsPOSTThreads.Text, out outUint))
-                {
-                    corradeConfiguration.MaximumPOSTThreads = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsSchedulerExpiration.Text, out outUint))
-                {
-                    corradeConfiguration.SchedulerExpiration = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsLoggingThreads.Text, out outUint))
-                {
-                    corradeConfiguration.MaximumLogThreads = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsCommandsThreads.Text, out outUint))
-                {
-                    corradeConfiguration.MaximumCommandThreads = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsRLVThreads.Text, out outUint))
-                {
-                    corradeConfiguration.MaximumRLVThreads = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsInstantMessageThreads.Text, out outUint))
-                {
-                    corradeConfiguration.MaximumInstantMessageThreads = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsClientConnections.Text, out outUint))
-                {
-                    corradeConfiguration.ConnectionLimit = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsClientIdle.Text, out outUint))
-                {
-                    corradeConfiguration.ConnectionIdleTime = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsCallbacksTimeout.Text, out outUint))
-                {
-                    corradeConfiguration.CallbackTimeout = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsCallbacksThrottle.Text, out outUint))
-                {
-                    corradeConfiguration.CallbackThrottle = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsCallbackQueue.Text, out outUint))
-                {
-                    corradeConfiguration.CallbackQueueLength = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsNotificationsTimeout.Text, out outUint))
-                {
-                    corradeConfiguration.NotificationTimeout = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsNotificationsThrottle.Text, out outUint))
-                {
-                    corradeConfiguration.NotificationThrottle = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsNotificationsQueue.Text, out outUint))
-                {
-                    corradeConfiguration.NotificationQueueLength = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsNotificationsThreads.Text, out outUint))
-                {
-                    corradeConfiguration.MaximumNotificationThreads = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsHTTPServerDrain.Text, out outUint))
-                {
-                    corradeConfiguration.HTTPServerDrainTimeout = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsHTTPServerBody.Text, out outUint))
-                {
-                    corradeConfiguration.HTTPServerBodyTimeout = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsHTTPServerHeader.Text, out outUint))
-                {
-                    corradeConfiguration.HTTPServerIdleTimeout = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsHTTPServerQueue.Text, out outUint))
-                {
-                    corradeConfiguration.HTTPServerQueueTimeout = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsHTTPServerTimeout.Text, out outUint))
-                {
-                    corradeConfiguration.HTTPServerTimeout = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsServicesTimeout.Text, out outUint))
-                {
-                    corradeConfiguration.ServicesTimeout = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsServicesRebake.Text, out outUint))
-                {
-                    corradeConfiguration.RebakeDelay = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsServicesActivate.Text, out outUint))
-                {
-                    corradeConfiguration.ActivateDelay = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsDataTimeout.Text, out outUint))
-                {
-                    corradeConfiguration.DataTimeout = outUint;
-                }
-                corradeConfiguration.DataDecayType =
-                    wasGetEnumValueFromDescription<wasAdaptiveAlarm.DECAY_TYPE>(mainForm.LimitsDataDecay.Text);
-                if (uint.TryParse(mainForm.LimitsMembershipSweep.Text, out outUint))
-                {
-                    corradeConfiguration.MembershipSweepInterval = outUint;
-                }
-                if (uint.TryParse(mainForm.LimitsLogoutTimeout.Text, out outUint))
-                {
-                    corradeConfiguration.LogoutGrace = outUint;
-                }
-            }));
+            // limits
+            if (uint.TryParse(mainForm.LimitsRange.Text, out outUint))
+            {
+                corradeConfiguration.Range = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsPOSTThreads.Text, out outUint))
+            {
+                corradeConfiguration.MaximumPOSTThreads = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsSchedulerExpiration.Text, out outUint))
+            {
+                corradeConfiguration.SchedulerExpiration = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsLoggingThreads.Text, out outUint))
+            {
+                corradeConfiguration.MaximumLogThreads = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsCommandsThreads.Text, out outUint))
+            {
+                corradeConfiguration.MaximumCommandThreads = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsRLVThreads.Text, out outUint))
+            {
+                corradeConfiguration.MaximumRLVThreads = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsInstantMessageThreads.Text, out outUint))
+            {
+                corradeConfiguration.MaximumInstantMessageThreads = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsClientConnections.Text, out outUint))
+            {
+                corradeConfiguration.ConnectionLimit = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsClientIdle.Text, out outUint))
+            {
+                corradeConfiguration.ConnectionIdleTime = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsCallbacksTimeout.Text, out outUint))
+            {
+                corradeConfiguration.CallbackTimeout = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsCallbacksThrottle.Text, out outUint))
+            {
+                corradeConfiguration.CallbackThrottle = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsCallbackQueue.Text, out outUint))
+            {
+                corradeConfiguration.CallbackQueueLength = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsNotificationsTimeout.Text, out outUint))
+            {
+                corradeConfiguration.NotificationTimeout = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsNotificationsThrottle.Text, out outUint))
+            {
+                corradeConfiguration.NotificationThrottle = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsNotificationsQueue.Text, out outUint))
+            {
+                corradeConfiguration.NotificationQueueLength = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsNotificationsThreads.Text, out outUint))
+            {
+                corradeConfiguration.MaximumNotificationThreads = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsHTTPServerDrain.Text, out outUint))
+            {
+                corradeConfiguration.HTTPServerDrainTimeout = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsHTTPServerBody.Text, out outUint))
+            {
+                corradeConfiguration.HTTPServerBodyTimeout = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsHTTPServerHeader.Text, out outUint))
+            {
+                corradeConfiguration.HTTPServerIdleTimeout = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsHTTPServerQueue.Text, out outUint))
+            {
+                corradeConfiguration.HTTPServerQueueTimeout = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsHTTPServerTimeout.Text, out outUint))
+            {
+                corradeConfiguration.HTTPServerTimeout = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsServicesTimeout.Text, out outUint))
+            {
+                corradeConfiguration.ServicesTimeout = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsServicesRebake.Text, out outUint))
+            {
+                corradeConfiguration.RebakeDelay = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsServicesActivate.Text, out outUint))
+            {
+                corradeConfiguration.ActivateDelay = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsDataTimeout.Text, out outUint))
+            {
+                corradeConfiguration.DataTimeout = outUint;
+            }
+            corradeConfiguration.DataDecayType =
+                wasGetEnumValueFromDescription<wasAdaptiveAlarm.DECAY_TYPE>(mainForm.LimitsDataDecay.Text);
+            if (uint.TryParse(mainForm.LimitsMembershipSweep.Text, out outUint))
+            {
+                corradeConfiguration.MembershipSweepInterval = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsLogoutTimeout.Text, out outUint))
+            {
+                corradeConfiguration.LogoutGrace = outUint;
+            }
         };
 
         public CorradeConfiguratorForm()
@@ -529,7 +523,7 @@ namespace Configurator
 
         private void LoadCorradeLegacyConfigurationRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 switch (mainForm.LoadLegacyConfigurationDialog.ShowDialog())
                 {
@@ -537,13 +531,19 @@ namespace Configurator
                         string file = mainForm.LoadLegacyConfigurationDialog.FileName;
                         new Thread(() =>
                         {
+                            mainForm.StatusText.Text = @"loading legacy configuration...";
+                            mainForm.StatusProgress.Value = 0;
                             corradeConfiguration = new CorradeConfiguration();
                             corradeConfiguration.LoadLegacy(file);
-                            BeginInvoke((MethodInvoker) (() =>
+                            mainForm.BeginInvoke((MethodInvoker) (() =>
                             {
                                 try
                                 {
+                                    mainForm.StatusText.Text = @"applying settings...";
+                                    mainForm.StatusProgress.Value = 50;
                                     GetUserConfiguration.Invoke();
+                                    mainForm.StatusText.Text = @"configuration loaded";
+                                    mainForm.StatusProgress.Value = 100;
                                 }
                                 catch (Exception ex)
                                 {
@@ -559,7 +559,7 @@ namespace Configurator
 
         private void LoadCorradeConfigurationRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 switch (mainForm.LoadConfigurationDialog.ShowDialog())
                 {
@@ -567,13 +567,18 @@ namespace Configurator
                         string file = mainForm.LoadConfigurationDialog.FileName;
                         new Thread(() =>
                         {
-                            corradeConfiguration = CorradeConfiguration.Load(file);
-                            if (corradeConfiguration == null) return;
-                            BeginInvoke((MethodInvoker) (() =>
+                            mainForm.BeginInvoke((MethodInvoker) (() =>
                             {
                                 try
                                 {
+                                    mainForm.StatusText.Text = @"loading configuration...";
+                                    mainForm.StatusProgress.Value = 0;
+                                    CorradeConfiguration.Load(file, ref corradeConfiguration);
+                                    mainForm.StatusProgress.Value = 50;
+                                    mainForm.StatusText.Text = @"applying settings...";
                                     GetUserConfiguration.Invoke();
+                                    mainForm.StatusText.Text = @"configuration loaded";
+                                    mainForm.StatusProgress.Value = 100;
                                 }
                                 catch (Exception ex)
                                 {
@@ -589,7 +594,7 @@ namespace Configurator
 
         private void SaveCorradeConfigurationRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 switch (mainForm.SaveConfigurationDialog.ShowDialog())
                 {
@@ -597,18 +602,24 @@ namespace Configurator
                         string file = mainForm.SaveConfigurationDialog.FileName;
                         new Thread(() =>
                         {
-                            BeginInvoke((MethodInvoker) (() =>
+                            mainForm.BeginInvoke((MethodInvoker) (() =>
                             {
                                 try
                                 {
+                                    mainForm.StatusText.Text = @"applying settings...";
+                                    mainForm.StatusProgress.Value = 0;
                                     SetUserConfiguration.Invoke();
+                                    mainForm.StatusText.Text = @"saving configuration...";
+                                    mainForm.StatusProgress.Value = 50;
+                                    CorradeConfiguration.Save(file, ref corradeConfiguration);
+                                    mainForm.StatusText.Text = @"configuration saved";
+                                    mainForm.StatusProgress.Value = 100;
                                 }
                                 catch (Exception ex)
                                 {
                                     mainForm.StatusText.Text = ex.Message;
                                 }
                             }));
-                            corradeConfiguration.Save(file);
                         })
                         {IsBackground = true, Priority = ThreadPriority.Normal}.Start();
                         break;
@@ -2496,60 +2507,30 @@ namespace Configurator
                 }
             }
 
-            public void Save(string file)
+            public static void Save(string file, ref CorradeConfiguration configuration)
             {
-                mainForm.BeginInvoke((Action) (() => { mainForm.StatusProgress.Value = 0; }));
                 lock (ConfigurationFileLock)
                 {
-                    try
+                    using (StreamWriter writer = new StreamWriter(file, false, Encoding.UTF8))
                     {
-                        using (StreamWriter writer = new StreamWriter(file, false, Encoding.UTF8))
-                        {
-                            XmlSerializer serializer = new XmlSerializer(typeof (CorradeConfiguration));
-                            serializer.Serialize(writer, this);
-                            writer.Flush();
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        mainForm.BeginInvoke((Action) (() => { mainForm.StatusText.Text = e.Message; }));
+                        XmlSerializer serializer = new XmlSerializer(typeof (CorradeConfiguration));
+                        serializer.Serialize(writer, configuration);
+                        //writer.Flush();
                     }
                 }
-                mainForm.BeginInvoke((Action) (() => { mainForm.StatusText.Text = @"configuration saved"; }));
-                mainForm.BeginInvoke((Action) (() => { mainForm.StatusProgress.Value = 100; }));
             }
 
-            public static CorradeConfiguration Load(string file)
+            public static void Load(string file, ref CorradeConfiguration configuration)
             {
-                mainForm.BeginInvoke((Action) (() => { mainForm.StatusProgress.Value = 0; }));
-                CorradeConfiguration config = null;
-                if (File.Exists(file))
+                lock (ConfigurationFileLock)
                 {
-                    lock (ConfigurationFileLock)
+                    using (StreamReader stream = new StreamReader(file, Encoding.UTF8))
                     {
-                        try
-                        {
-                            using (StreamReader stream = new StreamReader(file, Encoding.UTF8))
-                            {
-                                XmlSerializer serializer =
-                                    new XmlSerializer(typeof (CorradeConfiguration));
-                                config = (CorradeConfiguration) serializer.Deserialize(stream);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            mainForm.BeginInvoke((Action) (() => { mainForm.StatusText.Text = ex.Message; }));
-                        }
-                    }
-
-                    if (config != null)
-                    {
-                        mainForm.BeginInvoke(
-                            (Action) (() => { mainForm.StatusText.Text = @"configuration loaded"; }));
-                        mainForm.BeginInvoke((Action) (() => { mainForm.StatusProgress.Value = 100; }));
+                        XmlSerializer serializer =
+                            new XmlSerializer(typeof (CorradeConfiguration));
+                        configuration = (CorradeConfiguration) serializer.Deserialize(stream);
                     }
                 }
-                return config;
             }
 
             public void LoadLegacy(string file)

@@ -565,7 +565,10 @@ namespace Corrade
             new Timer(ConfigurationChanged =>
             {
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
-                corradeConfiguration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
+                lock (ConfigurationFileLock)
+                {
+                    corradeConfiguration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE, ref corradeConfiguration);
+                }
             });
 
         /// <summary>
@@ -4296,7 +4299,10 @@ namespace Corrade
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
             // Load the configuration file.
-            corradeConfiguration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
+            lock (ConfigurationFileLock)
+            {
+                corradeConfiguration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE, ref corradeConfiguration);
+            }
             // Write the logo.
             Feedback(true, CORRADE_CONSTANTS.LOGO.ToArray());
             // Branch on platform and set-up termination handlers.
@@ -4709,6 +4715,16 @@ namespace Corrade
             {
                 ConfigurationWatcher.EnableRaisingEvents = false;
                 ConfigurationWatcher.Changed -= HandleConfigurationFileChanged;
+            }
+            catch (Exception)
+            {
+                /* We are going down and we do not care. */
+            }
+            // Disable the notifications watcher.
+            try
+            {
+                NotificationsWatcher.EnableRaisingEvents = false;
+                NotificationsWatcher.Changed -= HandleNotificationsFileChanged;
             }
             catch (Exception)
             {
@@ -20806,10 +20822,14 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        List<string> data = new List<string>(GetStructuredData(corradeConfiguration,
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                message)))
-                            );
+                        List<string> data = new List<string>();
+                        lock (ConfigurationFileLock)
+                        {
+                            data.AddRange(GetStructuredData(corradeConfiguration,
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                    message)))
+                                );
+                        }
                         if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -20829,8 +20849,9 @@ namespace Corrade
                             wasCSVToStructure(
                                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                                     message)), ref corradeConfiguration);
+                            corradeConfiguration.UpdateDynamicConfiguration(corradeConfiguration);
                             ConfigurationWatcher.EnableRaisingEvents = false;
-                            corradeConfiguration.Save(CORRADE_CONSTANTS.CONFIGURATION_FILE);
+                            corradeConfiguration.Save(CORRADE_CONSTANTS.CONFIGURATION_FILE, ref corradeConfiguration);
                             ConfigurationWatcher.EnableRaisingEvents = true;
                         }
                     };
@@ -25418,56 +25439,52 @@ namespace Corrade
                 }
             }
 
-            public void Save(string file)
+            public void Save(string file, ref CorradeConfiguration configuration)
             {
-                lock (ConfigurationFileLock)
+                try
                 {
-                    try
+                    using (StreamWriter writer = new StreamWriter(file, false, Encoding.UTF8))
                     {
-                        using (StreamWriter writer = new StreamWriter(file, false, Encoding.UTF8))
-                        {
-                            XmlSerializer serializer = new XmlSerializer(typeof (CorradeConfiguration));
-                            serializer.Serialize(writer, corradeConfiguration);
-                            writer.Flush();
-                        }
+                        XmlSerializer serializer = new XmlSerializer(typeof (CorradeConfiguration));
+                        serializer.Serialize(writer, configuration);
+                        writer.Flush();
                     }
-                    catch (Exception ex)
-                    {
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_CONFIGURATION),
-                            ex.Message);
-                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_CONFIGURATION),
+                        ex.Message);
                 }
             }
 
-            public void Load(string file)
+            public void Load(string file, ref CorradeConfiguration configuration)
             {
-                if (File.Exists(file))
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READING_CORRADE_CONFIGURATION));
+                try
                 {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READING_CORRADE_CONFIGURATION));
-                    lock (ConfigurationFileLock)
+                    using (StreamReader stream = new StreamReader(file, Encoding.UTF8))
                     {
-                        try
-                        {
-                            using (StreamReader stream = new StreamReader(file, Encoding.UTF8))
-                            {
-                                XmlSerializer serializer =
-                                    new XmlSerializer(typeof (CorradeConfiguration));
-                                corradeConfiguration = (CorradeConfiguration) serializer.Deserialize(stream);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CONFIGURATION),
-                                ex.Message);
-                            return;
-                        }
+                        XmlSerializer serializer =
+                            new XmlSerializer(typeof (CorradeConfiguration));
+                        configuration = (CorradeConfiguration) serializer.Deserialize(stream);
                     }
                 }
+                catch (Exception ex)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CONFIGURATION),
+                        ex.Message);
+                    return;
+                }
+                UpdateDynamicConfiguration(configuration);
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
+            }
 
+            public void UpdateDynamicConfiguration(CorradeConfiguration configuration)
+            {
                 // Enable AIML in case it was enabled in the configuration file.
                 try
                 {
-                    switch (corradeConfiguration.EnableAIML)
+                    switch (configuration.EnableAIML)
                     {
                         case true:
                             switch (!AIMLBotBrainCompiled)
@@ -25482,7 +25499,7 @@ namespace Corrade
                                                 AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
                                             }
                                         })
-                                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                                    { IsBackground = true, Priority = ThreadPriority.Lowest }.Start();
                                     break;
                                 default:
                                     AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
@@ -25506,9 +25523,9 @@ namespace Corrade
                 Parallel.ForEach(wasGetEnumDescriptions<Notifications>().AsParallel().Select(
                     wasGetEnumValueFromDescription<Notifications>), o =>
                     {
-                        bool enabled = corradeConfiguration.Groups.AsParallel().Any(
+                        bool enabled = configuration.Groups.AsParallel().Any(
                             p =>
-                                !(p.NotificationMask & (uint) o).Equals(0));
+                                !(p.NotificationMask & (uint)o).Equals(0));
                         switch (o)
                         {
                             case Notifications.GroupMembership:
@@ -25676,8 +25693,8 @@ namespace Corrade
                 // Depending on whether groups have bound to the viewer effects notification, 
                 // start or stop the viwer effect expiration thread.
                 switch (
-                    corradeConfiguration.Groups.AsParallel()
-                        .Any(o => !(o.NotificationMask & (uint) Notifications.ViewerEffect).Equals(0)))
+                    configuration.Groups.AsParallel()
+                        .Any(o => !(o.NotificationMask & (uint)Notifications.ViewerEffect).Equals(0)))
                 {
                     case true:
                         // Don't start if the expiration thread is already started.
@@ -25699,7 +25716,7 @@ namespace Corrade
                                 }
                             } while (runEffectsExpirationThread);
                         })
-                        {IsBackground = true, Priority = ThreadPriority.Lowest};
+                        { IsBackground = true, Priority = ThreadPriority.Lowest };
                         EffectsExpirationThread.Start();
                         break;
                     default:
@@ -25734,10 +25751,10 @@ namespace Corrade
                 // Depending on whether any group has bound either the avatar radar notification, 
                 // or the primitive radar notification, install or uinstall the listeners.
                 switch (
-                    corradeConfiguration.Groups.AsParallel().Any(
+                    configuration.Groups.AsParallel().Any(
                         o =>
-                            !(o.NotificationMask & (uint) Notifications.RadarAvatars).Equals(0) ||
-                            !(o.NotificationMask & (uint) Notifications.RadarPrimitives).Equals(0)))
+                            !(o.NotificationMask & (uint)Notifications.RadarAvatars).Equals(0) ||
+                            !(o.NotificationMask & (uint)Notifications.RadarPrimitives).Equals(0)))
                 {
                     case true:
                         Client.Network.SimChanged += HandleRadarObjects;
@@ -25757,7 +25774,7 @@ namespace Corrade
                 switch (HttpListener.IsSupported)
                 {
                     case true:
-                        switch (corradeConfiguration.EnableHTTPServer)
+                        switch (configuration.EnableHTTPServer)
                         {
                             case true:
                                 // Don't start if the HTTP server is already started.
@@ -25770,23 +25787,23 @@ namespace Corrade
                                     {
                                         using (HTTPListener = new HttpListener())
                                         {
-                                            HTTPListener.Prefixes.Add(corradeConfiguration.HTTPServerPrefix);
+                                            HTTPListener.Prefixes.Add(configuration.HTTPServerPrefix);
                                             HTTPListener.TimeoutManager.DrainEntityBody =
-                                                TimeSpan.FromMilliseconds(corradeConfiguration.HTTPServerDrainTimeout);
+                                                TimeSpan.FromMilliseconds(configuration.HTTPServerDrainTimeout);
                                             HTTPListener.TimeoutManager.EntityBody =
-                                                TimeSpan.FromMilliseconds(corradeConfiguration.HTTPServerBodyTimeout);
+                                                TimeSpan.FromMilliseconds(configuration.HTTPServerBodyTimeout);
                                             HTTPListener.TimeoutManager.HeaderWait =
-                                                TimeSpan.FromMilliseconds(corradeConfiguration.HTTPServerHeaderTimeout);
+                                                TimeSpan.FromMilliseconds(configuration.HTTPServerHeaderTimeout);
                                             HTTPListener.TimeoutManager.IdleConnection =
-                                                TimeSpan.FromMilliseconds(corradeConfiguration.HTTPServerIdleTimeout);
+                                                TimeSpan.FromMilliseconds(configuration.HTTPServerIdleTimeout);
                                             HTTPListener.TimeoutManager.RequestQueue =
-                                                TimeSpan.FromMilliseconds(corradeConfiguration.HTTPServerQueueTimeout);
+                                                TimeSpan.FromMilliseconds(configuration.HTTPServerQueueTimeout);
                                             HTTPListener.Start();
                                             while (runHTTPServer && HTTPListener.IsListening)
                                             {
                                                 (HTTPListener.BeginGetContext(ProcessHTTPRequest,
                                                     HTTPListener)).AsyncWaitHandle.WaitOne(
-                                                        (int) corradeConfiguration.HTTPServerTimeout,
+                                                        (int)configuration.HTTPServerTimeout,
                                                         false);
                                             }
                                         }
@@ -25797,7 +25814,7 @@ namespace Corrade
                                             ex.Message);
                                     }
                                 })
-                                {IsBackground = true, Priority = ThreadPriority.Lowest};
+                                { IsBackground = true, Priority = ThreadPriority.Lowest };
                                 HTTPListenerThread.Start();
                                 break;
                             default:
@@ -25838,12 +25855,10 @@ namespace Corrade
                 }
 
                 // Apply settings to the instance.
-                Client.Self.Movement.Camera.Far = corradeConfiguration.Range;
-                Client.Settings.LOGIN_TIMEOUT = (int) corradeConfiguration.ServicesTimeout;
-                Client.Settings.LOGOUT_TIMEOUT = (int) corradeConfiguration.ServicesTimeout;
-                Client.Settings.SIMULATOR_TIMEOUT = (int) corradeConfiguration.ServicesTimeout;
-
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
+                Client.Self.Movement.Camera.Far = configuration.Range;
+                Client.Settings.LOGIN_TIMEOUT = (int)configuration.ServicesTimeout;
+                Client.Settings.LOGOUT_TIMEOUT = (int)configuration.ServicesTimeout;
+                Client.Settings.SIMULATOR_TIMEOUT = (int)configuration.ServicesTimeout;
             }
         }
 
