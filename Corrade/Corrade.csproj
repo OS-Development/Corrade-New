@@ -125,6 +125,14 @@
       <DependentUpon>ProjectInstaller.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+    <None Include="..\Configurator\bin\Release\Configurator.exe.config">
+      <Link>Configurator.exe.config</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Configurator\bin\Release\Configurator.exe.manifest">
+      <Link>Configurator.exe.manifest</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="..\libopenmetaverse-overrides\libopenjpeg-dotnet-2-1.5.0-dotnet-1-arm.so">
       <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1-arm.so</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -153,7 +161,6 @@
       <Link>libopenjpeg-dotnet-2-1.5.0-dotnet-1.dylib</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="app.config" />
     <None Include="Corrade.ini">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <SubType>Designer</SubType>
@@ -192,6 +199,10 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\Configurator\bin\Release\Configurator.exe">
+      <Link>Configurator.exe</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <Content Include="..\libopenmetaverse\bin\openmetaverse_data\avatar_skeleton.xml">
       <Link>openmetaverse_data\avatar_skeleton.xml</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -698,9 +709,9 @@
     <None Include="Corrade.exe.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="Corrade.exe.manifest">
+    <EmbeddedResource Include="Corrade.exe.manifest">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    </EmbeddedResource>
     <Content Include="Corrade.ico" />
   </ItemGroup>
   <ItemGroup>

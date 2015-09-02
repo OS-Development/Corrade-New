@@ -41,7 +41,6 @@ using Encoder = System.Drawing.Imaging.Encoder;
 using Parallel = System.Threading.Tasks.Parallel;
 using Path = System.IO.Path;
 using ThreadState = System.Threading.ThreadState;
-using Timer = System.Timers.Timer;
 
 #endregion
 
@@ -65,40 +64,91 @@ namespace Corrade
         };
 
         /// <summary>
+        ///     Possible input and output filters.
+        /// </summary>
+        public enum Filter : uint
+        {
+            [XmlEnum(Name = "none")] [Description("none")] NONE = 0,
+            [XmlEnum(Name = "RFC1738")] [Description("RFC1738")] RFC1738,
+            [XmlEnum(Name = "RFC3986")] [Description("RFC3986")] RFC3986,
+            [XmlEnum(Name = "ENIGMA")] [Description("ENIGMA")] ENIGMA,
+            [XmlEnum(Name = "VIGENERE")] [Description("VIGENERE")] VIGENERE,
+            [XmlEnum(Name = "ATBASH")] [Description("ATBASH")] ATBASH,
+            [XmlEnum(Name = "BASE64")] [Description("BASE64")] BASE64
+        }
+
+        /// <summary>
+        ///     An enumeration of various compression methods
+        ///     supproted by Corrade's internal HTTP server.
+        /// </summary>
+        public enum HTTPCompressionMethod : uint
+        {
+            [XmlEnum(Name = "none")] [Description("none")] NONE,
+            [XmlEnum(Name = "deflate")] [Description("deflate")] DEFLATE,
+            [XmlEnum(Name = "gzip")] [Description("gzip")] GZIP
+        }
+
+        /// <summary>
         ///     Corrade notification types.
         /// </summary>
         [Flags]
         public enum Notifications : uint
         {
-            [Description("alert")] NOTIFICATION_ALERT_MESSAGE = 1,
-            [Description("region")] NOTIFICATION_REGION_MESSAGE = 2,
-            [Description("group")] NOTIFICATION_GROUP_MESSAGE = 4,
-            [Description("balance")] NOTIFICATION_BALANCE = 8,
-            [Description("message")] NOTIFICATION_INSTANT_MESSAGE = 16,
-            [Description("notice")] NOTIFICATION_GROUP_NOTICE = 32,
-            [Description("local")] NOTIFICATION_LOCAL_CHAT = 64,
-            [Description("dialog")] NOTIFICATION_SCRIPT_DIALOG = 128,
-            [Description("friendship")] NOTIFICATION_FRIENDSHIP = 256,
-            [Description("inventory")] NOTIFICATION_INVENTORY = 512,
-            [Description("permission")] NOTIFICATION_SCRIPT_PERMISSION = 1024,
-            [Description("lure")] NOTIFICATION_TELEPORT_LURE = 2048,
-            [Description("effect")] NOTIFICATION_VIEWER_EFFECT = 4096,
-            [Description("collision")] NOTIFICATION_MEAN_COLLISION = 8192,
-            [Description("crossing")] NOTIFICATION_REGION_CROSSED = 16384,
-            [Description("terse")] NOTIFICATION_TERSE_UPDATES = 32768,
-            [Description("typing")] NOTIFICATION_TYPING = 65536,
-            [Description("invite")] NOTIFICATION_GROUP_INVITE = 131072,
-            [Description("economy")] NOTIFICATION_ECONOMY = 262144,
-            [Description("membership")] NOTIFICATION_GROUP_MEMBERSHIP = 524288,
-            [Description("url")] NOTIFICATION_LOAD_URL = 1048576,
-            [Description("ownersay")] NOTIFICATION_OWNER_SAY = 2097152,
-            [Description("regionsayto")] NOTIFICATION_REGION_SAY_TO = 4194304,
-            [Description("objectim")] NOTIFICATION_OBJECT_INSTANT_MESSAGE = 8388608,
-            [Description("rlv")] NOTIFICATION_RLV_MESSAGE = 16777216,
-            [Description("debug")] NOTIFICATION_DEBUG_MESSAGE = 33554432,
-            [Description("avatars")] NOTIFICATION_RADAR_AVATARS = 67108864,
-            [Description("primitives")] NOTIFICATION_RADAR_PRIMITIVES = 134217728,
-            [Description("control")] NOTIFICATION_SCRIPT_CONTROL = 268435456
+            [XmlEnum(Name = "none")] [Description("none")] NONE = 0,
+            [XmlEnum(Name = "alert")] [Description("alert")] AlertMessage = 1,
+            [XmlEnum(Name = "region")] [Description("region")] RegionMessage = 2,
+            [XmlEnum(Name = "group")] [Description("group")] GroupMessage = 4,
+            [XmlEnum(Name = "balance")] [Description("balance")] Balance = 8,
+            [XmlEnum(Name = "message")] [Description("message")] InstantMessage = 16,
+            [XmlEnum(Name = "notice")] [Description("notice")] GroupNotice = 32,
+            [XmlEnum(Name = "local")] [Description("local")] LocalChat = 64,
+            [XmlEnum(Name = "dialog")] [Description("dialog")] ScriptDialog = 128,
+            [XmlEnum(Name = "friendship")] [Description("friendship")] Friendship = 256,
+            [XmlEnum(Name = "inventory")] [Description("inventory")] Inventory = 512,
+            [XmlEnum(Name = "permission")] [Description("permission")] ScriptPermission = 1024,
+            [XmlEnum(Name = "lure")] [Description("lure")] TeleportLure = 2048,
+            [XmlEnum(Name = "effect")] [Description("effect")] ViewerEffect = 4096,
+            [XmlEnum(Name = "collision")] [Description("collision")] MeanCollision = 8192,
+            [XmlEnum(Name = "crossing")] [Description("crossing")] RegionCrossed = 16384,
+            [XmlEnum(Name = "terse")] [Description("terse")] TerseUpdates = 32768,
+            [XmlEnum(Name = "typing")] [Description("typing")] Typing = 65536,
+            [XmlEnum(Name = "invite")] [Description("invite")] GroupInvite = 131072,
+            [XmlEnum(Name = "economy")] [Description("economy")] Economy = 262144,
+            [XmlEnum(Name = "membership")] [Description("membership")] GroupMembership = 524288,
+            [XmlEnum(Name = "url")] [Description("url")] LoadURL = 1048576,
+            [XmlEnum(Name = "ownersay")] [Description("ownersay")] OwnerSay = 2097152,
+            [XmlEnum(Name = "regionsayto")] [Description("regionsayto")] RegionSayTo = 4194304,
+            [XmlEnum(Name = "objectim")] [Description("objectim")] ObjectInstantMessage = 8388608,
+            [XmlEnum(Name = "rlv")] [Description("rlv")] RLVMessage = 16777216,
+            [XmlEnum(Name = "debug")] [Description("debug")] DebugMessage = 33554432,
+            [XmlEnum(Name = "avatars")] [Description("avatars")] RadarAvatars = 67108864,
+            [XmlEnum(Name = "primitives")] [Description("primitives")] RadarPrimitives = 134217728,
+            [XmlEnum(Name = "control")] [Description("control")] ScriptControl = 268435456
+        }
+
+        /// <summary>
+        ///     Corrade permissions.
+        /// </summary>
+        [Flags]
+        public enum Permissions : uint
+        {
+            [XmlEnum(Name = "none")] [Description("none")] None = 0,
+            [XmlEnum(Name = "movement")] [Description("movement")] Movement = 1,
+            [XmlEnum(Name = "economy")] [Description("economy")] Economy = 2,
+            [XmlEnum(Name = "land")] [Description("land")] Land = 4,
+            [XmlEnum(Name = "grooming")] [Description("grooming")] Grooming = 8,
+            [XmlEnum(Name = "inventory")] [Description("inventory")] Inventory = 16,
+            [XmlEnum(Name = "interact")] [Description("interact")] Interact = 32,
+            [XmlEnum(Name = "mute")] [Description("mute")] Mute = 64,
+            [XmlEnum(Name = "database")] [Description("database")] Database = 128,
+            [XmlEnum(Name = "notifications")] [Description("notifications")] Notifications = 256,
+            [XmlEnum(Name = "talk")] [Description("talk")] Talk = 512,
+            [XmlEnum(Name = "directory")] [Description("directory")] Directory = 1024,
+            [XmlEnum(Name = "system")] [Description("system")] System = 2048,
+            [XmlEnum(Name = "friendship")] [Description("friendship")] Friendship = 4096,
+            [XmlEnum(Name = "execute")] [Description("execute")] Execute = 8192,
+            [XmlEnum(Name = "group")] [Description("group")] Group = 16384,
+            [XmlEnum(Name = "filter")] [Description("filter")] Filter = 32768
         }
 
         /// <summary>
@@ -343,6 +393,746 @@ namespace Corrade
             [Status(26749)] [Description("timeout modifying group ban list")] TIMEOUT_MODIFYING_GROUP_BAN_LIST
         }
 
+        /// <summary>
+        ///     Semaphores that sense the state of the connection. When any of these semaphores fail,
+        ///     Corrade does not consider itself connected anymore and terminates.
+        /// </summary>
+        private static readonly Dictionary<char, ManualResetEvent> ConnectionSemaphores = new Dictionary
+            <char, ManualResetEvent>
+        {
+            {'l', new ManualResetEvent(false)},
+            {'s', new ManualResetEvent(false)},
+            {'u', new ManualResetEvent(false)}
+        };
+
+        public static string InstalledServiceName;
+        private static CorradeConfiguration corradeConfiguration = new CorradeConfiguration();
+        private static Thread programThread;
+        private static Thread HTTPListenerThread;
+        private static HttpListener HTTPListener;
+        private static Thread EffectsExpirationThread;
+        private static readonly Random CorradeRandom = new Random();
+        private static readonly EventLog CorradeEventLog = new EventLog();
+        private static readonly GridClient Client = new GridClient();
+
+        private static readonly Bot AIMLBot = new Bot
+        {
+            TrustAIML = false
+        };
+
+        private static readonly User AIMLBotUser = new User(CORRADE_CONSTANTS.CORRADE, AIMLBot);
+        private static readonly FileSystemWatcher AIMLBotConfigurationWatcher = new FileSystemWatcher();
+        private static readonly FileSystemWatcher ConfigurationWatcher = new FileSystemWatcher();
+        private static readonly FileSystemWatcher NotificationsWatcher = new FileSystemWatcher();
+        private static readonly object AIMLBotLock = new object();
+        private static readonly object ClientInstanceGroupsLock = new object();
+        private static readonly object ClientInstanceInventoryLock = new object();
+        private static readonly object ClientInstanceAvatarsLock = new object();
+        private static readonly object ClientInstanceSelfLock = new object();
+        private static readonly object ClientInstanceConfigurationLock = new object();
+        private static readonly object ClientInstanceParcelsLock = new object();
+        private static readonly object ClientInstanceNetworkLock = new object();
+        private static readonly object ClientInstanceGridLock = new object();
+        private static readonly object ClientInstanceDirectoryLock = new object();
+        private static readonly object ClientInstanceEstateLock = new object();
+        private static readonly object ClientInstanceObjectsLock = new object();
+        private static readonly object ClientInstanceFriendsLock = new object();
+        private static readonly object ClientInstanceAssetsLock = new object();
+        private static readonly object ClientInstanceAppearanceLock = new object();
+        private static readonly object ConfigurationFileLock = new object();
+        private static readonly object ClientLogFileLock = new object();
+        private static readonly object GroupLogFileLock = new object();
+        private static readonly object LocalLogFileLock = new object();
+        private static readonly object RegionLogFileLock = new object();
+        private static readonly object InstantMessageLogFileLock = new object();
+        private static readonly object DatabaseFileLock = new object();
+
+        private static readonly wasTimedThrottle TimedTeleportThrottle =
+            new wasTimedThrottle(LINDEN_CONSTANTS.TELEPORTS.THROTTLE.MAX_TELEPORTS,
+                LINDEN_CONSTANTS.TELEPORTS.THROTTLE.GRACE_SECONDS);
+
+        private static readonly Dictionary<string, object> DatabaseLocks = new Dictionary<string, object>();
+        private static readonly object GroupNotificationsLock = new object();
+        public static HashSet<Notification> GroupNotifications = new HashSet<Notification>();
+
+        private static readonly SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>
+            InventoryOffers =
+                new SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>();
+
+        private static readonly object InventoryOffersLock = new object();
+
+        private static readonly BlockingQueue<CallbackQueueElement> CallbackQueue =
+            new BlockingQueue<CallbackQueueElement>();
+
+        private static readonly BlockingQueue<NotificationQueueElement> NotificationQueue =
+            new BlockingQueue<NotificationQueueElement>();
+
+        private static readonly HashSet<GroupInvite> GroupInvites = new HashSet<GroupInvite>();
+        private static readonly object GroupInviteLock = new object();
+        private static readonly HashSet<TeleportLure> TeleportLures = new HashSet<TeleportLure>();
+        private static readonly object TeleportLureLock = new object();
+
+        private static readonly HashSet<ScriptPermissionRequest> ScriptPermissionRequests =
+            new HashSet<ScriptPermissionRequest>();
+
+        private static readonly object ScriptPermissionRequestLock = new object();
+        private static readonly HashSet<ScriptDialog> ScriptDialogs = new HashSet<ScriptDialog>();
+        private static readonly object ScriptDialogLock = new object();
+
+        private static readonly SerializableDictionary<UUID, HashSet<UUID>> GroupMembers =
+            new SerializableDictionary<UUID, HashSet<UUID>>();
+
+        private static readonly object GroupMembersLock = new object();
+        private static readonly Hashtable GroupWorkers = new Hashtable();
+        private static readonly object GroupWorkersLock = new object();
+        private static readonly Hashtable GroupDirectoryTrackers = new Hashtable();
+        private static readonly object GroupDirectoryTrackersLock = new object();
+        private static readonly HashSet<LookAtEffect> LookAtEffects = new HashSet<LookAtEffect>();
+        private static readonly HashSet<PointAtEffect> PointAtEffects = new HashSet<PointAtEffect>();
+        private static readonly HashSet<SphereEffect> SphereEffects = new HashSet<SphereEffect>();
+        private static readonly object SphereEffectsLock = new object();
+        private static readonly HashSet<BeamEffect> BeamEffects = new HashSet<BeamEffect>();
+        private static readonly Dictionary<UUID, Primitive> RadarObjects = new Dictionary<UUID, Primitive>();
+        private static readonly object RadarObjectsLock = new object();
+        private static readonly object BeamEffectsLock = new object();
+        private static readonly object InputFiltersLock = new object();
+        private static readonly object OutputFiltersLock = new object();
+        private static volatile bool AIMLBotBrainCompiled;
+
+        /// <summary>
+        ///     The various types of threads created by Corrade.
+        /// </summary>
+        private static readonly Dictionary<CorradeThreadType, CorradeThread> CorradeThreadPool =
+            new Dictionary<CorradeThreadType, CorradeThread>
+            {
+                {CorradeThreadType.COMMAND, new CorradeThread(CorradeThreadType.COMMAND)},
+                {CorradeThreadType.RLV, new CorradeThread(CorradeThreadType.RLV)},
+                {CorradeThreadType.NOTIFICATION, new CorradeThread(CorradeThreadType.NOTIFICATION)},
+                {CorradeThreadType.INSTANT_MESSAGE, new CorradeThread(CorradeThreadType.INSTANT_MESSAGE)},
+                {CorradeThreadType.LOG, new CorradeThread(CorradeThreadType.LOG)},
+                {CorradeThreadType.POST, new CorradeThread(CorradeThreadType.POST)}
+            };
+
+        /// <summary>
+        ///     Group membership sweep thread.
+        /// </summary>
+        private static Thread GroupMembershipSweepThread;
+
+        /// <summary>
+        ///     Group membership sweep thread starter.
+        /// </summary>
+        private static readonly System.Action StartGroupMembershipSweepThread = () =>
+        {
+            if (GroupMembershipSweepThread != null &&
+                (GroupMembershipSweepThread.ThreadState.Equals(ThreadState.Running) ||
+                 GroupMembershipSweepThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                return;
+            runGroupMembershipSweepThread = true;
+            GroupMembershipSweepThread = new Thread(GroupMembershipSweep)
+            {
+                IsBackground = true,
+                Priority = ThreadPriority.Lowest
+            };
+            GroupMembershipSweepThread.Start();
+        };
+
+        /// <summary>
+        ///     Group membership sweep thread stopper.
+        /// </summary>
+        private static readonly System.Action StopGroupMembershipSweepThread = () =>
+        {
+            // Stop the notification thread.
+            runGroupMembershipSweepThread = false;
+            if (GroupMembershipSweepThread == null ||
+                (!GroupMembershipSweepThread.ThreadState.Equals(ThreadState.Running) &&
+                 !GroupMembershipSweepThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                return;
+            if (GroupMembershipSweepThread.Join(1000)) return;
+            try
+            {
+                GroupMembershipSweepThread.Abort();
+                GroupMembershipSweepThread.Join();
+            }
+            catch (ThreadStateException)
+            {
+            }
+        };
+
+        /// <summary>
+        ///     Schedules a load of the configuration file.
+        /// </summary>
+        private static readonly Timer ConfigurationChangedTimer =
+            new Timer(ConfigurationChanged =>
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
+                corradeConfiguration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
+            });
+
+        /// <summary>
+        ///     Schedules a load of the configuration file.
+        /// </summary>
+        private static readonly Timer NotificationsChangedTimer =
+            new Timer(NotificationsChanged =>
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATIONS_FILE_MODIFIED));
+                lock (GroupNotificationsLock)
+                {
+                    LoadNotificationState.Invoke();
+                }
+            });
+
+        /// <summary>
+        ///     Schedules a load of the AIML configuration file.
+        /// </summary>
+        private static readonly Timer AIMLConfigurationChangedTimer =
+            new Timer(AIMLConfigurationChanged =>
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AIML_CONFIGURATION_MODIFIED));
+                new Thread(
+                    () =>
+                    {
+                        lock (AIMLBotLock)
+                        {
+                            LoadChatBotFiles.Invoke();
+                        }
+                    })
+                {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+            });
+
+        /// <summary>
+        ///     Global rebake timer.
+        /// </summary>
+        private static readonly Timer RebakeTimer = new Timer(Rebake =>
+        {
+            lock (ClientInstanceAppearanceLock)
+            {
+                ManualResetEvent AppearanceSetEvent = new ManualResetEvent(false);
+                EventHandler<AppearanceSetEventArgs> HandleAppearanceSet = (sender, args) => AppearanceSetEvent.Set();
+                Client.Appearance.AppearanceSet += HandleAppearanceSet;
+                Client.Appearance.RequestSetAppearance(true);
+                AppearanceSetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false);
+                Client.Appearance.AppearanceSet -= HandleAppearanceSet;
+            }
+        });
+
+        /// <summary>
+        ///     Current land group activation timer.
+        /// </summary>
+        private static readonly Timer ActivateCurrentLandGroupTimer =
+            new Timer(ActivateCurrentLandGroup =>
+            {
+                Parcel parcel = null;
+                if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel)) return;
+                Group landGroup =
+                    corradeConfiguration.Groups.AsParallel().FirstOrDefault(o => o.UUID.Equals(parcel.GroupID));
+                if (landGroup.UUID.Equals(UUID.Zero)) return;
+                Client.Groups.ActivateGroup(landGroup.UUID);
+            });
+
+        public static EventHandler ConsoleEventHandler;
+
+        /// <summary>
+        ///     Corrade's input filter function.
+        /// </summary>
+        private static readonly Func<string, string> wasInput = o =>
+        {
+            if (string.IsNullOrEmpty(o)) return string.Empty;
+
+            List<Filter> safeFilters;
+            lock (InputFiltersLock)
+            {
+                safeFilters = corradeConfiguration.InputFilters;
+            }
+            foreach (Filter filter in safeFilters)
+            {
+                switch (filter)
+                {
+                    case Filter.RFC1738:
+                        o = wasURLUnescapeDataString(o);
+                        break;
+                    case Filter.RFC3986:
+                        o = wasURIUnescapeDataString(o);
+                        break;
+                    case Filter.ENIGMA:
+                        o = wasEnigma(o, corradeConfiguration.ENIGMA.rotors.ToArray(),
+                            corradeConfiguration.ENIGMA.plugs.ToArray(),
+                            corradeConfiguration.ENIGMA.reflector);
+                        break;
+                    case Filter.VIGENERE:
+                        o = wasDecryptVIGENERE(o, corradeConfiguration.VIGENERESecret);
+                        break;
+                    case Filter.ATBASH:
+                        o = wasATBASH(o);
+                        break;
+                    case Filter.BASE64:
+                        o = Encoding.UTF8.GetString(Convert.FromBase64String(o));
+                        break;
+                }
+            }
+            return o;
+        };
+
+        /// <summary>
+        ///     Corrade's output filter function.
+        /// </summary>
+        private static readonly Func<string, string> wasOutput = o =>
+        {
+            if (string.IsNullOrEmpty(o)) return string.Empty;
+
+            List<Filter> safeFilters;
+            lock (OutputFiltersLock)
+            {
+                safeFilters = corradeConfiguration.OutputFilters;
+            }
+            foreach (Filter filter in safeFilters)
+            {
+                switch (filter)
+                {
+                    case Filter.RFC1738:
+                        o = wasURLEscapeDataString(o);
+                        break;
+                    case Filter.RFC3986:
+                        o = wasURIEscapeDataString(o);
+                        break;
+                    case Filter.ENIGMA:
+                        o = wasEnigma(o, corradeConfiguration.ENIGMA.rotors.ToArray(),
+                            corradeConfiguration.ENIGMA.plugs.ToArray(),
+                            corradeConfiguration.ENIGMA.reflector);
+                        break;
+                    case Filter.VIGENERE:
+                        o = wasEncryptVIGENERE(o, corradeConfiguration.VIGENERESecret);
+                        break;
+                    case Filter.ATBASH:
+                        o = wasATBASH(o);
+                        break;
+                    case Filter.BASE64:
+                        o = Convert.ToBase64String(Encoding.UTF8.GetBytes(o));
+                        break;
+                }
+            }
+            return o;
+        };
+
+        /// <summary>
+        ///     Determines whether a string is a Corrade command.
+        /// </summary>
+        /// <returns>true if the string is a Corrade command</returns>
+        private static readonly Func<string, bool> IsCorradeCommand = o =>
+        {
+            Dictionary<string, string> data = wasKeyValueDecode(o);
+            return data.Any() && data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND)) &&
+                   data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)) &&
+                   data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.Password));
+        };
+
+        /// <summary>
+        ///     Gets the first name and last name from an avatar name.
+        /// </summary>
+        /// <returns>the firstname and the lastname or Resident</returns>
+        private static readonly Func<string, IEnumerable<string>> GetAvatarNames =
+            o => !string.IsNullOrEmpty(o)
+                ? CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(o)
+                    .Cast<Match>()
+                    .ToDictionary(p => new[]
+                    {
+                        p.Groups["first"].Value,
+                        p.Groups["last"].Value
+                    })
+                    .SelectMany(
+                        p =>
+                            new[]
+                            {
+                                p.Key[0].Trim(),
+                                !string.IsNullOrEmpty(p.Key[1])
+                                    ? p.Key[1].Trim()
+                                    : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
+                            })
+                : null;
+
+        /// <summary>
+        ///     Updates the inventory starting from a folder recursively.
+        /// </summary>
+        private static readonly Action<InventoryFolder> UpdateInventoryRecursive = o =>
+        {
+            Thread updateInventoryRecursiveThread = new Thread(() =>
+            {
+                try
+                {
+                    // Create the queue of folders.
+                    // Enqueue the first folder (as the root).
+                    Dictionary<UUID, ManualResetEvent> inventoryFolders = new Dictionary<UUID, ManualResetEvent>
+                    {
+                        {o.UUID, new ManualResetEvent(false)}
+                    };
+                    // Create a stopwatch for the root folder.
+                    Dictionary<UUID, Stopwatch> inventoryStopwatch = new Dictionary<UUID, Stopwatch>
+                    {
+                        {o.UUID, new Stopwatch()}
+                    };
+
+                    HashSet<long> times = new HashSet<long>(new[] {(long) Client.Settings.CAPS_TIMEOUT});
+
+                    object LockObject = new object();
+
+                    EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
+                    {
+                        // Enqueue all the new folders.
+                        Client.Inventory.Store.GetContents(q.FolderID).ForEach(r =>
+                        {
+                            if (r is InventoryFolder)
+                            {
+                                UUID inventoryFolderUUID = (r as InventoryFolder).UUID;
+                                lock (LockObject)
+                                {
+                                    if (!inventoryFolders.ContainsKey(inventoryFolderUUID))
+                                    {
+                                        inventoryFolders.Add(inventoryFolderUUID, new ManualResetEvent(false));
+                                    }
+                                    if (!inventoryStopwatch.ContainsKey(inventoryFolderUUID))
+                                    {
+                                        inventoryStopwatch.Add(inventoryFolderUUID, new Stopwatch());
+                                    }
+                                }
+                            }
+                            lock (LockObject)
+                            {
+                                inventoryStopwatch[q.FolderID].Stop();
+                                times.Add(inventoryStopwatch[q.FolderID].ElapsedMilliseconds);
+                                inventoryFolders[q.FolderID].Set();
+                            }
+                        });
+                    };
+
+                    do
+                    {
+                        // Don't choke the chicken.
+                        Thread.Yield();
+                        Dictionary<UUID, ManualResetEvent> closureFolders;
+                        lock (LockObject)
+                        {
+                            closureFolders =
+                                new Dictionary<UUID, ManualResetEvent>(
+                                    inventoryFolders.Where(p => !p.Key.Equals(UUID.Zero))
+                                        .ToDictionary(p => p.Key, q => q.Value));
+                        }
+                        lock (ClientInstanceInventoryLock)
+                        {
+                            Parallel.ForEach(closureFolders, p =>
+                            {
+                                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                                lock (LockObject)
+                                {
+                                    inventoryStopwatch[p.Key].Start();
+                                }
+                                Client.Inventory.RequestFolderContents(p.Key, Client.Self.AgentID, true, true,
+                                    InventorySortOrder.ByDate);
+                                ManualResetEvent folderEvent;
+                                int averageTime;
+                                lock (LockObject)
+                                {
+                                    folderEvent = closureFolders[p.Key];
+                                    averageTime = (int) times.Average();
+                                }
+                                folderEvent.WaitOne(averageTime, false);
+                                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                            });
+                        }
+                        Parallel.ForEach(closureFolders, p =>
+                        {
+                            if (inventoryFolders.ContainsKey(p.Key))
+                            {
+                                lock (LockObject)
+                                {
+                                    inventoryFolders.Remove(p.Key);
+                                }
+                            }
+                            if (inventoryStopwatch.ContainsKey(p.Key))
+                            {
+                                lock (LockObject)
+                                {
+                                    inventoryStopwatch.Remove(p.Key);
+                                }
+                            }
+                        });
+                    } while (inventoryFolders.Any());
+                }
+                catch (Exception)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                }
+            })
+            {IsBackground = true, Priority = ThreadPriority.Lowest};
+
+            updateInventoryRecursiveThread.Start();
+            updateInventoryRecursiveThread.Join(Timeout.Infinite);
+        };
+
+        /// <summary>
+        ///     Loads the OpenMetaverse inventory cache.
+        /// </summary>
+        private static readonly System.Action LoadInventoryCache = () =>
+        {
+            int itemsLoaded =
+                Client.Inventory.Store.RestoreFromDisk(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                    CORRADE_CONSTANTS.INVENTORY_CACHE_FILE));
+
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_LOADED),
+                itemsLoaded < 0 ? "0" : itemsLoaded.ToString(CultureInfo.DefaultThreadCurrentCulture));
+        };
+
+        /// <summary>
+        ///     Saves the OpenMetaverse inventory cache.
+        /// </summary>
+        private static readonly System.Action SaveInventoryCache = () =>
+        {
+            string path = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
+            int itemsSaved = Client.Inventory.Store.Items.Count;
+            Client.Inventory.Store.SaveToDisk(path);
+
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_SAVED),
+                itemsSaved.ToString(CultureInfo.DefaultThreadCurrentCulture));
+        };
+
+        /// <summary>
+        ///     Loads Corrade's caches.
+        /// </summary>
+        private static readonly System.Action LoadCorradeCache = () =>
+        {
+            lock (Cache.Locks.AgentCacheLock)
+            {
+                Cache.AgentCache =
+                    Cache.Load(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
+                        Cache.AgentCache);
+            }
+            lock (Cache.Locks.GroupCacheLock)
+            {
+                Cache.GroupCache =
+                    Cache.Load(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
+                        Cache.GroupCache);
+            }
+        };
+
+        /// <summary>
+        ///     Saves Corrade's caches.
+        /// </summary>
+        private static readonly System.Action SaveCorradeCache = () =>
+        {
+            lock (Cache.Locks.AgentCacheLock)
+            {
+                Cache.Save(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
+                    Cache.AgentCache);
+            }
+            lock (Cache.Locks.GroupCacheLock)
+            {
+                Cache.Save(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
+                    Cache.GroupCache);
+            }
+        };
+
+        /// <summary>
+        ///     Saves Corrade group members.
+        /// </summary>
+        private static readonly System.Action SaveGroupMembersState = () =>
+        {
+            if (GroupMembers.Any())
+            {
+                try
+                {
+                    using (
+                        StreamWriter writer =
+                            new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                                CORRADE_CONSTANTS.GROUP_MEMBERS_STATE_FILE), false, Encoding.UTF8))
+                    {
+                        XmlSerializer serializer =
+                            new XmlSerializer(typeof (SerializableDictionary<UUID, HashSet<UUID>>));
+                        serializer.Serialize(writer, GroupMembers);
+                        writer.Flush();
+                    }
+                }
+                catch (Exception e)
+                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_GROUP_MEMBERS_STATE),
+                        e.Message);
+                }
+            }
+        };
+
+        /// <summary>
+        ///     Loads Corrade notifications.
+        /// </summary>
+        private static readonly System.Action LoadGroupMembersState = () =>
+        {
+            string groupMembersStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                CORRADE_CONSTANTS.GROUP_MEMBERS_STATE_FILE);
+            if (File.Exists(groupMembersStateFile))
+            {
+                try
+                {
+                    using (StreamReader stream = new StreamReader(groupMembersStateFile, Encoding.UTF8))
+                    {
+                        XmlSerializer serializer =
+                            new XmlSerializer(typeof (SerializableDictionary<UUID, HashSet<UUID>>));
+                        Parallel.ForEach((SerializableDictionary<UUID, HashSet<UUID>>) serializer.Deserialize(stream),
+                            o =>
+                            {
+                                if (!corradeConfiguration.Groups.AsParallel().Any(p => p.UUID.Equals(o.Key)) ||
+                                    GroupMembers.Contains(o))
+                                    return;
+                                lock (GroupMembersLock)
+                                {
+                                    GroupMembers.Add(o.Key, o.Value);
+                                }
+                            });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_GROUP_MEMBERS_STATE),
+                        ex.Message);
+                }
+            }
+        };
+
+        /// <summary>
+        ///     Saves Corrade notifications.
+        /// </summary>
+        private static readonly System.Action SaveNotificationState = () =>
+        {
+            NotificationsWatcher.EnableRaisingEvents = false;
+            try
+            {
+                using (
+                    StreamWriter writer =
+                        new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                            CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE), false, Encoding.UTF8))
+                {
+                    XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
+                    serializer.Serialize(writer, GroupNotifications);
+                    writer.Flush();
+                }
+            }
+            catch (Exception e)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE),
+                    e.Message);
+            }
+            NotificationsWatcher.EnableRaisingEvents = true;
+        };
+
+        /// <summary>
+        ///     Loads Corrade notifications.
+        /// </summary>
+        private static readonly System.Action LoadNotificationState = () =>
+        {
+            string groupNotificationsStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE);
+            if (File.Exists(groupNotificationsStateFile))
+            {
+                try
+                {
+                    using (StreamReader stream = new StreamReader(groupNotificationsStateFile, Encoding.UTF8))
+                    {
+                        XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
+                        Parallel.ForEach((HashSet<Notification>) serializer.Deserialize(stream),
+                            o =>
+                            {
+                                if (!corradeConfiguration.Groups.AsParallel().Any(p => p.Name.Equals(o.GroupName)) ||
+                                    GroupNotifications.Contains(o))
+                                    return;
+                                lock (GroupNotificationsLock)
+                                {
+                                    GroupNotifications.Add(o);
+                                }
+                            });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE),
+                        ex.Message);
+                }
+            }
+        };
+
+        /// <summary>
+        ///     Loads the chatbot configuration and AIML files.
+        /// </summary>
+        private static readonly System.Action LoadChatBotFiles = () =>
+        {
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READING_AIML_BOT_CONFIGURATION));
+            try
+            {
+                AIMLBot.isAcceptingUserInput = false;
+                AIMLBot.loadSettings(wasPathCombine(
+                    Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
+                    AIML_BOT_CONSTANTS.CONFIG.DIRECTORY, AIML_BOT_CONSTANTS.CONFIG.SETTINGS_FILE));
+                string AIMLBotBrain =
+                    wasPathCombine(
+                        Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
+                        AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_FILE);
+                switch (File.Exists(AIMLBotBrain))
+                {
+                    case true:
+                        AIMLBot.loadFromBinaryFile(AIMLBotBrain);
+                        break;
+                    default:
+                        AIMLBot.loadAIMLFromFiles();
+                        AIMLBot.saveToBinaryFile(AIMLBotBrain);
+                        break;
+                }
+                string AIMLBotUserBrain =
+                    wasPathCombine(
+                        Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
+                        AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_SESSION_FILE);
+                if (File.Exists(AIMLBotUserBrain))
+                {
+                    AIMLBotUser.Predicates.loadSettings(AIMLBotUserBrain);
+                }
+                AIMLBot.isAcceptingUserInput = true;
+            }
+            catch (Exception ex)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_LOADING_AIML_BOT_FILES), ex.Message);
+                return;
+            }
+            finally
+            {
+                AIMLBotBrainCompiled = true;
+            }
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_AIML_BOT_CONFIGURATION));
+        };
+
+        /// <summary>
+        ///     Saves the chatbot configuration and AIML files.
+        /// </summary>
+        private static readonly System.Action SaveChatBotFiles = () =>
+        {
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WRITING_AIML_BOT_CONFIGURATION));
+            try
+            {
+                AIMLBot.isAcceptingUserInput = false;
+                AIMLBotUser.Predicates.DictionaryAsXML.Save(wasPathCombine(
+                    Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
+                    AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_SESSION_FILE));
+                AIMLBot.isAcceptingUserInput = true;
+            }
+            catch (Exception ex)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SAVING_AIML_BOT_FILES), ex.Message);
+                return;
+            }
+            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WROTE_AIML_BOT_CONFIGURATION));
+        };
+
+        private static volatile bool runHTTPServer;
+        private static volatile bool runCallbackThread = true;
+        private static volatile bool runNotificationThread = true;
+        private static volatile bool runGroupMembershipSweepThread;
+        private static volatile bool runEffectsExpirationThread;
+
         public Corrade()
         {
             if (Environment.UserInteractive) return;
@@ -426,25 +1216,26 @@ namespace Corrade
 
             while (runGroupMembershipSweepThread)
             {
-                Thread.Sleep((int) Configuration.MEMBERSHIP_SWEEP_INTERVAL);
+                Thread.Sleep((int) corradeConfiguration.MembershipSweepInterval);
                 if (!Client.Network.Connected) continue;
 
                 IEnumerable<UUID> currentGroups = null;
-                if (!GetCurrentGroups(Configuration.SERVICES_TIMEOUT, ref currentGroups))
+                if (!GetCurrentGroups(corradeConfiguration.ServicesTimeout, ref currentGroups))
                     continue;
 
                 // Enqueue configured groups that are currently joined groups.
                 groupUUIDs.Clear();
                 object LockObject = new object();
-                Parallel.ForEach(Configuration.GROUPS.AsParallel().Select(o => new {group = o, groupUUID = o.UUID})
-                    .Where(p => currentGroups.ToList().Any(o => o.Equals(p.groupUUID)))
-                    .Select(o => o.group), o =>
-                    {
-                        lock (LockObject)
+                Parallel.ForEach(
+                    corradeConfiguration.Groups.AsParallel().Select(o => new {group = o, groupUUID = o.UUID})
+                        .Where(p => currentGroups.ToList().Any(o => o.Equals(p.groupUUID)))
+                        .Select(o => o.group), o =>
                         {
-                            groupUUIDs.Enqueue(o.UUID);
-                        }
-                    });
+                            lock (LockObject)
+                            {
+                                groupUUIDs.Enqueue(o.UUID);
+                            }
+                        });
 
 
                 // Bail if no configured groups are also joined.
@@ -484,7 +1275,7 @@ namespace Corrade
                         Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                         GroupMembersReplyEvent.Reset();
                         Client.Groups.RequestGroupMembers(groupUUID);
-                        if (!GroupMembersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                        if (!GroupMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                             continue;
@@ -515,13 +1306,14 @@ namespace Corrade
                                         string groupName = string.Empty;
                                         if (AgentUUIDToName(
                                             o,
-                                            Configuration.SERVICES_TIMEOUT,
+                                            corradeConfiguration.ServicesTimeout,
                                             ref agentName) &&
-                                            GroupUUIDToName(groupUUID, Configuration.SERVICES_TIMEOUT, ref groupName))
+                                            GroupUUIDToName(groupUUID, corradeConfiguration.ServicesTimeout,
+                                                ref groupName))
                                         {
                                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                                                 () => SendNotification(
-                                                    Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
+                                                    Notifications.GroupMembership,
                                                     new GroupMembershipEventArgs
                                                     {
                                                         AgentName = agentName,
@@ -530,7 +1322,7 @@ namespace Corrade
                                                         GroupName = groupName,
                                                         GroupUUID = groupUUID
                                                     }),
-                                                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                                                corradeConfiguration.MaximumNotificationThreads);
                                         }
                                     });
                             }
@@ -545,13 +1337,14 @@ namespace Corrade
                                         string groupName = string.Empty;
                                         if (AgentUUIDToName(
                                             o,
-                                            Configuration.SERVICES_TIMEOUT,
+                                            corradeConfiguration.ServicesTimeout,
                                             ref agentName) &&
-                                            GroupUUIDToName(groupUUID, Configuration.SERVICES_TIMEOUT, ref groupName))
+                                            GroupUUIDToName(groupUUID, corradeConfiguration.ServicesTimeout,
+                                                ref groupName))
                                         {
                                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                                                 () => SendNotification(
-                                                    Notifications.NOTIFICATION_GROUP_MEMBERSHIP,
+                                                    Notifications.GroupMembership,
                                                     new GroupMembershipEventArgs
                                                     {
                                                         AgentName = agentName,
@@ -560,7 +1353,7 @@ namespace Corrade
                                                         GroupName = groupName,
                                                         GroupUUID = groupUUID
                                                     }),
-                                                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                                                corradeConfiguration.MaximumNotificationThreads);
                                         }
                                     });
                             }
@@ -588,7 +1381,7 @@ namespace Corrade
             // Set the user disconnect semaphore.
             ConnectionSemaphores['u'].Set();
             // Wait for threads to finish.
-            Thread.Sleep((int) Configuration.SERVICES_TIMEOUT);
+            Thread.Sleep((int) corradeConfiguration.ServicesTimeout);
             return true;
         }
 
@@ -1561,10 +2354,10 @@ namespace Corrade
                     return;
                 }
             }
-            if (wasGetInfoValue(info, value) is Single)
+            if (wasGetInfoValue(info, value) is float)
             {
-                Single singleData;
-                if (Single.TryParse(setting, out singleData))
+                float singleData;
+                if (float.TryParse(setting, out singleData))
                 {
                     wasSetInfoValue(info, ref @object, singleData);
                     return;
@@ -1851,11 +2644,11 @@ namespace Corrade
         {
             UUID groupUUID;
             return UUID.TryParse(group, out groupUUID)
-                ? Configuration.GROUPS.AsParallel().Any(
+                ? corradeConfiguration.Groups.AsParallel().Any(
                     o =>
                         groupUUID.Equals(o.UUID) &&
                         password.Equals(o.Password, StringComparison.Ordinal))
-                : Configuration.GROUPS.AsParallel().Any(
+                : corradeConfiguration.Groups.AsParallel().Any(
                     o =>
                         o.Name.Equals(group, StringComparison.OrdinalIgnoreCase) &&
                         password.Equals(o.Password, StringComparison.Ordinal));
@@ -1871,9 +2664,9 @@ namespace Corrade
         {
             UUID groupUUID;
             return !permission.Equals(0) && UUID.TryParse(group, out groupUUID)
-                ? Configuration.GROUPS.AsParallel()
+                ? corradeConfiguration.Groups.AsParallel()
                     .Any(o => groupUUID.Equals(o.UUID) && !(o.PermissionMask & permission).Equals(0))
-                : Configuration.GROUPS.AsParallel().Any(
+                : corradeConfiguration.Groups.AsParallel().Any(
                     o =>
                         o.Name.Equals(group, StringComparison.OrdinalIgnoreCase) &&
                         !(o.PermissionMask & permission).Equals(0));
@@ -1890,8 +2683,8 @@ namespace Corrade
                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)), message));
             UUID groupUUID;
             return UUID.TryParse(group, out groupUUID)
-                ? Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID))
-                : Configuration.GROUPS.AsParallel()
+                ? corradeConfiguration.Groups.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID))
+                : corradeConfiguration.Groups.AsParallel()
                     .FirstOrDefault(o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase));
         }
 
@@ -1905,10 +2698,10 @@ namespace Corrade
         {
             UUID groupUUID;
             return !notification.Equals(0) && UUID.TryParse(group, out groupUUID)
-                ? Configuration.GROUPS.AsParallel().Any(
+                ? corradeConfiguration.Groups.AsParallel().Any(
                     o => groupUUID.Equals(o.UUID) &&
                          !(o.NotificationMask & notification).Equals(0))
-                : Configuration.GROUPS.AsParallel().Any(
+                : corradeConfiguration.Groups.AsParallel().Any(
                     o => o.Name.Equals(group, StringComparison.OrdinalIgnoreCase) &&
                          !(o.NotificationMask & notification).Equals(0));
         }
@@ -1984,7 +2777,7 @@ namespace Corrade
                         RequestAllSimParcelsEvent.Set();
                         break;
                 }
-                if (!RequestAllSimParcelsEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                if (!RequestAllSimParcelsEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                 {
                     Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;
                     return false;
@@ -2683,7 +3476,7 @@ namespace Corrade
             {
                 case true:
                     IEnumerable<Avatar> avatars;
-                    wasAdaptiveAlarm RangeUpdateAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+                    wasAdaptiveAlarm RangeUpdateAlarm = new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
                     EventHandler<AvatarUpdateEventArgs> AvatarUpdateEventHandler =
                         (sender, args) =>
                         {
@@ -2706,7 +3499,7 @@ namespace Corrade
                                 .SelectMany(o => o);
                         lock (ClientInstanceConfigurationLock)
                         {
-                            Client.Self.Movement.Camera.Far = Configuration.RANGE;
+                            Client.Self.Movement.Camera.Far = corradeConfiguration.Range;
                         }
                         Client.Objects.AvatarUpdate -= AvatarUpdateEventHandler;
                     }
@@ -2734,7 +3527,7 @@ namespace Corrade
             {
                 case true:
                     IEnumerable<Primitive> primitives;
-                    wasAdaptiveAlarm RangeUpdateAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+                    wasAdaptiveAlarm RangeUpdateAlarm = new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
                     EventHandler<PrimEventArgs> ObjectUpdateEventHandler =
                         (sender, args) =>
                         {
@@ -2757,7 +3550,7 @@ namespace Corrade
                                 .SelectMany(o => o);
                         lock (ClientInstanceConfigurationLock)
                         {
-                            Client.Self.Movement.Camera.Far = Configuration.RANGE;
+                            Client.Self.Movement.Camera.Far = corradeConfiguration.Range;
                         }
                         Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                     }
@@ -2861,7 +3654,7 @@ namespace Corrade
             HashSet<Avatar> scansAvatars = new HashSet<Avatar>(avatars);
             Dictionary<UUID, wasAdaptiveAlarm> avatarAlarms =
                 new Dictionary<UUID, wasAdaptiveAlarm>(scansAvatars.AsParallel()
-                    .ToDictionary(o => o.ID, p => new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE)));
+                    .ToDictionary(o => o.ID, p => new wasAdaptiveAlarm(corradeConfiguration.DataDecayType)));
             Dictionary<UUID, Avatar> avatarUpdates = new Dictionary<UUID, Avatar>(scansAvatars.AsParallel()
                 .ToDictionary(o => o.ID, p => p));
             object LockObject = new object();
@@ -3035,7 +3828,7 @@ namespace Corrade
             }
             Dictionary<UUID, uint> primitiveQueue = primitives.ToDictionary(o => o.ID, o => o.LocalID);
             object LockObject = new object();
-            wasAdaptiveAlarm ObjectPropertiesAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+            wasAdaptiveAlarm ObjectPropertiesAlarm = new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
             EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler = (sender, args) =>
             {
                 ObjectPropertiesAlarm.Alarm(dataTimeout);
@@ -3250,7 +4043,7 @@ namespace Corrade
                     output.AddRange(messages.Select(message => message));
 
                     // Attempt to write to log file,
-                    if (Configuration.CLIENT_LOG_ENABLED)
+                    if (corradeConfiguration.ClientLogEnabled)
                     {
                         try
                         {
@@ -3258,7 +4051,7 @@ namespace Corrade
                             {
                                 using (
                                     StreamWriter logWriter =
-                                        new StreamWriter(Configuration.CLIENT_LOG_FILE, true, Encoding.UTF8))
+                                        new StreamWriter(corradeConfiguration.ClientLogFile, true, Encoding.UTF8))
                                 {
                                     logWriter.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
                                     //logWriter.Flush();
@@ -3289,7 +4082,7 @@ namespace Corrade
                     }
                     Console.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
                 },
-                Configuration.MAXIMUM_LOG_THREADS);
+                corradeConfiguration.MaximumLogThreads);
         }
 
         /// <summary>
@@ -3320,7 +4113,7 @@ namespace Corrade
                                     o)));
 
                     // Attempt to write to log file,
-                    if (Configuration.CLIENT_LOG_ENABLED)
+                    if (corradeConfiguration.ClientLogEnabled)
                     {
                         try
                         {
@@ -3328,7 +4121,7 @@ namespace Corrade
                             {
                                 using (
                                     StreamWriter logWriter =
-                                        new StreamWriter(Configuration.CLIENT_LOG_FILE, true, Encoding.UTF8))
+                                        new StreamWriter(corradeConfiguration.ClientLogFile, true, Encoding.UTF8))
                                 {
                                     foreach (string message in output)
                                     {
@@ -3367,7 +4160,7 @@ namespace Corrade
                         Console.WriteLine(message);
                     }
                 },
-                Configuration.MAXIMUM_LOG_THREADS);
+                corradeConfiguration.MaximumLogThreads);
         }
 
         public static int Main(string[] args)
@@ -3500,10 +4293,10 @@ namespace Corrade
             {
                 // If the culture could not be created and registered then abort everything since we need this.
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_LINDEN_GLOBALIZATION), ex.Message);
-                Environment.Exit(Configuration.EXIT_CODE_ABNORMAL);
+                Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
             // Load the configuration file.
-            Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
+            corradeConfiguration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
             // Write the logo.
             Feedback(true, CORRADE_CONSTANTS.LOGO.ToArray());
             // Branch on platform and set-up termination handlers.
@@ -3537,7 +4330,7 @@ namespace Corrade
             catch (Exception ex)
             {
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_CONFIGURATION_WATCHER), ex.Message);
-                Environment.Exit(Configuration.EXIT_CODE_ABNORMAL);
+                Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
             // Set-up watcher for dynamically reading the configuration file.
             FileSystemEventHandler HandleNotificationsFileChanged = null;
@@ -3554,7 +4347,7 @@ namespace Corrade
             catch (Exception ex)
             {
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_CONFIGURATION_WATCHER), ex.Message);
-                Environment.Exit(Configuration.EXIT_CODE_ABNORMAL);
+                Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
             // Set-up the AIML bot in case it has been enabled.
             FileSystemEventHandler HandleAIMLBotConfigurationChanged = null;
@@ -3570,13 +4363,13 @@ namespace Corrade
             {
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER),
                     ex.Message);
-                Environment.Exit(Configuration.EXIT_CODE_ABNORMAL);
+                Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
             // Network Settings
-            ServicePointManager.DefaultConnectionLimit = (int) Configuration.CONNECTION_LIMIT;
-            ServicePointManager.UseNagleAlgorithm = Configuration.USE_NAGGLE;
-            ServicePointManager.Expect100Continue = Configuration.USE_EXPECT100CONTINUE;
-            ServicePointManager.MaxServicePointIdleTime = (int) Configuration.CONNECTION_IDLE_TIME;
+            ServicePointManager.DefaultConnectionLimit = (int) corradeConfiguration.ConnectionLimit;
+            ServicePointManager.UseNagleAlgorithm = corradeConfiguration.UseNaggle;
+            ServicePointManager.Expect100Continue = corradeConfiguration.UseExpect100Continue;
+            ServicePointManager.MaxServicePointIdleTime = (int) corradeConfiguration.ConnectionIdleTime;
             // Suppress standard OpenMetaverse logs, we have better ones.
             Settings.LOG_LEVEL = Helpers.LogLevel.None;
             Client.Settings.ALWAYS_REQUEST_PARCEL_ACL = true;
@@ -3609,59 +4402,59 @@ namespace Corrade
             Client.Settings.ENABLE_SIMSTATS = true;
             // Throttling.
             Client.Settings.THROTTLE_OUTGOING_PACKETS = false;
-            Client.Throttle.Total = Configuration.THROTTLE_TOTAL;
-            Client.Throttle.Land = Configuration.THROTTLE_LAND;
-            Client.Throttle.Task = Configuration.THROTTLE_TASK;
-            Client.Throttle.Texture = Configuration.THROTTLE_TEXTURE;
-            Client.Throttle.Wind = Configuration.THROTTLE_WIND;
-            Client.Throttle.Resend = Configuration.THROTTLE_RESEND;
-            Client.Throttle.Asset = Configuration.THROTTLE_ASSET;
-            Client.Throttle.Cloud = Configuration.THROTTLE_CLOUD;
+            Client.Throttle.Total = corradeConfiguration.ThrottleTotal;
+            Client.Throttle.Land = corradeConfiguration.ThrottleLand;
+            Client.Throttle.Task = corradeConfiguration.ThrottleTask;
+            Client.Throttle.Texture = corradeConfiguration.ThrottleTexture;
+            Client.Throttle.Wind = corradeConfiguration.ThrottleWind;
+            Client.Throttle.Resend = corradeConfiguration.ThrottleResend;
+            Client.Throttle.Asset = corradeConfiguration.ThrottleAsset;
+            Client.Throttle.Cloud = corradeConfiguration.ThrottleCloud;
             // Enable multiple simulators
             Client.Settings.MULTIPLE_SIMS = true;
             // Check TOS
-            if (!Configuration.TOS_ACCEPTED)
+            if (!corradeConfiguration.TOSAccepted)
             {
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TOS_NOT_ACCEPTED));
-                Environment.Exit(Configuration.EXIT_CODE_ABNORMAL);
+                Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
             // Proceed to log-in.
             LoginParams login = new LoginParams(
                 Client,
-                Configuration.FIRST_NAME,
-                Configuration.LAST_NAME,
-                Configuration.PASSWORD,
+                corradeConfiguration.FirstName,
+                corradeConfiguration.LastName,
+                corradeConfiguration.Password,
                 CORRADE_CONSTANTS.CLIENT_CHANNEL,
                 CORRADE_CONSTANTS.CORRADE_VERSION.ToString(CultureInfo.DefaultThreadCurrentCulture),
-                Configuration.LOGIN_URL)
+                corradeConfiguration.LoginURL)
             {
                 Author = CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS,
-                AgreeToTos = Configuration.TOS_ACCEPTED,
-                Start = Configuration.START_LOCATION,
+                AgreeToTos = corradeConfiguration.TOSAccepted,
+                Start = corradeConfiguration.StartLocation,
                 UserAgent = CORRADE_CONSTANTS.USER_AGENT
             };
             // Set the outgoing IP address if specified in the configuration file.
-            if (!string.IsNullOrEmpty(Configuration.BIND_IP_ADDRESS))
+            if (!string.IsNullOrEmpty(corradeConfiguration.BindIPAddress))
             {
                 try
                 {
-                    Settings.BIND_ADDR = IPAddress.Parse(Configuration.BIND_IP_ADDRESS);
+                    Settings.BIND_ADDR = IPAddress.Parse(corradeConfiguration.BindIPAddress);
                 }
                 catch (Exception ex)
                 {
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNKNOWN_IP_ADDRESS), ex.Message);
-                    Environment.Exit(Configuration.EXIT_CODE_ABNORMAL);
+                    Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
                 }
             }
             // Set the ID0 if specified in the configuration file.
-            if (!string.IsNullOrEmpty(Configuration.DRIVE_IDENTIFIER_HASH))
+            if (!string.IsNullOrEmpty(corradeConfiguration.DriveIdentifierHash))
             {
-                login.ID0 = Utils.MD5String(Configuration.DRIVE_IDENTIFIER_HASH);
+                login.ID0 = Utils.MD5String(corradeConfiguration.DriveIdentifierHash);
             }
             // Set the MAC if specified in the configuration file.
-            if (!string.IsNullOrEmpty(Configuration.NETWORK_CARD_MAC))
+            if (!string.IsNullOrEmpty(corradeConfiguration.NetworkCardMAC))
             {
-                login.MAC = Utils.MD5String(Configuration.NETWORK_CARD_MAC);
+                login.MAC = Utils.MD5String(corradeConfiguration.NetworkCardMAC);
             }
             // Load Corrade caches.
             LoadCorradeCache.Invoke();
@@ -3676,14 +4469,14 @@ namespace Corrade
                 {
                     try
                     {
-                        Thread.Sleep((int) Configuration.CALLBACK_THROTTLE);
+                        Thread.Sleep((int) corradeConfiguration.CallbackThrottle);
                         if (!CallbackQueue.Any()) continue;
                         CallbackQueueElement callbackQueueElement = CallbackQueue.Dequeue();
                         if (!callbackQueueElement.Equals(default(CallbackQueueElement)))
                         {
                             CorradeThreadPool[CorradeThreadType.POST].Spawn(
                                 () => wasPOST(callbackQueueElement.URL, callbackQueueElement.message,
-                                    Configuration.CALLBACK_TIMEOUT), Configuration.MAXIMUM_POST_THREADS);
+                                    corradeConfiguration.CallbackTimeout), corradeConfiguration.MaximumPOSTThreads);
                         }
                     }
                     catch (Exception ex)
@@ -3692,7 +4485,8 @@ namespace Corrade
                             ex.Message);
                     }
                 } while (runCallbackThread);
-            }) {IsBackground = true, Priority = ThreadPriority.Lowest};
+            })
+            {IsBackground = true, Priority = ThreadPriority.Lowest};
             CallbackThread.Start();
             // Start the notification thread for notifications.
             Thread NotificationThread = new Thread(() =>
@@ -3701,14 +4495,14 @@ namespace Corrade
                 {
                     try
                     {
-                        Thread.Sleep((int) Configuration.NOTIFICATION_THROTTLE);
+                        Thread.Sleep((int) corradeConfiguration.NotificationThrottle);
                         if (!NotificationQueue.Any()) continue;
                         NotificationQueueElement notificationQueueElement = NotificationQueue.Dequeue();
                         if (!notificationQueueElement.Equals(default(NotificationQueueElement)))
                         {
                             CorradeThreadPool[CorradeThreadType.POST].Spawn(
                                 () => wasPOST(notificationQueueElement.URL, notificationQueueElement.message,
-                                    Configuration.NOTIFICATION_TIMEOUT), Configuration.MAXIMUM_POST_THREADS);
+                                    corradeConfiguration.NotificationTimeout), corradeConfiguration.MaximumPOSTThreads);
                         }
                     }
                     catch (Exception ex)
@@ -3717,7 +4511,8 @@ namespace Corrade
                             ex.Message);
                     }
                 } while (runNotificationThread);
-            }) {IsBackground = true, Priority = ThreadPriority.Lowest};
+            })
+            {IsBackground = true, Priority = ThreadPriority.Lowest};
             NotificationThread.Start();
             // Install non-dynamic global event handlers.
             Client.Inventory.InventoryObjectOffered += HandleInventoryObjectOffered;
@@ -3734,7 +4529,7 @@ namespace Corrade
             // Each Instant Message is processed in its own thread.
             Client.Self.IM += (sender, args) => CorradeThreadPool[CorradeThreadType.INSTANT_MESSAGE].Spawn(
                 () => HandleSelfIM(sender, args),
-                Configuration.MAXIMUM_INSTANT_MESSAGE_THREADS);
+                corradeConfiguration.MaximumInstantMessageThreads);
             // Log-in to the grid.
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGGING_IN));
             Client.Network.Login(login);
@@ -3870,7 +4665,7 @@ namespace Corrade
             }
 
             // Close HTTP server
-            if (HttpListener.IsSupported && Configuration.ENABLE_HTTP_SERVER)
+            if (HttpListener.IsSupported && corradeConfiguration.EnableHTTPServer)
             {
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.STOPPING_HTTP_SERVER));
                 runHTTPServer = false;
@@ -3945,7 +4740,7 @@ namespace Corrade
                 EventHandler<LoggedOutEventArgs> LoggedOutEventHandler = (sender, args) => LoggedOutEvent.Set();
                 Client.Network.LoggedOut += LoggedOutEventHandler;
                 Client.Network.RequestLogout();
-                if (!LoggedOutEvent.WaitOne((int) Configuration.LOGOUT_GRACE, false))
+                if (!LoggedOutEvent.WaitOne((int) corradeConfiguration.LogoutGrace, false))
                 {
                     Client.Network.LoggedOut -= LoggedOutEventHandler;
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TIMEOUT_LOGGING_OUT));
@@ -3958,21 +4753,21 @@ namespace Corrade
             }
 
             // Terminate.
-            Environment.Exit(Configuration.EXIT_CODE_EXPECTED);
+            Environment.Exit(corradeConfiguration.ExitCodeExpected);
         }
 
         private static void HandleAvatarUpdate(object sender, AvatarUpdateEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_RADAR_AVATARS, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.RadarAvatars, e),
+                corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleObjectUpdate(object sender, PrimEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_RADAR_PRIMITIVES, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.RadarPrimitives, e),
+                corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleKillObject(object sender, KillObjectEventArgs e)
@@ -3990,13 +4785,13 @@ namespace Corrade
                     {
                         case true:
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                () => SendNotification(Notifications.NOTIFICATION_RADAR_AVATARS, e),
-                                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                                () => SendNotification(Notifications.RadarAvatars, e),
+                                corradeConfiguration.MaximumNotificationThreads);
                             break;
                         default:
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                () => SendNotification(Notifications.NOTIFICATION_RADAR_PRIMITIVES, e),
-                                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                                () => SendNotification(Notifications.RadarPrimitives, e),
+                                corradeConfiguration.MaximumNotificationThreads);
                             break;
                     }
                     break;
@@ -4016,9 +4811,9 @@ namespace Corrade
             // Join group chat if possible.
             if (!Client.Self.GroupChatSessions.ContainsKey(e.GroupID) &&
                 HasGroupPowers(Client.Self.AgentID, e.GroupID, GroupPowers.JoinChat,
-                    Configuration.SERVICES_TIMEOUT))
+                    corradeConfiguration.ServicesTimeout))
             {
-                JoinGroupChat(e.GroupID, Configuration.SERVICES_TIMEOUT);
+                JoinGroupChat(e.GroupID, corradeConfiguration.ServicesTimeout);
             }
         }
 
@@ -4034,15 +4829,15 @@ namespace Corrade
         private static void HandleLoadURL(object sender, LoadUrlEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_LOAD_URL, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.LoadURL, e),
+                corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleScriptControlChange(object sender, ScriptControlEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_SCRIPT_CONTROL, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.ScriptControl, e),
+                corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleAppearanceSet(object sender, AppearanceSetEventArgs e)
@@ -4061,22 +4856,22 @@ namespace Corrade
         private static void HandleRegionCrossed(object sender, RegionCrossedEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.RegionCrossed, e),
+                corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleMeanCollision(object sender, MeanCollisionEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_MEAN_COLLISION, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.MeanCollision, e),
+                corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleViewerEffect(object sender, object e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_VIEWER_EFFECT, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.ViewerEffect, e),
+                corradeConfiguration.MaximumNotificationThreads);
         }
 
         /// <summary>
@@ -4142,7 +4937,7 @@ namespace Corrade
                     using (HttpListenerResponse response = httpContext.Response)
                     {
                         // set the content type based on chosen output filers
-                        switch (Configuration.OUTPUT_FILTERS.Last())
+                        switch (corradeConfiguration.OutputFilters.Last())
                         {
                             case Filter.RFC1738:
                                 response.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
@@ -4157,10 +4952,10 @@ namespace Corrade
                         response.StatusCode = (int) HttpStatusCode.OK;
                         response.StatusDescription = "OK";
                         response.ProtocolVersion = HttpVersion.Version11;
-                        response.KeepAlive = Configuration.HTTP_SERVER_KEEP_ALIVE;
+                        response.KeepAlive = corradeConfiguration.HTTPServerKeepAlive;
                         using (MemoryStream outputStream = new MemoryStream())
                         {
-                            switch (Configuration.HTTP_SERVER_COMPRESSION)
+                            switch (corradeConfiguration.HTTPServerCompression)
                             {
                                 case HTTPCompressionMethod.GZIP:
                                     using (GZipStream dataGZipStream = new GZipStream(outputStream,
@@ -4204,7 +4999,8 @@ namespace Corrade
                 {
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_PROCESSING_ABORTED), ex.Message);
                 }
-            }, Configuration.MAXIMUM_COMMAND_THREADS, commandGroup.UUID, Configuration.SCHEDULER_EXPIRATION_TIME);
+            }, corradeConfiguration.MaximumCommandThreads, commandGroup.UUID,
+                corradeConfiguration.SchedulerExpiration);
         }
 
         /// <summary>
@@ -4222,7 +5018,7 @@ namespace Corrade
                     .Where(
                         o =>
                             !(o.NotificationMask & (uint) notification).Equals(0) &&
-                            Configuration.GROUPS.AsParallel().Any(
+                            corradeConfiguration.Groups.AsParallel().Any(
                                 p => p.Name.Equals(o.GroupName, StringComparison.OrdinalIgnoreCase) &&
                                      !(p.NotificationMask & (uint) notification).Equals(0))));
             }
@@ -4242,7 +5038,7 @@ namespace Corrade
                 // Build the notification data
                 switch (notification)
                 {
-                    case Notifications.NOTIFICATION_SCRIPT_DIALOG:
+                    case Notifications.ScriptDialog:
                         execute = () =>
                         {
                             ScriptDialogEventArgs scriptDialogEventArgs = (ScriptDialogEventArgs) args;
@@ -4272,7 +5068,7 @@ namespace Corrade
                                 wasEnumerableToCSV(scriptDialogEventArgs.ButtonLabels));
                         };
                         break;
-                    case Notifications.NOTIFICATION_LOCAL_CHAT:
+                    case Notifications.LocalChat:
                         execute = () =>
                         {
                             ChatEventArgs localChatEventArgs = (ChatEventArgs) args;
@@ -4312,7 +5108,7 @@ namespace Corrade
                                 Enum.GetName(typeof (ChatType), localChatEventArgs.Type));
                         };
                         break;
-                    case Notifications.NOTIFICATION_BALANCE:
+                    case Notifications.Balance:
                         execute = () =>
                         {
                             BalanceEventArgs balanceEventArgs = (BalanceEventArgs) args;
@@ -4328,7 +5124,7 @@ namespace Corrade
                                 balanceEventArgs.Balance.ToString(CultureInfo.DefaultThreadCurrentCulture));
                         };
                         break;
-                    case Notifications.NOTIFICATION_ALERT_MESSAGE:
+                    case Notifications.AlertMessage:
                         execute = () =>
                         {
                             AlertMessageEventArgs alertMessageEventArgs = (AlertMessageEventArgs) args;
@@ -4344,7 +5140,7 @@ namespace Corrade
                                 alertMessageEventArgs.Message);
                         };
                         break;
-                    case Notifications.NOTIFICATION_INVENTORY:
+                    case Notifications.Inventory:
                         execute = () =>
                         {
                             System.Type inventoryOfferedType = args.GetType();
@@ -4510,7 +5306,7 @@ namespace Corrade
                             }
                         };
                         break;
-                    case Notifications.NOTIFICATION_SCRIPT_PERMISSION:
+                    case Notifications.ScriptPermission:
                         execute = () =>
                         {
                             ScriptQuestionEventArgs scriptQuestionEventArgs = (ScriptQuestionEventArgs) args;
@@ -4538,7 +5334,7 @@ namespace Corrade
                                 scriptQuestionEventArgs.Simulator.Name);
                         };
                         break;
-                    case Notifications.NOTIFICATION_FRIENDSHIP:
+                    case Notifications.Friendship:
                         execute = () =>
                         {
                             System.Type friendshipNotificationType = args.GetType();
@@ -4647,7 +5443,7 @@ namespace Corrade
                             }
                         };
                         break;
-                    case Notifications.NOTIFICATION_TELEPORT_LURE:
+                    case Notifications.TeleportLure:
                         execute = () =>
                         {
                             InstantMessageEventArgs teleportLureEventArgs = (InstantMessageEventArgs) args;
@@ -4677,7 +5473,7 @@ namespace Corrade
                                 teleportLureEventArgs.IM.IMSessionID.ToString());
                         };
                         break;
-                    case Notifications.NOTIFICATION_GROUP_NOTICE:
+                    case Notifications.GroupNotice:
                         execute = () =>
                         {
                             InstantMessageEventArgs notificationGroupNoticeEventArgs =
@@ -4732,7 +5528,7 @@ namespace Corrade
                             }
                         };
                         break;
-                    case Notifications.NOTIFICATION_INSTANT_MESSAGE:
+                    case Notifications.InstantMessage:
                         execute = () =>
                         {
                             InstantMessageEventArgs notificationInstantMessage =
@@ -4763,7 +5559,7 @@ namespace Corrade
                                 notificationInstantMessage.IM.Message);
                         };
                         break;
-                    case Notifications.NOTIFICATION_REGION_MESSAGE:
+                    case Notifications.RegionMessage:
                         execute = () =>
                         {
                             InstantMessageEventArgs notificationRegionMessage =
@@ -4794,7 +5590,7 @@ namespace Corrade
                                 notificationRegionMessage.IM.Message);
                         };
                         break;
-                    case Notifications.NOTIFICATION_GROUP_MESSAGE:
+                    case Notifications.GroupMessage:
                         execute = () =>
                         {
                             GroupMessageEventArgs notificationGroupMessage = (GroupMessageEventArgs) args;
@@ -4820,7 +5616,7 @@ namespace Corrade
                                 notificationGroupMessage.Message);
                         };
                         break;
-                    case Notifications.NOTIFICATION_VIEWER_EFFECT:
+                    case Notifications.ViewerEffect:
                         execute = () =>
                         {
                             System.Type viewerEffectType = args.GetType();
@@ -4908,7 +5704,7 @@ namespace Corrade
                             }
                         };
                         break;
-                    case Notifications.NOTIFICATION_MEAN_COLLISION:
+                    case Notifications.MeanCollision:
                         execute = () =>
                         {
                             MeanCollisionEventArgs meanCollisionEventArgs =
@@ -4933,7 +5729,7 @@ namespace Corrade
                                 meanCollisionEventArgs.Victim.ToString());
                         };
                         break;
-                    case Notifications.NOTIFICATION_REGION_CROSSED:
+                    case Notifications.RegionCrossed:
                         execute = () =>
                         {
                             System.Type regionChangeType = args.GetType();
@@ -4983,7 +5779,7 @@ namespace Corrade
                             }
                         };
                         break;
-                    case Notifications.NOTIFICATION_TERSE_UPDATES:
+                    case Notifications.TerseUpdates:
                         execute = () =>
                         {
                             TerseObjectUpdateEventArgs terseObjectUpdateEventArgs =
@@ -5006,7 +5802,7 @@ namespace Corrade
                                 terseObjectUpdateEventArgs.Prim.PrimData.PCode.ToString());
                         };
                         break;
-                    case Notifications.NOTIFICATION_TYPING:
+                    case Notifications.Typing:
                         execute = () =>
                         {
                             InstantMessageEventArgs notificationTypingMessageEventArgs =
@@ -5047,7 +5843,7 @@ namespace Corrade
                             }
                         };
                         break;
-                    case Notifications.NOTIFICATION_GROUP_INVITE:
+                    case Notifications.GroupInvite:
                         execute = () =>
                         {
                             InstantMessageEventArgs notificationGroupInviteEventArgs =
@@ -5085,7 +5881,7 @@ namespace Corrade
                                 notificationGroupInviteEventArgs.IM.IMSessionID.ToString());
                         };
                         break;
-                    case Notifications.NOTIFICATION_ECONOMY:
+                    case Notifications.Economy:
                         execute = () =>
                         {
                             MoneyBalanceReplyEventArgs notificationMoneyBalanceEventArgs =
@@ -5125,7 +5921,7 @@ namespace Corrade
                                     notificationMoneyBalanceEventArgs.TransactionInfo.TransactionType));
                         };
                         break;
-                    case Notifications.NOTIFICATION_GROUP_MEMBERSHIP:
+                    case Notifications.GroupMembership:
                         execute = () =>
                         {
                             GroupMembershipEventArgs groupMembershipEventArgs = (GroupMembershipEventArgs) args;
@@ -5168,7 +5964,7 @@ namespace Corrade
                             }
                         };
                         break;
-                    case Notifications.NOTIFICATION_LOAD_URL:
+                    case Notifications.LoadURL:
                         execute = () =>
                         {
                             LoadUrlEventArgs loadURLEventArgs = (LoadUrlEventArgs) args;
@@ -5194,7 +5990,7 @@ namespace Corrade
                                 loadURLEventArgs.URL);
                         };
                         break;
-                    case Notifications.NOTIFICATION_OWNER_SAY:
+                    case Notifications.OwnerSay:
                         execute = () =>
                         {
                             ChatEventArgs ownerSayEventArgs = (ChatEventArgs) args;
@@ -5216,7 +6012,7 @@ namespace Corrade
                                 ownerSayEventArgs.Position.ToString());
                         };
                         break;
-                    case Notifications.NOTIFICATION_REGION_SAY_TO:
+                    case Notifications.RegionSayTo:
                         execute = () =>
                         {
                             ChatEventArgs regionSayToEventArgs = (ChatEventArgs) args;
@@ -5240,7 +6036,7 @@ namespace Corrade
                                 regionSayToEventArgs.Position.ToString());
                         };
                         break;
-                    case Notifications.NOTIFICATION_OBJECT_INSTANT_MESSAGE:
+                    case Notifications.ObjectInstantMessage:
                         execute = () =>
                         {
                             InstantMessageEventArgs notificationObjectInstantMessage =
@@ -5263,7 +6059,7 @@ namespace Corrade
                                 notificationObjectInstantMessage.IM.Message);
                         };
                         break;
-                    case Notifications.NOTIFICATION_RLV_MESSAGE:
+                    case Notifications.RLVMessage:
                         execute = () =>
                         {
                             ChatEventArgs RLVEventArgs = (ChatEventArgs) args;
@@ -5285,7 +6081,7 @@ namespace Corrade
                                 wasEnumerableToCSV(wasRLVToString(RLVEventArgs.Message)));
                         };
                         break;
-                    case Notifications.NOTIFICATION_DEBUG_MESSAGE:
+                    case Notifications.DebugMessage:
                         execute = () =>
                         {
                             ChatEventArgs DebugEventArgs = (ChatEventArgs) args;
@@ -5307,7 +6103,7 @@ namespace Corrade
                                 DebugEventArgs.Message);
                         };
                         break;
-                    case Notifications.NOTIFICATION_RADAR_AVATARS:
+                    case Notifications.RadarAvatars:
                         execute = () =>
                         {
                             System.Type radarAvatarsType = args.GetType();
@@ -5390,7 +6186,7 @@ namespace Corrade
                             }
                         };
                         break;
-                    case Notifications.NOTIFICATION_RADAR_PRIMITIVES:
+                    case Notifications.RadarPrimitives:
                         execute = () =>
                         {
                             System.Type radarPrimitivesType = args.GetType();
@@ -5468,7 +6264,7 @@ namespace Corrade
                             }
                         };
                         break;
-                    case Notifications.NOTIFICATION_SCRIPT_CONTROL:
+                    case Notifications.ScriptControl:
                         execute = () =>
                         {
                             ScriptControlEventArgs scriptControlEventArgs =
@@ -5535,7 +6331,7 @@ namespace Corrade
                 }
 
                 // Check that the notification queue is not already full.
-                if (NotificationQueue.Count >= Configuration.NOTIFICATION_QUEUE_LENGTH)
+                if (NotificationQueue.Count >= corradeConfiguration.NotificationQueueLength)
                 {
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_THROTTLED));
                     return;
@@ -5576,8 +6372,8 @@ namespace Corrade
                 });
             }
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_SCRIPT_DIALOG, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.ScriptDialog, e),
+                corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleChatFromSimulator(object sender, ChatEventArgs e)
@@ -5594,27 +6390,27 @@ namespace Corrade
                         Cache.AddAgent(fullName.First(), fullName.Last(), e.SourceID);
                     }
                     // If RLV is enabled, process RLV and terminate.
-                    if (Configuration.ENABLE_RLV && e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR))
+                    if (corradeConfiguration.EnableRLV && e.Message.StartsWith(RLV_CONSTANTS.COMMAND_OPERATOR))
                     {
                         // Send RLV message notifications.
                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                            () => SendNotification(Notifications.NOTIFICATION_RLV_MESSAGE, e),
-                            Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                            () => SendNotification(Notifications.RLVMessage, e),
+                            corradeConfiguration.MaximumNotificationThreads);
                         CorradeThreadPool[CorradeThreadType.RLV].Spawn(
                             () => HandleRLVBehaviour(e.Message.Substring(1, e.Message.Length - 1), e.SourceID),
-                            Configuration.MAXIMUM_RLV_THREADS);
+                            corradeConfiguration.MaximumRLVThreads);
                         break;
                     }
                     // Otherwise, send llOwnerSay notifications.
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () => SendNotification(Notifications.NOTIFICATION_OWNER_SAY, e),
-                        Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                        () => SendNotification(Notifications.OwnerSay, e),
+                        corradeConfiguration.MaximumNotificationThreads);
                     break;
                 case ChatType.Debug:
                     // Send debug notifications.
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () => SendNotification(Notifications.NOTIFICATION_DEBUG_MESSAGE, e),
-                        Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                        () => SendNotification(Notifications.DebugMessage, e),
+                        corradeConfiguration.MaximumNotificationThreads);
                     break;
                 case ChatType.Normal:
                 case ChatType.Shout:
@@ -5626,10 +6422,10 @@ namespace Corrade
                     }
                     // Send chat notifications.
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () => SendNotification(Notifications.NOTIFICATION_LOCAL_CHAT, e),
-                        Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                        () => SendNotification(Notifications.LocalChat, e),
+                        corradeConfiguration.MaximumNotificationThreads);
                     // Log local chat,
-                    if (Configuration.LOCAL_MESSAGE_LOG_ENABLED)
+                    if (corradeConfiguration.LocalMessageLogEnabled)
                     {
                         CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
                         {
@@ -5639,10 +6435,11 @@ namespace Corrade
                                 {
                                     using (
                                         StreamWriter logWriter =
-                                            new StreamWriter(wasPathCombine(Configuration.LOCAL_MESSAGE_LOG_DIRECTORY,
-                                                Client.Network.CurrentSim.Name) +
-                                                             "." +
-                                                             CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
+                                            new StreamWriter(
+                                                wasPathCombine(corradeConfiguration.LocalMessageLogDirectory,
+                                                    Client.Network.CurrentSim.Name) +
+                                                "." +
+                                                CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
                                     {
                                         logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
                                             DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
@@ -5663,7 +6460,7 @@ namespace Corrade
                                         ConsoleError.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
                                     ex.Message);
                             }
-                        }, Configuration.MAXIMUM_LOG_THREADS);
+                        }, corradeConfiguration.MaximumLogThreads);
                     }
                     break;
                 case (ChatType) 9:
@@ -5672,8 +6469,8 @@ namespace Corrade
                     {
                         // Send chat notifications.
                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                            () => SendNotification(Notifications.NOTIFICATION_REGION_SAY_TO, e),
-                            Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                            () => SendNotification(Notifications.RegionSayTo, e),
+                            corradeConfiguration.MaximumNotificationThreads);
                         break;
                     }
                     // If the group was not set properly, then bail.
@@ -5686,8 +6483,8 @@ namespace Corrade
                     // Spawn the command.
                     CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
                         () => HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString(), commandGroup),
-                        Configuration.MAXIMUM_COMMAND_THREADS, commandGroup.UUID,
-                        Configuration.SCHEDULER_EXPIRATION_TIME);
+                        corradeConfiguration.MaximumCommandThreads, commandGroup.UUID,
+                        corradeConfiguration.SchedulerExpiration);
                     break;
             }
         }
@@ -5695,20 +6492,20 @@ namespace Corrade
         private static void HandleAlertMessage(object sender, AlertMessageEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_ALERT_MESSAGE, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.AlertMessage, e),
+                corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleInventoryObjectOffered(object sender, InventoryObjectOfferedEventArgs e)
         {
             // Send notification
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_INVENTORY, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.Inventory, e),
+                corradeConfiguration.MaximumNotificationThreads);
 
             // Accept anything from master avatars.
             if (
-                Configuration.MASTERS.AsParallel().Select(
+                corradeConfiguration.Masters.AsParallel().Select(
                     o => string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0} {1}", o.FirstName, o.LastName))
                     .Any(p => p.Equals(e.Offer.FromAgentName, StringComparison.OrdinalIgnoreCase)))
             {
@@ -5803,8 +6600,8 @@ namespace Corrade
             UUID ownerUUID = UUID.Zero;
             // Don't add permission requests from unknown agents.
             if (
-                !AgentNameToUUID(owner.First(), owner.Last(), Configuration.SERVICES_TIMEOUT,
-                    Configuration.DATA_TIMEOUT,
+                !AgentNameToUUID(owner.First(), owner.Last(), corradeConfiguration.ServicesTimeout,
+                    corradeConfiguration.DataTimeout,
                     ref ownerUUID))
             {
                 return;
@@ -5828,8 +6625,8 @@ namespace Corrade
                 });
             }
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_SCRIPT_PERMISSION, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.ScriptPermission, e),
+                corradeConfiguration.MaximumNotificationThreads);
 
             // Handle RLV: acceptpermission
             lock (RLVRulesLock)
@@ -5893,13 +6690,15 @@ namespace Corrade
                         }
                         // Signal completion.
                         InventoryLoadedEvent.Set();
-                    }) {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                    })
+                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                     // Set current group to land group.
                     new Thread(() =>
                     {
-                        if (!Configuration.AUTO_ACTIVATE_GROUP) return;
-                        ActivateCurrentLandGroupTimer.Change(Configuration.ACTIVATE_DELAY, 0);
-                    }) {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                        if (!corradeConfiguration.AutoActivateGroup) return;
+                        ActivateCurrentLandGroupTimer.Change(corradeConfiguration.ActivateDelay, 0);
+                    })
+                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                     // Retrieve instant messages.
                     new Thread(() =>
                     {
@@ -5910,7 +6709,8 @@ namespace Corrade
                         {
                             Client.Self.RetrieveInstantMessages();
                         }
-                    }) {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                    })
+                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                     // Set the camera on the avatar.
                     Client.Self.Movement.Camera.LookAt(
                         Client.Self.SimPosition,
@@ -5927,30 +6727,30 @@ namespace Corrade
         private static void HandleFriendOnlineStatus(object sender, FriendInfoEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.Friendship, e),
+                corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleFriendRightsUpdate(object sender, FriendInfoEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.Friendship, e),
+                corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleFriendShipResponse(object sender, FriendshipResponseEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.Friendship, e),
+                corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleFriendshipOffered(object sender, FriendshipOfferedEventArgs e)
         {
             // Send friendship notifications
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_FRIENDSHIP, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.Friendship, e),
+                corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleTeleportProgress(object sender, TeleportEventArgs e)
@@ -5962,9 +6762,10 @@ namespace Corrade
                     // Set current group to land group.
                     new Thread(() =>
                     {
-                        if (!Configuration.AUTO_ACTIVATE_GROUP) return;
-                        ActivateCurrentLandGroupTimer.Change(Configuration.ACTIVATE_DELAY, 0);
-                    }) {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                        if (!corradeConfiguration.AutoActivateGroup) return;
+                        ActivateCurrentLandGroupTimer.Change(corradeConfiguration.ActivateDelay, 0);
+                    })
+                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                     // Set the camera on the avatar.
                     Client.Self.Movement.Camera.LookAt(
                         Client.Self.SimPosition,
@@ -5991,18 +6792,19 @@ namespace Corrade
                     // Add the agent to the cache.
                     Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () => SendNotification(Notifications.NOTIFICATION_TYPING, args),
-                        Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                        () => SendNotification(Notifications.Typing, args),
+                        corradeConfiguration.MaximumNotificationThreads);
                     return;
                 case InstantMessageDialog.FriendshipOffered:
                     // Add the agent to the cache.
                     Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                     // Accept friendships only from masters (for the time being)
                     if (
-                        !Configuration.MASTERS.AsParallel().Any(
+                        !corradeConfiguration.Masters.AsParallel().Any(
                             o =>
                                 o.FirstName.Equals(fullName.First(), StringComparison.OrdinalIgnoreCase) &&
-                                o.LastName.Equals(fullName.Last(), StringComparison.OrdinalIgnoreCase))) return;
+                                o.LastName.Equals(fullName.Last(), StringComparison.OrdinalIgnoreCase)))
+                        return;
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ACCEPTED_FRIENDSHIP), args.IM.FromAgentName);
                     Client.Friends.AcceptFriendship(args.IM.FromAgentID, args.IM.IMSessionID);
                     break;
@@ -6011,8 +6813,8 @@ namespace Corrade
                 case InstantMessageDialog.TaskInventoryOffered:
                 case InstantMessageDialog.InventoryOffered:
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () => SendNotification(Notifications.NOTIFICATION_INVENTORY, args),
-                        Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                        () => SendNotification(Notifications.Inventory, args),
+                        corradeConfiguration.MaximumNotificationThreads);
                     return;
                 case InstantMessageDialog.MessageBox:
                     // Not used.
@@ -6056,17 +6858,18 @@ namespace Corrade
                     }
                     // Send teleport lure notification.
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () => SendNotification(Notifications.NOTIFICATION_TELEPORT_LURE, args),
-                        Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                        () => SendNotification(Notifications.TeleportLure, args),
+                        corradeConfiguration.MaximumNotificationThreads);
                     // If we got a teleport request from a master, then accept it (for the moment).
                     lock (ClientInstanceConfigurationLock)
                     {
                         if (
-                            !Configuration.MASTERS.AsParallel()
+                            !corradeConfiguration.Masters.AsParallel()
                                 .Any(
                                     o =>
                                         o.FirstName.Equals(fullName.First(), StringComparison.OrdinalIgnoreCase) &&
-                                        o.LastName.Equals(fullName.Last(), StringComparison.OrdinalIgnoreCase))) return;
+                                        o.LastName.Equals(fullName.Last(), StringComparison.OrdinalIgnoreCase)))
+                            return;
                     }
                     if (IsSecondLife() && !TimedTeleportThrottle.IsSafe)
                     {
@@ -6095,15 +6898,17 @@ namespace Corrade
                 // Group invitations received
                 case InstantMessageDialog.GroupInvitation:
                     OpenMetaverse.Group inviteGroup = new OpenMetaverse.Group();
-                    if (!RequestGroup(args.IM.FromAgentID, Configuration.SERVICES_TIMEOUT, ref inviteGroup)) return;
+                    if (!RequestGroup(args.IM.FromAgentID, corradeConfiguration.ServicesTimeout, ref inviteGroup))
+                        return;
                     // Add the group to the cache.
                     Cache.AddGroup(inviteGroup.Name, inviteGroup.ID);
                     UUID inviteGroupAgent = UUID.Zero;
                     if (
                         !AgentNameToUUID(fullName.First(), fullName.Last(),
-                            Configuration.SERVICES_TIMEOUT,
-                            Configuration.DATA_TIMEOUT,
-                            ref inviteGroupAgent)) return;
+                            corradeConfiguration.ServicesTimeout,
+                            corradeConfiguration.DataTimeout,
+                            ref inviteGroupAgent))
+                        return;
                     // Add the agent to the cache.
                     Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                     // Add the group invite - have to track them manually.
@@ -6124,17 +6929,18 @@ namespace Corrade
                     }
                     // Send group invitation notification.
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () => SendNotification(Notifications.NOTIFICATION_GROUP_INVITE, args),
-                        Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                        () => SendNotification(Notifications.GroupInvite, args),
+                        corradeConfiguration.MaximumNotificationThreads);
                     // If a master sends it, then accept.
                     lock (ClientInstanceConfigurationLock)
                     {
                         if (
-                            !Configuration.MASTERS.AsParallel()
+                            !corradeConfiguration.Masters.AsParallel()
                                 .Any(
                                     o =>
                                         o.FirstName.Equals(fullName.First(), StringComparison.OrdinalIgnoreCase) &&
-                                        o.LastName.Equals(fullName.Last(), StringComparison.OrdinalIgnoreCase))) return;
+                                        o.LastName.Equals(fullName.Last(), StringComparison.OrdinalIgnoreCase)))
+                            return;
                     }
                     Client.Self.GroupInviteRespond(inviteGroup.ID, args.IM.IMSessionID, true);
                     return;
@@ -6143,8 +6949,8 @@ namespace Corrade
                 case InstantMessageDialog.GroupNoticeInventoryDeclined:
                 case InstantMessageDialog.GroupNotice:
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () => SendNotification(Notifications.NOTIFICATION_GROUP_NOTICE, args),
-                        Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                        () => SendNotification(Notifications.GroupNotice, args),
+                        corradeConfiguration.MaximumNotificationThreads);
                     return;
                 case InstantMessageDialog.SessionSend:
                 case InstantMessageDialog.MessageFromAgent:
@@ -6155,14 +6961,15 @@ namespace Corrade
                     // group mesages can appear both through SessionSend and from MessageFromAgent. Hence the problem.
                     IEnumerable<UUID> currentGroups = null;
                     if (
-                        !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                        !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
                         return;
 
                     if (currentGroups.AsParallel().Any(o => o.Equals(args.IM.IMSessionID)))
                     {
                         Group messageGroup =
-                            Configuration.GROUPS.AsParallel().FirstOrDefault(p => p.UUID.Equals(args.IM.IMSessionID));
+                            corradeConfiguration.Groups.AsParallel()
+                                .FirstOrDefault(p => p.UUID.Equals(args.IM.IMSessionID));
                         if (!messageGroup.Equals(default(Group)))
                         {
                             // Add the group to the cache.
@@ -6172,7 +6979,7 @@ namespace Corrade
                             // Send group notice notifications.
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                                 () =>
-                                    SendNotification(Notifications.NOTIFICATION_GROUP_MESSAGE, new GroupMessageEventArgs
+                                    SendNotification(Notifications.GroupMessage, new GroupMessageEventArgs
                                     {
                                         AgentUUID = args.IM.FromAgentID,
                                         FirstName = fullName.First(),
@@ -6181,10 +6988,10 @@ namespace Corrade
                                         GroupUUID = messageGroup.UUID,
                                         Message = args.IM.Message
                                     }),
-                                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                                corradeConfiguration.MaximumNotificationThreads);
                             // Log group messages
                             Parallel.ForEach(
-                                Configuration.GROUPS.AsParallel().Where(
+                                corradeConfiguration.Groups.AsParallel().Where(
                                     o =>
                                         o.Name.Equals(messageGroup.Name, StringComparison.OrdinalIgnoreCase) &&
                                         o.ChatLogEnabled),
@@ -6221,7 +7028,7 @@ namespace Corrade
                                                     ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
                                                 ex.Message);
                                         }
-                                    }, Configuration.MAXIMUM_LOG_THREADS);
+                                    }, corradeConfiguration.MaximumLogThreads);
                                 });
                         }
                         return;
@@ -6233,14 +7040,15 @@ namespace Corrade
                             // Add the agent to the cache.
                             Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                () => SendNotification(Notifications.NOTIFICATION_INSTANT_MESSAGE, args),
-                                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                                () => SendNotification(Notifications.InstantMessage, args),
+                                corradeConfiguration.MaximumNotificationThreads);
                             // Check if we were ejected.
                             UUID groupUUID = UUID.Zero;
                             if (
                                 GroupNameToUUID(
                                     CORRADE_CONSTANTS.EjectedFromGroupRegEx.Match(args.IM.Message).Groups[1].Value,
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref groupUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref groupUUID))
                             {
                                 // Remove the group from the cache.
                                 lock (Cache.Locks.CurrentGroupsCacheLock)
@@ -6250,7 +7058,7 @@ namespace Corrade
                             }
 
                             // Log instant messages,
-                            if (Configuration.INSTANT_MESSAGE_LOG_ENABLED)
+                            if (corradeConfiguration.InstantMessageLogEnabled)
                             {
                                 CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
                                 {
@@ -6261,7 +7069,7 @@ namespace Corrade
                                             using (
                                                 StreamWriter logWriter =
                                                     new StreamWriter(
-                                                        wasPathCombine(Configuration.INSTANT_MESSAGE_LOG_DIRECTORY,
+                                                        wasPathCombine(corradeConfiguration.InstantMessageLogDirectory,
                                                             args.IM.FromAgentName) +
                                                         "." + CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8)
                                                 )
@@ -6285,7 +7093,7 @@ namespace Corrade
                                                 ConsoleError.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
                                             ex.Message);
                                     }
-                                }, Configuration.MAXIMUM_LOG_THREADS);
+                                }, corradeConfiguration.MaximumLogThreads);
                             }
                             return;
                     }
@@ -6296,10 +7104,10 @@ namespace Corrade
                             // Add the agent to the cache.
                             Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                () => SendNotification(Notifications.NOTIFICATION_REGION_MESSAGE, args),
-                                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                                () => SendNotification(Notifications.RegionMessage, args),
+                                corradeConfiguration.MaximumNotificationThreads);
                             // Log region messages,
-                            if (Configuration.REGION_MESSAGE_LOG_ENABLED)
+                            if (corradeConfiguration.RegionMessageLogEnabled)
                             {
                                 CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(() =>
                                 {
@@ -6310,7 +7118,7 @@ namespace Corrade
                                             using (
                                                 StreamWriter logWriter =
                                                     new StreamWriter(
-                                                        wasPathCombine(Configuration.REGION_MESSAGE_LOG_DIRECTORY,
+                                                        wasPathCombine(corradeConfiguration.RegionMessageLogDirectory,
                                                             Client.Network.CurrentSim.Name) + "." +
                                                         CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
                                             {
@@ -6333,7 +7141,7 @@ namespace Corrade
                                                 ConsoleError.COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE),
                                             ex.Message);
                                     }
-                                }, Configuration.MAXIMUM_LOG_THREADS);
+                                }, corradeConfiguration.MaximumLogThreads);
                             }
                             return;
                     }
@@ -6345,8 +7153,8 @@ namespace Corrade
             if (!IsCorradeCommand(args.IM.Message))
             {
                 CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                    () => SendNotification(Notifications.NOTIFICATION_OBJECT_INSTANT_MESSAGE, args),
-                    Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                    () => SendNotification(Notifications.ObjectInstantMessage, args),
+                    corradeConfiguration.MaximumNotificationThreads);
                 return;
             }
 
@@ -6362,8 +7170,8 @@ namespace Corrade
                 () =>
                     HandleCorradeCommand(args.IM.Message, args.IM.FromAgentName, args.IM.FromAgentID.ToString(),
                         commandGroup),
-                Configuration.MAXIMUM_COMMAND_THREADS, commandGroup.UUID,
-                Configuration.SCHEDULER_EXPIRATION_TIME);
+                corradeConfiguration.MaximumCommandThreads, commandGroup.UUID,
+                corradeConfiguration.SchedulerExpiration);
         }
 
         /// <summary>
@@ -6481,13 +7289,13 @@ namespace Corrade
                         UUID groupUUID = Client.Self.ActiveGroup;
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                             return;
                         string groupName = string.Empty;
                         if (
                             !GroupUUIDToName(currentGroups.AsParallel().FirstOrDefault(o => o.Equals(groupUUID)),
-                                Configuration.SERVICES_TIMEOUT, ref groupName))
+                                corradeConfiguration.ServicesTimeout, ref groupName))
                         {
                             return;
                         }
@@ -6508,7 +7316,7 @@ namespace Corrade
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                             return;
                         UUID currentGroup =
@@ -6557,7 +7365,7 @@ namespace Corrade
                         if (
                             !FindPrimitive(sitTarget,
                                 LINDEN_CONSTANTS.LSL.SENSOR_RANGE,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             return;
                         }
@@ -6584,7 +7392,7 @@ namespace Corrade
                             Client.Self.AvatarSitResponse += AvatarSitEventHandler;
                             Client.Self.AlertMessage += AlertMessageEventHandler;
                             Client.Self.RequestSit(primitive.ID, Vector3.Zero);
-                            SitEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false);
+                            SitEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false);
                             Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                             Client.Self.AlertMessage -= AlertMessageEventHandler;
                         }
@@ -6716,7 +7524,7 @@ namespace Corrade
                             return;
                         }
                         HashSet<Primitive> attachments = new HashSet<Primitive>(
-                            GetAttachments(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                            GetAttachments(corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout)
                                 .AsParallel()
                                 .Select(o => o.Key));
                         StringBuilder response = new StringBuilder();
@@ -6770,7 +7578,7 @@ namespace Corrade
                             return;
                         }
                         KeyValuePair<Primitive, AttachmentPoint> attachment =
-                            GetAttachments(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                            GetAttachments(corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout)
                                 .AsParallel().FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
                         switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                         {
@@ -6787,7 +7595,7 @@ namespace Corrade
                                 {
                                     Detach(inventoryBase as InventoryItem);
                                 }
-                                RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
+                                RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                                 break;
                             default:
                                 return;
@@ -6822,7 +7630,8 @@ namespace Corrade
                                 {
                                     case true: // detach by attachment point
                                         Parallel.ForEach(
-                                            GetAttachments(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                                            GetAttachments(corradeConfiguration.ServicesTimeout,
+                                                corradeConfiguration.DataTimeout)
                                                 .AsParallel().Where(o => o.Value.Equals(RLVattachment.AttachmentPoint)),
                                             o =>
                                             {
@@ -6879,7 +7688,8 @@ namespace Corrade
                                 break;
                             default: //detach everything from RLV attachmentpoints
                                 Parallel.ForEach(
-                                    GetAttachments(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                                    GetAttachments(corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout)
                                         .AsParallel()
                                         .Where(o => RLVAttachments.Any(p => p.AttachmentPoint.Equals(o.Value))), o =>
                                         {
@@ -6897,7 +7707,7 @@ namespace Corrade
                                         });
                                 break;
                         }
-                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
+                        RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                     };
                     break;
                 case RLVBehaviour.ATTACH:
@@ -6949,7 +7759,7 @@ namespace Corrade
                                                             });
                                                 }
                                             });
-                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
+                        RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                     };
                     break;
                 case RLVBehaviour.REMOUTFIT:
@@ -7006,7 +7816,7 @@ namespace Corrade
                                     });
                                 break;
                         }
-                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
+                        RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                     };
                     break;
                 case RLVBehaviour.GETPATHNEW:
@@ -7041,7 +7851,8 @@ namespace Corrade
                                 if (!RLVattachment.Equals(default(RLVAttachment)))
                                 {
                                     attachment =
-                                        GetAttachments(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                                        GetAttachments(corradeConfiguration.ServicesTimeout,
+                                            corradeConfiguration.DataTimeout)
                                             .AsParallel()
                                             .FirstOrDefault(o => o.Value.Equals(RLVattachment.AttachmentPoint));
                                     switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
@@ -7094,7 +7905,8 @@ namespace Corrade
                                 break;
                             default:
                                 attachment =
-                                    GetAttachments(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                                    GetAttachments(corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout)
                                         .AsParallel().FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
                                 switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                                 {
@@ -7294,7 +8106,7 @@ namespace Corrade
                             Dictionary<AppearanceManager.WearableData, WearableType> currentWearables =
                                 GetWearables(Client.Inventory.Store.RootNode).ToDictionary(o => o.Key, o => o.Value);
                             Dictionary<Primitive, AttachmentPoint> currentAttachments =
-                                GetAttachments(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                                GetAttachments(corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout)
                                     .ToDictionary(o => o.Key, p => p.Value);
 
                             int myItemsCount = 0;
@@ -7474,7 +8286,7 @@ namespace Corrade
         {
             // Get password.
             string password =
-                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD)), message));
+                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.Password)), message));
             // Bail if no password set.
             if (string.IsNullOrEmpty(password)) return null;
             // Authenticate the request against the group password.
@@ -7484,7 +8296,7 @@ namespace Corrade
                 return null;
             }
             // Censor password.
-            message = wasKeyValueSet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD)),
+            message = wasKeyValueSet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.Password)),
                 CORRADE_CONSTANTS.PASSWORD_CENSOR, message);
             /*
              * OpenSim sends the primitive UUID through args.IM.FromAgentID while Second Life properly sends 
@@ -7498,7 +8310,7 @@ namespace Corrade
                 if (UUID.TryParse(identifier, out fromAgentID))
                 {
                     if (
-                        !AgentUUIDToName(fromAgentID, Configuration.SERVICES_TIMEOUT,
+                        !AgentUUIDToName(fromAgentID, corradeConfiguration.ServicesTimeout,
                             ref sender))
                     {
                         Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AGENT_NOT_FOUND),
@@ -7526,7 +8338,7 @@ namespace Corrade
             lock (GroupWorkersLock)
             {
                 if ((uint) GroupWorkers[commandGroup.Name] >
-                    Configuration.GROUPS.AsParallel().FirstOrDefault(
+                    corradeConfiguration.Groups.AsParallel().FirstOrDefault(
                         o => o.Name.Equals(commandGroup.Name, StringComparison.InvariantCultureIgnoreCase)).Workers)
                 {
                     // And refuse to proceed if they have.
@@ -7549,9 +8361,9 @@ namespace Corrade
                 GroupWorkers[commandGroup.Name] = ((uint) GroupWorkers[commandGroup.Name]) - 1;
             }
             // do not send a callback if the callback queue is saturated
-            if (CallbackQueue.Count >= Configuration.CALLBACK_QUEUE_LENGTH)
+            if (CallbackQueue.Count >= corradeConfiguration.CallbackQueueLength)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CALLBACK_THROTTLED));
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CallbackThrottleD));
                 return result;
             }
             // send callback if registered
@@ -7596,13 +8408,13 @@ namespace Corrade
                 case ScriptKeys.JOIN:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -7612,7 +8424,7 @@ namespace Corrade
                             throw new ScriptException(ScriptError.ALREADY_IN_GROUP);
                         }
                         OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(commandGroup.UUID, Configuration.SERVICES_TIMEOUT, ref targetGroup))
+                        if (!RequestGroup(commandGroup.UUID, corradeConfiguration.ServicesTimeout, ref targetGroup))
                         {
                             throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                         }
@@ -7634,7 +8446,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupJoinedReply += GroupOperationEventHandler;
                             Client.Groups.RequestJoinGroup(commandGroup.UUID);
-                            if (!GroupJoinedReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupJoinedReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_JOINING_GROUP);
@@ -7642,7 +8454,7 @@ namespace Corrade
                             Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
                         }
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -7656,7 +8468,7 @@ namespace Corrade
                 case ScriptKeys.CREATEGROUP:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -7666,16 +8478,16 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_NAME);
                         }
-                        if (!UpdateBalance(Configuration.SERVICES_TIMEOUT))
+                        if (!UpdateBalance(corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                         }
-                        if (Client.Self.Balance < Configuration.GROUP_CREATE_FEE)
+                        if (Client.Self.Balance < corradeConfiguration.GroupCreateFee)
                         {
                             throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
                         }
-                        if (!Configuration.GROUP_CREATE_FEE.Equals(0) &&
-                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_ECONOMY))
+                        if (!corradeConfiguration.GroupCreateFee.Equals(0) &&
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.Economy))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -7698,7 +8510,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupCreatedReply += GroupCreatedEventHandler;
                             Client.Groups.RequestCreateGroup(targetGroup);
-                            if (!GroupCreatedReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupCreatedReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_CREATING_GROUP);
@@ -7714,13 +8526,13 @@ namespace Corrade
                 case ScriptKeys.INVITE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.Invite,
-                                Configuration.SERVICES_TIMEOUT))
+                                corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -7736,11 +8548,12 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
-                        if (AgentInGroup(agentUUID, commandGroup.UUID, Configuration.SERVICES_TIMEOUT))
+                        if (AgentInGroup(agentUUID, commandGroup.UUID, corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.ALREADY_IN_GROUP);
                         }
@@ -7755,7 +8568,7 @@ namespace Corrade
                             UUID roleUUID;
                             if (!UUID.TryParse(role, out roleUUID) &&
                                 !RoleNameToUUID(role, commandGroup.UUID,
-                                    Configuration.SERVICES_TIMEOUT, ref roleUUID))
+                                    corradeConfiguration.ServicesTimeout, ref roleUUID))
                             {
                                 throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
                             }
@@ -7771,7 +8584,7 @@ namespace Corrade
                         }
                         if (!roleUUIDs.All(o => o.Equals(UUID.Zero)) &&
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AssignMember,
-                                Configuration.SERVICES_TIMEOUT))
+                                corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -7781,13 +8594,13 @@ namespace Corrade
                 case ScriptKeys.BATCHINVITE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.Invite,
-                                Configuration.SERVICES_TIMEOUT))
+                                corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -7803,7 +8616,7 @@ namespace Corrade
                             UUID roleUUID;
                             if (!UUID.TryParse(role, out roleUUID) &&
                                 !RoleNameToUUID(role, commandGroup.UUID,
-                                    Configuration.SERVICES_TIMEOUT, ref roleUUID))
+                                    corradeConfiguration.ServicesTimeout, ref roleUUID))
                             {
                                 throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
                             }
@@ -7819,7 +8632,7 @@ namespace Corrade
                         }
                         if (!roleUUIDs.All(o => o.Equals(UUID.Zero)) &&
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AssignMember,
-                                Configuration.SERVICES_TIMEOUT))
+                                corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -7835,7 +8648,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                             Client.Groups.RequestGroupMembers(commandGroup.UUID);
-                            if (!groupMembersReceivedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!groupMembersReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
@@ -7855,8 +8668,8 @@ namespace Corrade
                                             List<string> fullName = new List<string>(GetAvatarNames(o));
                                             if (
                                                 !AgentNameToUUID(fullName.First(), fullName.Last(),
-                                                    Configuration.SERVICES_TIMEOUT,
-                                                    Configuration.DATA_TIMEOUT, ref agentUUID))
+                                                    corradeConfiguration.ServicesTimeout,
+                                                    corradeConfiguration.DataTimeout, ref agentUUID))
                                             {
                                                 // Add all the unrecognized agents to the returned list.
                                                 lock (LockObject)
@@ -7891,7 +8704,7 @@ namespace Corrade
                 case ScriptKeys.REPLYTOGROUPINVITE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -7902,7 +8715,7 @@ namespace Corrade
                                     .ToLowerInvariant());
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -7944,11 +8757,11 @@ namespace Corrade
                         }
                         if (!amount.Equals(0) && action.Equals((uint) Action.ACCEPT))
                         {
-                            if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_ECONOMY))
+                            if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Economy))
                             {
                                 throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                             }
-                            if (!UpdateBalance(Configuration.SERVICES_TIMEOUT))
+                            if (!UpdateBalance(corradeConfiguration.ServicesTimeout))
                             {
                                 throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                             }
@@ -7964,7 +8777,7 @@ namespace Corrade
                 case ScriptKeys.GETGROUPINVITES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -8003,15 +8816,15 @@ namespace Corrade
                 case ScriptKeys.EJECT:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.Eject,
-                                Configuration.SERVICES_TIMEOUT) ||
+                                corradeConfiguration.ServicesTimeout) ||
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.RemoveMember,
-                                Configuration.SERVICES_TIMEOUT))
+                                corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -8027,17 +8840,18 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
                         if (
-                            !AgentInGroup(agentUUID, commandGroup.UUID, Configuration.SERVICES_TIMEOUT))
+                            !AgentInGroup(agentUUID, commandGroup.UUID, corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NOT_IN_GROUP);
                         }
                         OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(commandGroup.UUID, Configuration.SERVICES_TIMEOUT, ref targetGroup))
+                        if (!RequestGroup(commandGroup.UUID, corradeConfiguration.ServicesTimeout, ref targetGroup))
                         {
                             throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                         }
@@ -8061,7 +8875,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
                             Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
@@ -8079,7 +8893,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                             Client.Groups.EjectUser(commandGroup.UUID, agentUUID);
-                            if (!GroupEjectEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupEjectEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_EJECTING_AGENT);
@@ -8095,15 +8909,15 @@ namespace Corrade
                 case ScriptKeys.BATCHEJECT:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.Eject,
-                                Configuration.SERVICES_TIMEOUT) ||
+                                corradeConfiguration.ServicesTimeout) ||
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.RemoveMember,
-                                Configuration.SERVICES_TIMEOUT))
+                                corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -8119,7 +8933,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                             Client.Groups.RequestGroupMembers(commandGroup.UUID);
-                            if (!groupMembersReceivedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!groupMembersReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
@@ -8127,7 +8941,7 @@ namespace Corrade
                             Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                         }
                         OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(commandGroup.UUID, Configuration.SERVICES_TIMEOUT, ref targetGroup))
+                        if (!RequestGroup(commandGroup.UUID, corradeConfiguration.ServicesTimeout, ref targetGroup))
                         {
                             throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                         }
@@ -8143,7 +8957,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
                             Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
@@ -8163,8 +8977,8 @@ namespace Corrade
                                             List<string> fullName = new List<string>(GetAvatarNames(o));
                                             if (
                                                 !AgentNameToUUID(fullName.First(), fullName.Last(),
-                                                    Configuration.SERVICES_TIMEOUT,
-                                                    Configuration.DATA_TIMEOUT, ref agentUUID))
+                                                    corradeConfiguration.ServicesTimeout,
+                                                    corradeConfiguration.DataTimeout, ref agentUUID))
                                             {
                                                 // Add all the unrecognized agents to the returned list.
                                                 lock (LockObject)
@@ -8218,7 +9032,7 @@ namespace Corrade
                                         {
                                             Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                                             Client.Groups.EjectUser(commandGroup.UUID, agentUUID);
-                                            GroupEjectEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false);
+                                            GroupEjectEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false);
                                             Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                                         }
                                         // If the eject was not successful, add them to the output.
@@ -8242,13 +9056,13 @@ namespace Corrade
                 case ScriptKeys.BAN:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.GroupBanAccess,
-                                Configuration.SERVICES_TIMEOUT))
+                                corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -8278,8 +9092,8 @@ namespace Corrade
                                                         List<string> fullName = new List<string>(GetAvatarNames(o));
                                                         if (
                                                             !AgentNameToUUID(fullName.First(), fullName.Last(),
-                                                                Configuration.SERVICES_TIMEOUT,
-                                                                Configuration.DATA_TIMEOUT, ref agentUUID))
+                                                                corradeConfiguration.ServicesTimeout,
+                                                                corradeConfiguration.DataTimeout, ref agentUUID))
                                                         {
                                                             // Add all the unrecognized agents to the returned list.
                                                             lock (LockObject)
@@ -8311,7 +9125,7 @@ namespace Corrade
                                                 avatars.Keys.ToArray(), (sender, args) => { GroupBanEvent.Set(); });
                                             break;
                                     }
-                                    if (!GroupBanEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                    if (!GroupBanEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                     {
                                         throw new ScriptException(ScriptError.TIMEOUT_MODIFYING_GROUP_BAN_LIST);
                                     }
@@ -8343,7 +9157,7 @@ namespace Corrade
                                                 Client.Groups.RequestGroupMembers(commandGroup.UUID);
                                                 if (
                                                     !groupMembersReceivedEvent.WaitOne(
-                                                        (int) Configuration.SERVICES_TIMEOUT, false))
+                                                        (int) corradeConfiguration.ServicesTimeout, false))
                                                 {
                                                     Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                                                     throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
@@ -8352,7 +9166,7 @@ namespace Corrade
                                             }
                                             OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
                                             if (
-                                                !RequestGroup(commandGroup.UUID, Configuration.SERVICES_TIMEOUT,
+                                                !RequestGroup(commandGroup.UUID, corradeConfiguration.ServicesTimeout,
                                                     ref targetGroup))
                                             {
                                                 throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
@@ -8372,7 +9186,7 @@ namespace Corrade
                                                 Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
                                                 if (
                                                     !GroupRoleMembersReplyEvent.WaitOne(
-                                                        (int) Configuration.SERVICES_TIMEOUT, false))
+                                                        (int) corradeConfiguration.ServicesTimeout, false))
                                                 {
                                                     Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                                                     throw new ScriptException(
@@ -8418,7 +9232,8 @@ namespace Corrade
                                                     {
                                                         Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                                                         Client.Groups.EjectUser(commandGroup.UUID, o.Value.ID);
-                                                        GroupEjectEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                                        GroupEjectEvent.WaitOne(
+                                                            (int) corradeConfiguration.ServicesTimeout,
                                                             false);
                                                         Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                                                     }
@@ -8455,7 +9270,7 @@ namespace Corrade
                                 {
                                     Client.Groups.BannedAgents += BannedAgentsEventHandler;
                                     Client.Groups.RequestBannedAgents(commandGroup.UUID);
-                                    if (!BannedAgentsEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                    if (!BannedAgentsEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Client.Groups.BannedAgents -= BannedAgentsEventHandler;
                                         throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_GROUP_BAN_LIST);
@@ -8470,7 +9285,7 @@ namespace Corrade
                                         {
                                             string agentName = string.Empty;
                                             switch (
-                                                !AgentUUIDToName(o.Key, Configuration.SERVICES_TIMEOUT,
+                                                !AgentUUIDToName(o.Key, corradeConfiguration.ServicesTimeout,
                                                     ref agentName))
                                             {
                                                 case false:
@@ -8502,7 +9317,7 @@ namespace Corrade
                 case ScriptKeys.GETGROUPACCOUNTSUMMARYDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -8538,7 +9353,9 @@ namespace Corrade
                         {
                             Client.Groups.GroupAccountSummaryReply += RequestGroupAccountSummaryEventHandler;
                             Client.Groups.RequestGroupAccountSummary(commandGroup.UUID, days, interval);
-                            if (!RequestGroupAccountSummaryEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (
+                                !RequestGroupAccountSummaryEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                    false))
                             {
                                 Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_ACCOUNT_SUMMARY);
@@ -8559,13 +9376,13 @@ namespace Corrade
                 case ScriptKeys.UPDATEGROUPDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -8576,12 +9393,12 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.ChangeIdentity,
-                                Configuration.SERVICES_TIMEOUT))
+                                corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
                         OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(commandGroup.UUID, Configuration.SERVICES_TIMEOUT, ref targetGroup))
+                        if (!RequestGroup(commandGroup.UUID, corradeConfiguration.ServicesTimeout, ref targetGroup))
                         {
                             throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                         }
@@ -8595,13 +9412,13 @@ namespace Corrade
                 case ScriptKeys.LEAVE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -8621,7 +9438,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupLeaveReply += GroupOperationEventHandler;
                             Client.Groups.LeaveGroup(commandGroup.UUID);
-                            if (!GroupLeaveReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupLeaveReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Groups.GroupLeaveReply -= GroupOperationEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_LEAVING_GROUP);
@@ -8637,13 +9454,13 @@ namespace Corrade
                 case ScriptKeys.CREATEROLE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -8654,7 +9471,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.CreateRole,
-                                Configuration.SERVICES_TIMEOUT))
+                                corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -8669,7 +9486,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
                             Client.Groups.RequestGroupRoles(commandGroup.UUID);
-                            if (!GroupRoleDataReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupRoleDataReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_ROLES);
@@ -8697,7 +9514,7 @@ namespace Corrade
                                         .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                     q => { powers |= ((ulong) q.GetValue(null)); }));
                         if (!HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.ChangeActions,
-                            Configuration.SERVICES_TIMEOUT))
+                            corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -8722,7 +9539,7 @@ namespace Corrade
                         UUID roleUUID = UUID.Zero;
                         if (
                             !RoleNameToUUID(role, commandGroup.UUID,
-                                Configuration.SERVICES_TIMEOUT, ref roleUUID))
+                                corradeConfiguration.ServicesTimeout, ref roleUUID))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_CREATE_ROLE);
                         }
@@ -8731,13 +9548,13 @@ namespace Corrade
                 case ScriptKeys.GETROLES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -8763,7 +9580,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
                             Client.Groups.RequestGroupRoles(commandGroup.UUID);
-                            if (!GroupRoleDataReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupRoleDataReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_ROLES);
@@ -8780,13 +9597,13 @@ namespace Corrade
                 case ScriptKeys.GETMEMBERS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -8807,7 +9624,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                             Client.Groups.RequestGroupMembers(commandGroup.UUID);
-                            if (!agentInGroupEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!agentInGroupEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
@@ -8818,7 +9635,7 @@ namespace Corrade
                         {
                             string agentName = string.Empty;
                             switch (
-                                !AgentUUIDToName(pair.Value.ID, Configuration.SERVICES_TIMEOUT, ref agentName))
+                                !AgentUUIDToName(pair.Value.ID, corradeConfiguration.ServicesTimeout, ref agentName))
                             {
                                 case true:
                                     continue;
@@ -8838,13 +9655,13 @@ namespace Corrade
                 case ScriptKeys.GETMEMBERROLES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -8865,12 +9682,13 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
                         if (
-                            !AgentInGroup(agentUUID, commandGroup.UUID, Configuration.SERVICES_TIMEOUT))
+                            !AgentInGroup(agentUUID, commandGroup.UUID, corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_IN_GROUP);
                         }
@@ -8887,7 +9705,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                             Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS);
@@ -8900,8 +9718,8 @@ namespace Corrade
                                 groupRolesMembers.AsParallel().Where(o => o.Value.Equals(agentUUID)))
                         {
                             string roleName = string.Empty;
-                            switch (!RoleUUIDToName(pair.Key, commandGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                Configuration.DATA_TIMEOUT,
+                            switch (!RoleUUIDToName(pair.Key, commandGroup.UUID, corradeConfiguration.ServicesTimeout,
+                                corradeConfiguration.DataTimeout,
                                 ref roleName))
                             {
                                 case true:
@@ -8921,13 +9739,13 @@ namespace Corrade
                 case ScriptKeys.GETROLEMEMBERS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -8945,7 +9763,7 @@ namespace Corrade
                         }
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, commandGroup.UUID,
-                            Configuration.SERVICES_TIMEOUT,
+                            corradeConfiguration.ServicesTimeout,
                             ref roleUUID))
                         {
                             throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
@@ -8964,7 +9782,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                             Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS);
@@ -8976,7 +9794,7 @@ namespace Corrade
                                 groupRolesMembers.AsParallel().Where(o => o.Key.Equals(roleUUID)))
                         {
                             string agentName = string.Empty;
-                            switch (!AgentUUIDToName(pair.Value, Configuration.SERVICES_TIMEOUT, ref agentName))
+                            switch (!AgentUUIDToName(pair.Value, corradeConfiguration.ServicesTimeout, ref agentName))
                             {
                                 case true:
                                     continue;
@@ -8996,13 +9814,13 @@ namespace Corrade
                 case ScriptKeys.GETROLESMEMBERS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -9024,7 +9842,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                             Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS);
@@ -9039,8 +9857,8 @@ namespace Corrade
                         {
                             string roleName = string.Empty;
                             switch (
-                                !RoleUUIDToName(roleUUID, commandGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT,
+                                !RoleUUIDToName(roleUUID, commandGroup.UUID, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
                                     ref roleName))
                             {
                                 case true:
@@ -9056,7 +9874,7 @@ namespace Corrade
                             if (!roleUUIDNames.ContainsKey(pair.Key)) continue;
                             string agentName = string.Empty;
                             switch (
-                                !AgentUUIDToName(pair.Value, Configuration.SERVICES_TIMEOUT, ref agentName))
+                                !AgentUUIDToName(pair.Value, corradeConfiguration.ServicesTimeout, ref agentName))
                             {
                                 case true:
                                     continue;
@@ -9077,13 +9895,13 @@ namespace Corrade
                 case ScriptKeys.GETROLEPOWERS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -9094,7 +9912,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.RoleProperties,
-                                Configuration.SERVICES_TIMEOUT))
+                                corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -9103,7 +9921,7 @@ namespace Corrade
                                 message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, commandGroup.UUID,
-                            Configuration.SERVICES_TIMEOUT,
+                            corradeConfiguration.ServicesTimeout,
                             ref roleUUID))
                         {
                             throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
@@ -9126,7 +9944,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupRoleDataReply += GroupRoleDataEventHandler;
                             Client.Groups.RequestGroupRoles(commandGroup.UUID);
-                            if (!GroupRoleDataReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupRoleDataReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_ROLE_POWERS);
@@ -9143,13 +9961,13 @@ namespace Corrade
                 case ScriptKeys.DELETEROLE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -9160,9 +9978,9 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.DeleteRole,
-                                Configuration.SERVICES_TIMEOUT) ||
+                                corradeConfiguration.ServicesTimeout) ||
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.RemoveMember,
-                                Configuration.SERVICES_TIMEOUT))
+                                corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -9171,7 +9989,7 @@ namespace Corrade
                                 message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, commandGroup.UUID,
-                            Configuration.SERVICES_TIMEOUT,
+                            corradeConfiguration.ServicesTimeout,
                             ref roleUUID))
                         {
                             throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
@@ -9181,7 +9999,7 @@ namespace Corrade
                             throw new ScriptException(ScriptError.CANNOT_DELETE_THE_EVERYONE_ROLE);
                         }
                         OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(commandGroup.UUID, Configuration.SERVICES_TIMEOUT, ref targetGroup))
+                        if (!RequestGroup(commandGroup.UUID, corradeConfiguration.ServicesTimeout, ref targetGroup))
                         {
                             throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                         }
@@ -9201,7 +10019,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                             Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
-                            if (!GroupRoleMembersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_EJECTING_AGENT);
@@ -9214,13 +10032,13 @@ namespace Corrade
                 case ScriptKeys.ADDTOROLE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -9231,7 +10049,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AssignMember,
-                                Configuration.SERVICES_TIMEOUT))
+                                corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -9247,7 +10065,8 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
@@ -9256,7 +10075,7 @@ namespace Corrade
                                 message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, commandGroup.UUID,
-                            Configuration.SERVICES_TIMEOUT,
+                            corradeConfiguration.ServicesTimeout,
                             ref roleUUID))
                         {
                             throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
@@ -9271,13 +10090,13 @@ namespace Corrade
                 case ScriptKeys.DELETEFROMROLE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -9288,7 +10107,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.RemoveMember,
-                                Configuration.SERVICES_TIMEOUT))
+                                corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -9304,7 +10123,8 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
@@ -9313,7 +10133,7 @@ namespace Corrade
                                 message));
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, commandGroup.UUID,
-                            Configuration.SERVICES_TIMEOUT,
+                            corradeConfiguration.ServicesTimeout,
                             ref roleUUID))
                         {
                             throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
@@ -9323,7 +10143,7 @@ namespace Corrade
                             throw new ScriptException(ScriptError.CANNOT_DELETE_A_GROUP_MEMBER_FROM_THE_EVERYONE_ROLE);
                         }
                         OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(commandGroup.UUID, Configuration.SERVICES_TIMEOUT, ref targetGroup))
+                        if (!RequestGroup(commandGroup.UUID, corradeConfiguration.ServicesTimeout, ref targetGroup))
                         {
                             throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                         }
@@ -9338,7 +10158,7 @@ namespace Corrade
                 case ScriptKeys.TELL:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_TALK))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Talk))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -9370,7 +10190,8 @@ namespace Corrade
                                                         wasKeyValueGet(
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                                             message)),
-                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    corradeConfiguration.ServicesTimeout,
+                                                    corradeConfiguration.DataTimeout,
                                                     ref agentUUID))
                                 {
                                     throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
@@ -9384,12 +10205,12 @@ namespace Corrade
                                 }
                                 Client.Self.InstantMessage(agentUUID, data);
                                 // Log instant messages,
-                                if (Configuration.INSTANT_MESSAGE_LOG_ENABLED)
+                                if (corradeConfiguration.InstantMessageLogEnabled)
                                 {
                                     string agentName = string.Empty;
                                     if (!AgentUUIDToName(
                                         agentUUID,
-                                        Configuration.SERVICES_TIMEOUT,
+                                        corradeConfiguration.ServicesTimeout,
                                         ref agentName))
                                     {
                                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
@@ -9406,7 +10227,8 @@ namespace Corrade
                                                 using (
                                                     StreamWriter logWriter =
                                                         new StreamWriter(
-                                                            wasPathCombine(Configuration.INSTANT_MESSAGE_LOG_DIRECTORY,
+                                                            wasPathCombine(
+                                                                corradeConfiguration.InstantMessageLogDirectory,
                                                                 string.Join(" ", fullName.First(), fullName.Last())) +
                                                             "." +
                                                             CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
@@ -9430,13 +10252,13 @@ namespace Corrade
                                                     ConsoleError.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
                                                 ex.Message);
                                         }
-                                    }, Configuration.MAXIMUM_LOG_THREADS);
+                                    }, corradeConfiguration.MaximumLogThreads);
                                 }
                                 break;
                             case Entity.GROUP:
                                 IEnumerable<UUID> currentGroups = null;
                                 if (
-                                    !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                                    !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                         ref currentGroups))
                                 {
                                     throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -9455,19 +10277,19 @@ namespace Corrade
                                 {
                                     if (
                                         !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.JoinChat,
-                                            Configuration.SERVICES_TIMEOUT))
+                                            corradeConfiguration.ServicesTimeout))
                                     {
                                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                     }
 
-                                    if (!JoinGroupChat(commandGroup.UUID, Configuration.SERVICES_TIMEOUT))
+                                    if (!JoinGroupChat(commandGroup.UUID, corradeConfiguration.ServicesTimeout))
                                     {
                                         throw new ScriptException(ScriptError.UNABLE_TO_JOIN_GROUP_CHAT);
                                     }
                                 }
                                 Client.Self.InstantMessageGroup(commandGroup.UUID, data);
                                 Parallel.ForEach(
-                                    Configuration.GROUPS.AsParallel().Where(
+                                    corradeConfiguration.Groups.AsParallel().Where(
                                         o => o.UUID.Equals(commandGroup.UUID) && o.ChatLogEnabled),
                                     o =>
                                     {
@@ -9501,7 +10323,7 @@ namespace Corrade
                                                         ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
                                                     ex.Message);
                                             }
-                                        }, Configuration.MAXIMUM_LOG_THREADS);
+                                        }, corradeConfiguration.MaximumLogThreads);
                                     });
                                 break;
                             case Entity.LOCAL:
@@ -9542,7 +10364,7 @@ namespace Corrade
                                     chatChannel,
                                     chatType);
                                 // Log local chat,
-                                if (Configuration.LOCAL_MESSAGE_LOG_ENABLED)
+                                if (corradeConfiguration.LocalMessageLogEnabled)
                                 {
                                     List<string> fullName =
                                         new List<string>(
@@ -9556,7 +10378,8 @@ namespace Corrade
                                                 using (
                                                     StreamWriter logWriter =
                                                         new StreamWriter(
-                                                            wasPathCombine(Configuration.LOCAL_MESSAGE_LOG_DIRECTORY,
+                                                            wasPathCombine(
+                                                                corradeConfiguration.LocalMessageLogDirectory,
                                                                 Client.Network.CurrentSim.Name) + "." +
                                                             CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
                                                 {
@@ -9579,7 +10402,7 @@ namespace Corrade
                                                     ConsoleError.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
                                                 ex.Message);
                                         }
-                                    }, Configuration.MAXIMUM_LOG_THREADS);
+                                    }, corradeConfiguration.MaximumLogThreads);
                                 }
                                 break;
                             case Entity.ESTATE:
@@ -9596,7 +10419,7 @@ namespace Corrade
                 case ScriptKeys.AI:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_TALK))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Talk))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -9637,7 +10460,8 @@ namespace Corrade
                                                         LoadChatBotFiles.Invoke();
                                                         AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
                                                     }
-                                                }) {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                                                })
+                                            {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                                             break;
                                         default:
                                             AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
@@ -9684,13 +10508,13 @@ namespace Corrade
                 case ScriptKeys.NOTICE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -9701,7 +10525,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.SendNotices,
-                                Configuration.SERVICES_TIMEOUT))
+                                corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -9744,7 +10568,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_ECONOMY))
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.Economy))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -9761,7 +10585,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.INVALID_PAY_AMOUNT);
                         }
-                        if (!UpdateBalance(Configuration.SERVICES_TIMEOUT))
+                        if (!UpdateBalance(corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                         }
@@ -9797,7 +10621,8 @@ namespace Corrade
                                                         wasKeyValueGet(
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                                             message)),
-                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    corradeConfiguration.ServicesTimeout,
+                                                    corradeConfiguration.DataTimeout,
                                                     ref targetUUID))
                                 {
                                     throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
@@ -9831,11 +10656,11 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_ECONOMY))
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.Economy))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        if (!UpdateBalance(Configuration.SERVICES_TIMEOUT))
+                        if (!UpdateBalance(corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                         }
@@ -9848,7 +10673,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_MOVEMENT))
+                                (int) Permissions.Movement))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -9936,7 +10761,7 @@ namespace Corrade
                         {
                             Client.Self.TeleportProgress += TeleportEventHandler;
                             Client.Self.Teleport(regionHandle, position);
-                            if (!TeleportEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!TeleportEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Self.TeleportProgress -= TeleportEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_DURING_TELEPORT);
@@ -9959,7 +10784,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_MOVEMENT))
+                                (int) Permissions.Movement))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -9975,7 +10800,8 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
@@ -9989,7 +10815,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_GROOMING))
+                                (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10013,7 +10839,7 @@ namespace Corrade
                         {
                             Client.Self.AlertMessage += AlertMessageEventHandler;
                             Client.Self.SetHome();
-                            if (!AlertMessageEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!AlertMessageEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Self.AlertMessage -= AlertMessageEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_REQUESTING_TO_SET_HOME);
@@ -10031,7 +10857,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_MOVEMENT))
+                                (int) Permissions.Movement))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10063,7 +10889,7 @@ namespace Corrade
                 case ScriptKeys.GETREGIONDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10094,7 +10920,7 @@ namespace Corrade
                 case ScriptKeys.GETGRIDREGIONDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10118,7 +10944,7 @@ namespace Corrade
                         {
                             Client.Grid.GridRegion += GridRegionEventHandler;
                             Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
-                            if (!GridRegionEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!GridRegionEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Grid.GridRegion -= GridRegionEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_REGION);
@@ -10143,7 +10969,7 @@ namespace Corrade
                 case ScriptKeys.GETNETWORKDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10160,7 +10986,7 @@ namespace Corrade
                 case ScriptKeys.GETCONNECTEDREGIONS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10283,7 +11109,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_MOVEMENT))
+                                (int) Permissions.Movement))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10294,7 +11120,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -10302,7 +11128,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -10339,7 +11165,7 @@ namespace Corrade
                             Client.Self.AvatarSitResponse += AvatarSitEventHandler;
                             Client.Self.AlertMessage += AlertMessageEventHandler;
                             Client.Self.RequestSit(primitive.ID, Vector3.Zero);
-                            if (!SitEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!SitEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                                 Client.Self.AlertMessage -= AlertMessageEventHandler;
@@ -10363,7 +11189,7 @@ namespace Corrade
                 case ScriptKeys.RELAX:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_MOVEMENT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Movement))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10391,7 +11217,7 @@ namespace Corrade
                 case ScriptKeys.AWAY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10422,7 +11248,7 @@ namespace Corrade
                 case ScriptKeys.BUSY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10449,7 +11275,7 @@ namespace Corrade
                 case ScriptKeys.TYPING:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10476,7 +11302,7 @@ namespace Corrade
                 case ScriptKeys.RUN:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_MOVEMENT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Movement))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10505,7 +11331,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_MOVEMENT))
+                                (int) Permissions.Movement))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10532,7 +11358,7 @@ namespace Corrade
                 case ScriptKeys.GETPARCELLIST:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10592,7 +11418,7 @@ namespace Corrade
                                     case AccessList.Access:
                                         if (
                                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
-                                                GroupPowers.LandManageAllowed, Configuration.SERVICES_TIMEOUT))
+                                                GroupPowers.LandManageAllowed, corradeConfiguration.ServicesTimeout))
                                         {
                                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                         }
@@ -10601,7 +11427,7 @@ namespace Corrade
                                         if (
                                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
                                                 GroupPowers.LandManageBanned,
-                                                Configuration.SERVICES_TIMEOUT))
+                                                corradeConfiguration.ServicesTimeout))
                                         {
                                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                         }
@@ -10609,14 +11435,14 @@ namespace Corrade
                                     case AccessList.Both:
                                         if (
                                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
-                                                GroupPowers.LandManageAllowed, Configuration.SERVICES_TIMEOUT))
+                                                GroupPowers.LandManageAllowed, corradeConfiguration.ServicesTimeout))
                                         {
                                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                         }
                                         if (
                                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
                                                 GroupPowers.LandManageBanned,
-                                                Configuration.SERVICES_TIMEOUT))
+                                                corradeConfiguration.ServicesTimeout))
                                         {
                                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                         }
@@ -10632,7 +11458,8 @@ namespace Corrade
                             {
                                 string agent = string.Empty;
                                 if (
-                                    !AgentUUIDToName(parcelAccess.AgentID, Configuration.SERVICES_TIMEOUT, ref agent))
+                                    !AgentUUIDToName(parcelAccess.AgentID, corradeConfiguration.ServicesTimeout,
+                                        ref agent))
                                     continue;
                                 csv.Add(agent);
                                 csv.Add(parcelAccess.AgentID.ToString());
@@ -10645,7 +11472,7 @@ namespace Corrade
                         {
                             Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
                             Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, 0);
-                            if (!ParcelAccessListEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!ParcelAccessListEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
@@ -10662,7 +11489,7 @@ namespace Corrade
                 case ScriptKeys.PARCELRECLAIM:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10704,7 +11531,7 @@ namespace Corrade
                 case ScriptKeys.PARCELRELEASE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10747,7 +11574,7 @@ namespace Corrade
                                 }
                                 if (
                                     !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.LandRelease,
-                                        Configuration.SERVICES_TIMEOUT))
+                                        corradeConfiguration.ServicesTimeout))
                                 {
                                     throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                 }
@@ -10759,7 +11586,7 @@ namespace Corrade
                 case ScriptKeys.PARCELDEED:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10803,7 +11630,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.LandDeed,
-                                Configuration.SERVICES_TIMEOUT))
+                                corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -10813,7 +11640,7 @@ namespace Corrade
                 case ScriptKeys.PARCELBUY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10855,7 +11682,7 @@ namespace Corrade
                         {
                             if (
                                 !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.LandDeed,
-                                    Configuration.SERVICES_TIMEOUT))
+                                    corradeConfiguration.ServicesTimeout))
                             {
                                 throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                             }
@@ -10881,7 +11708,7 @@ namespace Corrade
                         {
                             Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
                             Client.Parcels.RequestParcelInfo(parcelUUID);
-                            if (!ParcelInfoEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!ParcelInfoEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
@@ -10919,7 +11746,7 @@ namespace Corrade
                             Client.Directory.DirLandReply += DirLandReplyEventArgs;
                             Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
                                 DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue, handledEvents);
-                            if (!DirLandReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!DirLandReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Directory.DirLandReply -= DirLandReplyEventArgs;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
@@ -10930,7 +11757,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.PARCEL_NOT_FOR_SALE);
                         }
-                        if (!UpdateBalance(Configuration.SERVICES_TIMEOUT))
+                        if (!UpdateBalance(corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                         }
@@ -10939,7 +11766,7 @@ namespace Corrade
                             throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
                         }
                         if (!parcel.SalePrice.Equals(0) &&
-                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_ECONOMY))
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.Economy))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10950,7 +11777,7 @@ namespace Corrade
                 case ScriptKeys.PARCELEJECT:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -10993,7 +11820,7 @@ namespace Corrade
                                 if (
                                     !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
                                         GroupPowers.LandEjectAndFreeze,
-                                        Configuration.SERVICES_TIMEOUT))
+                                        corradeConfiguration.ServicesTimeout))
                                 {
                                     throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                 }
@@ -11011,7 +11838,8 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
@@ -11030,7 +11858,7 @@ namespace Corrade
                 case ScriptKeys.PARCELFREEZE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -11073,7 +11901,7 @@ namespace Corrade
                                 if (
                                     !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
                                         GroupPowers.LandEjectAndFreeze,
-                                        Configuration.SERVICES_TIMEOUT))
+                                        corradeConfiguration.ServicesTimeout))
                                 {
                                     throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                 }
@@ -11091,7 +11919,8 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
@@ -11112,7 +11941,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_GROOMING))
+                                (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -11140,7 +11969,7 @@ namespace Corrade
                             Client.Avatars.RequestAvatarProperties(Client.Self.AgentID);
                             if (
                                 !WaitHandle.WaitAll(AvatarProfileDataEvent.Select(o => (WaitHandle) o).ToArray(),
-                                    (int) Configuration.SERVICES_TIMEOUT, false))
+                                    (int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
                                 Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
@@ -11176,7 +12005,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -11192,11 +12021,13 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
-                        wasAdaptiveAlarm ProfileDataReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+                        wasAdaptiveAlarm ProfileDataReceivedAlarm =
+                            new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
                         Avatar.AvatarProperties properties = new Avatar.AvatarProperties();
                         Avatar.Interests interests = new Avatar.Interests();
                         List<AvatarGroup> groups = new List<AvatarGroup>();
@@ -11205,18 +12036,18 @@ namespace Corrade
                         object LockObject = new object();
                         EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
                         {
-                            ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                            ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                             interests = args.Interests;
                         };
                         EventHandler<AvatarPropertiesReplyEventArgs> AvatarPropertiesReplyEventHandler =
                             (sender, args) =>
                             {
-                                ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                                 properties = args.Properties;
                             };
                         EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
                         {
-                            ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                            ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                             lock (LockObject)
                             {
                                 groups.AddRange(args.Groups);
@@ -11225,13 +12056,13 @@ namespace Corrade
                         EventHandler<AvatarPicksReplyEventArgs> AvatarPicksReplyEventHandler =
                             (sender, args) =>
                             {
-                                ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                                 picks = args;
                             };
                         EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedReplyEventHandler =
                             (sender, args) =>
                             {
-                                ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                                 classifieds = args;
                             };
                         lock (ClientInstanceAvatarsLock)
@@ -11244,7 +12075,9 @@ namespace Corrade
                             Client.Avatars.RequestAvatarProperties(agentUUID);
                             Client.Avatars.RequestAvatarPicks(agentUUID);
                             Client.Avatars.RequestAvatarClassified(agentUUID);
-                            if (!ProfileDataReceivedAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (
+                                !ProfileDataReceivedAlarm.Signal.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                    false))
                             {
                                 Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
                                 Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
@@ -11286,7 +12119,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INVENTORY))
+                                (int) Permissions.Inventory))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -11336,7 +12169,8 @@ namespace Corrade
                                                         wasKeyValueGet(
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                                             message)),
-                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    corradeConfiguration.ServicesTimeout,
+                                                    corradeConfiguration.DataTimeout,
                                                     ref agentUUID))
                                 {
                                     throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
@@ -11353,7 +12187,7 @@ namespace Corrade
                                                 message)),
                                         out range))
                                 {
-                                    range = Configuration.RANGE;
+                                    range = corradeConfiguration.Range;
                                 }
                                 Primitive primitive = null;
                                 if (
@@ -11362,7 +12196,8 @@ namespace Corrade
                                             wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)),
                                                 message))),
                                         range,
-                                        ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                        ref primitive, corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout))
                                 {
                                     throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                                 }
@@ -11378,7 +12213,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INVENTORY))
+                                (int) Permissions.Inventory))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -11412,7 +12247,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INVENTORY))
+                                (int) Permissions.Inventory))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -11424,7 +12259,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_MOVEMENT))
+                                (int) Permissions.Movement))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -11467,7 +12302,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_GROOMING))
+                                (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -11511,7 +12346,7 @@ namespace Corrade
                         {
                             Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
                             Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);
-                            if (!AvatarPicksReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!AvatarPicksReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_PICKS);
@@ -11548,7 +12383,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_GROOMING))
+                                (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -11573,7 +12408,7 @@ namespace Corrade
                         {
                             Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
                             Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);
-                            if (!AvatarPicksReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!AvatarPicksReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_PICKS);
@@ -11590,8 +12425,8 @@ namespace Corrade
                 case ScriptKeys.ADDCLASSIFIED:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING) ||
-                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_ECONOMY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming) ||
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.Economy))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -11639,7 +12474,7 @@ namespace Corrade
                         {
                             Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
                             Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);
-                            if (!AvatarClassifiedReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!AvatarClassifiedReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_CLASSIFIEDS);
@@ -11697,7 +12532,7 @@ namespace Corrade
                 case ScriptKeys.DELETECLASSIFIED:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -11723,7 +12558,7 @@ namespace Corrade
                         {
                             Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
                             Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);
-                            if (!AvatarClassifiedReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!AvatarClassifiedReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_CLASSIFIEDS);
@@ -11741,7 +12576,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -11752,7 +12587,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -11760,7 +12595,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -11771,7 +12606,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -11782,7 +12617,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -11790,7 +12625,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -11845,13 +12680,13 @@ namespace Corrade
                 case ScriptKeys.MODERATE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.ModerateChat,
-                                Configuration.SERVICES_TIMEOUT))
+                                corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -11867,13 +12702,14 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -11915,17 +12751,17 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_GROOMING))
+                                (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
+                        RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                     };
                     break;
                 case ScriptKeys.GETWEARABLES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -11946,7 +12782,7 @@ namespace Corrade
                 case ScriptKeys.WEAR:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -11977,13 +12813,13 @@ namespace Corrade
                                     return;
                                 Wear(inventoryBaseItem as InventoryItem, replace);
                             });
-                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
+                        RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                     };
                     break;
                 case ScriptKeys.UNWEAR:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -12004,7 +12840,7 @@ namespace Corrade
                                     return;
                                 UnWear(inventoryBaseItem as InventoryItem);
                             });
-                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
+                        RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                     };
                     break;
                 case ScriptKeys.GETATTACHMENTS:
@@ -12012,12 +12848,14 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_GROOMING))
+                                (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         List<string> attachments = GetAttachments(
-                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT).AsParallel().Select(o => new[]
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout)
+                            .AsParallel()
+                            .Select(o => new[]
                             {
                                 o.Value.ToString(),
                                 o.Key.Properties.Name
@@ -12034,7 +12872,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_GROOMING))
+                                (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -12072,7 +12910,8 @@ namespace Corrade
                             {
                                 case true:
                                     if (
-                                        GetAttachments(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                                        GetAttachments(corradeConfiguration.ServicesTimeout,
+                                            corradeConfiguration.DataTimeout)
                                             .Count() + items.Count() -
                                         typeof (AttachmentPoint).GetFields(
                                             BindingFlags.Public | BindingFlags.Static)
@@ -12086,7 +12925,8 @@ namespace Corrade
                                     break;
                                 default:
                                     if (items.Count +
-                                        GetAttachments(Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                                        GetAttachments(corradeConfiguration.ServicesTimeout,
+                                            corradeConfiguration.DataTimeout)
                                             .Count() >
                                         LINDEN_CONSTANTS.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
                                     {
@@ -12116,7 +12956,7 @@ namespace Corrade
                                     Attach(inventoryBaseItem as InventoryItem, (AttachmentPoint) q.GetValue(null),
                                         replace);
                                 }));
-                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
+                        RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                     };
                     break;
                 case ScriptKeys.DETACH:
@@ -12124,7 +12964,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_GROOMING))
+                                (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -12149,13 +12989,13 @@ namespace Corrade
                                     return;
                                 Detach(inventoryBaseItem as InventoryItem);
                             });
-                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
+                        RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                     };
                     break;
                 case ScriptKeys.RETURNPRIMITIVES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -12171,7 +13011,8 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
@@ -12221,7 +13062,7 @@ namespace Corrade
                                             }
                                             if (
                                                 !SimParcelsDownloadedEvent.WaitOne(
-                                                    (int) Configuration.SERVICES_TIMEOUT, false))
+                                                    (int) corradeConfiguration.ServicesTimeout, false))
                                             {
                                                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
@@ -12277,7 +13118,7 @@ namespace Corrade
                                                     break;
                                             }
                                             if (!HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, power,
-                                                Configuration.SERVICES_TIMEOUT))
+                                                corradeConfiguration.ServicesTimeout))
                                             {
                                                 throw new Exception(
                                                     wasGetDescriptionFromEnumValue(
@@ -12327,7 +13168,7 @@ namespace Corrade
                 case ScriptKeys.GETPRIMITIVEOWNERS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -12372,7 +13213,9 @@ namespace Corrade
                                     {
                                         SimParcelsDownloadedEvent.Set();
                                     }
-                                    if (!SimParcelsDownloadedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                    if (
+                                        !SimParcelsDownloadedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                            false))
                                     {
                                         Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                         throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
@@ -12399,7 +13242,7 @@ namespace Corrade
                                     }, p =>
                                     {
                                         if (HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, p,
-                                            Configuration.SERVICES_TIMEOUT))
+                                            corradeConfiguration.ServicesTimeout))
                                         {
                                             permissions = true;
                                         }
@@ -12419,7 +13262,8 @@ namespace Corrade
                                 {
                                     string owner = string.Empty;
                                     if (
-                                        !AgentUUIDToName(primowner.OwnerID, Configuration.SERVICES_TIMEOUT, ref owner))
+                                        !AgentUUIDToName(primowner.OwnerID, corradeConfiguration.ServicesTimeout,
+                                            ref owner))
                                         continue;
                                     if (!primitives.ContainsKey(owner))
                                     {
@@ -12436,7 +13280,9 @@ namespace Corrade
                             {
                                 Client.Parcels.ParcelObjectOwnersReply += ParcelObjectOwnersEventHandler;
                                 Client.Parcels.RequestObjectOwners(simulator, parcel.LocalID);
-                                if (!ParcelObjectOwnersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                if (
+                                    !ParcelObjectOwnersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                        false))
                                 {
                                     Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
                                     throw new ScriptException(ScriptError.TIMEOUT_GETTING_LAND_USERS);
@@ -12462,13 +13308,13 @@ namespace Corrade
                 case ScriptKeys.GETGROUPDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
 
                         OpenMetaverse.Group dataGroup = new OpenMetaverse.Group();
-                        if (!RequestGroup(commandGroup.UUID, Configuration.SERVICES_TIMEOUT, ref dataGroup))
+                        if (!RequestGroup(commandGroup.UUID, corradeConfiguration.ServicesTimeout, ref dataGroup))
                         {
                             throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                         }
@@ -12485,7 +13331,7 @@ namespace Corrade
                 case ScriptKeys.GETGROUPMEMBERDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -12501,22 +13347,26 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
                         AvatarGroup avatarGroup = new AvatarGroup();
-                        wasAdaptiveAlarm AvatarGroupsReceivedEvent = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+                        wasAdaptiveAlarm AvatarGroupsReceivedEvent =
+                            new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
                         EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
                         {
-                            AvatarGroupsReceivedEvent.Alarm(Configuration.DATA_TIMEOUT);
+                            AvatarGroupsReceivedEvent.Alarm(corradeConfiguration.DataTimeout);
                             avatarGroup = args.Groups.FirstOrDefault(o => o.GroupID.Equals(commandGroup.UUID));
                         };
                         lock (ClientInstanceAvatarsLock)
                         {
                             Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
                             Client.Avatars.RequestAvatarProperties(agentUUID);
-                            if (!AvatarGroupsReceivedEvent.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (
+                                !AvatarGroupsReceivedEvent.Signal.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                    false))
                             {
                                 Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_AVATAR_DATA);
@@ -12538,7 +13388,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -12549,7 +13399,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -12557,7 +13407,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -12576,7 +13426,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -12598,7 +13448,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -12609,7 +13459,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -12617,7 +13467,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -12636,7 +13486,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -12647,7 +13497,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -12655,7 +13505,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -12674,7 +13524,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -12685,7 +13535,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -12693,7 +13543,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -12712,7 +13562,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -12723,7 +13573,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -12731,7 +13581,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -12750,7 +13600,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -12761,7 +13611,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -12769,7 +13619,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -12788,7 +13638,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -12799,7 +13649,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -12807,7 +13657,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -12826,7 +13676,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -12837,7 +13687,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = new Primitive();
                         if (
@@ -12845,7 +13695,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -12862,7 +13712,7 @@ namespace Corrade
                 case ScriptKeys.GETPARCELDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -12907,7 +13757,7 @@ namespace Corrade
                 case ScriptKeys.SETPARCELDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -12971,7 +13821,7 @@ namespace Corrade
                 case ScriptKeys.GETREGIONPARCELSBOUNDINGBOX:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -13000,7 +13850,7 @@ namespace Corrade
                             {
                                 SimParcelsDownloadedEvent.Set();
                             }
-                            if (!SimParcelsDownloadedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!SimParcelsDownloadedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
@@ -13019,7 +13869,7 @@ namespace Corrade
                 case ScriptKeys.DOWNLOAD:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -13091,7 +13941,8 @@ namespace Corrade
                                                 }
                                                 RequestAssetEvent.Set();
                                             });
-                                        if (!RequestAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                        if (
+                                            !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                         {
                                             throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                         }
@@ -13101,7 +13952,7 @@ namespace Corrade
                                     case AssetType.Notecard:
                                         if (
                                             !HasCorradePermission(commandGroup.Name,
-                                                (int) Permissions.PERMISSION_INVENTORY))
+                                                (int) Permissions.Inventory))
                                         {
                                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                                         }
@@ -13115,7 +13966,8 @@ namespace Corrade
                                                 }
                                                 RequestAssetEvent.Set();
                                             });
-                                        if (!RequestAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                        if (
+                                            !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                         {
                                             throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                         }
@@ -13131,7 +13983,8 @@ namespace Corrade
                                                 succeeded = true;
                                                 RequestAssetEvent.Set();
                                             });
-                                        if (!RequestAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                        if (
+                                            !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                         {
                                             throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                         }
@@ -13154,7 +14007,8 @@ namespace Corrade
                                                 }
                                                 RequestAssetEvent.Set();
                                             });
-                                        if (!RequestAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                        if (
+                                            !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                         {
                                             throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                         }
@@ -13245,7 +14099,7 @@ namespace Corrade
                             return;
                         }
                         if (
-                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_SYSTEM))
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.System))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -13264,7 +14118,7 @@ namespace Corrade
                 case ScriptKeys.UPLOAD:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Inventory))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -13318,11 +14172,11 @@ namespace Corrade
                             case AssetType.Sound:
                             case AssetType.Animation:
                                 // the holy asset trinity is charged money
-                                if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_ECONOMY))
+                                if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Economy))
                                 {
                                     throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                                 }
-                                if (!UpdateBalance(Configuration.SERVICES_TIMEOUT))
+                                if (!UpdateBalance(corradeConfiguration.ServicesTimeout))
                                 {
                                     throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                                 }
@@ -13376,7 +14230,7 @@ namespace Corrade
                                         succeeded = completed;
                                         CreateItemFromAssetEvent.Set();
                                     });
-                                if (!CreateItemFromAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                if (!CreateItemFromAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
                                 }
@@ -13417,7 +14271,7 @@ namespace Corrade
                                         succeeded = completed;
                                         CreateWearableEvent.Set();
                                     });
-                                if (!CreateWearableEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                if (!CreateWearableEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
                                 }
@@ -13442,7 +14296,7 @@ namespace Corrade
                                         succeeded = completed;
                                         CreateLandmarkEvent.Set();
                                     });
-                                if (!CreateLandmarkEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                if (!CreateLandmarkEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
                                 }
@@ -13465,7 +14319,7 @@ namespace Corrade
                                         newGesture = createdItem;
                                         CreateGestureEvent.Set();
                                     });
-                                if (!CreateGestureEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                if (!CreateGestureEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
                                 }
@@ -13480,7 +14334,7 @@ namespace Corrade
                                         succeeded = completed;
                                         UploadGestureAssetEvent.Set();
                                     });
-                                if (!UploadGestureAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                if (!UploadGestureAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
                                 }
@@ -13503,7 +14357,7 @@ namespace Corrade
                                         newNotecard = createdItem;
                                         CreateNotecardEvent.Set();
                                     });
-                                if (!CreateNotecardEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                if (!CreateNotecardEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
                                 }
@@ -13518,7 +14372,7 @@ namespace Corrade
                                         succeeded = completed;
                                         UploadNotecardAssetEvent.Set();
                                     });
-                                if (!UploadNotecardAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                if (!UploadNotecardAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
                                 }
@@ -13541,7 +14395,7 @@ namespace Corrade
                                         newScript = createdItem;
                                         CreateScriptEvent.Set();
                                     });
-                                if (!CreateScriptEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                if (!CreateScriptEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
                                 }
@@ -13553,7 +14407,7 @@ namespace Corrade
                                         succeeded = completed;
                                         UpdateScriptEvent.Set();
                                     });
-                                if (!UpdateScriptEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                if (!UpdateScriptEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
                                     throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
                                 }
@@ -13570,7 +14424,7 @@ namespace Corrade
                 case ScriptKeys.REZ:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Inventory))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -13639,7 +14493,7 @@ namespace Corrade
                                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                     }
                                     if (!HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AllowRez,
-                                        Configuration.SERVICES_TIMEOUT))
+                                        corradeConfiguration.ServicesTimeout))
                                     {
                                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                     }
@@ -13654,7 +14508,7 @@ namespace Corrade
                 case ScriptKeys.DEREZ:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Inventory))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -13665,7 +14519,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         object folder =
                             StringOrUUID(
@@ -13709,7 +14563,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -13723,7 +14577,7 @@ namespace Corrade
                 case ScriptKeys.CREATEPRIMITIVE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -13783,7 +14637,7 @@ namespace Corrade
                                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                     }
                                     if (!HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AllowRez,
-                                        Configuration.SERVICES_TIMEOUT))
+                                        corradeConfiguration.ServicesTimeout))
                                     {
                                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                     }
@@ -13857,7 +14711,7 @@ namespace Corrade
                 case ScriptKeys.CREATETREE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -13963,7 +14817,7 @@ namespace Corrade
                 case ScriptKeys.CREATEGRASS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -14060,7 +14914,7 @@ namespace Corrade
                 case ScriptKeys.SETSCRIPTRUNNING:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -14071,7 +14925,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         string entity =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
@@ -14091,13 +14945,13 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
                         List<InventoryBase> inventory =
                             Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                (int) Configuration.SERVICES_TIMEOUT).ToList();
+                                (int) corradeConfiguration.ServicesTimeout).ToList();
                         InventoryItem item = !entityUUID.Equals(UUID.Zero)
                             ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
                             : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
@@ -14147,7 +15001,7 @@ namespace Corrade
                         {
                             Client.Inventory.ScriptRunningReply += ScriptRunningEventHandler;
                             Client.Inventory.RequestGetScriptRunning(primitive.ID, item.UUID);
-                            if (!ScriptRunningReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!ScriptRunningReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_SCRIPT_STATE);
@@ -14163,7 +15017,7 @@ namespace Corrade
                 case ScriptKeys.GETSCRIPTRUNNING:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -14174,7 +15028,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         string entity =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
@@ -14194,13 +15048,13 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
                         List<InventoryBase> inventory =
                             Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                (int) Configuration.SERVICES_TIMEOUT).ToList();
+                                (int) corradeConfiguration.ServicesTimeout).ToList();
                         InventoryItem item = !entityUUID.Equals(UUID.Zero)
                             ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
                             : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
@@ -14227,7 +15081,7 @@ namespace Corrade
                         {
                             Client.Inventory.ScriptRunningReply += ScriptRunningEventHandler;
                             Client.Inventory.RequestGetScriptRunning(primitive.ID, item.UUID);
-                            if (!ScriptRunningReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!ScriptRunningReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_SCRIPT_STATE);
@@ -14240,7 +15094,7 @@ namespace Corrade
                 case ScriptKeys.GETPRIMITIVEINVENTORY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -14251,7 +15105,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -14259,13 +15113,13 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
                         List<string> data =
                             new List<string>(Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                (int) Configuration.SERVICES_TIMEOUT).AsParallel().Select(o => new[]
+                                (int) corradeConfiguration.ServicesTimeout).AsParallel().Select(o => new[]
                                 {
                                     o.Name,
                                     o.UUID.ToString()
@@ -14280,7 +15134,7 @@ namespace Corrade
                 case ScriptKeys.GETPRIMITIVEINVENTORYDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -14291,7 +15145,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -14299,7 +15153,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -14317,7 +15171,7 @@ namespace Corrade
                         }
                         List<InventoryBase> inventory =
                             Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                (int) Configuration.SERVICES_TIMEOUT).ToList();
+                                (int) corradeConfiguration.ServicesTimeout).ToList();
                         InventoryItem item = !entityUUID.Equals(UUID.Zero)
                             ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
                             : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
@@ -14338,7 +15192,7 @@ namespace Corrade
                 case ScriptKeys.UPDATEPRIMITIVEINVENTORY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -14349,7 +15203,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -14357,7 +15211,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -14397,7 +15251,7 @@ namespace Corrade
                                 {
                                     inventoryBaseItem = Client.Inventory.GetTaskInventory(primitive.ID,
                                         primitive.LocalID,
-                                        (int) Configuration.SERVICES_TIMEOUT)
+                                        (int) corradeConfiguration.ServicesTimeout)
                                         .AsParallel()
                                         .FirstOrDefault(o => o.Name.Equals(entity));
                                     if (inventoryBaseItem == null)
@@ -14413,11 +15267,11 @@ namespace Corrade
                             case Action.TAKE:
                                 inventoryBaseItem = !entityUUID.Equals(UUID.Zero)
                                     ? Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                        (int) Configuration.SERVICES_TIMEOUT)
+                                        (int) corradeConfiguration.ServicesTimeout)
                                         .AsParallel()
                                         .FirstOrDefault(o => o.UUID.Equals(entityUUID))
                                     : Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                        (int) Configuration.SERVICES_TIMEOUT)
+                                        (int) corradeConfiguration.ServicesTimeout)
                                         .AsParallel()
                                         .FirstOrDefault(o => o.Name.Equals(entity));
                                 InventoryItem inventoryItem = inventoryBaseItem as InventoryItem;
@@ -14449,7 +15303,7 @@ namespace Corrade
                 case ScriptKeys.GETINVENTORYDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Inventory))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -14475,7 +15329,7 @@ namespace Corrade
                 case ScriptKeys.SEARCHINVENTORY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Inventory))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -14536,7 +15390,7 @@ namespace Corrade
                 case ScriptKeys.GETINVENTORYPATH:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Inventory))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -14591,7 +15445,7 @@ namespace Corrade
                 case ScriptKeys.GETPARTICLESYSTEM:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -14602,7 +15456,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -14610,7 +15464,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -14742,7 +15596,7 @@ namespace Corrade
                 case ScriptKeys.CREATENOTECARD:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Inventory))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -14778,7 +15632,7 @@ namespace Corrade
                                 newItem = createdItem;
                                 CreateNotecardEvent.Set();
                             });
-                        if (!CreateNotecardEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                        if (!CreateNotecardEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             throw new ScriptException(ScriptError.TIMEOUT_CREATING_ITEM);
                         }
@@ -14799,7 +15653,7 @@ namespace Corrade
                                 succeeded = completed;
                                 UploadBlankNotecardEvent.Set();
                             });
-                        if (!UploadBlankNotecardEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                        if (!UploadBlankNotecardEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ITEM);
                         }
@@ -14822,7 +15676,7 @@ namespace Corrade
                                     succeeded = completed;
                                     UploadNotecardDataEvent.Set();
                                 });
-                            if (!UploadNotecardDataEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!UploadNotecardDataEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ITEM_DATA);
                             }
@@ -14838,13 +15692,13 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_GROOMING))
+                                (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -14861,13 +15715,13 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_GROOMING))
+                                (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -14893,7 +15747,9 @@ namespace Corrade
                                 {
                                     Client.Groups.GroupRoleDataReply += Groups_GroupRoleDataReply;
                                     Client.Groups.RequestGroupRoles(commandGroup.UUID);
-                                    if (!GroupRoleDataReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                    if (
+                                        !GroupRoleDataReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                            false))
                                     {
                                         Client.Groups.GroupRoleDataReply -= Groups_GroupRoleDataReply;
                                         throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_ROLES);
@@ -14932,7 +15788,8 @@ namespace Corrade
                                 {
                                     Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
                                     Client.Groups.RequestGroupTitles(commandGroup.UUID);
-                                    if (!GroupTitlesReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                    if (
+                                        !GroupTitlesReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
                                         throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_TITLES);
@@ -14952,13 +15809,13 @@ namespace Corrade
                 case ScriptKeys.GETTITLES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -14979,7 +15836,7 @@ namespace Corrade
                         {
                             Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
                             Client.Groups.RequestGroupTitles(commandGroup.UUID);
-                            if (!GroupTitlesReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!GroupTitlesReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_TITLES);
@@ -14990,8 +15847,9 @@ namespace Corrade
                         {
                             string roleName = string.Empty;
                             if (
-                                !RoleUUIDToName(title.Value.RoleID, commandGroup.UUID, Configuration.SERVICES_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT,
+                                !RoleUUIDToName(title.Value.RoleID, commandGroup.UUID,
+                                    corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout,
                                     ref roleName))
                                 continue;
                             csv.Add(title.Value.Title);
@@ -15011,7 +15869,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_MOVEMENT))
+                                (int) Permissions.Movement))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -15068,7 +15926,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_MOVEMENT))
+                                (int) Permissions.Movement))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -15095,7 +15953,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_MOVEMENT))
+                                (int) Permissions.Movement))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -15173,7 +16031,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -15217,15 +16075,15 @@ namespace Corrade
                                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                                 out range))
                                         {
-                                            range = Configuration.RANGE;
+                                            range = corradeConfiguration.Range;
                                         }
                                         Primitive primitive = null;
                                         if (
                                             !FindPrimitive(
                                                 StringOrUUID(item),
                                                 range,
-                                                ref primitive, Configuration.SERVICES_TIMEOUT,
-                                                Configuration.DATA_TIMEOUT))
+                                                ref primitive, corradeConfiguration.ServicesTimeout,
+                                                corradeConfiguration.DataTimeout))
                                         {
                                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                                         }
@@ -15246,7 +16104,8 @@ namespace Corrade
                                                         wasKeyValueGet(
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                                             message)),
-                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    corradeConfiguration.ServicesTimeout,
+                                                    corradeConfiguration.DataTimeout,
                                                     ref targetUUID))
                                         {
                                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
@@ -15418,7 +16277,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -15555,7 +16414,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -15604,13 +16463,13 @@ namespace Corrade
                 case ScriptKeys.STARTPROPOSAL:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROUP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         IEnumerable<UUID> currentGroups = null;
                         if (
-                            !GetCurrentGroups(Configuration.SERVICES_TIMEOUT,
+                            !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
                         {
                             throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
@@ -15621,7 +16480,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.StartProposal,
-                                Configuration.SERVICES_TIMEOUT))
+                                corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -15674,7 +16533,7 @@ namespace Corrade
                     execute = () =>
                     {
                         if (
-                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_MUTE))
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.Mute))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -15718,7 +16577,7 @@ namespace Corrade
                                         wasInput(
                                             wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                                 message)));
-                                    if (!MuteListUpdatedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                    if (!MuteListUpdatedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                                         throw new ScriptException(ScriptError.TIMEOUT_UPDATING_MUTE_LIST);
@@ -15740,7 +16599,7 @@ namespace Corrade
                 case ScriptKeys.GETMUTES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_MUTE))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Mute))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -15759,7 +16618,7 @@ namespace Corrade
                 case ScriptKeys.DATABASE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_DATABASE))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Database))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -15902,7 +16761,7 @@ namespace Corrade
                 case ScriptKeys.NOTIFY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_NOTIFICATIONS))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Notifications))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -16037,7 +16896,8 @@ namespace Corrade
                                             default:
                                                 // notification destination is already there
                                                 if (notification.NotificationDestination[
-                                                    (Notifications) notificationValue].Contains(url)) break;
+                                                    (Notifications) notificationValue].Contains(url))
+                                                    break;
                                                 switch (action)
                                                 {
                                                     case Action.ADD:
@@ -16251,7 +17111,7 @@ namespace Corrade
                 case ScriptKeys.REPLYTOTELEPORTLURE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_MOVEMENT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Movement))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -16267,7 +17127,8 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
@@ -16290,7 +17151,7 @@ namespace Corrade
                 case ScriptKeys.GETTELEPORTLURES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_MOVEMENT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Movement))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -16323,7 +17184,7 @@ namespace Corrade
                 case ScriptKeys.REPLYTOSCRIPTPERMISSIONREQUEST:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -16370,7 +17231,7 @@ namespace Corrade
                 case ScriptKeys.GETSCRIPTPERMISSIONREQUESTS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -16413,7 +17274,7 @@ namespace Corrade
                 case ScriptKeys.REPLYTOSCRIPTDIALOG:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -16474,7 +17335,7 @@ namespace Corrade
                 case ScriptKeys.GETSCRIPTDIALOGS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -16515,7 +17376,7 @@ namespace Corrade
                 case ScriptKeys.ANIMATION:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -16563,7 +17424,7 @@ namespace Corrade
                 case ScriptKeys.PLAYGESTURE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -16597,7 +17458,7 @@ namespace Corrade
                 case ScriptKeys.GETANIMATIONS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -16619,7 +17480,7 @@ namespace Corrade
                 case ScriptKeys.RESTARTREGION:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -16659,7 +17520,7 @@ namespace Corrade
                 case ScriptKeys.SETREGIONDEBUG:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -16703,7 +17564,7 @@ namespace Corrade
                 case ScriptKeys.GETREGIONTOP:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -16731,7 +17592,7 @@ namespace Corrade
                                 {
                                     Client.Estate.TopScriptsReply += TopScriptsReplyEventHandler;
                                     Client.Estate.RequestTopScripts();
-                                    if (!TopScriptsReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                    if (!TopScriptsReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Client.Estate.TopScriptsReply -= TopScriptsReplyEventHandler;
                                         throw new ScriptException(ScriptError.TIMEOUT_GETTING_TOP_SCRIPTS);
@@ -16753,7 +17614,9 @@ namespace Corrade
                                 {
                                     Client.Estate.TopCollidersReply += TopCollidersReplyEventHandler;
                                     Client.Estate.RequestTopScripts();
-                                    if (!TopCollidersReplyEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                    if (
+                                        !TopCollidersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                            false))
                                     {
                                         Client.Estate.TopCollidersReply -= TopCollidersReplyEventHandler;
                                         throw new ScriptException(ScriptError.TIMEOUT_GETTING_TOP_SCRIPTS);
@@ -16791,7 +17654,7 @@ namespace Corrade
                 case ScriptKeys.SETESTATELIST:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -16809,7 +17672,8 @@ namespace Corrade
                             allEstates = false;
                         }
                         List<UUID> estateList = new List<UUID>();
-                        wasAdaptiveAlarm EstateListReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+                        wasAdaptiveAlarm EstateListReceivedAlarm =
+                            new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
                         UUID targetUUID;
                         switch (
                             wasGetEnumValueFromDescription<Type>(
@@ -16832,7 +17696,8 @@ namespace Corrade
                                                         wasKeyValueGet(
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                                             message)),
-                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    corradeConfiguration.ServicesTimeout,
+                                                    corradeConfiguration.DataTimeout,
                                                     ref targetUUID))
                                 {
                                     throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
@@ -16851,7 +17716,7 @@ namespace Corrade
                                             EventHandler<EstateBansReplyEventArgs> EstateBansReplyEventHandler =
                                                 (sender, args) =>
                                                 {
-                                                    EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                                    EstateListReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                                                     switch (args.Banned.Any())
                                                     {
                                                         case true:
@@ -16868,7 +17733,7 @@ namespace Corrade
                                                 Client.Estate.RequestInfo();
                                                 if (
                                                     !EstateListReceivedAlarm.Signal.WaitOne((int)
-                                                        Configuration.SERVICES_TIMEOUT,
+                                                        corradeConfiguration.ServicesTimeout,
                                                         false))
                                                 {
                                                     Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
@@ -16908,7 +17773,8 @@ namespace Corrade
                                                 wasKeyValueGet(
                                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)),
                                                     message)),
-                                            Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref targetUUID))
+                                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                            ref targetUUID))
                                 {
                                     throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                                 }
@@ -16925,7 +17791,7 @@ namespace Corrade
                                             EventHandler<EstateGroupsReplyEventArgs> EstateGroupsReplyEvenHandler =
                                                 (sender, args) =>
                                                 {
-                                                    EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                                    EstateListReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                                                     switch (args.AllowedGroups.Any())
                                                     {
                                                         case true:
@@ -16942,7 +17808,7 @@ namespace Corrade
                                                 Client.Estate.RequestInfo();
                                                 if (
                                                     !EstateListReceivedAlarm.Signal.WaitOne((int)
-                                                        Configuration.SERVICES_TIMEOUT, false))
+                                                        corradeConfiguration.ServicesTimeout, false))
                                                 {
                                                     Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
                                                     throw new Exception(
@@ -16986,7 +17852,8 @@ namespace Corrade
                                                         wasKeyValueGet(
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                                             message)),
-                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    corradeConfiguration.ServicesTimeout,
+                                                    corradeConfiguration.DataTimeout,
                                                     ref targetUUID))
                                 {
                                     throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
@@ -17004,7 +17871,7 @@ namespace Corrade
                                             EventHandler<EstateUsersReplyEventArgs> EstateUsersReplyEventHandler =
                                                 (sender, args) =>
                                                 {
-                                                    EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                                    EstateListReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                                                     switch (args.AllowedUsers.Any())
                                                     {
                                                         case true:
@@ -17021,7 +17888,7 @@ namespace Corrade
                                                 Client.Estate.RequestInfo();
                                                 if (
                                                     !EstateListReceivedAlarm.Signal.WaitOne((int)
-                                                        Configuration.SERVICES_TIMEOUT, false))
+                                                        corradeConfiguration.ServicesTimeout, false))
                                                 {
                                                     Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
                                                     throw new Exception(
@@ -17064,7 +17931,8 @@ namespace Corrade
                                                         wasKeyValueGet(
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                                             message)),
-                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    corradeConfiguration.ServicesTimeout,
+                                                    corradeConfiguration.DataTimeout,
                                                     ref targetUUID))
                                 {
                                     throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
@@ -17082,7 +17950,7 @@ namespace Corrade
                                             EventHandler<EstateManagersReplyEventArgs> EstateManagersReplyEventHandler =
                                                 (sender, args) =>
                                                 {
-                                                    EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                                    EstateListReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                                                     switch (args.Managers.Any())
                                                     {
                                                         case true:
@@ -17099,7 +17967,7 @@ namespace Corrade
                                                 Client.Estate.RequestInfo();
                                                 if (
                                                     !EstateListReceivedAlarm.Signal.WaitOne((int)
-                                                        Configuration.SERVICES_TIMEOUT, false))
+                                                        corradeConfiguration.ServicesTimeout, false))
                                                 {
                                                     Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
                                                     throw new Exception(
@@ -17136,7 +18004,7 @@ namespace Corrade
                 case ScriptKeys.GETESTATELIST:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -17145,7 +18013,8 @@ namespace Corrade
                             throw new ScriptException(ScriptError.NO_LAND_RIGHTS);
                         }
                         List<UUID> estateList = new List<UUID>();
-                        wasAdaptiveAlarm EstateListReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+                        wasAdaptiveAlarm EstateListReceivedAlarm =
+                            new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
                         switch (
                             wasGetEnumValueFromDescription<Type>(
                                 wasInput(wasKeyValueGet(
@@ -17155,7 +18024,7 @@ namespace Corrade
                             case Type.BAN:
                                 EventHandler<EstateBansReplyEventArgs> EstateBansReplyEventHandler = (sender, args) =>
                                 {
-                                    EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                    EstateListReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                                     switch (args.Banned.Any())
                                     {
                                         case true:
@@ -17171,7 +18040,8 @@ namespace Corrade
                                     Client.Estate.EstateBansReply += EstateBansReplyEventHandler;
                                     Client.Estate.RequestInfo();
                                     if (
-                                        !EstateListReceivedAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                        !EstateListReceivedAlarm.Signal.WaitOne(
+                                            (int) corradeConfiguration.ServicesTimeout,
                                             false))
                                     {
                                         Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
@@ -17184,7 +18054,7 @@ namespace Corrade
                                 EventHandler<EstateGroupsReplyEventArgs> EstateGroupsReplyEvenHandler =
                                     (sender, args) =>
                                     {
-                                        EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                        EstateListReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                                         switch (args.AllowedGroups.Any())
                                         {
                                             case true:
@@ -17200,7 +18070,8 @@ namespace Corrade
                                     Client.Estate.EstateGroupsReply += EstateGroupsReplyEvenHandler;
                                     Client.Estate.RequestInfo();
                                     if (
-                                        !EstateListReceivedAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                        !EstateListReceivedAlarm.Signal.WaitOne(
+                                            (int) corradeConfiguration.ServicesTimeout,
                                             false))
                                     {
                                         Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
@@ -17213,7 +18084,7 @@ namespace Corrade
                                 EventHandler<EstateManagersReplyEventArgs> EstateManagersReplyEventHandler =
                                     (sender, args) =>
                                     {
-                                        EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                        EstateListReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                                         switch (args.Managers.Any())
                                         {
                                             case true:
@@ -17229,7 +18100,8 @@ namespace Corrade
                                     Client.Estate.EstateManagersReply += EstateManagersReplyEventHandler;
                                     Client.Estate.RequestInfo();
                                     if (
-                                        !EstateListReceivedAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                        !EstateListReceivedAlarm.Signal.WaitOne(
+                                            (int) corradeConfiguration.ServicesTimeout,
                                             false))
                                     {
                                         Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
@@ -17242,7 +18114,7 @@ namespace Corrade
                                 EventHandler<EstateUsersReplyEventArgs> EstateUsersReplyEventHandler =
                                     (sender, args) =>
                                     {
-                                        EstateListReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                        EstateListReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                                         switch (args.AllowedUsers.Any())
                                         {
                                             case true:
@@ -17258,7 +18130,8 @@ namespace Corrade
                                     Client.Estate.EstateUsersReply += EstateUsersReplyEventHandler;
                                     Client.Estate.RequestInfo();
                                     if (
-                                        !EstateListReceivedAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                        !EstateListReceivedAlarm.Signal.WaitOne(
+                                            (int) corradeConfiguration.ServicesTimeout,
                                             false))
                                     {
                                         Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
@@ -17281,7 +18154,7 @@ namespace Corrade
                 case ScriptKeys.GETAVATARDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -17297,7 +18170,8 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
@@ -17308,38 +18182,39 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Avatar avatar =
-                            GetAvatars(range, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                            GetAvatars(range, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout)
                                 .FirstOrDefault(o => o.ID.Equals(agentUUID));
                         if (avatar == null)
                             throw new ScriptException(ScriptError.AVATAR_NOT_IN_RANGE);
-                        wasAdaptiveAlarm ProfileDataReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+                        wasAdaptiveAlarm ProfileDataReceivedAlarm =
+                            new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
                         object LockObject = new object();
                         EventHandler<AvatarInterestsReplyEventArgs> AvatarInterestsReplyEventHandler = (sender, args) =>
                         {
-                            ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                            ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                             avatar.ProfileInterests = args.Interests;
                         };
                         EventHandler<AvatarPropertiesReplyEventArgs> AvatarPropertiesReplyEventHandler =
                             (sender, args) =>
                             {
-                                ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                                 avatar.ProfileProperties = args.Properties;
                             };
                         EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
                         {
-                            ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                            ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                             lock (LockObject)
                             {
                                 avatar.Groups.AddRange(args.Groups.Select(o => o.GroupID));
                             }
                         };
                         EventHandler<AvatarPicksReplyEventArgs> AvatarPicksReplyEventHandler =
-                            (sender, args) => ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                            (sender, args) => ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                         EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedReplyEventHandler =
-                            (sender, args) => ProfileDataReceivedAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                            (sender, args) => ProfileDataReceivedAlarm.Alarm(corradeConfiguration.DataTimeout);
                         lock (ClientInstanceAvatarsLock)
                         {
                             Client.Avatars.AvatarInterestsReply += AvatarInterestsReplyEventHandler;
@@ -17350,7 +18225,9 @@ namespace Corrade
                             Client.Avatars.RequestAvatarProperties(agentUUID);
                             Client.Avatars.RequestAvatarPicks(agentUUID);
                             Client.Avatars.RequestAvatarClassified(agentUUID);
-                            if (!ProfileDataReceivedAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (
+                                !ProfileDataReceivedAlarm.Signal.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                    false))
                             {
                                 Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
                                 Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesReplyEventHandler;
@@ -17378,7 +18255,7 @@ namespace Corrade
                 case ScriptKeys.GETAVATARPOSITIONS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -17431,8 +18308,9 @@ namespace Corrade
                         {
                             string name = string.Empty;
                             if (
-                                !AgentUUIDToName(p.Key, Configuration.SERVICES_TIMEOUT,
-                                    ref name)) continue;
+                                !AgentUUIDToName(p.Key, corradeConfiguration.ServicesTimeout,
+                                    ref name))
+                                continue;
                             switch (entity)
                             {
                                 case Entity.REGION:
@@ -17459,7 +18337,7 @@ namespace Corrade
                 case ScriptKeys.GETMAPAVATARPOSITIONS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -17483,7 +18361,7 @@ namespace Corrade
                         {
                             Client.Grid.GridRegion += GridRegionEventHandler;
                             Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
-                            if (!GridRegionEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!GridRegionEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Grid.GridRegion -= GridRegionEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_REGION);
@@ -17496,7 +18374,7 @@ namespace Corrade
                         }
                         HashSet<MapItem> mapItems =
                             new HashSet<MapItem>(Client.Grid.MapItems(regionHandle, GridItemType.AgentLocations,
-                                GridLayerType.Objects, (int) Configuration.SERVICES_TIMEOUT));
+                                GridLayerType.Objects, (int) corradeConfiguration.ServicesTimeout));
                         if (!mapItems.Any())
                         {
                             throw new ScriptException(ScriptError.NO_MAP_ITEMS_FOUND);
@@ -17519,7 +18397,7 @@ namespace Corrade
                 case ScriptKeys.GETSELFDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -17536,7 +18414,7 @@ namespace Corrade
                 case ScriptKeys.DISPLAYNAME:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -17588,7 +18466,7 @@ namespace Corrade
                                 {
                                     Client.Self.SetDisplayNameReply += SetDisplayNameEventHandler;
                                     Client.Self.SetDisplayName(previous, name);
-                                    if (!SetDisplayNameEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                    if (!SetDisplayNameEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Client.Self.SetDisplayNameReply -= SetDisplayNameEventHandler;
                                         throw new ScriptException(ScriptError.TIMEOUT_WAITING_FOR_ESTATE_LIST);
@@ -17608,7 +18486,7 @@ namespace Corrade
                 case ScriptKeys.GETINVENTORYOFFERS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Inventory))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -17652,7 +18530,7 @@ namespace Corrade
                 case ScriptKeys.REPLYTOINVENTORYOFFER:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Inventory))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -17740,7 +18618,7 @@ namespace Corrade
                 case ScriptKeys.GETFRIENDSLIST:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FRIENDSHIP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Friendship))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -17760,7 +18638,7 @@ namespace Corrade
                 case ScriptKeys.GETFRIENDSHIPREQUESTS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FRIENDSHIP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Friendship))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -17769,7 +18647,7 @@ namespace Corrade
                         {
                             string name = string.Empty;
                             if (
-                                !AgentUUIDToName(o.Key, Configuration.SERVICES_TIMEOUT,
+                                !AgentUUIDToName(o.Key, corradeConfiguration.ServicesTimeout,
                                     ref name))
                             {
                                 return;
@@ -17787,7 +18665,7 @@ namespace Corrade
                 case ScriptKeys.REPLYTOFRIENDSHIPREQUEST:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FRIENDSHIP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Friendship))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -17803,7 +18681,8 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
@@ -17839,7 +18718,7 @@ namespace Corrade
                 case ScriptKeys.GETFRIENDDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FRIENDSHIP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Friendship))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -17855,7 +18734,8 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
@@ -17877,7 +18757,7 @@ namespace Corrade
                 case ScriptKeys.OFFERFRIENDSHIP:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FRIENDSHIP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Friendship))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -17893,7 +18773,8 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
@@ -17910,7 +18791,7 @@ namespace Corrade
                 case ScriptKeys.TERMINATEFRIENDSHIP:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FRIENDSHIP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Friendship))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -17926,7 +18807,8 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
@@ -17941,7 +18823,7 @@ namespace Corrade
                 case ScriptKeys.GRANTFRIENDRIGHTS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FRIENDSHIP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Friendship))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -17957,7 +18839,8 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
@@ -17981,7 +18864,7 @@ namespace Corrade
                 case ScriptKeys.MAPFRIEND:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FRIENDSHIP))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Friendship))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -17997,7 +18880,8 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                             message)),
-                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT, ref agentUUID))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    ref agentUUID))
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
@@ -18030,7 +18914,7 @@ namespace Corrade
                         {
                             Client.Friends.FriendFoundReply += FriendFoundEventHandler;
                             Client.Friends.MapFriend(agentUUID);
-                            if (!FriendFoundEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!FriendFoundEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Friends.FriendFoundReply -= FriendFoundEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_MAPPING_FRIEND);
@@ -18053,7 +18937,7 @@ namespace Corrade
                         {
                             Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
                             Client.Parcels.RequestParcelInfo(parcelUUID);
-                            if (!ParcelInfoEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!ParcelInfoEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
@@ -18069,7 +18953,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -18080,7 +18964,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -18088,7 +18972,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -18125,7 +19009,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -18136,7 +19020,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -18144,7 +19028,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -18163,7 +19047,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -18174,7 +19058,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -18182,7 +19066,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -18226,7 +19110,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -18237,7 +19121,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -18245,7 +19129,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -18289,7 +19173,7 @@ namespace Corrade
                 case ScriptKeys.OBJECTDEED:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -18300,7 +19184,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -18308,7 +19192,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -18326,7 +19210,7 @@ namespace Corrade
                 case ScriptKeys.SETOBJECTGROUP:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -18338,7 +19222,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -18346,7 +19230,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -18365,7 +19249,7 @@ namespace Corrade
                 case ScriptKeys.SETOBJECTSALEINFO:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -18389,7 +19273,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -18397,7 +19281,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -18426,7 +19310,7 @@ namespace Corrade
                 case ScriptKeys.SETOBJECTPOSITION:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -18437,7 +19321,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -18445,7 +19329,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -18473,7 +19357,7 @@ namespace Corrade
                 case ScriptKeys.SETPRIMITIVEFLAGS:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -18484,7 +19368,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -18492,7 +19376,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -18616,7 +19500,7 @@ namespace Corrade
                 case ScriptKeys.SETPRIMITIVEPOSITION:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -18627,7 +19511,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -18635,7 +19519,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -18657,7 +19541,7 @@ namespace Corrade
                 case ScriptKeys.SETOBJECTROTATION:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -18668,7 +19552,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -18676,7 +19560,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -18704,7 +19588,7 @@ namespace Corrade
                 case ScriptKeys.SETPRIMITIVEROTATION:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -18715,7 +19599,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -18723,7 +19607,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -18745,7 +19629,7 @@ namespace Corrade
                 case ScriptKeys.SETOBJECTSCALE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -18756,7 +19640,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         bool uniform;
                         if (
@@ -18773,7 +19657,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -18811,7 +19695,7 @@ namespace Corrade
                 case ScriptKeys.SETPRIMITIVESCALE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -18822,7 +19706,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         bool uniform;
                         if (
@@ -18839,7 +19723,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -18871,7 +19755,7 @@ namespace Corrade
                 case ScriptKeys.SETPRIMITIVENAME:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -18882,7 +19766,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -18890,7 +19774,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -18914,7 +19798,7 @@ namespace Corrade
                 case ScriptKeys.SETPRIMITIVEDESCRIPTION:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -18925,7 +19809,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -18933,7 +19817,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -18959,7 +19843,7 @@ namespace Corrade
                 case ScriptKeys.SETPRIMITIVESHAPEDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -18970,7 +19854,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -18978,7 +19862,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -19016,7 +19900,7 @@ namespace Corrade
                 case ScriptKeys.SETPRIMITIVEFLEXIBLEDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -19027,7 +19911,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -19035,7 +19919,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -19050,7 +19934,7 @@ namespace Corrade
                 case ScriptKeys.SETPRIMITIVELIGHTDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -19061,7 +19945,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -19069,7 +19953,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -19084,7 +19968,7 @@ namespace Corrade
                 case ScriptKeys.SETPRIMITIVEMATERIAL:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -19095,7 +19979,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -19103,7 +19987,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -19124,7 +20008,7 @@ namespace Corrade
                 case ScriptKeys.SETPRIMITIVESCULPTDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -19135,7 +20019,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -19143,7 +20027,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -19158,7 +20042,7 @@ namespace Corrade
                 case ScriptKeys.SETPRIMITIVETEXTUREDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -19169,7 +20053,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -19177,7 +20061,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -19240,7 +20124,7 @@ namespace Corrade
                 case ScriptKeys.CHANGEPRIMITIVELINK:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -19251,7 +20135,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Action action = wasGetEnumValueFromDescription<Action>(
                             wasInput(
@@ -19288,7 +20172,8 @@ namespace Corrade
                                 !FindPrimitive(
                                     StringOrUUID(item),
                                     range,
-                                    ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                    ref primitive, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout))
                             {
                                 throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                             }
@@ -19337,7 +20222,7 @@ namespace Corrade
                                         primitives.Select(o => o.LocalID).ToList());
                                     break;
                             }
-                            if (!PrimChangeLinkEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!PrimChangeLinkEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_CHANGING_LINKS);
@@ -19349,7 +20234,7 @@ namespace Corrade
                 case ScriptKeys.PRIMITIVEBUY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -19360,7 +20245,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -19368,7 +20253,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -19377,7 +20262,7 @@ namespace Corrade
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOR_SALE);
                         }
                         if (!primitive.Properties.SalePrice.Equals(0) &&
-                            !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_ECONOMY))
+                            !HasCorradePermission(commandGroup.Name, (int) Permissions.Economy))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -19400,7 +20285,7 @@ namespace Corrade
                 case ScriptKeys.GETPRIMITIVEPAYPRICES:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -19411,7 +20296,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -19419,7 +20304,7 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
@@ -19442,7 +20327,7 @@ namespace Corrade
                             Client.Objects.RequestPayPrice(
                                 Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                                 primitive.ID);
-                            if (!PayPrceReceivedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                            if (!PayPrceReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                             {
                                 Client.Objects.PayPriceReply -= PayPriceReplyEventHandler;
                                 throw new ScriptException(ScriptError.TIMEOUT_REQUESTING_PRICE);
@@ -19459,7 +20344,7 @@ namespace Corrade
                 case ScriptKeys.CHANGEAPPEARANCE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_GROOMING))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -19498,7 +20383,8 @@ namespace Corrade
                                         InventoryWearable i = q as InventoryWearable;
                                         return i != null &&
                                                ((InventoryWearable) item).WearableType.Equals(i.WearableType);
-                                    })) UnWear(item);
+                                    }))
+                                        UnWear(item);
                                     return;
                                 }
                                 if (item is InventoryAttachment || item is InventoryObject)
@@ -19521,13 +20407,13 @@ namespace Corrade
                             }
                         });
                         // And rebake.
-                        RebakeTimer.Change(Configuration.REBAKE_DELAY, 0);
+                        RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                     };
                     break;
                 case ScriptKeys.PLAYSOUND:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INTERACT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -19579,7 +20465,7 @@ namespace Corrade
                 case ScriptKeys.TERRAIN:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -19630,7 +20516,7 @@ namespace Corrade
                                         simulator.Name
                                     });
                                     if (!WaitHandle.WaitAll(DownloadTerrainEvents.Select(o => (WaitHandle) o).ToArray(),
-                                        (int) Configuration.SERVICES_TIMEOUT, false))
+                                        (int) corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
                                         Client.Assets.XferReceived -= XferReceivedEventHandler;
@@ -19673,7 +20559,7 @@ namespace Corrade
                                 {
                                     Client.Assets.UploadProgress += AssetUploadEventHandler;
                                     Client.Estate.UploadTerrain(data, simulator.Name);
-                                    if (!AssetUploadEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                    if (!AssetUploadEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Client.Assets.UploadProgress -= AssetUploadEventHandler;
                                         throw new ScriptException(ScriptError.TIMEOUT_UPLOADING_ASSET);
@@ -19689,7 +20575,7 @@ namespace Corrade
                 case ScriptKeys.GETTERRAINHEIGHT:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_LAND))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -19762,7 +20648,7 @@ namespace Corrade
                 case ScriptKeys.CROUCH:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_MOVEMENT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Movement))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -19803,7 +20689,7 @@ namespace Corrade
                 case ScriptKeys.JUMP:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_MOVEMENT))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Movement))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -19843,7 +20729,7 @@ namespace Corrade
                 case ScriptKeys.EXECUTE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_EXECUTE))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Execute))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -19899,128 +20785,60 @@ namespace Corrade
                         };
                         q.BeginErrorReadLine();
                         q.BeginOutputReadLine();
-                        if (!q.WaitForExit((int) Configuration.SERVICES_TIMEOUT))
+                        if (!q.WaitForExit((int) corradeConfiguration.ServicesTimeout))
                         {
                             throw new ScriptException(ScriptError.TIMEOUT_WAITING_FOR_EXECUTION);
                         }
-                        if (StdEvent[0].WaitOne((int) Configuration.SERVICES_TIMEOUT) && !stdout.Length.Equals(0))
+                        if (StdEvent[0].WaitOne((int) corradeConfiguration.ServicesTimeout) && !stdout.Length.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), stdout.ToString());
                         }
-                        if (StdEvent[1].WaitOne((int) Configuration.SERVICES_TIMEOUT) && !stderr.Length.Equals(0))
+                        if (StdEvent[1].WaitOne((int) corradeConfiguration.ServicesTimeout) && !stderr.Length.Equals(0))
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), stderr.ToString());
                         }
                     };
                     break;
-                case ScriptKeys.CONFIGURATION:
+                case ScriptKeys.GETCONFIGURATIONDATA:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_SYSTEM))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.System))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        Action action = wasGetEnumValueFromDescription<Action>(wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
-                            .ToLowerInvariant());
-                        switch (action)
+                        List<string> data = new List<string>(GetStructuredData(corradeConfiguration,
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                message)))
+                            );
+                        if (data.Any())
                         {
-                            case Action.READ:
-                                try
-                                {
-                                    result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                        Configuration.Read(CORRADE_CONSTANTS.CONFIGURATION_FILE));
-                                }
-                                catch (Exception)
-                                {
-                                    throw new ScriptException(ScriptError.UNABLE_TO_LOAD_CONFIGURATION);
-                                }
-                                break;
-                            case Action.WRITE:
-                                try
-                                {
-                                    Configuration.Write(CORRADE_CONSTANTS.CONFIGURATION_FILE, wasKeyValueGet(
-                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                        message));
-                                }
-                                catch (Exception)
-                                {
-                                    throw new ScriptException(ScriptError.UNABLE_TO_SAVE_CONFIGURATION);
-                                }
-                                break;
-                            case Action.SET:
-                            case Action.GET:
-                                string path =
-                                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATH)),
-                                        message));
-                                if (string.IsNullOrEmpty(path))
-                                {
-                                    throw new ScriptException(ScriptError.NO_PATH_PROVIDED);
-                                }
-                                XmlDocument conf = new XmlDocument();
-                                try
-                                {
-                                    conf.LoadXml(Configuration.Read(CORRADE_CONSTANTS.CONFIGURATION_FILE));
-                                }
-                                catch (Exception)
-                                {
-                                    throw new ScriptException(ScriptError.UNABLE_TO_LOAD_CONFIGURATION);
-                                }
-                                string data;
-                                switch (action)
-                                {
-                                    case Action.GET:
-                                        try
-                                        {
-                                            data = conf.SelectSingleNode(path).InnerXml;
-                                        }
-                                        catch (Exception)
-                                        {
-                                            throw new ScriptException(ScriptError.INVALID_XML_PATH);
-                                        }
-                                        if (!string.IsNullOrEmpty(data))
-                                        {
-                                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), data);
-                                        }
-                                        break;
-                                    case Action.SET:
-                                        data =
-                                            wasInput(
-                                                wasKeyValueGet(
-                                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                                    message));
-                                        if (string.IsNullOrEmpty(data))
-                                        {
-                                            throw new ScriptException(ScriptError.NO_DATA_PROVIDED);
-                                        }
-                                        try
-                                        {
-                                            conf.SelectSingleNode(path).InnerXml = data;
-                                        }
-                                        catch (Exception)
-                                        {
-                                            throw new ScriptException(ScriptError.INVALID_XML_PATH);
-                                        }
-                                        try
-                                        {
-                                            Configuration.Write(CORRADE_CONSTANTS.CONFIGURATION_FILE, conf);
-                                        }
-                                        catch (Exception)
-                                        {
-                                            throw new ScriptException(ScriptError.UNABLE_TO_SAVE_CONFIGURATION);
-                                        }
-                                        break;
-                                }
-                                break;
-                            default:
-                                throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                wasEnumerableToCSV(data));
+                        }
+                    };
+                    break;
+                case ScriptKeys.SETCONFIGURATIONDATA:
+                    execute = () =>
+                    {
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.System))
+                        {
+                            throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                        }
+                        lock (ConfigurationFileLock)
+                        {
+                            wasCSVToStructure(
+                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                    message)), ref corradeConfiguration);
+                            ConfigurationWatcher.EnableRaisingEvents = false;
+                            corradeConfiguration.Save(CORRADE_CONSTANTS.CONFIGURATION_FILE);
+                            ConfigurationWatcher.EnableRaisingEvents = true;
                         }
                     };
                     break;
                 case ScriptKeys.CACHE:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_SYSTEM))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.System))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -20046,7 +20864,7 @@ namespace Corrade
                 case ScriptKeys.LOGOUT:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_SYSTEM))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.System))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -20056,7 +20874,7 @@ namespace Corrade
                 case ScriptKeys.RLV:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_SYSTEM))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.System))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -20066,10 +20884,10 @@ namespace Corrade
                                     message)).ToLowerInvariant()))
                         {
                             case Action.ENABLE:
-                                Configuration.ENABLE_RLV = true;
+                                corradeConfiguration.EnableRLV = true;
                                 break;
                             case Action.DISABLE:
-                                Configuration.ENABLE_RLV = false;
+                                corradeConfiguration.EnableRLV = false;
                                 lock (RLVRulesLock)
                                 {
                                     RLVRules.Clear();
@@ -20081,7 +20899,7 @@ namespace Corrade
                 case ScriptKeys.FILTER:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_FILTER))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Filter))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -20114,7 +20932,7 @@ namespace Corrade
                                     }
                                     lock (InputFiltersLock)
                                     {
-                                        Configuration.INPUT_FILTERS = inputFilters;
+                                        corradeConfiguration.InputFilters = inputFilters;
                                     }
                                 }
                                 List<Filter> outputFilters = new List<Filter>();
@@ -20141,7 +20959,7 @@ namespace Corrade
                                     }
                                     lock (OutputFiltersLock)
                                     {
-                                        Configuration.OUTPUT_FILTERS = outputFilters;
+                                        corradeConfiguration.OutputFilters = outputFilters;
                                     }
                                 }
                                 break;
@@ -20154,10 +20972,10 @@ namespace Corrade
                                     case Type.INPUT:
                                         lock (InputFiltersLock)
                                         {
-                                            if (Configuration.INPUT_FILTERS.Any())
+                                            if (corradeConfiguration.InputFilters.Any())
                                             {
                                                 result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                                    wasEnumerableToCSV(Configuration.INPUT_FILTERS.Select(
+                                                    wasEnumerableToCSV(corradeConfiguration.InputFilters.Select(
                                                         o => wasGetDescriptionFromEnumValue(o))));
                                             }
                                         }
@@ -20165,10 +20983,10 @@ namespace Corrade
                                     case Type.OUTPUT:
                                         lock (OutputFiltersLock)
                                         {
-                                            if (Configuration.OUTPUT_FILTERS.Any())
+                                            if (corradeConfiguration.OutputFilters.Any())
                                             {
                                                 result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                                    wasEnumerableToCSV(Configuration.OUTPUT_FILTERS.Select(
+                                                    wasEnumerableToCSV(corradeConfiguration.OutputFilters.Select(
                                                         o => wasGetDescriptionFromEnumValue(o))));
                                             }
                                         }
@@ -20181,7 +20999,7 @@ namespace Corrade
                 case ScriptKeys.INVENTORY:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_INVENTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Inventory))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -20449,7 +21267,8 @@ namespace Corrade
                                     {
                                         Client.Inventory.ItemReceived += ItemReceivedEventHandler;
                                         Client.Inventory.RequestFetchInventory(o.UUID, o.OwnerID);
-                                        if (!ItemReceivedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                        if (
+                                            !ItemReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                         {
                                             Client.Inventory.ItemReceived -= ItemReceivedEventHandler;
                                             throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_ITEM);
@@ -20620,7 +21439,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -20631,7 +21450,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         HashSet<Avatar> avatars = new HashSet<Avatar>();
                         object LockObject = new object();
@@ -20642,7 +21461,8 @@ namespace Corrade
                         {
                             case Entity.RANGE:
                                 Parallel.ForEach(
-                                    GetAvatars(range, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                                    GetAvatars(range, corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout)
                                         .AsParallel()
                                         .Where(o => Vector3.Distance(o.Position, Client.Self.SimPosition) <= range),
                                     o =>
@@ -20679,7 +21499,7 @@ namespace Corrade
                                         new Vector3(parcel.AABBMin.X, parcel.AABBMax.Y, 0)),
                                     Vector3.Distance(Client.Self.SimPosition,
                                         new Vector3(parcel.AABBMax.X, parcel.AABBMin.Y, 0))
-                                }.Max(), Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                                }.Max(), corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout)
                                     .AsParallel()
                                     .Where(o => IsVectorInParcel(o.Position, parcel)), o =>
                                     {
@@ -20702,7 +21522,9 @@ namespace Corrade
                                     {
                                         SimParcelsDownloadedEvent.Set();
                                     }
-                                    if (!SimParcelsDownloadedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                    if (
+                                        !SimParcelsDownloadedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                            false))
                                     {
                                         Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                         throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
@@ -20721,7 +21543,8 @@ namespace Corrade
                                                 new Vector3(o.AABBMin.X, o.AABBMax.Y, 0)),
                                             Vector3.Distance(Client.Self.SimPosition,
                                                 new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
-                                        }.Max()).Max(), Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                                        }.Max()).Max(), corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout)
                                         .AsParallel()
                                         .Where(o => regionParcels.AsParallel().Any(p => IsVectorInParcel(o.Position, p))),
                                     o =>
@@ -20748,13 +21571,16 @@ namespace Corrade
                                                         wasKeyValueGet(
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                                             message)),
-                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    corradeConfiguration.ServicesTimeout,
+                                                    corradeConfiguration.DataTimeout,
                                                     ref agentUUID))
                                 {
                                     throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                                 }
-                                Avatar avatar = GetAvatars(range, Configuration.SERVICES_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT).AsParallel().FirstOrDefault(o => o.ID.Equals(agentUUID));
+                                Avatar avatar = GetAvatars(range, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout)
+                                    .AsParallel()
+                                    .FirstOrDefault(o => o.ID.Equals(agentUUID));
                                 if (avatar == null)
                                     throw new ScriptException(ScriptError.AVATAR_NOT_IN_RANGE);
                                 avatars.Add(avatar);
@@ -20764,7 +21590,8 @@ namespace Corrade
                         }
 
                         // allow partial results
-                        UpdateAvatars(ref avatars, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT);
+                        UpdateAvatars(ref avatars, corradeConfiguration.ServicesTimeout,
+                            corradeConfiguration.DataTimeout);
 
                         List<string> data = new List<string>();
 
@@ -20795,7 +21622,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -20806,7 +21633,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         HashSet<Primitive> updatePrimitives = new HashSet<Primitive>();
                         object LockObject = new object();
@@ -20817,7 +21644,8 @@ namespace Corrade
                         {
                             case Entity.RANGE:
                                 Parallel.ForEach(
-                                    GetPrimitives(range, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT)
+                                    GetPrimitives(range, corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout)
                                         .AsParallel()
                                         .Where(o => Vector3.Distance(o.Position, Client.Self.SimPosition) <= range),
                                     o =>
@@ -20854,7 +21682,7 @@ namespace Corrade
                                         new Vector3(parcel.AABBMin.X, parcel.AABBMax.Y, 0)),
                                     Vector3.Distance(Client.Self.SimPosition,
                                         new Vector3(parcel.AABBMax.X, parcel.AABBMin.Y, 0))
-                                }.Max(), Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT), o =>
+                                }.Max(), corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout), o =>
                                 {
                                     lock (LockObject)
                                     {
@@ -20875,7 +21703,9 @@ namespace Corrade
                                     {
                                         SimParcelsDownloadedEvent.Set();
                                     }
-                                    if (!SimParcelsDownloadedEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                    if (
+                                        !SimParcelsDownloadedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
+                                            false))
                                     {
                                         Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                         throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
@@ -20892,7 +21722,8 @@ namespace Corrade
                                                 new Vector3(o.AABBMin.X, o.AABBMax.Y, 0)),
                                             Vector3.Distance(Client.Self.SimPosition,
                                                 new Vector3(o.AABBMax.X, o.AABBMin.Y, 0))
-                                        }.Max()).Max(), Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT),
+                                        }.Max()).Max(), corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout),
                                     o =>
                                     {
                                         lock (LockObject)
@@ -20917,18 +21748,21 @@ namespace Corrade
                                                         wasKeyValueGet(
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
                                                             message)),
-                                                    Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT,
+                                                    corradeConfiguration.ServicesTimeout,
+                                                    corradeConfiguration.DataTimeout,
                                                     ref agentUUID))
                                 {
                                     throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                                 }
-                                Avatar avatar = GetAvatars(range, Configuration.SERVICES_TIMEOUT,
-                                    Configuration.DATA_TIMEOUT).AsParallel().FirstOrDefault(o => o.ID.Equals(agentUUID));
+                                Avatar avatar = GetAvatars(range, corradeConfiguration.ServicesTimeout,
+                                    corradeConfiguration.DataTimeout)
+                                    .AsParallel()
+                                    .FirstOrDefault(o => o.ID.Equals(agentUUID));
                                 if (avatar == null)
                                     throw new ScriptException(ScriptError.AVATAR_NOT_IN_RANGE);
                                 HashSet<Primitive> objectsPrimitives =
-                                    new HashSet<Primitive>(GetPrimitives(range, Configuration.SERVICES_TIMEOUT,
-                                        Configuration.DATA_TIMEOUT));
+                                    new HashSet<Primitive>(GetPrimitives(range, corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout));
                                 Parallel.ForEach(objectsPrimitives,
                                     o =>
                                     {
@@ -20961,7 +21795,7 @@ namespace Corrade
                         }
 
                         // allow partial results
-                        UpdatePrimitives(ref updatePrimitives, Configuration.DATA_TIMEOUT);
+                        UpdatePrimitives(ref updatePrimitives, corradeConfiguration.DataTimeout);
 
                         List<string> data = new List<string>();
                         Parallel.ForEach(updatePrimitives, o =>
@@ -20990,7 +21824,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -21001,7 +21835,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -21009,15 +21843,15 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
 
                         // if the primitive is not an object (the root) or the primitive 
                         // is not an object as an avatar attachment then do not export it.
-                        if (!primitive.ParentID.Equals(0) && !GetAvatars(range, Configuration.SERVICES_TIMEOUT,
-                            Configuration.DATA_TIMEOUT)
+                        if (!primitive.ParentID.Equals(0) && !GetAvatars(range, corradeConfiguration.ServicesTimeout,
+                            corradeConfiguration.DataTimeout)
                             .AsParallel()
                             .Any(o => o.LocalID.Equals(primitive.ParentID)))
                         {
@@ -21031,8 +21865,8 @@ namespace Corrade
                         object LockObject = new object();
 
                         // find all the children that have the object as parent.
-                        Parallel.ForEach(GetPrimitives(range, Configuration.SERVICES_TIMEOUT,
-                            Configuration.DATA_TIMEOUT), o =>
+                        Parallel.ForEach(GetPrimitives(range, corradeConfiguration.ServicesTimeout,
+                            corradeConfiguration.DataTimeout), o =>
                             {
                                 if (!o.ParentID.Equals(root.LocalID))
                                     return;
@@ -21118,7 +21952,8 @@ namespace Corrade
                                                 assetData = asset.AssetData;
                                                 RequestAssetEvent.Set();
                                             });
-                                        if (!RequestAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                        if (
+                                            !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                         {
                                             throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                         }
@@ -21254,7 +22089,7 @@ namespace Corrade
                                 return;
                             }
                             if (
-                                !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_SYSTEM))
+                                !HasCorradePermission(commandGroup.Name, (int) Permissions.System))
                             {
                                 throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                             }
@@ -21272,7 +22107,7 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(commandGroup.Name,
-                                (int) Permissions.PERMISSION_INTERACT))
+                                (int) Permissions.Interact))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -21283,7 +22118,7 @@ namespace Corrade
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
                                 out range))
                         {
-                            range = Configuration.RANGE;
+                            range = corradeConfiguration.Range;
                         }
                         Primitive primitive = null;
                         if (
@@ -21291,15 +22126,15 @@ namespace Corrade
                                 StringOrUUID(wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
                                 range,
-                                ref primitive, Configuration.SERVICES_TIMEOUT, Configuration.DATA_TIMEOUT))
+                                ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                         }
 
                         // if the primitive is not an object (the root) or the primitive 
                         // is not an object as an avatar attachment then do not export it.
-                        if (!primitive.ParentID.Equals(0) && !GetAvatars(range, Configuration.SERVICES_TIMEOUT,
-                            Configuration.DATA_TIMEOUT)
+                        if (!primitive.ParentID.Equals(0) && !GetAvatars(range, corradeConfiguration.ServicesTimeout,
+                            corradeConfiguration.DataTimeout)
                             .AsParallel()
                             .Any(o => o.LocalID.Equals(primitive.ParentID)))
                         {
@@ -21313,8 +22148,8 @@ namespace Corrade
                         object LockObject = new object();
 
                         // find all the children that have the object as parent.
-                        Parallel.ForEach(GetPrimitives(range, Configuration.SERVICES_TIMEOUT,
-                            Configuration.DATA_TIMEOUT), o =>
+                        Parallel.ForEach(GetPrimitives(range, corradeConfiguration.ServicesTimeout,
+                            corradeConfiguration.DataTimeout), o =>
                             {
                                 if (!o.ParentID.Equals(root.LocalID))
                                     return;
@@ -21328,7 +22163,7 @@ namespace Corrade
                             });
 
                         // update the primitives in the link set
-                        if (!UpdatePrimitives(ref exportPrimitivesSet, Configuration.DATA_TIMEOUT))
+                        if (!UpdatePrimitives(ref exportPrimitivesSet, corradeConfiguration.DataTimeout))
                             throw new ScriptException(ScriptError.COULD_NOT_GET_PRIMITIVE_PROPERTIES);
 
                         // add all the textures to export
@@ -21395,7 +22230,8 @@ namespace Corrade
                                                 assetData = asset.AssetData;
                                                 RequestAssetEvent.Set();
                                             });
-                                        if (!RequestAssetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false))
+                                        if (
+                                            !RequestAssetEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                         {
                                             throw new ScriptException(ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                         }
@@ -21474,7 +22310,7 @@ namespace Corrade
                         Parallel.ForEach(exportPrimitivesSet, o =>
                         {
                             FacetedMesh mesh = null;
-                            if (!MakeFacetedMesh(o, mesher, ref mesh, Configuration.SERVICES_TIMEOUT))
+                            if (!MakeFacetedMesh(o, mesher, ref mesh, corradeConfiguration.ServicesTimeout))
                             {
                                 throw new ScriptException(ScriptError.COULD_NOT_MESHMERIZE_OBJECT);
                             }
@@ -21570,7 +22406,7 @@ namespace Corrade
                                 return;
                             }
                             if (
-                                !HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_SYSTEM))
+                                !HasCorradePermission(commandGroup.Name, (int) Permissions.System))
                             {
                                 throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                             }
@@ -21634,12 +22470,12 @@ namespace Corrade
                 case ScriptKeys.DIRECTORYSEARCH:
                     execute = () =>
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.PERMISSION_DIRECTORY))
+                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Directory))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
                         wasAdaptiveAlarm DirectorySearchResultsAlarm =
-                            new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+                            new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
                         string name =
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                 message));
@@ -21668,7 +22504,7 @@ namespace Corrade
                                 EventHandler<DirClassifiedsReplyEventArgs> DirClassifiedsEventHandler =
                                     (sender, args) => Parallel.ForEach(args.Classifieds, o =>
                                     {
-                                        DirectorySearchResultsAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                        DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                         int score = !string.IsNullOrEmpty(fields)
                                             ? wasGetFields(searchClassified, searchClassified.GetType().Name)
                                                 .Sum(
@@ -21695,7 +22531,8 @@ namespace Corrade
                                 {
                                     Client.Directory.DirClassifiedsReply += DirClassifiedsEventHandler;
                                     Client.Directory.StartClassifiedSearch(name);
-                                    DirectorySearchResultsAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                    DirectorySearchResultsAlarm.Signal.WaitOne(
+                                        (int) corradeConfiguration.ServicesTimeout,
                                         false);
                                     Client.Directory.DirClassifiedsReply -= DirClassifiedsEventHandler;
                                 }
@@ -21728,7 +22565,7 @@ namespace Corrade
                                 EventHandler<DirEventsReplyEventArgs> DirEventsEventHandler =
                                     (sender, args) =>
                                     {
-                                        DirectorySearchResultsAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                        DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                         handledEvents += args.MatchedEvents.Count;
                                         Parallel.ForEach(args.MatchedEvents, o =>
                                         {
@@ -21766,7 +22603,8 @@ namespace Corrade
                                     Client.Directory.DirEventsReply += DirEventsEventHandler;
                                     Client.Directory.StartEventsSearch(name,
                                         (uint) handledEvents);
-                                    DirectorySearchResultsAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                    DirectorySearchResultsAlarm.Signal.WaitOne(
+                                        (int) corradeConfiguration.ServicesTimeout,
                                         false);
                                     Client.Directory.DirEventsReply -= DirEventsEventHandler;
                                 }
@@ -21802,7 +22640,7 @@ namespace Corrade
                                 EventHandler<DirGroupsReplyEventArgs> DirGroupsEventHandler =
                                     (sender, args) =>
                                     {
-                                        DirectorySearchResultsAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                        DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                         handledEvents += args.MatchedGroups.Count;
                                         Parallel.ForEach(args.MatchedGroups, o =>
                                         {
@@ -21839,7 +22677,8 @@ namespace Corrade
                                 {
                                     Client.Directory.DirGroupsReply += DirGroupsEventHandler;
                                     Client.Directory.StartGroupSearch(name, handledEvents);
-                                    DirectorySearchResultsAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                    DirectorySearchResultsAlarm.Signal.WaitOne(
+                                        (int) corradeConfiguration.ServicesTimeout,
                                         false);
                                     Client.Directory.DirGroupsReply -= DirGroupsEventHandler;
                                 }
@@ -21871,7 +22710,7 @@ namespace Corrade
                                 EventHandler<DirLandReplyEventArgs> DirLandReplyEventArgs =
                                     (sender, args) =>
                                     {
-                                        DirectorySearchResultsAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                        DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                         handledEvents += args.DirParcels.Count;
                                         Parallel.ForEach(args.DirParcels, o =>
                                         {
@@ -21911,7 +22750,8 @@ namespace Corrade
                                     Client.Directory.DirLandReply += DirLandReplyEventArgs;
                                     Client.Directory.StartLandSearch(DirectoryManager.DirFindFlags.SortAsc,
                                         DirectoryManager.SearchTypeFlags.Any, int.MaxValue, int.MaxValue, handledEvents);
-                                    DirectorySearchResultsAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                    DirectorySearchResultsAlarm.Signal.WaitOne(
+                                        (int) corradeConfiguration.ServicesTimeout,
                                         false);
                                     Client.Directory.DirLandReply -= DirLandReplyEventArgs;
                                 }
@@ -21942,7 +22782,7 @@ namespace Corrade
                                 EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyEventHandler =
                                     (sender, args) =>
                                     {
-                                        DirectorySearchResultsAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                        DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                         handledEvents += args.MatchedPeople.Count;
                                         Parallel.ForEach(args.MatchedPeople, o =>
                                         {
@@ -21979,7 +22819,8 @@ namespace Corrade
                                 {
                                     Client.Directory.DirPeopleReply += DirPeopleReplyEventHandler;
                                     Client.Directory.StartPeopleSearch(name, handledEvents);
-                                    DirectorySearchResultsAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                    DirectorySearchResultsAlarm.Signal.WaitOne(
+                                        (int) corradeConfiguration.ServicesTimeout,
                                         false);
                                     Client.Directory.DirPeopleReply -= DirPeopleReplyEventHandler;
                                 }
@@ -22015,7 +22856,7 @@ namespace Corrade
                                 EventHandler<PlacesReplyEventArgs> DirPlacesReplyEventHandler =
                                     (sender, args) => Parallel.ForEach(args.MatchedPlaces, o =>
                                     {
-                                        DirectorySearchResultsAlarm.Alarm(Configuration.DATA_TIMEOUT);
+                                        DirectorySearchResultsAlarm.Alarm(corradeConfiguration.DataTimeout);
                                         int score = !string.IsNullOrEmpty(fields)
                                             ? wasGetFields(searchPlaces, searchPlaces.GetType().Name)
                                                 .Sum(
@@ -22041,7 +22882,8 @@ namespace Corrade
                                 {
                                     Client.Directory.PlacesReply += DirPlacesReplyEventHandler;
                                     Client.Directory.StartPlacesSearch(name);
-                                    DirectorySearchResultsAlarm.Signal.WaitOne((int) Configuration.SERVICES_TIMEOUT,
+                                    DirectorySearchResultsAlarm.Signal.WaitOne(
+                                        (int) corradeConfiguration.ServicesTimeout,
                                         false);
                                     Client.Directory.PlacesReply -= DirPlacesReplyEventHandler;
                                 }
@@ -22270,7 +23112,7 @@ namespace Corrade
                 request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
                 request.Method = WebRequestMethods.Http.Post;
                 // set the content type based on chosen output filers
-                switch (Configuration.OUTPUT_FILTERS.Last())
+                switch (corradeConfiguration.OutputFilters.Last())
                 {
                     case Filter.RFC1738:
                         request.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
@@ -22306,8 +23148,8 @@ namespace Corrade
         private static void HandleTerseObjectUpdate(object sender, TerseObjectUpdateEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_TERSE_UPDATES, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.TerseUpdates, e),
+                corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleRadarObjects(object sender, SimChangedEventArgs e)
@@ -22324,22 +23166,22 @@ namespace Corrade
         private static void HandleSimChanged(object sender, SimChangedEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_REGION_CROSSED, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.RegionCrossed, e),
+                corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleMoneyBalance(object sender, BalanceEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_BALANCE, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.Balance, e),
+                corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleMoneyBalance(object sender, MoneyBalanceReplyEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.NOTIFICATION_ECONOMY, e),
-                Configuration.MAXIMUM_NOTIFICATION_THREADS);
+                () => SendNotification(Notifications.Economy, e),
+                corradeConfiguration.MaximumNotificationThreads);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -22660,6 +23502,46 @@ namespace Corrade
 
             public static readonly Regex EjectedFromGroupRegEx =
                 new Regex(@"You have been ejected from '(.+?)' by .+?\.$", RegexOptions.Compiled);
+
+            /// <summary>
+            ///     Corrade version.
+            /// </summary>
+            public static readonly string CORRADE_VERSION = Assembly.GetEntryAssembly().GetName().Version.ToString();
+
+            /// <summary>
+            ///     Corrade user agent.
+            /// </summary>
+            public static readonly string USER_AGENT = string.Format("{0}/{1} ({2})", CORRADE,
+                CORRADE_VERSION,
+                WIZARDRY_AND_STEAMWORKS_WEBSITE);
+
+            /// <summary>
+            ///     Corrade compile date.
+            /// </summary>
+            public static readonly string CORRADE_COMPILE_DATE = new DateTime(2000, 1, 1).Add(new TimeSpan(
+                TimeSpan.TicksPerDay*Assembly.GetEntryAssembly().GetName().Version.Build + // days since 1 January 2000
+                TimeSpan.TicksPerSecond*2*Assembly.GetEntryAssembly().GetName().Version.Revision)).ToLongDateString();
+
+            /// <summary>
+            ///     Corrade Logo.
+            /// </summary>
+            public static readonly List<string> LOGO = new List<string>
+            {
+                @"",
+                @"       _..--=--..._  ",
+                @"    .-'            '-.  .-.  ",
+                @"   /.'              '.\/  /  ",
+                @"  |=-     Corrade    -=| (  ",
+                @"   \'.              .'/\  \  ",
+                @"    '-.,_____ _____.-'  '-'  ",
+                @"          [_____]=8  ",
+                @"               \  ",
+                @"                 Good day!  ",
+                @"",
+                string.Format(CultureInfo.DefaultThreadCurrentCulture, "Version: {0}, Compiled: {1}", CORRADE_VERSION,
+                    CORRADE_COMPILE_DATE),
+                string.Format(CultureInfo.DefaultThreadCurrentCulture, "Copyright: {0}", COPYRIGHT)
+            };
 
             /// <summary>
             ///     Conten-types that Corrade can send and receive.
@@ -23001,46 +23883,6 @@ namespace Corrade
                     State = 0
                 };
             }
-
-            /// <summary>
-            ///     Corrade version.
-            /// </summary>
-            public static readonly string CORRADE_VERSION = Assembly.GetEntryAssembly().GetName().Version.ToString();
-
-            /// <summary>
-            ///     Corrade user agent.
-            /// </summary>
-            public static readonly string USER_AGENT = string.Format("{0}/{1} ({2})", CORRADE,
-                CORRADE_VERSION,
-                WIZARDRY_AND_STEAMWORKS_WEBSITE);
-
-            /// <summary>
-            ///     Corrade compile date.
-            /// </summary>
-            public static readonly string CORRADE_COMPILE_DATE = new DateTime(2000, 1, 1).Add(new TimeSpan(
-                TimeSpan.TicksPerDay*Assembly.GetEntryAssembly().GetName().Version.Build + // days since 1 January 2000
-                TimeSpan.TicksPerSecond*2*Assembly.GetEntryAssembly().GetName().Version.Revision)).ToLongDateString();
-
-            /// <summary>
-            ///     Corrade Logo.
-            /// </summary>
-            public static readonly List<string> LOGO = new List<string>
-            {
-                @"",
-                @"       _..--=--..._  ",
-                @"    .-'            '-.  .-.  ",
-                @"   /.'              '.\/  /  ",
-                @"  |=-     Corrade    -=| (  ",
-                @"   \'.              .'/\  \  ",
-                @"    '-.,_____ _____.-'  '-'  ",
-                @"          [_____]=8  ",
-                @"               \  ",
-                @"                 Good day!  ",
-                @"",
-                string.Format(CultureInfo.DefaultThreadCurrentCulture, "Version: {0}, Compiled: {1}", CORRADE_VERSION,
-                    CORRADE_COMPILE_DATE),
-                string.Format(CultureInfo.DefaultThreadCurrentCulture, "Copyright: {0}", COPYRIGHT)
-            };
         }
 
         /// <summary>
@@ -23197,82 +24039,90 @@ namespace Corrade
             public string URL;
         }
 
-        private struct Configuration
+        [Serializable]
+        public class CorradeConfiguration
         {
-            private static string _firstName;
-            private static string _lastName;
-            private static string _password;
-            private static string _loginURL;
-            private static string _instantMessageLogDirectory;
-            private static bool _instantMessageLogEnabled;
-            private static string _localMessageLogDirectory;
-            private static bool _localMessageLogEnabled;
-            private static string _regionMessageLogDirectory;
-            private static bool _regionMessageLogEnabled;
-            private static bool _enableHTTPServer;
-            private static bool _enableAIML;
-            private static bool _enableRLV;
-            private static string _HTTPServerPrefix;
-            private static uint _HTTPServerTimeout;
-            private static uint _HTTPServerDrainTimeout;
-            private static uint _HTTPServerBodyTimeout;
-            private static uint _HTTPServerHeaderTimeout;
-            private static uint _HTTPServerIdleTimeout;
-            private static uint _HTTPServerQueueTimeout;
-            private static HTTPCompressionMethod _HTTPServerCompression;
-            private static uint _throttleTotal;
-            private static uint _throttleLand;
-            private static uint _throttleTask;
-            private static uint _throttleTexture;
-            private static uint _throttleWind;
-            private static uint _throttleResend;
-            private static uint _throttleAsset;
-            private static uint _throttleCloud;
-            private static bool _HTTPServerKeepAlive;
-            private static uint _callbackTimeout;
-            private static uint _callbackThrottle;
-            private static uint _callbackQueueLength;
-            private static uint _notificationTimeout;
-            private static uint _notificationThrottle;
-            private static uint _notificationQueueLength;
-            private static uint _connectionLimit;
-            private static uint _connectionIdleTime;
-            private static float _range;
-            private static uint _schedulerExpiration;
-            private static uint _maximumNotificationThreads;
-            private static uint _maximumCommandThreads;
-            private static uint _maximumRLVThreads;
-            private static uint _maximumInstantMessageThreads;
-            private static uint _maximumLogThreads;
-            private static uint _maximumPOSTThreads;
-            private static bool _useNaggle;
-            private static bool _useExpect100Continue;
-            private static uint _servicesTimeout;
-            private static uint _dataTimeout;
-            private static wasAdaptiveAlarm.DECAY_TYPE _dataDecayType;
-            private static uint _rebakeDelay;
-            private static uint _membershipSweepInterval;
-            private static bool _TOSAccepted;
-            private static string _startLocation;
-            private static string _bindIPAddress;
-            private static string _networkCardMAC;
-            private static string _driveIdentifierHash;
-            private static string _clientLogFile;
-            private static bool _clientLogEnabled;
-            private static bool _autoActivateGroup;
-            private static uint _activateDelay;
-            private static uint _groupCreateFee;
-            private static int _exitCodeExpected;
-            private static int _exitCodeAbnormal;
-            private static HashSet<Group> _groups;
-            private static HashSet<Master> _masters;
-            private static List<Filter> _inputFilters;
-            private static List<Filter> _outputFilters;
-            private static string _vigenereSecret;
-            private static ENIGMA _enigma;
-            private static uint _logoutGrace;
+            private uint _activateDelay = 5000;
+            private bool _autoActivateGroup;
+            private string _bindIPAddress = string.Empty;
+            private uint _callbackQueueLength = 100;
+            private uint _callbackThrottle = 1000;
+            private uint _callbackTimeout = 5000;
+            private bool _clientLogEnabled = true;
+            private string _clientLogFile = "logs/Corrade.log";
+            private uint _connectionIdleTime = 900000;
+            private uint _connectionLimit = 100;
+            private wasAdaptiveAlarm.DECAY_TYPE _dataDecayType = wasAdaptiveAlarm.DECAY_TYPE.ARITHMETIC;
+            private uint _dataTimeout = 2500;
+            private string _driveIdentifierHash = string.Empty;
+            private bool _enableAIML;
+            private bool _enableHTTPServer;
+            private bool _enableRLV;
 
-            public static string FIRST_NAME
+            private ENIGMA _enigma = new ENIGMA
+            {
+                rotors = new[] {'3', 'g', '1'},
+                plugs = new[] {'z', 'p', 'q'},
+                reflector = 'b'
+            };
+
+            private int _exitCodeAbnormal = -2;
+            private int _exitCodeExpected = -1;
+            private string _firstName = string.Empty;
+            private uint _groupCreateFee = 100;
+            private HashSet<Group> _groups = new HashSet<Group>();
+            private uint _HTTPServerBodyTimeout = 5000;
+            private HTTPCompressionMethod _HTTPServerCompression = HTTPCompressionMethod.NONE;
+            private uint _HTTPServerDrainTimeout = 10000;
+            private uint _HTTPServerHeaderTimeout = 2500;
+            private uint _HTTPServerIdleTimeout = 2500;
+            private bool _HTTPServerKeepAlive = true;
+            private string _HTTPServerPrefix = @"http://+:8080/";
+            private uint _HTTPServerQueueTimeout = 10000;
+            private uint _HTTPServerTimeout = 5000;
+            private List<Filter> _inputFilters = new List<Filter>();
+            private string _instantMessageLogDirectory = @"logs/im";
+            private bool _instantMessageLogEnabled;
+            private string _lastName = string.Empty;
+            private string _localMessageLogDirectory = @"logs/local";
+            private bool _localMessageLogEnabled;
+            private string _loginURL = @"https://login.agni.lindenlab.com/cgi-bin/login.cgi";
+            private uint _logoutGrace = 2500;
+            private HashSet<Master> _masters = new HashSet<Master>();
+            private uint _maximumCommandThreads = 10;
+            private uint _maximumInstantMessageThreads = 10;
+            private uint _maximumLogThreads = 20;
+            private uint _maximumNotificationThreads = 10;
+            private uint _maximumPOSTThreads = 25;
+            private uint _maximumRLVThreads = 10;
+            private uint _membershipSweepInterval = 60000;
+            private string _networkCardMAC = string.Empty;
+            private uint _notificationQueueLength = 100;
+            private uint _notificationThrottle = 1000;
+            private uint _notificationTimeout = 5000;
+            private List<Filter> _outputFilters = new List<Filter>();
+            private string _password = string.Empty;
+            private float _range = 64;
+            private uint _rebakeDelay = 1000;
+            private string _regionMessageLogDirectory = @"logs/region";
+            private bool _regionMessageLogEnabled;
+            private uint _schedulerExpiration = 60000;
+            private uint _servicesTimeout = 60000;
+            private string _startLocation = "last";
+            private uint _throttleAsset = 100000;
+            private uint _throttleCloud = 10000;
+            private uint _throttleLand = 80000;
+            private uint _throttleResend = 100000;
+            private uint _throttleTask = 200000;
+            private uint _throttleTexture = 100000;
+            private uint _throttleTotal = 600000;
+            private uint _throttleWind = 10000;
+            private bool _TOSAccepted;
+            private bool _useExpect100Continue;
+            private bool _useNaggle;
+            private string _vigenereSecret = string.Empty;
+
+            public string FirstName
             {
                 get
                 {
@@ -23281,7 +24131,7 @@ namespace Corrade
                         return _firstName;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23290,7 +24140,7 @@ namespace Corrade
                 }
             }
 
-            public static string LAST_NAME
+            public string LastName
             {
                 get
                 {
@@ -23299,7 +24149,7 @@ namespace Corrade
                         return _lastName;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23308,7 +24158,7 @@ namespace Corrade
                 }
             }
 
-            public static string PASSWORD
+            public string Password
             {
                 get
                 {
@@ -23317,7 +24167,7 @@ namespace Corrade
                         return _password;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23326,7 +24176,7 @@ namespace Corrade
                 }
             }
 
-            public static string LOGIN_URL
+            public string LoginURL
             {
                 get
                 {
@@ -23335,7 +24185,7 @@ namespace Corrade
                         return _loginURL;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23344,7 +24194,7 @@ namespace Corrade
                 }
             }
 
-            public static string INSTANT_MESSAGE_LOG_DIRECTORY
+            public string InstantMessageLogDirectory
             {
                 get
                 {
@@ -23353,7 +24203,7 @@ namespace Corrade
                         return _instantMessageLogDirectory;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23362,7 +24212,7 @@ namespace Corrade
                 }
             }
 
-            public static bool INSTANT_MESSAGE_LOG_ENABLED
+            public bool InstantMessageLogEnabled
             {
                 get
                 {
@@ -23371,7 +24221,7 @@ namespace Corrade
                         return _instantMessageLogEnabled;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23380,7 +24230,7 @@ namespace Corrade
                 }
             }
 
-            public static string LOCAL_MESSAGE_LOG_DIRECTORY
+            public string LocalMessageLogDirectory
             {
                 get
                 {
@@ -23389,7 +24239,7 @@ namespace Corrade
                         return _localMessageLogDirectory;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23398,7 +24248,7 @@ namespace Corrade
                 }
             }
 
-            public static bool LOCAL_MESSAGE_LOG_ENABLED
+            public bool LocalMessageLogEnabled
             {
                 get
                 {
@@ -23407,7 +24257,7 @@ namespace Corrade
                         return _localMessageLogEnabled;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23416,7 +24266,7 @@ namespace Corrade
                 }
             }
 
-            public static string REGION_MESSAGE_LOG_DIRECTORY
+            public string RegionMessageLogDirectory
             {
                 get
                 {
@@ -23425,7 +24275,7 @@ namespace Corrade
                         return _regionMessageLogDirectory;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23434,7 +24284,7 @@ namespace Corrade
                 }
             }
 
-            public static bool REGION_MESSAGE_LOG_ENABLED
+            public bool RegionMessageLogEnabled
             {
                 get
                 {
@@ -23443,7 +24293,7 @@ namespace Corrade
                         return _regionMessageLogEnabled;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23452,7 +24302,7 @@ namespace Corrade
                 }
             }
 
-            public static bool ENABLE_HTTP_SERVER
+            public bool EnableHTTPServer
             {
                 get
                 {
@@ -23461,7 +24311,7 @@ namespace Corrade
                         return _enableHTTPServer;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23470,7 +24320,7 @@ namespace Corrade
                 }
             }
 
-            public static bool ENABLE_AIML
+            public bool EnableAIML
             {
                 get
                 {
@@ -23488,7 +24338,7 @@ namespace Corrade
                 }
             }
 
-            public static bool ENABLE_RLV
+            public bool EnableRLV
             {
                 get
                 {
@@ -23506,7 +24356,7 @@ namespace Corrade
                 }
             }
 
-            public static string HTTP_SERVER_PREFIX
+            public string HTTPServerPrefix
             {
                 get
                 {
@@ -23515,7 +24365,7 @@ namespace Corrade
                         return _HTTPServerPrefix;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23524,7 +24374,7 @@ namespace Corrade
                 }
             }
 
-            public static uint HTTP_SERVER_TIMEOUT
+            public uint HTTPServerTimeout
             {
                 get
                 {
@@ -23533,7 +24383,7 @@ namespace Corrade
                         return _HTTPServerTimeout;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23542,7 +24392,7 @@ namespace Corrade
                 }
             }
 
-            public static uint HTTP_SERVER_DRAIN_TIMEOUT
+            public uint HTTPServerDrainTimeout
             {
                 get
                 {
@@ -23551,7 +24401,7 @@ namespace Corrade
                         return _HTTPServerDrainTimeout;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23560,7 +24410,7 @@ namespace Corrade
                 }
             }
 
-            public static uint HTTP_SERVER_BODY_TIMEOUT
+            public uint HTTPServerBodyTimeout
             {
                 get
                 {
@@ -23569,7 +24419,7 @@ namespace Corrade
                         return _HTTPServerBodyTimeout;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23578,7 +24428,7 @@ namespace Corrade
                 }
             }
 
-            public static uint HTTP_SERVER_HEADER_TIMEOUT
+            public uint HTTPServerHeaderTimeout
             {
                 get
                 {
@@ -23587,7 +24437,7 @@ namespace Corrade
                         return _HTTPServerHeaderTimeout;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23596,7 +24446,7 @@ namespace Corrade
                 }
             }
 
-            public static uint HTTP_SERVER_IDLE_TIMEOUT
+            public uint HTTPServerIdleTimeout
             {
                 get
                 {
@@ -23605,7 +24455,7 @@ namespace Corrade
                         return _HTTPServerIdleTimeout;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23614,7 +24464,7 @@ namespace Corrade
                 }
             }
 
-            public static uint HTTP_SERVER_QUEUE_TIMEOUT
+            public uint HTTPServerQueueTimeout
             {
                 get
                 {
@@ -23623,7 +24473,7 @@ namespace Corrade
                         return _HTTPServerQueueTimeout;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23632,7 +24482,7 @@ namespace Corrade
                 }
             }
 
-            public static HTTPCompressionMethod HTTP_SERVER_COMPRESSION
+            public HTTPCompressionMethod HTTPServerCompression
             {
                 get
                 {
@@ -23641,7 +24491,7 @@ namespace Corrade
                         return _HTTPServerCompression;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23650,7 +24500,7 @@ namespace Corrade
                 }
             }
 
-            public static uint THROTTLE_TOTAL
+            public uint ThrottleTotal
             {
                 get
                 {
@@ -23659,7 +24509,7 @@ namespace Corrade
                         return _throttleTotal;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23668,7 +24518,7 @@ namespace Corrade
                 }
             }
 
-            public static uint THROTTLE_LAND
+            public uint ThrottleLand
             {
                 get
                 {
@@ -23677,7 +24527,7 @@ namespace Corrade
                         return _throttleLand;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23686,7 +24536,7 @@ namespace Corrade
                 }
             }
 
-            public static uint THROTTLE_TASK
+            public uint ThrottleTask
             {
                 get
                 {
@@ -23695,7 +24545,7 @@ namespace Corrade
                         return _throttleTask;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23704,7 +24554,7 @@ namespace Corrade
                 }
             }
 
-            public static uint THROTTLE_TEXTURE
+            public uint ThrottleTexture
             {
                 get
                 {
@@ -23713,7 +24563,7 @@ namespace Corrade
                         return _throttleTexture;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23722,7 +24572,7 @@ namespace Corrade
                 }
             }
 
-            public static uint THROTTLE_WIND
+            public uint ThrottleWind
             {
                 get
                 {
@@ -23731,7 +24581,7 @@ namespace Corrade
                         return _throttleWind;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23740,7 +24590,7 @@ namespace Corrade
                 }
             }
 
-            public static uint THROTTLE_RESEND
+            public uint ThrottleResend
             {
                 get
                 {
@@ -23749,7 +24599,7 @@ namespace Corrade
                         return _throttleResend;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23758,7 +24608,7 @@ namespace Corrade
                 }
             }
 
-            public static uint THROTTLE_ASSET
+            public uint ThrottleAsset
             {
                 get
                 {
@@ -23767,7 +24617,7 @@ namespace Corrade
                         return _throttleAsset;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23776,7 +24626,7 @@ namespace Corrade
                 }
             }
 
-            public static uint THROTTLE_CLOUD
+            public uint ThrottleCloud
             {
                 get
                 {
@@ -23785,7 +24635,7 @@ namespace Corrade
                         return _throttleCloud;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23794,7 +24644,7 @@ namespace Corrade
                 }
             }
 
-            public static bool HTTP_SERVER_KEEP_ALIVE
+            public bool HTTPServerKeepAlive
             {
                 get
                 {
@@ -23803,7 +24653,7 @@ namespace Corrade
                         return _HTTPServerKeepAlive;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23812,7 +24662,7 @@ namespace Corrade
                 }
             }
 
-            public static uint CALLBACK_TIMEOUT
+            public uint CallbackTimeout
             {
                 get
                 {
@@ -23821,7 +24671,7 @@ namespace Corrade
                         return _callbackTimeout;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23830,7 +24680,7 @@ namespace Corrade
                 }
             }
 
-            public static uint CALLBACK_THROTTLE
+            public uint CallbackThrottle
             {
                 get
                 {
@@ -23839,7 +24689,7 @@ namespace Corrade
                         return _callbackThrottle;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23848,7 +24698,7 @@ namespace Corrade
                 }
             }
 
-            public static uint CALLBACK_QUEUE_LENGTH
+            public uint CallbackQueueLength
             {
                 get
                 {
@@ -23857,7 +24707,7 @@ namespace Corrade
                         return _callbackQueueLength;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23866,7 +24716,7 @@ namespace Corrade
                 }
             }
 
-            public static uint NOTIFICATION_TIMEOUT
+            public uint NotificationTimeout
             {
                 get
                 {
@@ -23875,7 +24725,7 @@ namespace Corrade
                         return _notificationTimeout;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23884,7 +24734,7 @@ namespace Corrade
                 }
             }
 
-            public static uint NOTIFICATION_THROTTLE
+            public uint NotificationThrottle
             {
                 get
                 {
@@ -23893,7 +24743,7 @@ namespace Corrade
                         return _notificationThrottle;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23902,7 +24752,7 @@ namespace Corrade
                 }
             }
 
-            public static uint NOTIFICATION_QUEUE_LENGTH
+            public uint NotificationQueueLength
             {
                 get
                 {
@@ -23911,7 +24761,7 @@ namespace Corrade
                         return _notificationQueueLength;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23920,7 +24770,7 @@ namespace Corrade
                 }
             }
 
-            public static uint CONNECTION_LIMIT
+            public uint ConnectionLimit
             {
                 get
                 {
@@ -23929,7 +24779,7 @@ namespace Corrade
                         return _connectionLimit;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23938,7 +24788,7 @@ namespace Corrade
                 }
             }
 
-            public static uint CONNECTION_IDLE_TIME
+            public uint ConnectionIdleTime
             {
                 get
                 {
@@ -23947,7 +24797,7 @@ namespace Corrade
                         return _connectionIdleTime;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23956,7 +24806,7 @@ namespace Corrade
                 }
             }
 
-            public static float RANGE
+            public float Range
             {
                 get
                 {
@@ -23965,7 +24815,7 @@ namespace Corrade
                         return _range;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23974,7 +24824,7 @@ namespace Corrade
                 }
             }
 
-            public static uint SCHEDULER_EXPIRATION_TIME
+            public uint SchedulerExpiration
             {
                 get
                 {
@@ -23983,7 +24833,7 @@ namespace Corrade
                         return _schedulerExpiration;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -23992,7 +24842,7 @@ namespace Corrade
                 }
             }
 
-            public static uint MAXIMUM_NOTIFICATION_THREADS
+            public uint MaximumNotificationThreads
             {
                 get
                 {
@@ -24001,7 +24851,7 @@ namespace Corrade
                         return _maximumNotificationThreads;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24010,7 +24860,7 @@ namespace Corrade
                 }
             }
 
-            public static uint MAXIMUM_COMMAND_THREADS
+            public uint MaximumCommandThreads
             {
                 get
                 {
@@ -24019,7 +24869,7 @@ namespace Corrade
                         return _maximumCommandThreads;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24028,7 +24878,7 @@ namespace Corrade
                 }
             }
 
-            public static uint MAXIMUM_RLV_THREADS
+            public uint MaximumRLVThreads
             {
                 get
                 {
@@ -24037,7 +24887,7 @@ namespace Corrade
                         return _maximumRLVThreads;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24046,7 +24896,7 @@ namespace Corrade
                 }
             }
 
-            public static uint MAXIMUM_INSTANT_MESSAGE_THREADS
+            public uint MaximumInstantMessageThreads
             {
                 get
                 {
@@ -24055,7 +24905,7 @@ namespace Corrade
                         return _maximumInstantMessageThreads;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24064,7 +24914,7 @@ namespace Corrade
                 }
             }
 
-            public static uint MAXIMUM_LOG_THREADS
+            public uint MaximumLogThreads
             {
                 get
                 {
@@ -24073,7 +24923,7 @@ namespace Corrade
                         return _maximumLogThreads;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24082,7 +24932,7 @@ namespace Corrade
                 }
             }
 
-            public static uint MAXIMUM_POST_THREADS
+            public uint MaximumPOSTThreads
             {
                 get
                 {
@@ -24091,7 +24941,7 @@ namespace Corrade
                         return _maximumPOSTThreads;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24100,7 +24950,7 @@ namespace Corrade
                 }
             }
 
-            public static bool USE_NAGGLE
+            public bool UseNaggle
             {
                 get
                 {
@@ -24109,7 +24959,7 @@ namespace Corrade
                         return _useNaggle;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24118,7 +24968,7 @@ namespace Corrade
                 }
             }
 
-            public static bool USE_EXPECT100CONTINUE
+            public bool UseExpect100Continue
             {
                 get
                 {
@@ -24127,7 +24977,7 @@ namespace Corrade
                         return _useExpect100Continue;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24136,7 +24986,7 @@ namespace Corrade
                 }
             }
 
-            public static uint SERVICES_TIMEOUT
+            public uint ServicesTimeout
             {
                 get
                 {
@@ -24145,7 +24995,7 @@ namespace Corrade
                         return _servicesTimeout;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24154,7 +25004,7 @@ namespace Corrade
                 }
             }
 
-            public static uint DATA_TIMEOUT
+            public uint DataTimeout
             {
                 get
                 {
@@ -24163,7 +25013,7 @@ namespace Corrade
                         return _dataTimeout;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24172,7 +25022,7 @@ namespace Corrade
                 }
             }
 
-            public static wasAdaptiveAlarm.DECAY_TYPE DATA_DECAY_TYPE
+            public wasAdaptiveAlarm.DECAY_TYPE DataDecayType
             {
                 get
                 {
@@ -24181,7 +25031,7 @@ namespace Corrade
                         return _dataDecayType;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24190,7 +25040,7 @@ namespace Corrade
                 }
             }
 
-            public static uint REBAKE_DELAY
+            public uint RebakeDelay
             {
                 get
                 {
@@ -24199,7 +25049,7 @@ namespace Corrade
                         return _rebakeDelay;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24208,7 +25058,7 @@ namespace Corrade
                 }
             }
 
-            public static uint MEMBERSHIP_SWEEP_INTERVAL
+            public uint MembershipSweepInterval
             {
                 get
                 {
@@ -24217,7 +25067,7 @@ namespace Corrade
                         return _membershipSweepInterval;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24226,7 +25076,7 @@ namespace Corrade
                 }
             }
 
-            public static bool TOS_ACCEPTED
+            public bool TOSAccepted
             {
                 get
                 {
@@ -24235,7 +25085,7 @@ namespace Corrade
                         return _TOSAccepted;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24244,7 +25094,7 @@ namespace Corrade
                 }
             }
 
-            public static string START_LOCATION
+            public string StartLocation
             {
                 get
                 {
@@ -24253,7 +25103,7 @@ namespace Corrade
                         return _startLocation;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24262,7 +25112,7 @@ namespace Corrade
                 }
             }
 
-            public static string BIND_IP_ADDRESS
+            public string BindIPAddress
             {
                 get
                 {
@@ -24271,7 +25121,7 @@ namespace Corrade
                         return _bindIPAddress;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24280,7 +25130,7 @@ namespace Corrade
                 }
             }
 
-            public static string NETWORK_CARD_MAC
+            public string NetworkCardMAC
             {
                 get
                 {
@@ -24289,7 +25139,7 @@ namespace Corrade
                         return _networkCardMAC;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24298,7 +25148,7 @@ namespace Corrade
                 }
             }
 
-            public static string DRIVE_IDENTIFIER_HASH
+            public string DriveIdentifierHash
             {
                 get
                 {
@@ -24307,7 +25157,7 @@ namespace Corrade
                         return _driveIdentifierHash;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24316,7 +25166,7 @@ namespace Corrade
                 }
             }
 
-            public static string CLIENT_LOG_FILE
+            public string ClientLogFile
             {
                 get
                 {
@@ -24325,7 +25175,7 @@ namespace Corrade
                         return _clientLogFile;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24334,7 +25184,7 @@ namespace Corrade
                 }
             }
 
-            public static bool CLIENT_LOG_ENABLED
+            public bool ClientLogEnabled
             {
                 get
                 {
@@ -24343,7 +25193,7 @@ namespace Corrade
                         return _clientLogEnabled;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24352,7 +25202,7 @@ namespace Corrade
                 }
             }
 
-            public static bool AUTO_ACTIVATE_GROUP
+            public bool AutoActivateGroup
             {
                 get
                 {
@@ -24361,7 +25211,7 @@ namespace Corrade
                         return _autoActivateGroup;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24370,7 +25220,7 @@ namespace Corrade
                 }
             }
 
-            public static uint ACTIVATE_DELAY
+            public uint ActivateDelay
             {
                 get
                 {
@@ -24379,7 +25229,7 @@ namespace Corrade
                         return _activateDelay;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24388,7 +25238,7 @@ namespace Corrade
                 }
             }
 
-            public static uint GROUP_CREATE_FEE
+            public uint GroupCreateFee
             {
                 get
                 {
@@ -24397,7 +25247,7 @@ namespace Corrade
                         return _groupCreateFee;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24406,7 +25256,7 @@ namespace Corrade
                 }
             }
 
-            public static int EXIT_CODE_EXPECTED
+            public int ExitCodeExpected
             {
                 get
                 {
@@ -24415,7 +25265,7 @@ namespace Corrade
                         return _exitCodeExpected;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24424,7 +25274,7 @@ namespace Corrade
                 }
             }
 
-            public static int EXIT_CODE_ABNORMAL
+            public int ExitCodeAbnormal
             {
                 get
                 {
@@ -24433,7 +25283,7 @@ namespace Corrade
                         return _exitCodeAbnormal;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24442,7 +25292,7 @@ namespace Corrade
                 }
             }
 
-            public static HashSet<Group> GROUPS
+            public HashSet<Group> Groups
             {
                 get
                 {
@@ -24451,7 +25301,7 @@ namespace Corrade
                         return _groups;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24460,7 +25310,7 @@ namespace Corrade
                 }
             }
 
-            public static HashSet<Master> MASTERS
+            public HashSet<Master> Masters
             {
                 get
                 {
@@ -24469,7 +25319,7 @@ namespace Corrade
                         return _masters;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24478,13 +25328,13 @@ namespace Corrade
                 }
             }
 
-            public static List<Filter> INPUT_FILTERS
+            public List<Filter> InputFilters
             {
                 get
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
-                        return _inputFilters;
+                        return !_inputFilters.Any() ? new List<Filter> {Filter.RFC1738} : _inputFilters;
                     }
                 }
                 set
@@ -24496,13 +25346,13 @@ namespace Corrade
                 }
             }
 
-            public static List<Filter> OUTPUT_FILTERS
+            public List<Filter> OutputFilters
             {
                 get
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
-                        return _outputFilters;
+                        return !_outputFilters.Any() ? new List<Filter> {Filter.RFC1738} : _outputFilters;
                     }
                 }
                 set
@@ -24514,7 +25364,7 @@ namespace Corrade
                 }
             }
 
-            public static string VIGENERE_SECRET
+            public string VIGENERESecret
             {
                 get
                 {
@@ -24523,7 +25373,7 @@ namespace Corrade
                         return _vigenereSecret;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24532,7 +25382,7 @@ namespace Corrade
                 }
             }
 
-            public static ENIGMA ENIGMA
+            public ENIGMA ENIGMA
             {
                 get
                 {
@@ -24550,7 +25400,7 @@ namespace Corrade
                 }
             }
 
-            public static uint LOGOUT_GRACE
+            public uint LogoutGrace
             {
                 get
                 {
@@ -24559,7 +25409,7 @@ namespace Corrade
                         return _logoutGrace;
                     }
                 }
-                private set
+                set
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
@@ -24568,1369 +25418,56 @@ namespace Corrade
                 }
             }
 
-            public static string Read(string file)
+            public void Save(string file)
             {
                 lock (ConfigurationFileLock)
                 {
-                    return File.ReadAllText(file, Encoding.UTF8);
-                }
-            }
-
-            public static void Write(string file, string data)
-            {
-                lock (ConfigurationFileLock)
-                {
-                    ConfigurationWatcher.EnableRaisingEvents = false;
-                    File.WriteAllText(file, data, Encoding.UTF8);
-                    ConfigurationWatcher.EnableRaisingEvents = true;
-                }
-            }
-
-            public static void Write(string file, XmlDocument document)
-            {
-                lock (ConfigurationFileLock)
-                {
-                    using (TextWriter writer = new StreamWriter(file, false, Encoding.UTF8))
+                    try
                     {
-                        document.Save(writer);
-                        writer.Flush();
+                        using (StreamWriter writer = new StreamWriter(file, false, Encoding.UTF8))
+                        {
+                            XmlSerializer serializer = new XmlSerializer(typeof (CorradeConfiguration));
+                            serializer.Serialize(writer, corradeConfiguration);
+                            writer.Flush();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_CONFIGURATION),
+                            ex.Message);
                     }
                 }
             }
 
-            public static void Load(string file)
+            public void Load(string file)
             {
-                FIRST_NAME = string.Empty;
-                LAST_NAME = string.Empty;
-                PASSWORD = string.Empty;
-                LOGIN_URL = @"https://login.agni.lindenlab.com/cgi-bin/login.cgi";
-                CLIENT_LOG_FILE = "logs/Corrade.log";
-                CLIENT_LOG_ENABLED = true;
-                INSTANT_MESSAGE_LOG_DIRECTORY = @"logs/im";
-                INSTANT_MESSAGE_LOG_ENABLED = false;
-                LOCAL_MESSAGE_LOG_DIRECTORY = @"logs/local";
-                LOCAL_MESSAGE_LOG_ENABLED = false;
-                REGION_MESSAGE_LOG_DIRECTORY = @"logs/region";
-                REGION_MESSAGE_LOG_ENABLED = false;
-                ENABLE_HTTP_SERVER = false;
-                ENABLE_RLV = false;
-                ENABLE_AIML = false;
-                HTTP_SERVER_PREFIX = @"http://+:8080/";
-                HTTP_SERVER_TIMEOUT = 5000;
-                HTTP_SERVER_DRAIN_TIMEOUT = 10000;
-                HTTP_SERVER_BODY_TIMEOUT = 5000;
-                HTTP_SERVER_HEADER_TIMEOUT = 2500;
-                HTTP_SERVER_IDLE_TIMEOUT = 2500;
-                HTTP_SERVER_QUEUE_TIMEOUT = 10000;
-                HTTP_SERVER_COMPRESSION = HTTPCompressionMethod.NONE;
-                HTTP_SERVER_KEEP_ALIVE = true;
-                THROTTLE_TOTAL = 600000;
-                THROTTLE_LAND = 80000;
-                THROTTLE_TASK = 200000;
-                THROTTLE_TEXTURE = 100000;
-                THROTTLE_WIND = 10000;
-                THROTTLE_RESEND = 100000;
-                THROTTLE_ASSET = 100000;
-                THROTTLE_CLOUD = 10000;
-                CALLBACK_TIMEOUT = 5000;
-                CALLBACK_THROTTLE = 1000;
-                CALLBACK_QUEUE_LENGTH = 100;
-                NOTIFICATION_TIMEOUT = 5000;
-                NOTIFICATION_THROTTLE = 1000;
-                NOTIFICATION_QUEUE_LENGTH = 100;
-                CONNECTION_LIMIT = 100;
-                CONNECTION_IDLE_TIME = 900000;
-                RANGE = 64;
-                SCHEDULER_EXPIRATION_TIME = 60000;
-                MAXIMUM_NOTIFICATION_THREADS = 10;
-                MAXIMUM_COMMAND_THREADS = 10;
-                MAXIMUM_RLV_THREADS = 10;
-                MAXIMUM_INSTANT_MESSAGE_THREADS = 10;
-                MAXIMUM_LOG_THREADS = 20;
-                MAXIMUM_POST_THREADS = 25;
-                USE_NAGGLE = false;
-                SERVICES_TIMEOUT = 60000;
-                DATA_TIMEOUT = 2500;
-                DATA_DECAY_TYPE = wasAdaptiveAlarm.DECAY_TYPE.ARITHMETIC;
-                REBAKE_DELAY = 1000;
-                ACTIVATE_DELAY = 5000;
-                MEMBERSHIP_SWEEP_INTERVAL = 1000;
-                TOS_ACCEPTED = false;
-                START_LOCATION = "last";
-                BIND_IP_ADDRESS = string.Empty;
-                NETWORK_CARD_MAC = string.Empty;
-                DRIVE_IDENTIFIER_HASH = string.Empty;
-                AUTO_ACTIVATE_GROUP = false;
-                GROUP_CREATE_FEE = 100;
-                EXIT_CODE_EXPECTED = -1;
-                EXIT_CODE_ABNORMAL = -2;
-                GROUPS = new HashSet<Group>();
-                MASTERS = new HashSet<Master>();
-                INPUT_FILTERS = new List<Filter> {Filter.RFC1738};
-                OUTPUT_FILTERS = new List<Filter> {Filter.RFC1738};
-                ENIGMA = new ENIGMA
+                if (File.Exists(file))
                 {
-                    rotors = new[] {'3', 'g', '1'},
-                    plugs = new[] {'z', 'p', 'q'},
-                    reflector = 'b'
-                };
-                VIGENERE_SECRET = string.Empty;
-
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READING_CORRADE_CONFIGURATION));
-
-                try
-                {
+                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READING_CORRADE_CONFIGURATION));
                     lock (ConfigurationFileLock)
                     {
-                        file = File.ReadAllText(file, Encoding.UTF8);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                    Environment.Exit(EXIT_CODE_ABNORMAL);
-                }
-
-                XmlDocument conf = new XmlDocument();
-                try
-                {
-                    conf.LoadXml(file);
-                }
-                catch (XmlException ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                    Environment.Exit(EXIT_CODE_ABNORMAL);
-                }
-
-                XmlNode root = conf.DocumentElement;
-                if (root == null)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE));
-                    Environment.Exit(EXIT_CODE_ABNORMAL);
-                }
-
-                // Process client.
-                try
-                {
-                    foreach (XmlNode client in root.SelectNodes("/config/client/*"))
-                        switch (client.Name.ToLowerInvariant())
+                        try
                         {
-                            case ConfigurationKeys.FIRST_NAME:
-                                if (string.IsNullOrEmpty(client.InnerText))
-                                {
-                                    throw new Exception("error in client section");
-                                }
-                                FIRST_NAME = client.InnerText;
-                                break;
-                            case ConfigurationKeys.LAST_NAME:
-                                if (string.IsNullOrEmpty(client.InnerText))
-                                {
-                                    throw new Exception("error in client section");
-                                }
-                                LAST_NAME = client.InnerText;
-                                break;
-                            case ConfigurationKeys.PASSWORD:
-                                if (string.IsNullOrEmpty(client.InnerText))
-                                {
-                                    throw new Exception("error in client section");
-                                }
-                                PASSWORD = client.InnerText;
-                                break;
-                            case ConfigurationKeys.LOGIN_URL:
-                                if (string.IsNullOrEmpty(client.InnerText))
-                                {
-                                    throw new Exception("error in client section");
-                                }
-                                LOGIN_URL = client.InnerText;
-                                break;
-                            case ConfigurationKeys.TOS_ACCEPTED:
-                                bool accepted;
-                                if (!bool.TryParse(client.InnerText, out accepted))
-                                {
-                                    throw new Exception("error in client section");
-                                }
-                                TOS_ACCEPTED = accepted;
-                                break;
-                            case ConfigurationKeys.GROUP_CREATE_FEE:
-                                uint groupCreateFee;
-                                if (!uint.TryParse(client.InnerText, out groupCreateFee))
-                                {
-                                    throw new Exception("error in client section");
-                                }
-                                GROUP_CREATE_FEE = groupCreateFee;
-                                break;
-                            case ConfigurationKeys.EXIT_CODE:
-                                XmlNodeList exitCodeNodeList = client.SelectNodes("*");
-                                if (exitCodeNodeList == null)
-                                {
-                                    throw new Exception("error in client section");
-                                }
-                                foreach (XmlNode exitCodeNode in exitCodeNodeList)
-                                {
-                                    switch (exitCodeNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.EXPECTED:
-                                            int exitCodeExpected;
-                                            if (!int.TryParse(exitCodeNode.InnerText, out exitCodeExpected))
-                                            {
-                                                throw new Exception("error in client section");
-                                            }
-                                            EXIT_CODE_EXPECTED = exitCodeExpected;
-                                            break;
-                                        case ConfigurationKeys.ABNORMAL:
-                                            int exitCodeAbnormal;
-                                            if (!int.TryParse(exitCodeNode.InnerText, out exitCodeAbnormal))
-                                            {
-                                                throw new Exception("error in client section");
-                                            }
-                                            EXIT_CODE_ABNORMAL = exitCodeAbnormal;
-                                            break;
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.AUTO_ACTIVATE_GROUP:
-                                bool autoActivateGroup;
-                                if (!bool.TryParse(client.InnerText, out autoActivateGroup))
-                                {
-                                    throw new Exception("error in client section");
-                                }
-                                AUTO_ACTIVATE_GROUP = autoActivateGroup;
-                                break;
-                            case ConfigurationKeys.START_LOCATION:
-                                if (string.IsNullOrEmpty(client.InnerText))
-                                {
-                                    throw new Exception("error in client section");
-                                }
-                                START_LOCATION = client.InnerText;
-                                break;
-                        }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                }
-
-                // Process logs.
-                try
-                {
-                    foreach (XmlNode LogNode in root.SelectNodes("/config/logs/*"))
-                        switch (LogNode.Name.ToLowerInvariant())
-                        {
-                            case ConfigurationKeys.IM:
-                                XmlNodeList imLogNodeList = LogNode.SelectNodes("*");
-                                if (imLogNodeList == null)
-                                {
-                                    throw new Exception("error in logs section");
-                                }
-                                foreach (XmlNode imLogNode in imLogNodeList)
-                                {
-                                    switch (imLogNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.ENABLE:
-                                            bool enable;
-                                            if (!bool.TryParse(imLogNode.InnerText, out enable))
-                                            {
-                                                throw new Exception("error in im logs section");
-                                            }
-                                            INSTANT_MESSAGE_LOG_ENABLED = enable;
-                                            break;
-                                        case ConfigurationKeys.DIRECTORY:
-                                            if (string.IsNullOrEmpty(imLogNode.InnerText))
-                                            {
-                                                throw new Exception("error in im logs section");
-                                            }
-                                            INSTANT_MESSAGE_LOG_DIRECTORY = imLogNode.InnerText;
-                                            break;
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.CLIENT:
-                                XmlNodeList clientLogNodeList = LogNode.SelectNodes("*");
-                                if (clientLogNodeList == null)
-                                {
-                                    throw new Exception("error in logs section");
-                                }
-                                foreach (XmlNode clientLogNode in clientLogNodeList)
-                                {
-                                    switch (clientLogNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.ENABLE:
-                                            bool enable;
-                                            if (!bool.TryParse(clientLogNode.InnerText, out enable))
-                                            {
-                                                throw new Exception("error in client logs section");
-                                            }
-                                            CLIENT_LOG_ENABLED = enable;
-                                            break;
-                                        case ConfigurationKeys.FILE:
-                                            if (string.IsNullOrEmpty(clientLogNode.InnerText))
-                                            {
-                                                throw new Exception("error in client logs section");
-                                            }
-                                            CLIENT_LOG_FILE = clientLogNode.InnerText;
-                                            break;
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.LOCAL:
-                                XmlNodeList localLogNodeList = LogNode.SelectNodes("*");
-                                if (localLogNodeList == null)
-                                {
-                                    throw new Exception("error in logs section");
-                                }
-                                foreach (XmlNode localLogNode in localLogNodeList)
-                                {
-                                    switch (localLogNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.ENABLE:
-                                            bool enable;
-                                            if (!bool.TryParse(localLogNode.InnerText, out enable))
-                                            {
-                                                throw new Exception("error in local logs section");
-                                            }
-                                            LOCAL_MESSAGE_LOG_ENABLED = enable;
-                                            break;
-                                        case ConfigurationKeys.DIRECTORY:
-                                            if (string.IsNullOrEmpty(localLogNode.InnerText))
-                                            {
-                                                throw new Exception("error in local logs section");
-                                            }
-                                            LOCAL_MESSAGE_LOG_DIRECTORY = localLogNode.InnerText;
-                                            break;
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.REGION:
-                                XmlNodeList regionLogNodeList = LogNode.SelectNodes("*");
-                                if (regionLogNodeList == null)
-                                {
-                                    throw new Exception("error in logs section");
-                                }
-                                foreach (XmlNode regionLogNode in regionLogNodeList)
-                                {
-                                    switch (regionLogNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.ENABLE:
-                                            bool enable;
-                                            if (!bool.TryParse(regionLogNode.InnerText, out enable))
-                                            {
-                                                throw new Exception("error in local logs section");
-                                            }
-                                            REGION_MESSAGE_LOG_ENABLED = enable;
-                                            break;
-                                        case ConfigurationKeys.DIRECTORY:
-                                            if (string.IsNullOrEmpty(regionLogNode.InnerText))
-                                            {
-                                                throw new Exception("error in local logs section");
-                                            }
-                                            REGION_MESSAGE_LOG_DIRECTORY = regionLogNode.InnerText;
-                                            break;
-                                    }
-                                }
-                                break;
-                        }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                }
-
-                // Process filters.
-                try
-                {
-                    foreach (XmlNode FilterNode in root.SelectNodes("/config/filters/*"))
-                        switch (FilterNode.Name.ToLowerInvariant())
-                        {
-                            case ConfigurationKeys.INPUT:
-                                XmlNodeList inputFilterNodeList = FilterNode.SelectNodes("*");
-                                if (inputFilterNodeList == null)
-                                {
-                                    throw new Exception("error in filters section");
-                                }
-                                INPUT_FILTERS = new List<Filter>();
-                                foreach (XmlNode inputFilterNode in inputFilterNodeList)
-                                {
-                                    switch (inputFilterNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.ENCODE:
-                                        case ConfigurationKeys.DECODE:
-                                        case ConfigurationKeys.ENCRYPT:
-                                        case ConfigurationKeys.DECRYPT:
-                                            INPUT_FILTERS.Add(wasGetEnumValueFromDescription<Filter>(
-                                                inputFilterNode.InnerText));
-                                            break;
-                                        default:
-                                            throw new Exception("error in input filters section");
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.OUTPUT:
-                                XmlNodeList outputFilterNodeList = FilterNode.SelectNodes("*");
-                                if (outputFilterNodeList == null)
-                                {
-                                    throw new Exception("error in filters section");
-                                }
-                                OUTPUT_FILTERS = new List<Filter>();
-                                foreach (XmlNode outputFilterNode in outputFilterNodeList)
-                                {
-                                    switch (outputFilterNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.ENCODE:
-                                        case ConfigurationKeys.DECODE:
-                                        case ConfigurationKeys.ENCRYPT:
-                                        case ConfigurationKeys.DECRYPT:
-                                            OUTPUT_FILTERS.Add(wasGetEnumValueFromDescription<Filter>(
-                                                outputFilterNode.InnerText));
-                                            break;
-                                        default:
-                                            throw new Exception("error in output filters section");
-                                    }
-                                }
-                                break;
-                        }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                }
-
-                // Process cryptography.
-                try
-                {
-                    foreach (XmlNode FilterNode in root.SelectNodes("/config/cryptography/*"))
-                        switch (FilterNode.Name.ToLowerInvariant())
-                        {
-                            case ConfigurationKeys.ENIGMA:
-                                XmlNodeList ENIGMANodeList = FilterNode.SelectNodes("*");
-                                if (ENIGMANodeList == null)
-                                {
-                                    throw new Exception("error in cryptography section");
-                                }
-                                ENIGMA enigma = new ENIGMA();
-                                foreach (XmlNode ENIGMANode in ENIGMANodeList)
-                                {
-                                    switch (ENIGMANode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.ROTORS:
-                                            enigma.rotors = ENIGMANode.InnerText.ToArray();
-                                            break;
-                                        case ConfigurationKeys.PLUGS:
-                                            enigma.plugs = ENIGMANode.InnerText.ToArray();
-                                            break;
-                                        case ConfigurationKeys.REFLECTOR:
-                                            enigma.reflector = ENIGMANode.InnerText.SingleOrDefault();
-                                            break;
-                                    }
-                                }
-                                ENIGMA = enigma;
-                                break;
-                            case ConfigurationKeys.VIGENERE:
-                                XmlNodeList VIGENERENodeList = FilterNode.SelectNodes("*");
-                                if (VIGENERENodeList == null)
-                                {
-                                    throw new Exception("error in cryptography section");
-                                }
-                                foreach (XmlNode VIGENERENode in VIGENERENodeList)
-                                {
-                                    switch (VIGENERENode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.SECRET:
-                                            VIGENERE_SECRET = VIGENERENode.InnerText;
-                                            break;
-                                    }
-                                }
-                                break;
-                        }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                }
-
-
-                // Process AIML.
-                try
-                {
-                    foreach (XmlNode AIMLNode in root.SelectNodes("/config/aiml/*"))
-                        switch (AIMLNode.Name.ToLowerInvariant())
-                        {
-                            case ConfigurationKeys.ENABLE:
-                                bool enable;
-                                if (!bool.TryParse(AIMLNode.InnerText, out enable))
-                                {
-                                    throw new Exception("error in AIML section");
-                                }
-                                ENABLE_AIML = enable;
-                                break;
-                        }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                }
-
-                // Process RLV.
-                try
-                {
-                    foreach (XmlNode RLVNode in root.SelectNodes("/config/rlv/*"))
-                        switch (RLVNode.Name.ToLowerInvariant())
-                        {
-                            case ConfigurationKeys.ENABLE:
-                                bool enable;
-                                if (!bool.TryParse(RLVNode.InnerText, out enable))
-                                {
-                                    throw new Exception("error in RLV section");
-                                }
-                                ENABLE_RLV = enable;
-                                break;
-                        }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                }
-
-                // Process server.
-                try
-                {
-                    foreach (XmlNode serverNode in root.SelectNodes("/config/server/*"))
-                        switch (serverNode.Name.ToLowerInvariant())
-                        {
-                            case ConfigurationKeys.HTTP:
-                                bool enableHTTPServer;
-                                if (!bool.TryParse(serverNode.InnerText, out enableHTTPServer))
-                                {
-                                    throw new Exception("error in server section");
-                                }
-                                ENABLE_HTTP_SERVER = enableHTTPServer;
-                                break;
-                            case ConfigurationKeys.PREFIX:
-                                if (string.IsNullOrEmpty(serverNode.InnerText))
-                                {
-                                    throw new Exception("error in server section");
-                                }
-                                HTTP_SERVER_PREFIX = serverNode.InnerText;
-                                break;
-                            case ConfigurationKeys.COMPRESSION:
-                                HTTP_SERVER_COMPRESSION = wasGetEnumValueFromDescription<HTTPCompressionMethod>(
-                                    serverNode.InnerText);
-                                break;
-                            case ConfigurationKeys.KEEP_ALIVE:
-                                bool HTTPKeepAlive;
-                                if (!bool.TryParse(serverNode.InnerText, out HTTPKeepAlive))
-                                {
-                                    throw new Exception("error in server section");
-                                }
-                                HTTP_SERVER_KEEP_ALIVE = HTTPKeepAlive;
-                                break;
-                        }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                }
-
-                // Process network.
-                try
-                {
-                    foreach (XmlNode networkNode in root.SelectNodes("/config/network/*"))
-                        switch (networkNode.Name.ToLowerInvariant())
-                        {
-                            case ConfigurationKeys.BIND:
-                                if (!string.IsNullOrEmpty(networkNode.InnerText))
-                                {
-                                    BIND_IP_ADDRESS = networkNode.InnerText;
-                                }
-                                break;
-                            case ConfigurationKeys.MAC:
-                                if (!string.IsNullOrEmpty(networkNode.InnerText))
-                                {
-                                    NETWORK_CARD_MAC = networkNode.InnerText;
-                                }
-                                break;
-                            case ConfigurationKeys.ID0:
-                                if (!string.IsNullOrEmpty(networkNode.InnerText))
-                                {
-                                    DRIVE_IDENTIFIER_HASH = networkNode.InnerText;
-                                }
-                                break;
-                            case ConfigurationKeys.NAGGLE:
-                                bool useNaggle;
-                                if (!bool.TryParse(networkNode.InnerText, out useNaggle))
-                                {
-                                    throw new Exception("error in network section");
-                                }
-                                USE_NAGGLE = useNaggle;
-                                break;
-                            case ConfigurationKeys.EXPECT100CONTINUE:
-                                bool useExpect100Continue;
-                                if (!bool.TryParse(networkNode.InnerText, out useExpect100Continue))
-                                {
-                                    throw new Exception("error in network section");
-                                }
-                                USE_EXPECT100CONTINUE = useExpect100Continue;
-                                break;
-                        }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                }
-
-                // Process throttles
-                try
-                {
-                    foreach (XmlNode throttlesNode in root.SelectNodes("/config/throttles/*"))
-                        switch (throttlesNode.Name.ToLowerInvariant())
-                        {
-                            case ConfigurationKeys.TOTAL:
-                                uint throttleTotal;
-                                if (!uint.TryParse(throttlesNode.InnerText,
-                                    out throttleTotal))
-                                {
-                                    throw new Exception("error in throttles section");
-                                }
-                                THROTTLE_TOTAL = throttleTotal;
-                                break;
-                            case ConfigurationKeys.LAND:
-                                uint throttleLand;
-                                if (!uint.TryParse(throttlesNode.InnerText,
-                                    out throttleLand))
-                                {
-                                    throw new Exception("error in throttles section");
-                                }
-                                THROTTLE_LAND = throttleLand;
-                                break;
-                            case ConfigurationKeys.TASK:
-                                uint throttleTask;
-                                if (!uint.TryParse(throttlesNode.InnerText,
-                                    out throttleTask))
-                                {
-                                    throw new Exception("error in throttles section");
-                                }
-                                THROTTLE_LAND = throttleTask;
-                                break;
-                            case ConfigurationKeys.TEXTURE:
-                                uint throttleTexture;
-                                if (!uint.TryParse(throttlesNode.InnerText,
-                                    out throttleTexture))
-                                {
-                                    throw new Exception("error in throttles section");
-                                }
-                                THROTTLE_TEXTURE = throttleTexture;
-                                break;
-                            case ConfigurationKeys.WIND:
-                                uint throttleWind;
-                                if (!uint.TryParse(throttlesNode.InnerText,
-                                    out throttleWind))
-                                {
-                                    throw new Exception("error in throttles section");
-                                }
-                                THROTTLE_WIND = throttleWind;
-                                break;
-                            case ConfigurationKeys.RESEND:
-                                uint throttleResend;
-                                if (!uint.TryParse(throttlesNode.InnerText,
-                                    out throttleResend))
-                                {
-                                    throw new Exception("error in throttles section");
-                                }
-                                THROTTLE_RESEND = throttleResend;
-                                break;
-                            case ConfigurationKeys.ASSET:
-                                uint throttleAsset;
-                                if (!uint.TryParse(throttlesNode.InnerText,
-                                    out throttleAsset))
-                                {
-                                    throw new Exception("error in throttles section");
-                                }
-                                THROTTLE_ASSET = throttleAsset;
-                                break;
-                            case ConfigurationKeys.CLOUD:
-                                uint throttleCloud;
-                                if (!uint.TryParse(throttlesNode.InnerText,
-                                    out throttleCloud))
-                                {
-                                    throw new Exception("error in throttles section");
-                                }
-                                THROTTLE_CLOUD = throttleCloud;
-                                break;
-                        }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                }
-
-                // Process limits.
-                try
-                {
-                    foreach (XmlNode limitsNode in root.SelectNodes("/config/limits/*"))
-                        switch (limitsNode.Name.ToLowerInvariant())
-                        {
-                            case ConfigurationKeys.RANGE:
-                                float range;
-                                if (!float.TryParse(limitsNode.InnerText,
-                                    out range))
-                                {
-                                    throw new Exception("error in range limits section");
-                                }
-                                RANGE = range;
-                                break;
-                            case ConfigurationKeys.RLV:
-                                XmlNodeList rlvLimitNodeList = limitsNode.SelectNodes("*");
-                                if (rlvLimitNodeList == null)
-                                {
-                                    throw new Exception("error in RLV limits section");
-                                }
-                                foreach (XmlNode rlvLimitNode in rlvLimitNodeList)
-                                {
-                                    switch (rlvLimitNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.THREADS:
-                                            uint maximumRLVThreads;
-                                            if (
-                                                !uint.TryParse(rlvLimitNode.InnerText,
-                                                    out maximumRLVThreads))
-                                            {
-                                                throw new Exception("error in RLV limits section");
-                                            }
-                                            MAXIMUM_RLV_THREADS = maximumRLVThreads;
-                                            break;
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.COMMANDS:
-                                XmlNodeList commandsLimitNodeList = limitsNode.SelectNodes("*");
-                                if (commandsLimitNodeList == null)
-                                {
-                                    throw new Exception("error in commands limits section");
-                                }
-                                foreach (XmlNode commandsLimitNode in commandsLimitNodeList)
-                                {
-                                    switch (commandsLimitNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.THREADS:
-                                            uint maximumCommandThreads;
-                                            if (
-                                                !uint.TryParse(commandsLimitNode.InnerText,
-                                                    out maximumCommandThreads))
-                                            {
-                                                throw new Exception("error in commands limits section");
-                                            }
-                                            MAXIMUM_COMMAND_THREADS = maximumCommandThreads;
-                                            break;
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.IM:
-                                XmlNodeList instantMessageLimitNodeList = limitsNode.SelectNodes("*");
-                                if (instantMessageLimitNodeList == null)
-                                {
-                                    throw new Exception("error in instant message limits section");
-                                }
-                                foreach (XmlNode instantMessageLimitNode in instantMessageLimitNodeList)
-                                {
-                                    switch (instantMessageLimitNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.THREADS:
-                                            uint maximumInstantMessageThreads;
-                                            if (
-                                                !uint.TryParse(instantMessageLimitNode.InnerText,
-                                                    out maximumInstantMessageThreads))
-                                            {
-                                                throw new Exception("error in instant message limits section");
-                                            }
-                                            MAXIMUM_INSTANT_MESSAGE_THREADS = maximumInstantMessageThreads;
-                                            break;
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.SCHEDULER:
-                                XmlNodeList schedulerLimitNodeList = limitsNode.SelectNodes("*");
-                                if (schedulerLimitNodeList == null)
-                                {
-                                    throw new Exception("error in scheduler limits section");
-                                }
-                                foreach (XmlNode schedulerLimitNode in schedulerLimitNodeList)
-                                {
-                                    switch (schedulerLimitNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.THREADS:
-                                            uint expiration;
-                                            if (
-                                                !uint.TryParse(schedulerLimitNode.InnerText,
-                                                    out expiration))
-                                            {
-                                                throw new Exception("error in scheduler limits section");
-                                            }
-                                            SCHEDULER_EXPIRATION_TIME = expiration;
-                                            break;
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.LOG:
-                                XmlNodeList logLimitNodeList = limitsNode.SelectNodes("*");
-                                if (logLimitNodeList == null)
-                                {
-                                    throw new Exception("error in log limits section");
-                                }
-                                foreach (XmlNode logLimitNode in logLimitNodeList)
-                                {
-                                    switch (logLimitNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.THREADS:
-                                            uint maximumLogThreads;
-                                            if (
-                                                !uint.TryParse(logLimitNode.InnerText,
-                                                    out maximumLogThreads))
-                                            {
-                                                throw new Exception("error in log limits section");
-                                            }
-                                            MAXIMUM_LOG_THREADS = maximumLogThreads;
-                                            break;
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.POST:
-                                XmlNodeList postLimitNodeList = limitsNode.SelectNodes("*");
-                                if (postLimitNodeList == null)
-                                {
-                                    throw new Exception("error in post limits section");
-                                }
-                                foreach (XmlNode postLimitNode in postLimitNodeList)
-                                {
-                                    switch (postLimitNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.THREADS:
-                                            uint maximumPOSTThreads;
-                                            if (
-                                                !uint.TryParse(postLimitNode.InnerText,
-                                                    out maximumPOSTThreads))
-                                            {
-                                                throw new Exception("error in post limits section");
-                                            }
-                                            MAXIMUM_POST_THREADS = maximumPOSTThreads;
-                                            break;
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.CLIENT:
-                                XmlNodeList clientLimitNodeList = limitsNode.SelectNodes("*");
-                                if (clientLimitNodeList == null)
-                                {
-                                    throw new Exception("error in client limits section");
-                                }
-                                foreach (XmlNode clientLimitNode in clientLimitNodeList)
-                                {
-                                    switch (clientLimitNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.CONNECTIONS:
-                                            uint connectionLimit;
-                                            if (
-                                                !uint.TryParse(clientLimitNode.InnerText,
-                                                    out connectionLimit))
-                                            {
-                                                throw new Exception("error in client limits section");
-                                            }
-                                            CONNECTION_LIMIT = connectionLimit;
-                                            break;
-                                        case ConfigurationKeys.IDLE:
-                                            uint connectionIdleTime;
-                                            if (
-                                                !uint.TryParse(clientLimitNode.InnerText,
-                                                    out connectionIdleTime))
-                                            {
-                                                throw new Exception("error in client limits section");
-                                            }
-                                            CONNECTION_IDLE_TIME = connectionIdleTime;
-                                            break;
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.CALLBACKS:
-                                XmlNodeList callbackLimitNodeList = limitsNode.SelectNodes("*");
-                                if (callbackLimitNodeList == null)
-                                {
-                                    throw new Exception("error in callback limits section");
-                                }
-                                foreach (XmlNode callbackLimitNode in callbackLimitNodeList)
-                                {
-                                    switch (callbackLimitNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.TIMEOUT:
-                                            uint callbackTimeout;
-                                            if (!uint.TryParse(callbackLimitNode.InnerText, out callbackTimeout))
-                                            {
-                                                throw new Exception("error in callback limits section");
-                                            }
-                                            CALLBACK_TIMEOUT = callbackTimeout;
-                                            break;
-                                        case ConfigurationKeys.THROTTLE:
-                                            uint callbackThrottle;
-                                            if (
-                                                !uint.TryParse(callbackLimitNode.InnerText, out callbackThrottle))
-                                            {
-                                                throw new Exception("error in callback limits section");
-                                            }
-                                            CALLBACK_THROTTLE = callbackThrottle;
-                                            break;
-                                        case ConfigurationKeys.QUEUE_LENGTH:
-                                            uint callbackQueueLength;
-                                            if (
-                                                !uint.TryParse(callbackLimitNode.InnerText,
-                                                    out callbackQueueLength))
-                                            {
-                                                throw new Exception("error in callback limits section");
-                                            }
-                                            CALLBACK_QUEUE_LENGTH = callbackQueueLength;
-                                            break;
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.NOTIFICATIONS:
-                                XmlNodeList notificationLimitNodeList = limitsNode.SelectNodes("*");
-                                if (notificationLimitNodeList == null)
-                                {
-                                    throw new Exception("error in notification limits section");
-                                }
-                                foreach (XmlNode notificationLimitNode in notificationLimitNodeList)
-                                {
-                                    switch (notificationLimitNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.TIMEOUT:
-                                            uint notificationTimeout;
-                                            if (
-                                                !uint.TryParse(notificationLimitNode.InnerText,
-                                                    out notificationTimeout))
-                                            {
-                                                throw new Exception("error in notification limits section");
-                                            }
-                                            NOTIFICATION_TIMEOUT = notificationTimeout;
-                                            break;
-                                        case ConfigurationKeys.THROTTLE:
-                                            uint notificationThrottle;
-                                            if (
-                                                !uint.TryParse(notificationLimitNode.InnerText,
-                                                    out notificationThrottle))
-                                            {
-                                                throw new Exception("error in notification limits section");
-                                            }
-                                            NOTIFICATION_THROTTLE = notificationThrottle;
-                                            break;
-                                        case ConfigurationKeys.QUEUE_LENGTH:
-                                            uint notificationQueueLength;
-                                            if (
-                                                !uint.TryParse(notificationLimitNode.InnerText,
-                                                    out notificationQueueLength))
-                                            {
-                                                throw new Exception("error in notification limits section");
-                                            }
-                                            NOTIFICATION_QUEUE_LENGTH = notificationQueueLength;
-                                            break;
-                                        case ConfigurationKeys.THREADS:
-                                            uint maximumNotificationThreads;
-                                            if (
-                                                !uint.TryParse(notificationLimitNode.InnerText,
-                                                    out maximumNotificationThreads))
-                                            {
-                                                throw new Exception("error in notification limits section");
-                                            }
-                                            MAXIMUM_NOTIFICATION_THREADS = maximumNotificationThreads;
-                                            break;
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.SERVER:
-                                XmlNodeList HTTPServerLimitNodeList = limitsNode.SelectNodes("*");
-                                if (HTTPServerLimitNodeList == null)
-                                {
-                                    throw new Exception("error in server limits section");
-                                }
-                                foreach (XmlNode HTTPServerLimitNode in HTTPServerLimitNodeList)
-                                {
-                                    switch (HTTPServerLimitNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.TIMEOUT:
-                                            uint HTTPServerTimeout;
-                                            if (
-                                                !uint.TryParse(HTTPServerLimitNode.InnerText,
-                                                    out HTTPServerTimeout))
-                                            {
-                                                throw new Exception("error in server limits section");
-                                            }
-                                            HTTP_SERVER_TIMEOUT = HTTPServerTimeout;
-                                            break;
-                                        case ConfigurationKeys.DRAIN:
-                                            uint HTTPServerDrainTimeout;
-                                            if (
-                                                !uint.TryParse(HTTPServerLimitNode.InnerText,
-                                                    out HTTPServerDrainTimeout))
-                                            {
-                                                throw new Exception("error in server limits section");
-                                            }
-                                            HTTP_SERVER_DRAIN_TIMEOUT = HTTPServerDrainTimeout;
-                                            break;
-                                        case ConfigurationKeys.BODY:
-                                            uint HTTPServerBodyTimeout;
-                                            if (
-                                                !uint.TryParse(HTTPServerLimitNode.InnerText,
-                                                    out HTTPServerBodyTimeout))
-                                            {
-                                                throw new Exception("error in server limits section");
-                                            }
-                                            HTTP_SERVER_BODY_TIMEOUT = HTTPServerBodyTimeout;
-                                            break;
-                                        case ConfigurationKeys.HEADER:
-                                            uint HTTPServerHeaderTimeout;
-                                            if (
-                                                !uint.TryParse(HTTPServerLimitNode.InnerText,
-                                                    out HTTPServerHeaderTimeout))
-                                            {
-                                                throw new Exception("error in server limits section");
-                                            }
-                                            HTTP_SERVER_HEADER_TIMEOUT = HTTPServerHeaderTimeout;
-                                            break;
-                                        case ConfigurationKeys.IDLE:
-                                            uint HTTPServerIdleTimeout;
-                                            if (
-                                                !uint.TryParse(HTTPServerLimitNode.InnerText,
-                                                    out HTTPServerIdleTimeout))
-                                            {
-                                                throw new Exception("error in server limits section");
-                                            }
-                                            HTTP_SERVER_IDLE_TIMEOUT = HTTPServerIdleTimeout;
-                                            break;
-                                        case ConfigurationKeys.QUEUE:
-                                            uint HTTPServerQueueTimeout;
-                                            if (
-                                                !uint.TryParse(HTTPServerLimitNode.InnerText,
-                                                    out HTTPServerQueueTimeout))
-                                            {
-                                                throw new Exception("error in server limits section");
-                                            }
-                                            HTTP_SERVER_QUEUE_TIMEOUT = HTTPServerQueueTimeout;
-                                            break;
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.SERVICES:
-                                XmlNodeList servicesLimitNodeList = limitsNode.SelectNodes("*");
-                                if (servicesLimitNodeList == null)
-                                {
-                                    throw new Exception("error in services limits section");
-                                }
-                                foreach (XmlNode servicesLimitNode in servicesLimitNodeList)
-                                {
-                                    switch (servicesLimitNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.TIMEOUT:
-                                            uint servicesTimeout;
-                                            if (
-                                                !uint.TryParse(servicesLimitNode.InnerText,
-                                                    out servicesTimeout))
-                                            {
-                                                throw new Exception("error in services limits section");
-                                            }
-                                            SERVICES_TIMEOUT = servicesTimeout;
-                                            break;
-                                        case ConfigurationKeys.REBAKE:
-                                            uint rebakeDelay;
-                                            if (!uint.TryParse(servicesLimitNode.InnerText, out rebakeDelay))
-                                            {
-                                                throw new Exception("error in services limits section");
-                                            }
-                                            REBAKE_DELAY = rebakeDelay;
-                                            break;
-                                        case ConfigurationKeys.ACTIVATE:
-                                            uint activateDelay;
-                                            if (
-                                                !uint.TryParse(servicesLimitNode.InnerText,
-                                                    out activateDelay))
-                                            {
-                                                throw new Exception("error in services limits section");
-                                            }
-                                            ACTIVATE_DELAY = activateDelay;
-                                            break;
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.DATA:
-                                XmlNodeList dataLimitNodeList = limitsNode.SelectNodes("*");
-                                if (dataLimitNodeList == null)
-                                {
-                                    throw new Exception("error in data limits section");
-                                }
-                                foreach (XmlNode dataLimitNode in dataLimitNodeList)
-                                {
-                                    switch (dataLimitNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.TIMEOUT:
-                                            uint dataTimeout;
-                                            if (
-                                                !uint.TryParse(dataLimitNode.InnerText,
-                                                    out dataTimeout))
-                                            {
-                                                throw new Exception("error in data limits section");
-                                            }
-                                            DATA_TIMEOUT = dataTimeout;
-                                            break;
-                                        case ConfigurationKeys.DECAY:
-                                            DATA_DECAY_TYPE =
-                                                wasGetEnumValueFromDescription<wasAdaptiveAlarm.DECAY_TYPE>(
-                                                    dataLimitNode.InnerText);
-                                            break;
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.MEMBERSHIP:
-                                XmlNodeList membershipLimitNodeList = limitsNode.SelectNodes("*");
-                                if (membershipLimitNodeList == null)
-                                {
-                                    throw new Exception("error in membership limits section");
-                                }
-                                foreach (XmlNode servicesLimitNode in membershipLimitNodeList)
-                                {
-                                    switch (servicesLimitNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.SWEEP:
-                                            uint membershipSweepInterval;
-                                            if (
-                                                !uint.TryParse(servicesLimitNode.InnerText,
-                                                    out membershipSweepInterval))
-                                            {
-                                                throw new Exception("error in membership limits section");
-                                            }
-                                            MEMBERSHIP_SWEEP_INTERVAL = membershipSweepInterval;
-                                            break;
-                                    }
-                                }
-                                break;
-                            case ConfigurationKeys.LOGOUT:
-                                XmlNodeList logoutLimitNodeList = limitsNode.SelectNodes("*");
-                                if (logoutLimitNodeList == null)
-                                {
-                                    throw new Exception("error in logout limits section");
-                                }
-                                foreach (XmlNode logoutLimitNode in logoutLimitNodeList)
-                                {
-                                    switch (logoutLimitNode.Name.ToLowerInvariant())
-                                    {
-                                        case ConfigurationKeys.TIMEOUT:
-                                            uint logoutGrace;
-                                            if (
-                                                !uint.TryParse(logoutLimitNode.InnerText,
-                                                    out logoutGrace))
-                                            {
-                                                throw new Exception("error in logout limits section");
-                                            }
-                                            LOGOUT_GRACE = logoutGrace;
-                                            break;
-                                    }
-                                }
-                                break;
-                        }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                }
-
-
-                // Process masters.
-                try
-                {
-                    foreach (XmlNode mastersNode in root.SelectNodes("/config/masters/*"))
-                    {
-                        Master configMaster = new Master();
-                        foreach (XmlNode masterNode in mastersNode.ChildNodes)
-                        {
-                            switch (masterNode.Name.ToLowerInvariant())
+                            using (StreamReader stream = new StreamReader(file, Encoding.UTF8))
                             {
-                                case ConfigurationKeys.FIRST_NAME:
-                                    if (string.IsNullOrEmpty(masterNode.InnerText))
-                                    {
-                                        throw new Exception("error in masters section");
-                                    }
-                                    configMaster.FirstName = masterNode.InnerText;
-                                    break;
-                                case ConfigurationKeys.LAST_NAME:
-                                    if (string.IsNullOrEmpty(masterNode.InnerText))
-                                    {
-                                        throw new Exception("error in masters section");
-                                    }
-                                    configMaster.LastName = masterNode.InnerText;
-                                    break;
+                                XmlSerializer serializer =
+                                    new XmlSerializer(typeof (CorradeConfiguration));
+                                corradeConfiguration = (CorradeConfiguration) serializer.Deserialize(stream);
                             }
                         }
-                        MASTERS.Add(configMaster);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
-                }
-
-                // Process groups.
-                try
-                {
-                    foreach (XmlNode groupsNode in root.SelectNodes("/config/groups/*"))
-                    {
-                        Group configGroup = new Group
+                        catch (Exception ex)
                         {
-                            ChatLog = string.Empty,
-                            ChatLogEnabled = false,
-                            DatabaseFile = string.Empty,
-                            Name = string.Empty,
-                            NotificationMask = 0,
-                            Password = string.Empty,
-                            PermissionMask = 0,
-                            UUID = UUID.Zero,
-                            Workers = 5
-                        };
-                        foreach (XmlNode groupNode in groupsNode.ChildNodes)
-                        {
-                            switch (groupNode.Name.ToLowerInvariant())
-                            {
-                                case ConfigurationKeys.NAME:
-                                    if (string.IsNullOrEmpty(groupNode.InnerText))
-                                    {
-                                        throw new Exception("error in group section");
-                                    }
-                                    configGroup.Name = groupNode.InnerText;
-                                    break;
-                                case ConfigurationKeys.UUID:
-                                    if (!UUID.TryParse(groupNode.InnerText, out configGroup.UUID))
-                                    {
-                                        throw new Exception("error in group section");
-                                    }
-                                    break;
-                                case ConfigurationKeys.PASSWORD:
-                                    if (string.IsNullOrEmpty(groupNode.InnerText))
-                                    {
-                                        throw new Exception("error in group section");
-                                    }
-                                    configGroup.Password = groupNode.InnerText;
-                                    break;
-                                case ConfigurationKeys.WORKERS:
-                                    if (!uint.TryParse(groupNode.InnerText, out configGroup.Workers))
-                                    {
-                                        throw new Exception("error in group section");
-                                    }
-                                    break;
-                                case ConfigurationKeys.CHATLOG:
-                                    XmlNodeList groupChatLogNodeList = groupNode.SelectNodes("*");
-                                    if (groupChatLogNodeList == null)
-                                    {
-                                        throw new Exception("error in group section");
-                                    }
-                                    foreach (XmlNode groupChatLogNode in groupChatLogNodeList)
-                                    {
-                                        switch (groupChatLogNode.Name.ToLowerInvariant())
-                                        {
-                                            case ConfigurationKeys.ENABLE:
-                                                bool enable;
-                                                if (!bool.TryParse(groupChatLogNode.InnerText, out enable))
-                                                {
-                                                    throw new Exception("error in group chat logs section");
-                                                }
-                                                configGroup.ChatLogEnabled = enable;
-                                                break;
-                                            case ConfigurationKeys.FILE:
-                                                if (string.IsNullOrEmpty(groupChatLogNode.InnerText))
-                                                {
-                                                    throw new Exception("error in group chat logs section");
-                                                }
-                                                configGroup.ChatLog = groupChatLogNode.InnerText;
-                                                break;
-                                        }
-                                    }
-                                    break;
-                                case ConfigurationKeys.DATABASE:
-                                    if (string.IsNullOrEmpty(groupNode.InnerText))
-                                    {
-                                        throw new Exception("error in group section");
-                                    }
-                                    configGroup.DatabaseFile = groupNode.InnerText;
-                                    break;
-                                case ConfigurationKeys.PERMISSIONS:
-                                    XmlNodeList permissionNodeList = groupNode.SelectNodes("*");
-                                    if (permissionNodeList == null)
-                                    {
-                                        throw new Exception("error in group permission section");
-                                    }
-                                    uint permissionMask = 0;
-                                    foreach (XmlNode permissioNode in permissionNodeList)
-                                    {
-                                        XmlNode node = permissioNode;
-                                        Parallel.ForEach(
-                                            wasGetEnumDescriptions<Permissions>()
-                                                .AsParallel().Where(name => name.Equals(node.Name,
-                                                    StringComparison.Ordinal)), name =>
-                                                    {
-                                                        bool granted;
-                                                        if (!bool.TryParse(node.InnerText, out granted))
-                                                        {
-                                                            throw new Exception(
-                                                                "error in group permission section");
-                                                        }
-                                                        if (granted)
-                                                        {
-                                                            permissionMask = permissionMask |
-                                                                             (uint)
-                                                                                 wasGetEnumValueFromDescription
-                                                                                     <Permissions>(name);
-                                                        }
-                                                    });
-                                    }
-                                    configGroup.PermissionMask = permissionMask;
-                                    break;
-                                case ConfigurationKeys.NOTIFICATIONS:
-                                    XmlNodeList notificationNodeList = groupNode.SelectNodes("*");
-                                    if (notificationNodeList == null)
-                                    {
-                                        throw new Exception("error in group notification section");
-                                    }
-                                    uint notificationMask = 0;
-                                    foreach (XmlNode notificationNode in notificationNodeList)
-                                    {
-                                        XmlNode node = notificationNode;
-                                        Parallel.ForEach(
-                                            wasGetEnumDescriptions<Notifications>()
-                                                .AsParallel().Where(name => name.Equals(node.Name,
-                                                    StringComparison.Ordinal)), name =>
-                                                    {
-                                                        bool granted;
-                                                        if (!bool.TryParse(node.InnerText, out granted))
-                                                        {
-                                                            throw new Exception(
-                                                                "error in group notification section");
-                                                        }
-                                                        if (granted)
-                                                        {
-                                                            notificationMask = notificationMask |
-                                                                               (uint)
-                                                                                   wasGetEnumValueFromDescription
-                                                                                       <Notifications>(name);
-                                                        }
-                                                    });
-                                    }
-                                    configGroup.NotificationMask = notificationMask;
-                                    break;
-                            }
+                            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CONFIGURATION),
+                                ex.Message);
+                            return;
                         }
-                        GROUPS.Add(configGroup);
                     }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVALID_CONFIGURATION_FILE), ex.Message);
                 }
 
                 // Enable AIML in case it was enabled in the configuration file.
                 try
                 {
-                    switch (ENABLE_AIML)
+                    switch (corradeConfiguration.EnableAIML)
                     {
                         case true:
                             switch (!AIMLBotBrainCompiled)
@@ -25944,7 +25481,8 @@ namespace Corrade
                                                 LoadChatBotFiles.Invoke();
                                                 AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
                                             }
-                                        }) {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                                        })
+                                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                                     break;
                                 default:
                                     AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
@@ -25968,12 +25506,12 @@ namespace Corrade
                 Parallel.ForEach(wasGetEnumDescriptions<Notifications>().AsParallel().Select(
                     wasGetEnumValueFromDescription<Notifications>), o =>
                     {
-                        bool enabled = GROUPS.AsParallel().Any(
+                        bool enabled = corradeConfiguration.Groups.AsParallel().Any(
                             p =>
                                 !(p.NotificationMask & (uint) o).Equals(0));
                         switch (o)
                         {
-                            case Notifications.NOTIFICATION_GROUP_MEMBERSHIP:
+                            case Notifications.GroupMembership:
                                 switch (enabled)
                                 {
                                     case true:
@@ -25986,7 +25524,7 @@ namespace Corrade
                                         break;
                                 }
                                 break;
-                            case Notifications.NOTIFICATION_FRIENDSHIP:
+                            case Notifications.Friendship:
                                 switch (enabled)
                                 {
                                     case true:
@@ -26005,7 +25543,7 @@ namespace Corrade
                                         break;
                                 }
                                 break;
-                            case Notifications.NOTIFICATION_SCRIPT_PERMISSION:
+                            case Notifications.ScriptPermission:
                                 switch (enabled)
                                 {
                                     case true:
@@ -26016,7 +25554,7 @@ namespace Corrade
                                         break;
                                 }
                                 break;
-                            case Notifications.NOTIFICATION_ALERT_MESSAGE:
+                            case Notifications.AlertMessage:
                                 switch (enabled)
                                 {
                                     case true:
@@ -26027,7 +25565,7 @@ namespace Corrade
                                         break;
                                 }
                                 break;
-                            case Notifications.NOTIFICATION_BALANCE:
+                            case Notifications.Balance:
                                 switch (enabled)
                                 {
                                     case true:
@@ -26038,7 +25576,7 @@ namespace Corrade
                                         break;
                                 }
                                 break;
-                            case Notifications.NOTIFICATION_ECONOMY:
+                            case Notifications.Economy:
                                 switch (enabled)
                                 {
                                     case true:
@@ -26049,7 +25587,7 @@ namespace Corrade
                                         break;
                                 }
                                 break;
-                            case Notifications.NOTIFICATION_SCRIPT_DIALOG:
+                            case Notifications.ScriptDialog:
                                 switch (enabled)
                                 {
                                     case true:
@@ -26060,7 +25598,7 @@ namespace Corrade
                                         break;
                                 }
                                 break;
-                            case Notifications.NOTIFICATION_TERSE_UPDATES:
+                            case Notifications.TerseUpdates:
                                 switch (enabled)
                                 {
                                     case true:
@@ -26071,7 +25609,7 @@ namespace Corrade
                                         break;
                                 }
                                 break;
-                            case Notifications.NOTIFICATION_VIEWER_EFFECT:
+                            case Notifications.ViewerEffect:
                                 switch (enabled)
                                 {
                                     case true:
@@ -26086,7 +25624,7 @@ namespace Corrade
                                         break;
                                 }
                                 break;
-                            case Notifications.NOTIFICATION_MEAN_COLLISION:
+                            case Notifications.MeanCollision:
                                 switch (enabled)
                                 {
                                     case true:
@@ -26097,7 +25635,7 @@ namespace Corrade
                                         break;
                                 }
                                 break;
-                            case Notifications.NOTIFICATION_REGION_CROSSED:
+                            case Notifications.RegionCrossed:
                                 switch (enabled)
                                 {
                                     case true:
@@ -26110,7 +25648,7 @@ namespace Corrade
                                         break;
                                 }
                                 break;
-                            case Notifications.NOTIFICATION_LOAD_URL:
+                            case Notifications.LoadURL:
                                 switch (enabled)
                                 {
                                     case true:
@@ -26121,7 +25659,7 @@ namespace Corrade
                                         break;
                                 }
                                 break;
-                            case Notifications.NOTIFICATION_SCRIPT_CONTROL:
+                            case Notifications.ScriptControl:
                                 switch (enabled)
                                 {
                                     case true:
@@ -26138,8 +25676,8 @@ namespace Corrade
                 // Depending on whether groups have bound to the viewer effects notification, 
                 // start or stop the viwer effect expiration thread.
                 switch (
-                    GROUPS.AsParallel()
-                        .Any(o => !(o.NotificationMask & (uint) Notifications.NOTIFICATION_VIEWER_EFFECT).Equals(0)))
+                    corradeConfiguration.Groups.AsParallel()
+                        .Any(o => !(o.NotificationMask & (uint) Notifications.ViewerEffect).Equals(0)))
                 {
                     case true:
                         // Don't start if the expiration thread is already started.
@@ -26160,7 +25698,8 @@ namespace Corrade
                                     BeamEffects.RemoveWhere(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
                                 }
                             } while (runEffectsExpirationThread);
-                        }) {IsBackground = true, Priority = ThreadPriority.Lowest};
+                        })
+                        {IsBackground = true, Priority = ThreadPriority.Lowest};
                         EffectsExpirationThread.Start();
                         break;
                     default:
@@ -26195,10 +25734,10 @@ namespace Corrade
                 // Depending on whether any group has bound either the avatar radar notification, 
                 // or the primitive radar notification, install or uinstall the listeners.
                 switch (
-                    GROUPS.AsParallel().Any(
+                    corradeConfiguration.Groups.AsParallel().Any(
                         o =>
-                            !(o.NotificationMask & (uint) Notifications.NOTIFICATION_RADAR_AVATARS).Equals(0) ||
-                            !(o.NotificationMask & (uint) Notifications.NOTIFICATION_RADAR_PRIMITIVES).Equals(0)))
+                            !(o.NotificationMask & (uint) Notifications.RadarAvatars).Equals(0) ||
+                            !(o.NotificationMask & (uint) Notifications.RadarPrimitives).Equals(0)))
                 {
                     case true:
                         Client.Network.SimChanged += HandleRadarObjects;
@@ -26218,7 +25757,7 @@ namespace Corrade
                 switch (HttpListener.IsSupported)
                 {
                     case true:
-                        switch (ENABLE_HTTP_SERVER)
+                        switch (corradeConfiguration.EnableHTTPServer)
                         {
                             case true:
                                 // Don't start if the HTTP server is already started.
@@ -26231,22 +25770,23 @@ namespace Corrade
                                     {
                                         using (HTTPListener = new HttpListener())
                                         {
-                                            HTTPListener.Prefixes.Add(HTTP_SERVER_PREFIX);
+                                            HTTPListener.Prefixes.Add(corradeConfiguration.HTTPServerPrefix);
                                             HTTPListener.TimeoutManager.DrainEntityBody =
-                                                TimeSpan.FromMilliseconds(HTTP_SERVER_DRAIN_TIMEOUT);
+                                                TimeSpan.FromMilliseconds(corradeConfiguration.HTTPServerDrainTimeout);
                                             HTTPListener.TimeoutManager.EntityBody =
-                                                TimeSpan.FromMilliseconds(HTTP_SERVER_BODY_TIMEOUT);
+                                                TimeSpan.FromMilliseconds(corradeConfiguration.HTTPServerBodyTimeout);
                                             HTTPListener.TimeoutManager.HeaderWait =
-                                                TimeSpan.FromMilliseconds(HTTP_SERVER_HEADER_TIMEOUT);
+                                                TimeSpan.FromMilliseconds(corradeConfiguration.HTTPServerHeaderTimeout);
                                             HTTPListener.TimeoutManager.IdleConnection =
-                                                TimeSpan.FromMilliseconds(HTTP_SERVER_IDLE_TIMEOUT);
+                                                TimeSpan.FromMilliseconds(corradeConfiguration.HTTPServerIdleTimeout);
                                             HTTPListener.TimeoutManager.RequestQueue =
-                                                TimeSpan.FromMilliseconds(HTTP_SERVER_QUEUE_TIMEOUT);
+                                                TimeSpan.FromMilliseconds(corradeConfiguration.HTTPServerQueueTimeout);
                                             HTTPListener.Start();
                                             while (runHTTPServer && HTTPListener.IsListening)
                                             {
                                                 (HTTPListener.BeginGetContext(ProcessHTTPRequest,
-                                                    HTTPListener)).AsyncWaitHandle.WaitOne((int) HTTP_SERVER_TIMEOUT,
+                                                    HTTPListener)).AsyncWaitHandle.WaitOne(
+                                                        (int) corradeConfiguration.HTTPServerTimeout,
                                                         false);
                                             }
                                         }
@@ -26256,7 +25796,8 @@ namespace Corrade
                                         Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR),
                                             ex.Message);
                                     }
-                                }) {IsBackground = true, Priority = ThreadPriority.Lowest};
+                                })
+                                {IsBackground = true, Priority = ThreadPriority.Lowest};
                                 HTTPListenerThread.Start();
                                 break;
                             default:
@@ -26297,100 +25838,13 @@ namespace Corrade
                 }
 
                 // Apply settings to the instance.
-                Client.Self.Movement.Camera.Far = RANGE;
-                Client.Settings.LOGIN_TIMEOUT = (int) SERVICES_TIMEOUT;
-                Client.Settings.LOGOUT_TIMEOUT = (int) SERVICES_TIMEOUT;
-                Client.Settings.SIMULATOR_TIMEOUT = (int) SERVICES_TIMEOUT;
+                Client.Self.Movement.Camera.Far = corradeConfiguration.Range;
+                Client.Settings.LOGIN_TIMEOUT = (int) corradeConfiguration.ServicesTimeout;
+                Client.Settings.LOGOUT_TIMEOUT = (int) corradeConfiguration.ServicesTimeout;
+                Client.Settings.SIMULATOR_TIMEOUT = (int) corradeConfiguration.ServicesTimeout;
 
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
             }
-        }
-
-        /// <summary>
-        ///     Configuration keys.
-        /// </summary>
-        private struct ConfigurationKeys
-        {
-            public const string FIRST_NAME = @"firstname";
-            public const string LAST_NAME = @"lastname";
-            public const string LOGIN_URL = @"loginurl";
-            public const string HTTP = @"http";
-            public const string PREFIX = @"prefix";
-            public const string TIMEOUT = @"timeout";
-            public const string THROTTLE = @"throttle";
-            public const string SERVICES = @"services";
-            public const string TOS_ACCEPTED = @"tosaccepted";
-            public const string AUTO_ACTIVATE_GROUP = @"autoactivategroup";
-            public const string GROUP_CREATE_FEE = @"groupcreatefee";
-            public const string START_LOCATION = @"startlocation";
-            public const string LOG = @"log";
-            public const string NAME = @"name";
-            public const string UUID = @"uuid";
-            public const string PASSWORD = @"password";
-            public const string CHATLOG = @"chatlog";
-            public const string DATABASE = @"database";
-            public const string PERMISSIONS = @"permissions";
-            public const string NOTIFICATIONS = @"notifications";
-            public const string CALLBACKS = @"callbacks";
-            public const string QUEUE_LENGTH = @"queuelength";
-            public const string CLIENT = @"client";
-            public const string NAGGLE = @"naggle";
-            public const string CONNECTIONS = @"connections";
-            public const string EXPECT100CONTINUE = @"expect100continue";
-            public const string MAC = @"MAC";
-            public const string ID0 = @"ID0";
-            public const string SERVER = @"server";
-            public const string MEMBERSHIP = @"membership";
-            public const string SWEEP = @"sweep";
-            public const string ENABLE = @"enable";
-            public const string REBAKE = @"rebake";
-            public const string ACTIVATE = @"activate";
-            public const string DATA = @"data";
-            public const string THREADS = @"threads";
-            public const string COMMANDS = @"commands";
-            public const string RLV = @"rlv";
-            public const string WORKERS = @"workers";
-            public const string ENCODE = @"encode";
-            public const string DECODE = @"decode";
-            public const string ENCRYPT = @"encrypt";
-            public const string DECRYPT = @"decrypt";
-            public const string INPUT = @"input";
-            public const string OUTPUT = @"output";
-            public const string ENIGMA = @"enigma";
-            public const string ROTORS = @"rotors";
-            public const string PLUGS = @"plugs";
-            public const string REFLECTOR = @"reflector";
-            public const string SECRET = @"secret";
-            public const string VIGENERE = @"vigenere";
-            public const string IM = @"im";
-            public const string RANGE = @"range";
-            public const string DECAY = @"decay";
-            public const string LOGOUT = @"logout";
-            public const string FILE = @"file";
-            public const string DIRECTORY = @"directory";
-            public const string LOCAL = @"local";
-            public const string REGION = @"region";
-            public const string BIND = @"bind";
-            public const string IDLE = @"idle";
-            public const string COMPRESSION = @"compression";
-            public const string EXIT_CODE = @"exitcode";
-            public const string EXPECTED = @"expected";
-            public const string ABNORMAL = @"abnormal";
-            public const string KEEP_ALIVE = @"keepalive";
-            public const string SCHEDULER = @"scheduler";
-            public const string POST = @"post";
-            public const string TOTAL = @"total";
-            public const string LAND = @"land";
-            public const string TASK = @"task";
-            public const string TEXTURE = @"texture";
-            public const string WIND = @"wind";
-            public const string RESEND = @"resend";
-            public const string ASSET = @"asset";
-            public const string CLOUD = @"cloud";
-            public const string DRAIN = @"drain";
-            public const string BODY = @"body";
-            public const string HEADER = @"header";
-            public const string QUEUE = @"queue";
         }
 
         /// <summary>
@@ -26400,7 +25854,6 @@ namespace Corrade
         {
             [Description("none")] NONE = 0,
             [Description("access denied")] ACCESS_DENIED,
-            [Description("invalid configuration file")] INVALID_CONFIGURATION_FILE,
 
             [Description(
                 "the Terms of Service (TOS) for the grid you are connecting to have not been accepted, please check your configuration file"
@@ -26457,7 +25910,7 @@ namespace Corrade
             [Description("uncaught exception for thread")] UNCAUGHT_EXCEPTION_FOR_THREAD,
             [Description("error setting up configuration watcher")] ERROR_SETTING_UP_CONFIGURATION_WATCHER,
             [Description("error setting up AIML configuration watcher")] ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER,
-            [Description("callback throttled")] CALLBACK_THROTTLED,
+            [Description("callback throttled")] CallbackThrottleD,
             [Description("notification throttled")] NOTIFICATION_THROTTLED,
             [Description("error updating inventory")] ERROR_UPDATING_INVENTORY,
             [Description("unable to load group members state")] UNABLE_TO_LOAD_GROUP_MEMBERS_STATE,
@@ -26465,7 +25918,9 @@ namespace Corrade
             [Description("error sending POST request")] ERROR_SENDING_POST_REQUEST,
             [Description("error building POST request")] ERROR_BUILDING_POST_REQUEST,
             [Description("notifications file modified")] NOTIFICATIONS_FILE_MODIFIED,
-            [Description("error setting up Linden globalization")] ERROR_SETTING_UP_LINDEN_GLOBALIZATION
+            [Description("error setting up Linden globalization")] ERROR_SETTING_UP_LINDEN_GLOBALIZATION,
+            [Description("unable to load Corrade configuration")] UNABLE_TO_LOAD_CORRADE_CONFIGURATION,
+            [Description("unable to save Corrade configuration")] UNABLE_TO_SAVE_CORRADE_CONFIGURATION
         }
 
         /// <summary>
@@ -26540,7 +25995,8 @@ namespace Corrade
                     }
                     // Thread has completed.
                     ThreadCompletedEvent.Set();
-                }) {IsBackground = true, Priority = ThreadPriority.Lowest};
+                })
+                {IsBackground = true, Priority = ThreadPriority.Lowest};
                 lock (WorkSetLock)
                 {
                     WorkSet.Add(t);
@@ -26578,7 +26034,8 @@ namespace Corrade
                                 ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
                             wasGetDescriptionFromEnumValue(corradeThreadType), ex.Message);
                     }
-                }) {IsBackground = true, Priority = ThreadPriority.Lowest};
+                })
+                {IsBackground = true, Priority = ThreadPriority.Lowest};
                 lock (WorkSetLock)
                 {
                     WorkSet.Add(t);
@@ -26692,7 +26149,8 @@ namespace Corrade
                                 ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
                             wasGetDescriptionFromEnumValue(corradeThreadType), ex.Message);
                     }
-                }) {IsBackground = true, Priority = ThreadPriority.Lowest};
+                })
+                {IsBackground = true, Priority = ThreadPriority.Lowest};
                 lock (WorkSetLock)
                 {
                     WorkSet.Add(t);
@@ -26881,7 +26339,7 @@ namespace Corrade
         /// <summary>
         ///     ENIGMA machine settings.
         /// </summary>
-        private struct ENIGMA
+        public struct ENIGMA
         {
             public char[] plugs;
             public char reflector;
@@ -26908,33 +26366,42 @@ namespace Corrade
         }
 
         /// <summary>
-        ///     Possible input and output filters.
-        /// </summary>
-        private enum Filter : uint
-        {
-            [Description("none")] NONE = 0,
-            [Description("rfc1738")] RFC1738,
-            [Description("rfc3986")] RFC3986,
-            [Description("enigma")] ENIGMA,
-            [Description("vigenere")] VIGENERE,
-            [Description("atbash")] ATBASH,
-            [Description("base64")] BASE64
-        }
-
-        /// <summary>
         ///     Group structure.
         /// </summary>
-        private struct Group
+        [Serializable]
+        public struct Group
         {
             public string ChatLog;
             public bool ChatLogEnabled;
             public string DatabaseFile;
             public string Name;
-            public uint NotificationMask;
+            public HashSet<Notifications> Notifications;
             public string Password;
-            public uint PermissionMask;
+            public HashSet<Permissions> Permissions;
             public UUID UUID;
             public uint Workers;
+
+            public uint NotificationMask
+            {
+                get
+                {
+                    return Notifications != null && Notifications.Any()
+                        ? Notifications.Cast<uint>()
+                            .Aggregate((p, q) => p |= q)
+                        : 0;
+                }
+            }
+
+            public uint PermissionMask
+            {
+                get
+                {
+                    return Permissions != null && Permissions.Any()
+                        ? Permissions.Cast<uint>()
+                            .Aggregate((p, q) => p |= q)
+                        : 0;
+                }
+            }
         }
 
         /// <summary>
@@ -26971,17 +26438,6 @@ namespace Corrade
             public UUID GroupUUID;
             public string LastName;
             public string Message;
-        }
-
-        /// <summary>
-        ///     An enumeration of various compression methods
-        ///     supproted by Corrade's internal HTTP server.
-        /// </summary>
-        private enum HTTPCompressionMethod : uint
-        {
-            [Description("none")] NONE,
-            [Description("deflate")] DEFLATE,
-            [Description("gzip")] GZIP
         }
 
         /// <summary>
@@ -27161,7 +26617,7 @@ namespace Corrade
         /// <summary>
         ///     Masters structure.
         /// </summary>
-        private struct Master
+        public struct Master
         {
             public string FirstName;
             public string LastName;
@@ -27198,31 +26654,6 @@ namespace Corrade
         {
             public Dictionary<string, string> message;
             public string URL;
-        }
-
-        /// <summary>
-        ///     Corrade permissions.
-        /// </summary>
-        [Flags]
-        private enum Permissions : uint
-        {
-            [Description("none")] PERMISSION_NONE = 0,
-            [Description("movement")] PERMISSION_MOVEMENT = 1,
-            [Description("economy")] PERMISSION_ECONOMY = 2,
-            [Description("land")] PERMISSION_LAND = 4,
-            [Description("grooming")] PERMISSION_GROOMING = 8,
-            [Description("inventory")] PERMISSION_INVENTORY = 16,
-            [Description("interact")] PERMISSION_INTERACT = 32,
-            [Description("mute")] PERMISSION_MUTE = 64,
-            [Description("database")] PERMISSION_DATABASE = 128,
-            [Description("notifications")] PERMISSION_NOTIFICATIONS = 256,
-            [Description("talk")] PERMISSION_TALK = 512,
-            [Description("directory")] PERMISSION_DIRECTORY = 1024,
-            [Description("system")] PERMISSION_SYSTEM = 2048,
-            [Description("friendship")] PERMISSION_FRIENDSHIP = 4096,
-            [Description("execute")] PERMISSION_EXECUTE = 8192,
-            [Description("group")] PERMISSION_GROUP = 16384,
-            [Description("filter")] PERMISSION_FILTER = 32768
         }
 
         /// <summary>
@@ -27297,7 +26728,7 @@ namespace Corrade
             {
             }
 
-            public uint Status { get; private set; }
+            public uint Status { get; }
         }
 
         /// <summary>
@@ -27308,75 +26739,83 @@ namespace Corrade
             [Description("none")] NONE = 0,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=ban>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<ban|unban|list>>&action=ban,unban:[avatars=<UUID|STRING[,UUID|STRING...]>]&action=ban:[eject=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("ban")] BAN,
+                "<command=setconfigurationdata>&<group=<UUID|STRING>>&<password=<STRING>>&[data=<CorradeConfiguration,[CorradeConfiguration...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.System)] [Description("setconfigurationdata")] SETCONFIGURATIONDATA,
 
-            [IsCommand(true)] [CommandInputSyntax("<command=ping>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_NONE)] [Description("ping")] PING,
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=getconfigurationdata>&<group=<UUID|STRING>>&<password=<STRING>>&[data=<CorradeConfiguration,[CorradeConfiguration...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.System)] [Description("getconfigurationdata")] GETCONFIGURATIONDATA,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=ban>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<ban|unban|list>>&action=ban,unban:[avatars=<UUID|STRING[,UUID|STRING...]>]&action=ban:[eject=<BOOL>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("ban")] BAN,
+
+            [IsCommand(true)] [CommandInputSyntax("<command=ping>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.None)] [Description("ping")] PING,
             [Description("pong")] PONG,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=batcheject>&<group=<UUID|STRING>>&<password=<STRING>>&[avatars=<UUID|STRING[,UUID|STRING...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("batcheject")] BATCHEJECT,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("batcheject")] BATCHEJECT,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=batchinvite>&<group=<UUID|STRING>>&<password=<STRING>>&[role=<UUID[,STRING...]>]&[avatars=<UUID|STRING[,UUID|STRING...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("batchinvite")] BATCHINVITE,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("batchinvite")] BATCHINVITE,
 
             [Description("avatars")] AVATARS,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setobjectmediadata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<face=<INTEGER>>&[data=<MediaEntry[,MediaEntry...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setobjectmediadata")] SETOBJECTMEDIADATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setobjectmediadata")] SETOBJECTMEDIADATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getobjectmediadata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<MediaEntry[,MediaEntry...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getobjectmediadata")] GETOBJECTMEDIADATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getobjectmediadata")] GETOBJECTMEDIADATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivematerial>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[material=<Material>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitivematerial")] SETPRIMITIVEMATERIAL,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setprimitivematerial")] SETPRIMITIVEMATERIAL,
 
             [Description("material")] MATERIAL,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivelightdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<LightData[,LightData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitivelightdata")] SETPRIMITIVELIGHTDATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setprimitivelightdata")] SETPRIMITIVELIGHTDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivelightdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<LightData [,LightData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivelightdata")] GETPRIMITIVELIGHTDATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getprimitivelightdata")] GETPRIMITIVELIGHTDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setprimitiveflexibledata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<FlexibleData[,FlexibleData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitiveflexibledata")] SETPRIMITIVEFLEXIBLEDATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setprimitiveflexibledata")] SETPRIMITIVEFLEXIBLEDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getprimitiveflexibledata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<FlexibleData[,FlexibleData ...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitiveflexibledata")] GETPRIMITIVEFLEXIBLEDATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getprimitiveflexibledata")] GETPRIMITIVEFLEXIBLEDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=creategrass>&<group=<UUID|STRING>>&<password=<STRING>>>&[region=<STRING>]&<position=<VECTOR3>>&[rotation=<Quaternion>]&<type=<Grass>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("creategrass")] CREATEGRASS,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("creategrass")] CREATEGRASS,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getstatus>&<group=<UUID|STRING>>&<password=<STRING>>&<status=<INTEGER>>&<entity=<description>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_NONE)] [Description("getstatus")] GETSTATUS,
+                )] [CommandPermissionMask((uint) Permissions.None)] [Description("getstatus")] GETSTATUS,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivebodytypes>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivebodytypes")] GETPRIMITIVEBODYTYPES,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getprimitivebodytypes")] GETPRIMITIVEBODYTYPES,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivephysicsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<PhysicsProperties[,PhysicsProperties ...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivephysicsdata")] GETPRIMITIVEPHYSICSDATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getprimitivephysicsdata")] GETPRIMITIVEPHYSICSDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivepropertiesdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<ObjectProperties[,ObjectProperties ...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivepropertiesdata")] GETPRIMITIVEPROPERTIESDATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getprimitivepropertiesdata")] GETPRIMITIVEPROPERTIESDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setprimitiveflags>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<SINGLE>]&[temporary=<BOOL>]&[shadows=<BOOL>]&[restitution=<SINGLE>]&[phantom=<BOOL>]&[gravity=<SINGLE>]&[friction=<SINGLE>]&[density=<SINGLE>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitiveflags")] SETPRIMITIVEFLAGS,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setprimitiveflags")] SETPRIMITIVEFLAGS,
 
             [Description("temporary")] TEMPORARY,
             [Description("shadows")] SHADOWS,
@@ -27388,7 +26827,7 @@ namespace Corrade
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=grab>&<group=<UUID|STRING>>&<password=<STRING>>&[region=<STRING>]&<item=<UUID|STRING>>&[range=<FLOAT>]&<texture=<VECTOR3>&<surface=<VECTOR3>>&<normal=<VECTOR3>>&<binormal=<VECTOR3>>&<face=<INTEGER>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("grab")] GRAB,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("grab")] GRAB,
 
             [Description("texture")] TEXTURE,
             [Description("surface")] SURFACE,
@@ -27398,35 +26837,35 @@ namespace Corrade
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=createtree>&<group=<UUID|STRING>>&<password=<STRING>>>&[region=<STRING>]&<position=<VECTOR3>>&[rotation=<Quaternion>]&<type=<Tree>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("createtree")] CREATETREE,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("createtree")] CREATETREE,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivetexturedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[index=<INTEGER>]&[data=<TextureEntryFace [,TextureEntryFace ...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitivetexturedata")] SETPRIMITIVETEXTUREDATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setprimitivetexturedata")] SETPRIMITIVETEXTUREDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivetexturedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<TextureEntry[,TextureEntry ...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivetexturedata")] GETPRIMITIVETEXTUREDATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getprimitivetexturedata")] GETPRIMITIVETEXTUREDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivesculptdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<SculptData[,SculptData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitivesculptdata")] SETPRIMITIVESCULPTDATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setprimitivesculptdata")] SETPRIMITIVESCULPTDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivesculptdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<SculptData[,SculptData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivesculptdata")] GETPRIMITIVESCULPTDATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getprimitivesculptdata")] GETPRIMITIVESCULPTDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setprimitiveshapedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[type=<CorradePrimitiveShape>]&[data=<ConstructionData[,ConstructionData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitiveshapedata")] SETPRIMITIVESHAPEDATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setprimitiveshapedata")] SETPRIMITIVESHAPEDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getprimitiveshapedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<ConstructionData[,ConstructionData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitiveshapedata")] GETPRIMITIVESHAPEDATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getprimitiveshapedata")] GETPRIMITIVESHAPEDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=createprimitive>&<group=<UUID|STRING>>&<password=<STRING>>>&[region=<STRING>]&<position=<VECTOR3>>&[rotation=<Quaternion>]&[type=<CorradePrimitiveShape>]&[data=<ConstructionData>]&[flags=<PrimFlags>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("createprimitive")] CREATEPRIMITIVE,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("createprimitive")] CREATEPRIMITIVE,
 
             [Description("flags")] FLAGS,
             [Description("take")] TAKE,
@@ -27436,81 +26875,81 @@ namespace Corrade
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivepayprices>&<group=<UUID|STRING>>&<password=<STRING>>>&item=<STRING|UUID>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivepayprices")] GETPRIMITIVEPAYPRICES,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getprimitivepayprices")] GETPRIMITIVEPAYPRICES,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=primitivebuy>&<group=<UUID|STRING>>&<password=<STRING>>>&item=<STRING|UUID>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT | (uint) Permissions.PERMISSION_ECONOMY)] [Description("primitivebuy")] PRIMITIVEBUY,
+                )] [CommandPermissionMask((uint) Permissions.Interact | (uint) Permissions.Economy)] [Description("primitivebuy")] PRIMITIVEBUY,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=changeprimitivelink>&<group=<UUID|STRING>>&<password=<STRING>>>&<action=<link|delink>>&action=link:<item=<STRING|UUID,STRING|UUID[,STRING|UUID...>>&action=delink:<item=<STRING|UUID[,STRING|UUID...>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("changeprimitivelink")] CHANGEPRIMITIVELINK,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("changeprimitivelink")] CHANGEPRIMITIVELINK,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getgroupmemberdata>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<AvatarGroup[,AvatarGroup...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getgroupmemberdata")] GETGROUPMEMBERDATA,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("getgroupmemberdata")] GETGROUPMEMBERDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getcommand>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<entity=<syntax|permission>>&entity=syntax:<type=<input>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_NONE)] [Description("getcommand")] GETCOMMAND,
-            [IsCommand(true)] [CommandInputSyntax("<command=listcommands>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_NONE)] [Description("listcommands")] LISTCOMMANDS,
+                )] [CommandPermissionMask((uint) Permissions.None)] [Description("getcommand")] GETCOMMAND,
+            [IsCommand(true)] [CommandInputSyntax("<command=listcommands>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.None)] [Description("listcommands")] LISTCOMMANDS,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getconnectedregions>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getconnectedregions")] GETCONNECTEDREGIONS,
+                "<command=getconnectedregions>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Land)] [Description("getconnectedregions")] GETCONNECTEDREGIONS,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getnetworkdata>&<group=<UUID|STRING>>&<password=<STRING>>&[data=<NetworkManager[,NetworkManager...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("getnetworkdata")] GETNETWORKDATA,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("getnetworkdata")] GETNETWORKDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=typing>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable|get>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("typing")] TYPING,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("typing")] TYPING,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=busy>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable|get>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("busy")] BUSY,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("busy")] BUSY,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=away>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable|get>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("away")] AWAY,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("away")] AWAY,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getobjectpermissions>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getobjectpermissions")] GETOBJECTPERMISSIONS,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getobjectpermissions")] GETOBJECTPERMISSIONS,
             [Description("scale")] SCALE,
             [Description("uniform")] UNIFORM,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setobjectscale>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&<scale=<FLOAT>>&[uniform=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setobjectscale")] SETOBJECTSCALE,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setobjectscale")] SETOBJECTSCALE,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivescale>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&<scale=<FLOAT>>&[uniform=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitivescale")] SETPRIMITIVESCALE,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setprimitivescale")] SETPRIMITIVESCALE,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setprimitiverotation>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&<rotation=<QUATERNION>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitiverotation")] SETPRIMITIVEROTATION,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setprimitiverotation")] SETPRIMITIVEROTATION,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setprimitiveposition>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&<position=<VECTOR3>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitiveposition")] SETPRIMITIVEPOSITION,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setprimitiveposition")] SETPRIMITIVEPOSITION,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=exportdae>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&[format=<ImageFormat>]&[path=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("exportdae")] EXPORTDAE,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("exportdae")] EXPORTDAE,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=exportxml>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&[format=<ImageFormat>]&[path=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("exportxml")] EXPORTXML,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("exportxml")] EXPORTXML,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivesdata>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<range|parcel|region|avatar>>&entity=range:[range=<FLOAT>]&entity=parcel:[position=<VECTOR2>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[data=<Primitive[,Primitive...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivesdata")] GETPRIMITIVESDATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getprimitivesdata")] GETPRIMITIVESDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getavatarsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<range|parcel|region|avatar>>&entity=range:[range=<FLOAT>]&entity=parcel:[position=<VECTOR2>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[data=<Avatar[,Avatar...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getavatarsdata")] GETAVATARSDATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getavatarsdata")] GETAVATARSDATA,
             [Description("format")] FORMAT,
             [Description("volume")] VOLUME,
             [Description("audible")] AUDIBLE,
@@ -27518,120 +26957,116 @@ namespace Corrade
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=inventory>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<ls|cwd|cd|mkdir|chmod|rm|cp|mv|ln>>&action=ls|mkdir|chmod:[path=<STRING>]&action=cd,action=rm:<path=<STRING>>&action=mkdir:<name=<STRING>>&action=chmod:<permissions=<STRING>>&action=cp|mv|ln:<source=<STRING>>&action=cp|mv|ln:<target=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("inventory")] INVENTORY,
+                )] [CommandPermissionMask((uint) Permissions.Inventory)] [Description("inventory")] INVENTORY,
             [Description("offset")] OFFSET,
             [Description("alpha")] ALPHA,
             [Description("color")] COLOR,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=deleteviewereffect>&<group=<UUID|STRING>>&<password=<STRING>>&<effect=<Look|Point>>&<id=<UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("deleteviewereffect")] DELETEVIEWEREFFECT,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("deleteviewereffect")] DELETEVIEWEREFFECT,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getviewereffects>&<group=<UUID|STRING>>&<password=<STRING>>&<effect=<Look|Point|Sphere|Beam>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getviewereffects")] GETVIEWEREFFECTS,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getviewereffects")] GETVIEWEREFFECTS,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setviewereffect>&<group=<UUID|STRING>>&<password=<STRING>>&<effect=<Look|Point|Sphere|Beam>>&effect=Look:<item=<UUID|STRING>&<range=<FLOAT>>>|<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&effect=Look:<offset=<VECTOR3>>&effect=Look:<type=LookAt>&effect=Point:<item=<UUID|STRING>&<range=<FLOAT>>>|<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&effect=Point:<offset=<VECTOR3>>&effect=Point:<type=PointAt>&effect=Beam:<item=<UUID|STRING>&<range=<FLOAT>>>|<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&effect=Beam:<color=<VECTOR3>>&effect=Beam:<alpha=<FLOAT>>&effect=Beam:<duration=<FLOAT>>&effect=Beam:<offset=<VECTOR3>>&effect=Sphere:<color=<VECTOR3>>&effect=Sphere:<alpha=<FLOAT>>&effect=Sphere:<duration=<FLOAT>>&effect=Sphere:<offset=<VECTOR3>>&[id=<UUID>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setviewereffect")] SETVIEWEREFFECT,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setviewereffect")] SETVIEWEREFFECT,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=ai>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<process|enable|disable|rebuild>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_TALK)] [Description("ai")] AI,
-            [IsCommand(true)] [CommandInputSyntax("<command=gettitles>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("gettitles")] GETTITLES,
+                )] [CommandPermissionMask((uint) Permissions.Talk)] [Description("ai")] AI,
+            [IsCommand(true)] [CommandInputSyntax("<command=gettitles>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Group)] [Description("gettitles")] GETTITLES,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=tag>&<group=<UUID|STRING>>&<password=<STRING>>&action=<set|get>&action=set:<title=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("tag")] TAG,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("tag")] TAG,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=filter>&<group=<UUID|STRING>>&<password=<STRING>>&action=<set|get>&action=get:<type=<input|output>>&action=set:<input=<STRING>>&action=set:<output=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_FILTER)] [Description("filter")] FILTER,
+                )] [CommandPermissionMask((uint) Permissions.Filter)] [Description("filter")] FILTER,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=run>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable|get>>&[callback=<STRING>]"
                 )
-                              ] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("run")] RUN,
-            [IsCommand(true)] [CommandInputSyntax("<command=relax>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("relax")] RELAX,
+                              ] [CommandPermissionMask((uint) Permissions.Movement)] [Description("run")] RUN,
+            [IsCommand(true)] [CommandInputSyntax("<command=relax>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Movement)] [Description("relax")] RELAX,
             [Description("sift")] SIFT,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=rlv>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable>>&[callback=<STRING>]")
-                              ] [CommandPermissionMask((uint) Permissions.PERMISSION_SYSTEM)] [Description("rlv")] RLV,
+                              ] [CommandPermissionMask((uint) Permissions.System)] [Description("rlv")] RLV,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getinventorypath>&<group=<UUID|STRING>>&<password=<STRING>>&<pattern=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("getinventorypath")] GETINVENTORYPATH,
+                )] [CommandPermissionMask((uint) Permissions.Inventory)] [Description("getinventorypath")] GETINVENTORYPATH,
             [Description("committed")] COMMITTED,
             [Description("credit")] CREDIT,
             [Description("success")] SUCCESS,
             [Description("transaction")] TRANSACTION,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getscriptdialogs>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getscriptdialogs")] GETSCRIPTDIALOGS,
+                "<command=getscriptdialogs>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getscriptdialogs")] GETSCRIPTDIALOGS,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getscriptpermissionrequests>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getscriptpermissionrequests")] GETSCRIPTPERMISSIONREQUESTS,
+                "<command=getscriptpermissionrequests>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getscriptpermissionrequests")] GETSCRIPTPERMISSIONREQUESTS,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getteleportlures>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("getteleportlures")] GETTELEPORTLURES,
+                "<command=getteleportlures>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Movement)] [Description("getteleportlures")] GETTELEPORTLURES,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=replytogroupinvite>&<group=<UUID|STRING>>&<password=<STRING>>&[action=<accept|decline>]&<session=<UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP | (uint) Permissions.PERMISSION_ECONOMY)] [Description("replytogroupinvite")] REPLYTOGROUPINVITE,
+                )] [CommandPermissionMask((uint) Permissions.Group | (uint) Permissions.Economy)] [Description("replytogroupinvite")] REPLYTOGROUPINVITE,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getgroupinvites>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getgroupinvites")] GETGROUPINVITES,
+                "<command=getgroupinvites>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Group)] [Description("getgroupinvites")] GETGROUPINVITES,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getmemberroles>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getmemberroles")] GETMEMBERROLES,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("getmemberroles")] GETMEMBERROLES,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=execute>&<group=<UUID|STRING>>&<password=<STRING>>&<file=<STRING>>&[parameter=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_EXECUTE)] [Description("execute")] EXECUTE,
+                )] [CommandPermissionMask((uint) Permissions.Execute)] [Description("execute")] EXECUTE,
             [Description("parameter")] PARAMETER,
             [Description("file")] FILE,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=cache>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<purge|load|save>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_SYSTEM)] [Description("cache")] CACHE,
+                )] [CommandPermissionMask((uint) Permissions.System)] [Description("cache")] CACHE,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getgridregiondata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<GridRegion[,GridRegion...]>>&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getgridregiondata")] GETGRIDREGIONDATA,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("getgridregiondata")] GETGRIDREGIONDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getregionparcelsboundingbox>&<group=<UUID|STRING>>&<password=<STRING>>&[region=<STRING>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getregionparcelsboundingbox")] GETREGIONPARCELSBOUNDINGBOX,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("getregionparcelsboundingbox")] GETREGIONPARCELSBOUNDINGBOX,
             [Description("pattern")] PATTERN,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=searchinventory>&<group=<UUID|STRING>>&<password=<STRING>>&<pattern=<STRING>>&[type=<AssetType>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("searchinventory")] SEARCHINVENTORY,
+                )] [CommandPermissionMask((uint) Permissions.Inventory)] [Description("searchinventory")] SEARCHINVENTORY,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getterrainheight>&<group=<UUID|STRING>>&<password=<STRING>>&[southwest=<VECTOR>]&[northwest=<VECTOR>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getterrainheight")] GETTERRAINHEIGHT,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("getterrainheight")] GETTERRAINHEIGHT,
             [Description("northeast")] NORTHEAST,
             [Description("southwest")] SOUTHWEST,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=configuration>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<read|write|get|set>>&action=write:<data=<STRING>>&action=get:<path=<STRING>>&action=set:<path=<STRING>>&action=set:<data=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_SYSTEM)] [Description("configuration")] CONFIGURATION,
-
-            [IsCommand(true)] [CommandInputSyntax(
                 "<command=upload>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<type=<Texture|Sound|Animation|Clothing|Bodypart|Landmark|Gesture|Notecard|LSLText>>&type=Clothing:[wear=<WearableType>]&type=Bodypart:[wear=<WearableType>]&<data=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY | (uint) Permissions.PERMISSION_ECONOMY)] [Description("upload")] UPLOAD,
+                )] [CommandPermissionMask((uint) Permissions.Inventory | (uint) Permissions.Economy)] [Description("upload")] UPLOAD,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=download>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<type=<Texture|Sound|Animation|Clothing|Bodypart|Landmark|Gesture|Notecard|LSLText>>&type=Texture:[format=<ImageFormat>]&[path=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT | (uint) Permissions.PERMISSION_SYSTEM)] [Description("download")] DOWNLOAD,
+                )] [CommandPermissionMask((uint) Permissions.Interact | (uint) Permissions.System)] [Description("download")] DOWNLOAD,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setparceldata>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR>]&[data=<Parcel[,Parcel...]>]&[region=<STRING>]&[callback=<STRING>]"
                 )
-                              ] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("setparceldata")] SETPARCELDATA,
+                              ] [CommandPermissionMask((uint) Permissions.Land)] [Description("setparceldata")] SETPARCELDATA,
             [Description("new")] NEW,
             [Description("old")] OLD,
             [Description("aggressor")] AGGRESSOR,
@@ -27641,292 +27076,292 @@ namespace Corrade
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=playgesture>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("playgesture")] PLAYGESTURE,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("playgesture")] PLAYGESTURE,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=jump>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("jump")] JUMP,
+                "<command=jump>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Movement)] [Description("jump")] JUMP,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=crouch>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("crouch")] CROUCH,
+                "<command=crouch>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Movement)] [Description("crouch")] CROUCH,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=turnto>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR3>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("turnto")] TURNTO,
+                "<command=turnto>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR3>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Movement)] [Description("turnto")] TURNTO,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=nudge>&<group=<UUID|STRING>>&<password=<STRING>>&<direction=<left|right|up|down|back|forward>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("nudge")] NUDGE,
+                )] [CommandPermissionMask((uint) Permissions.Movement)] [Description("nudge")] NUDGE,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=createnotecard>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[text=<STRING>]&[description=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("createnotecard")] CREATENOTECARD,
+                )] [CommandPermissionMask((uint) Permissions.Inventory)] [Description("createnotecard")] CREATENOTECARD,
             [Description("direction")] DIRECTION,
             [Description("agent")] AGENT,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=replytoinventoryoffer>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<accept|decline>>&<session=<UUID>>&[folder=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("replytoinventoryoffer")] REPLYTOINVENTORYOFFER,
+                )] [CommandPermissionMask((uint) Permissions.Inventory)] [Description("replytoinventoryoffer")] REPLYTOINVENTORYOFFER,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getinventoryoffers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("getinventoryoffers")] GETINVENTORYOFFERS,
+                "<command=getinventoryoffers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Inventory)] [Description("getinventoryoffers")] GETINVENTORYOFFERS,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=updateprimitiveinventory>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<add|remove|take>>&action=add:<entity=<UUID|STRING>>&action=remove:<entity=<UUID|STRING>>&action=take:<entity=<UUID|STRING>>&action=take:<folder=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("updateprimitiveinventory")] UPDATEPRIMITIVEINVENTORY,
-            [IsCommand(true)] [CommandInputSyntax("<command=version>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_NONE)] [Description("version")] VERSION,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("updateprimitiveinventory")] UPDATEPRIMITIVEINVENTORY,
+            [IsCommand(true)] [CommandInputSyntax("<command=version>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.None)] [Description("version")] VERSION,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=playsound>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[gain=<FLOAT>]&[position=<VECTOR3>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("playsound")] PLAYSOUND,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("playsound")] PLAYSOUND,
             [Description("gain")] GAIN,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getrolemembers>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getrolemembers")] GETROLEMEMBERS,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("getrolemembers")] GETROLEMEMBERS,
             [Description("status")] STATUS,
-            [IsCommand(true)] [CommandInputSyntax("<command=getmembers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getmembers")] GETMEMBERS,
+            [IsCommand(true)] [CommandInputSyntax("<command=getmembers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Group)] [Description("getmembers")] GETMEMBERS,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=replytoteleportlure>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<session=<UUID>>&<action=<accept|decline>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("replytoteleportlure")] REPLYTOTELEPORTLURE,
+                )] [CommandPermissionMask((uint) Permissions.Movement)] [Description("replytoteleportlure")] REPLYTOTELEPORTLURE,
             [Description("session")] SESSION,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=replytoscriptpermissionrequest>&<group=<UUID|STRING>>&<password=<STRING>>&<task=<UUID>>&<item=<UUID>>&<permissions=<ScriptPermission>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("replytoscriptpermissionrequest")] REPLYTOSCRIPTPERMISSIONREQUEST,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("replytoscriptpermissionrequest")] REPLYTOSCRIPTPERMISSIONREQUEST,
             [Description("task")] TASK,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getparcellist>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getparcellist")] GETPARCELLIST,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("getparcellist")] GETPARCELLIST,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=parcelrelease>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("parcelrelease")] PARCELRELEASE,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("parcelrelease")] PARCELRELEASE,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=parcelbuy>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[forgroup=<BOOL>]&[removecontribution=<BOOL>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND | (uint) Permissions.PERMISSION_ECONOMY)] [Description("parcelbuy")] PARCELBUY,
+                )] [CommandPermissionMask((uint) Permissions.Land | (uint) Permissions.Economy)] [Description("parcelbuy")] PARCELBUY,
             [Description("removecontribution")] REMOVECONTRIBUTION,
             [Description("forgroup")] FORGROUP,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=parceldeed>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("parceldeed")] PARCELDEED,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("parceldeed")] PARCELDEED,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=parcelreclaim>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("parcelreclaim")] PARCELRECLAIM,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("parcelreclaim")] PARCELRECLAIM,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=unwear>&<group=<UUID|STRING>>&<password=<STRING>>&<wearables=<STRING[,UUID...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("unwear")] UNWEAR,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("unwear")] UNWEAR,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=wear>&<group=<UUID|STRING>>&<password=<STRING>>&<wearables=<STRING[,UUID...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("wear")] WEAR,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("wear")] WEAR,
             [Description("wearables")] WEARABLES,
-            [IsCommand(true)] [CommandInputSyntax("<command=getwearables>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("getwearables")] GETWEARABLES,
+            [IsCommand(true)] [CommandInputSyntax("<command=getwearables>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("getwearables")] GETWEARABLES,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=changeappearance>&<group=<UUID|STRING>>&<password=<STRING>>&<folder=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("changeappearance")] CHANGEAPPEARANCE,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("changeappearance")] CHANGEAPPEARANCE,
             [Description("folder")] FOLDER,
             [Description("replace")] REPLACE,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setobjectrotation>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<rotation=<QUARTERNION>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setobjectrotation")] SETOBJECTROTATION,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setobjectrotation")] SETOBJECTROTATION,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivedescription>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<description=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitivedescription")] SETPRIMITIVEDESCRIPTION,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setprimitivedescription")] SETPRIMITIVEDESCRIPTION,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivename>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<name=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setprimitivename")] SETPRIMITIVENAME,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setprimitivename")] SETPRIMITIVENAME,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setobjectposition>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<position=<VECTOR3>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setobjectposition")] SETOBJECTPOSITION,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setobjectposition")] SETOBJECTPOSITION,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setobjectsaleinfo>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<price=<INTEGER>>&<type=<SaleType>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setobjectsaleinfo")] SETOBJECTSALEINFO,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setobjectsaleinfo")] SETOBJECTSALEINFO,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setobjectgroup>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setobjectgroup")] SETOBJECTGROUP,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setobjectgroup")] SETOBJECTGROUP,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=objectdeed>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("objectdeed")] OBJECTDEED,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("objectdeed")] OBJECTDEED,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setobjectpermissions>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<permissions=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setobjectpermissions")] SETOBJECTPERMISSIONS,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setobjectpermissions")] SETOBJECTPERMISSIONS,
             [Description("permissions")] PERMISSIONS,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getavatarpositions>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<region|parcel>>&entity=parcel:<position=<VECTOR2>>&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getavatarpositions")] GETAVATARPOSITIONS,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getavatarpositions")] GETAVATARPOSITIONS,
             [Description("delay")] DELAY,
             [Description("asset")] ASSET,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setregiondebug>&<group=<UUID|STRING>>&<password=<STRING>>&<scripts=<BOOL>>&<collisions=<BOOL>>&<physics=<BOOL>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("setregiondebug")] SETREGIONDEBUG,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("setregiondebug")] SETREGIONDEBUG,
             [Description("scripts")] SCRIPTS,
             [Description("collisions")] COLLISIONS,
             [Description("physics")] PHYSICS,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getmapavatarpositions>&<group=<UUID|STRING>>&<password=<STRING>>&<region=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getmapavatarpositions")] GETMAPAVATARPOSITIONS,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getmapavatarpositions")] GETMAPAVATARPOSITIONS,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=mapfriend>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("mapfriend")] MAPFRIEND,
+                )] [CommandPermissionMask((uint) Permissions.Friendship)] [Description("mapfriend")] MAPFRIEND,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=replytofriendshiprequest>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<action=<accept|decline>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("replytofriendshiprequest")] REPLYTOFRIENDSHIPREQUEST,
+                )] [CommandPermissionMask((uint) Permissions.Friendship)] [Description("replytofriendshiprequest")] REPLYTOFRIENDSHIPREQUEST,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getfriendshiprequests>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("getfriendshiprequests")] GETFRIENDSHIPREQUESTS,
+                "<command=getfriendshiprequests>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Friendship)] [Description("getfriendshiprequests")] GETFRIENDSHIPREQUESTS,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=grantfriendrights>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<rights=<FriendRights>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("grantfriendrights")] GRANTFRIENDRIGHTS,
+                )] [CommandPermissionMask((uint) Permissions.Friendship)] [Description("grantfriendrights")] GRANTFRIENDRIGHTS,
             [Description("rights")] RIGHTS,
 
             [IsCommand(true)] [CommandInputSyntax("<command=getfriendslist>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("getfriendslist")] GETFRIENDSLIST,
+                )] [CommandPermissionMask((uint) Permissions.Friendship)] [Description("getfriendslist")] GETFRIENDSLIST,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=terminatefriendship>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("terminatefriendship")] TERMINATEFRIENDSHIP,
+                )] [CommandPermissionMask((uint) Permissions.Friendship)] [Description("terminatefriendship")] TERMINATEFRIENDSHIP,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=offerfriendship>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("offerfriendship")] OFFERFRIENDSHIP,
+                )] [CommandPermissionMask((uint) Permissions.Friendship)] [Description("offerfriendship")] OFFERFRIENDSHIP,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getfrienddata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<FriendInfo[,FriendInfo...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_FRIENDSHIP)] [Description("getfrienddata")] GETFRIENDDATA,
+                )] [CommandPermissionMask((uint) Permissions.Friendship)] [Description("getfrienddata")] GETFRIENDDATA,
             [Description("days")] DAYS,
             [Description("interval")] INTERVAL,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getgroupaccountsummarydata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<GroupAccountSummary[,GroupAccountSummary...]>>&<days=<INTEGER>>&<interval=<INTEGER>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getgroupaccountsummarydata")] GETGROUPACCOUNTSUMMARYDATA,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("getgroupaccountsummarydata")] GETGROUPACCOUNTSUMMARYDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getselfdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager[,AgentManager...]>>&[callback=<STRING>]"
                 )
-                              ] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("getselfdata")] GETSELFDATA,
+                              ] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("getselfdata")] GETSELFDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=deleteclassified>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("deleteclassified")] DELETECLASSIFIED,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("deleteclassified")] DELETECLASSIFIED,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=addclassified>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<price=<INTEGER>>&<type=<Any|Shopping|LandRental|PropertyRental|SpecialAttraction|NewProducts|Employment|Wanted|Service|Personal>>&[item=<UUID|STRING>]&[description=<STRING>]&[renew=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING | (uint) Permissions.PERMISSION_ECONOMY)] [Description("addclassified")] ADDCLASSIFIED,
+                )] [CommandPermissionMask((uint) Permissions.Grooming | (uint) Permissions.Economy)] [Description("addclassified")] ADDCLASSIFIED,
             [Description("price")] PRICE,
             [Description("renew")] RENEW,
-            [IsCommand(true)] [CommandInputSyntax("<command=logout>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_SYSTEM)] [Description("logout")] LOGOUT,
+            [IsCommand(true)] [CommandInputSyntax("<command=logout>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.System)] [Description("logout")] LOGOUT,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=displayname>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<get|set>>&action=set:<name=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("displayname")] DISPLAYNAME,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("displayname")] DISPLAYNAME,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=returnprimitives>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<entity=<parcel|estate>>&<type=<Owner|Group|Other|Sell|ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers>>&type=Owner|Group|Other|Sell:[position=<VECTOR2>]&type=ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers:[all=<BOOL>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("returnprimitives")] RETURNPRIMITIVES,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("returnprimitives")] RETURNPRIMITIVES,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getgroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,Group...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getgroupdata")] GETGROUPDATA,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("getgroupdata")] GETGROUPDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getavatardata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<Avatar[,Avatar...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getavatardata")] GETAVATARDATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getavatardata")] GETAVATARDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getprimitiveinventory>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitiveinventory")] GETPRIMITIVEINVENTORY,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getprimitiveinventory")] GETPRIMITIVEINVENTORY,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<InventoryItem[,InventoryItem...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("getinventorydata")] GETINVENTORYDATA,
+                )] [CommandPermissionMask((uint) Permissions.Inventory)] [Description("getinventorydata")] GETINVENTORYDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getprimitiveinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<InventoryItem[,InventoryItem...]>>&<entity=<STRING|UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitiveinventorydata")] GETPRIMITIVEINVENTORYDATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getprimitiveinventorydata")] GETPRIMITIVEINVENTORYDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getscriptrunning>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<entity=<STRING|UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getscriptrunning")] GETSCRIPTRUNNING,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getscriptrunning")] GETSCRIPTRUNNING,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setscriptrunning>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<entity=<STRING|UUID>>&<action=<start|stop>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("setscriptrunning")] SETSCRIPTRUNNING,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("setscriptrunning")] SETSCRIPTRUNNING,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=derez>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[folder=<STRING|UUID>]&[type=<DeRezDestination>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("derez")] DEREZ,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("derez")] DEREZ,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getparceldata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Parcel[,Parcel...]>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getparceldata")] GETPARCELDATA,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("getparceldata")] GETPARCELDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=rez>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR2>>&<item=<UUID|STRING>&[rotation=<QUARTERNION>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("rez")] REZ,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("rez")] REZ,
             [Description("rotation")] ROTATION,
             [Description("index")] INDEX,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=replytoscriptdialog>&<group=<UUID|STRING>>&<password=<STRING>>&<channel=<INTEGER>>&<index=<INTEGER>&<button=<STRING>>&<item=<UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("replytoscriptdialog")] REPLYTOSCRIPTDIALOG,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("replytoscriptdialog")] REPLYTOSCRIPTDIALOG,
             [Description("owner")] OWNER,
             [Description("button")] BUTTON,
 
             [IsCommand(true)] [CommandInputSyntax("<command=getanimations>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")
-                              ] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("getanimations")] GETANIMATIONS,
+                              ] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("getanimations")] GETANIMATIONS,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=animation>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&<action=<start|stop>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("animation")] ANIMATION,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("animation")] ANIMATION,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setestatelist>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<ban|group|manager|user>>&<action=<add|remove>>&type=ban|manager|user,action=add|remove:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&type=group,action=add|remove:<target=<STRING|UUID>>&[all=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("setestatelist")] SETESTATELIST,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("setestatelist")] SETESTATELIST,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getestatelist>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<ban|group|manager|user>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getestatelist")] GETESTATELIST,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("getestatelist")] GETESTATELIST,
             [Description("all")] ALL,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getregiontop>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<scripts|colliders>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getregiontop")] GETREGIONTOP,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("getregiontop")] GETREGIONTOP,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=restartregion>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<scripts|colliders>>&[delay=<INTEGER>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("restartregion")] RESTARTREGION,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("restartregion")] RESTARTREGION,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=directorysearch>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<classified|event|group|land|people|places>>&type=classified:<data=<Classified[,Classified...]>>&type=classified:<name=<STRING>>&type=event:<data=<EventsSearchData[,EventSearchData...]>>&type=event:<name=<STRING>>&type=group:<data=<GroupSearchData[,GroupSearchData...]>>&type=land:<data=<DirectoryParcel[,DirectoryParcel...]>>&type=people:<data=<AgentSearchData[,AgentSearchData...]>>&type=places:<data=<DirectoryParcel[,DirectoryParcel...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_DIRECTORY)] [Description("directorysearch")] DIRECTORYSEARCH,
+                )] [CommandPermissionMask((uint) Permissions.Directory)] [Description("directorysearch")] DIRECTORYSEARCH,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getprofiledata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<AvatarProperties[,AvatarProperties...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprofiledata")] GETPROFILEDATA,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getprofiledata")] GETPROFILEDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getparticlesystem>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getparticlesystem")] GETPARTICLESYSTEM,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getparticlesystem")] GETPARTICLESYSTEM,
             [Description("data")] DATA,
             [Description("range")] RANGE,
             [Description("balance")] BALANCE,
@@ -27935,41 +27370,41 @@ namespace Corrade
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=database>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<get|set|delete>>&action=get|delete:<key=<STRING>>&action=set:<key=<STRING>>&action=set:<value=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_DATABASE)] [Description("database")] DATABASE,
+                )] [CommandPermissionMask((uint) Permissions.Database)] [Description("database")] DATABASE,
             [Description("text")] TEXT,
             [Description("quorum")] QUORUM,
             [Description("majority")] MAJORITY,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=startproposal>&<group=<UUID|STRING>>&<password=<STRING>>&<duration=<INTEGER>>&<majority=<FLOAT>>&<quorum=<INTEGER>>&<text=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("startproposal")] STARTPROPOSAL,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("startproposal")] STARTPROPOSAL,
             [Description("duration")] DURATION,
             [Description("action")] ACTION,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=deletefromrole>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<role=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("deletefromrole")] DELETEFROMROLE,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("deletefromrole")] DELETEFROMROLE,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=addtorole>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<role=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("addtorole")] ADDTOROLE,
-            [IsCommand(true)] [CommandInputSyntax("<command=leave>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("leave")] LEAVE,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("addtorole")] ADDTOROLE,
+            [IsCommand(true)] [CommandInputSyntax("<command=leave>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Group)] [Description("leave")] LEAVE,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=updategroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<[Charter<,STRING>][,ListInProfile<,BOOL>][,MembershipFee<,INTEGER>][,OpenEnrollment<,BOOL>][,ShowInList<,BOOL>]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("updategroupdata")] UPDATEGROUPDATA,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("updategroupdata")] UPDATEGROUPDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=eject>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("eject")] EJECT,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("eject")] EJECT,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=invite>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[role=<UUID[,STRING...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("invite")] INVITE,
-            [IsCommand(true)] [CommandInputSyntax("<command=join>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP | (uint) Permissions.PERMISSION_ECONOMY)] [Description("join")] JOIN,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("invite")] INVITE,
+            [IsCommand(true)] [CommandInputSyntax("<command=join>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Group | (uint) Permissions.Economy)] [Description("join")] JOIN,
             [Description("callback")] CALLBACK,
             [Description("group")] GROUP,
-            [Description("password")] PASSWORD,
+            [Description("password")] Password,
             [Description("firstname")] FIRSTNAME,
             [Description("lastname")] LASTNAME,
             [Description("command")] COMMAND,
@@ -27978,124 +27413,124 @@ namespace Corrade
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=tell>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<local|group|avatar|estate|region>>&entity=local:<type=<Normal|Whisper|Shout>>&entity=local,type=Normal|Whisper|Shout:[channel=<INTEGER>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_TALK)] [Description("tell")] TELL,
+                )] [CommandPermissionMask((uint) Permissions.Talk)] [Description("tell")] TELL,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=notice>&<group=<UUID|STRING>>&<password=<STRING>>&<message=<STRING>>&[subject=<STRING>]&[item=<UUID|STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("notice")] NOTICE,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("notice")] NOTICE,
             [Description("message")] MESSAGE,
             [Description("subject")] SUBJECT,
             [Description("item")] ITEM,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=pay>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<avatar|object|group>>&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&entity=object:<target=<UUID>>&[reason=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_ECONOMY)] [Description("pay")] PAY,
+                )] [CommandPermissionMask((uint) Permissions.Economy)] [Description("pay")] PAY,
             [Description("amount")] AMOUNT,
             [Description("target")] TARGET,
             [Description("reason")] REASON,
-            [IsCommand(true)] [CommandInputSyntax("<command=getbalance>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_ECONOMY)] [Description("getbalance")] GETBALANCE,
+            [IsCommand(true)] [CommandInputSyntax("<command=getbalance>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Economy)] [Description("getbalance")] GETBALANCE,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=teleport>&<group=<UUID|STRING>>&<password=<STRING>>&<region=<STRING>>&[position=<VECTOR3>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("teleport")] TELEPORT,
+                )] [CommandPermissionMask((uint) Permissions.Movement)] [Description("teleport")] TELEPORT,
             [Description("region")] REGION,
             [Description("position")] POSITION,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getregiondata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Simulator[,Simulator...]>>&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getregiondata")] GETREGIONDATA,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("getregiondata")] GETREGIONDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=sit>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("sit")] SIT,
-            [IsCommand(true)] [CommandInputSyntax("<command=stand>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("stand")] STAND,
+                )] [CommandPermissionMask((uint) Permissions.Movement)] [Description("sit")] SIT,
+            [IsCommand(true)] [CommandInputSyntax("<command=stand>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Movement)] [Description("stand")] STAND,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=parceleject>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[ban=<BOOL>]&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("parceleject")] PARCELEJECT,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("parceleject")] PARCELEJECT,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=creategroup>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,Group...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP | (uint) Permissions.PERMISSION_ECONOMY)] [Description("creategroup")] CREATEGROUP,
+                )] [CommandPermissionMask((uint) Permissions.Group | (uint) Permissions.Economy)] [Description("creategroup")] CREATEGROUP,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=parcelfreeze>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[freeze=<BOOL>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("parcelfreeze")] PARCELFREEZE,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("parcelfreeze")] PARCELFREEZE,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=createrole>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<STRING>>&[powers=<GroupPowers[,GroupPowers...]>]&[title=<STRING>]&[description=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("createrole")] CREATEROLE,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("createrole")] CREATEROLE,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=deleterole>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<STRING|UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("deleterole")] DELETEROLE,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("deleterole")] DELETEROLE,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=getrolesmembers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getrolesmembers")] GETROLESMEMBERS,
-            [IsCommand(true)] [CommandInputSyntax("<command=getroles>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getroles")] GETROLES,
+                "<command=getrolesmembers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Group)] [Description("getrolesmembers")] GETROLESMEMBERS,
+            [IsCommand(true)] [CommandInputSyntax("<command=getroles>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Group)] [Description("getroles")] GETROLES,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getrolepowers>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("getrolepowers")] GETROLEPOWERS,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("getrolepowers")] GETROLEPOWERS,
             [Description("powers")] POWERS,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=lure>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("lure")] LURE,
+                )] [CommandPermissionMask((uint) Permissions.Movement)] [Description("lure")] LURE,
             [Description("URL")] URL,
-            [IsCommand(true)] [CommandInputSyntax("<command=sethome>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("sethome")] SETHOME,
-            [IsCommand(true)] [CommandInputSyntax("<command=gohome>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("gohome")] GOHOME,
+            [IsCommand(true)] [CommandInputSyntax("<command=sethome>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("sethome")] SETHOME,
+            [IsCommand(true)] [CommandInputSyntax("<command=gohome>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Movement)] [Description("gohome")] GOHOME,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=setprofiledata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AvatarProperties[,AvatarProperties...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("setprofiledata")] SETPROFILEDATA,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("setprofiledata")] SETPROFILEDATA,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=give>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<avatar|object>>&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&entity=avatar:<item=<UUID|STRING>&entity=object:<item=<UUID|STRING>&entity=object:[range=<FLOAT>]&entity=object:<target=<UUID|STRING>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("give")] GIVE,
+                )] [CommandPermissionMask((uint) Permissions.Inventory)] [Description("give")] GIVE,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=deleteitem>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("deleteitem")] DELETEITEM,
-            [IsCommand(true)] [CommandInputSyntax("<command=emptytrash>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_INVENTORY)] [Description("emptytrash")] EMPTYTRASH,
+                )] [CommandPermissionMask((uint) Permissions.Inventory)] [Description("deleteitem")] DELETEITEM,
+            [IsCommand(true)] [CommandInputSyntax("<command=emptytrash>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Inventory)] [Description("emptytrash")] EMPTYTRASH,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=fly>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("fly")] FLY,
+                "<command=fly>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Movement)] [Description("fly")] FLY,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=addpick>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[description=<STRING>]&[item=<STRING|UUID>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("addpick")] ADDPICK,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("addpick")] ADDPICK,
 
             [IsCommand(true)] [CommandInputSyntax(
-                "<command=deletepick>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("deltepick")] DELETEPICK,
+                "<command=deletepick>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("deltepick")] DELETEPICK,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=touch>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("touch")] TOUCH,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("touch")] TOUCH,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=moderate>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<type=<voice|text>>&<silence=<BOOL>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROUP)] [Description("moderate")] MODERATE,
+                )] [CommandPermissionMask((uint) Permissions.Group)] [Description("moderate")] MODERATE,
             [Description("type")] TYPE,
             [Description("silence")] SILENCE,
             [Description("freeze")] FREEZE,
-            [IsCommand(true)] [CommandInputSyntax("<command=rebake>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("rebake")] REBAKE,
+            [IsCommand(true)] [CommandInputSyntax("<command=rebake>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("rebake")] REBAKE,
 
             [IsCommand(true)] [CommandInputSyntax("<command=getattachments>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("getattachments")] GETATTACHMENTS,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("getattachments")] GETATTACHMENTS,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=attach>&<group=<UUID|STRING>>&<password=<STRING>>&<attachments=<AttachmentPoint<,<UUID|STRING>>[,AttachmentPoint<,<UUID|STRING>>...]>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("attach")] ATTACH,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("attach")] ATTACH,
             [Description("attachments")] ATTACHMENTS,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=detach>&<group=<UUID|STRING>>&<password=<STRING>>&<attachments=<STRING[,UUID...]>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("detach")] DETACH,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("detach")] DETACH,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getprimitiveowners>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("getprimitiveowners")] GETPRIMITIVEOWNERS,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("getprimitiveowners")] GETPRIMITIVEOWNERS,
             [Description("entity")] ENTITY,
             [Description("channel")] CHANNEL,
             [Description("name")] NAME,
@@ -28103,25 +27538,25 @@ namespace Corrade
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<Primitive[,Primitive...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_INTERACT)] [Description("getprimitivedata")] GETPRIMITIVEDATA,
-            [IsCommand(true)] [CommandInputSyntax("<command=activate>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_GROOMING)] [Description("activate")] ACTIVATE,
+                )] [CommandPermissionMask((uint) Permissions.Interact)] [Description("getprimitivedata")] GETPRIMITIVEDATA,
+            [IsCommand(true)] [CommandInputSyntax("<command=activate>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Grooming)] [Description("activate")] ACTIVATE,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=autopilot>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR2>>&<action=<start|stop>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_MOVEMENT)] [Description("autopilot")] AUTOPILOT,
+                )] [CommandPermissionMask((uint) Permissions.Movement)] [Description("autopilot")] AUTOPILOT,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=mute>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<target=<UUID>>&<action=<mute|unmute>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_MUTE)] [Description("mute")] MUTE,
-            [IsCommand(true)] [CommandInputSyntax("<command=getmutes>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_MUTE)] [Description("getmutes")] GETMUTES,
-            [IsCommand(true)] [CommandInputSyntax("<command=getmutes>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.PERMISSION_NOTIFICATIONS)] [Description("notify")] NOTIFY,
+                )] [CommandPermissionMask((uint) Permissions.Mute)] [Description("mute")] MUTE,
+            [IsCommand(true)] [CommandInputSyntax("<command=getmutes>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Mute)] [Description("getmutes")] GETMUTES,
+            [IsCommand(true)] [CommandInputSyntax("<command=getmutes>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Notifications)] [Description("notify")] NOTIFY,
             [Description("source")] SOURCE,
             [Description("effect")] EFFECT,
             [Description("id")] ID,
 
             [IsCommand(true)] [CommandInputSyntax(
                 "<command=terrain>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<set|get>>&action=set:<data=<STRING>>&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.PERMISSION_LAND)] [Description("terrain")] TERRAIN,
+                )] [CommandPermissionMask((uint) Permissions.Land)] [Description("terrain")] TERRAIN,
             [Description("output")] OUTPUT,
             [Description("input")] INPUT
         }
@@ -28254,7 +27689,7 @@ namespace Corrade
                 {
                     KeyValuePair<TKey, TVal> kvp =
                         (KeyValuePair<TKey, TVal>)
-                            info.GetValue(String.Format("Item{0}", i), typeof (KeyValuePair<TKey, TVal>));
+                            info.GetValue(string.Format("Item{0}", i), typeof (KeyValuePair<TKey, TVal>));
                     Add(kvp.Key, kvp.Value);
                 }
             }
@@ -28265,7 +27700,7 @@ namespace Corrade
                 int itemIdx = 0;
                 foreach (KeyValuePair<TKey, TVal> kvp in this)
                 {
-                    info.AddValue(String.Format("Item{0}", itemIdx), kvp, typeof (KeyValuePair<TKey, TVal>));
+                    info.AddValue(string.Format("Item{0}", itemIdx), kvp, typeof (KeyValuePair<TKey, TVal>));
                     itemIdx++;
                 }
                 base.GetObjectData(info, context);
@@ -28424,14 +27859,14 @@ namespace Corrade
             private readonly uint EventsAllowed;
             private readonly object LockObject = new object();
             private uint _Events;
-            private Timer timer;
+            private System.Timers.Timer timer;
 
             public wasTimedThrottle(uint events, uint seconds)
             {
                 EventsAllowed = events;
                 if (timer == null)
                 {
-                    timer = new Timer(seconds);
+                    timer = new System.Timers.Timer(seconds);
                     timer.Elapsed += (o, p) =>
                     {
                         lock (LockObject)
@@ -28485,18 +27920,18 @@ namespace Corrade
             [Flags]
             public enum DECAY_TYPE
             {
-                [Description("none")] NONE = 0,
-                [Description("arithmetic")] ARITHMETIC = 1,
-                [Description("geometric")] GEOMETRIC = 2,
-                [Description("harmonic")] HARMONIC = 4,
-                [Description("weighted")] WEIGHTED = 5
+                [XmlEnum(Name = "none")] [Description("none")] NONE = 0,
+                [XmlEnum(Name = "arithmetic")] [Description("arithmetic")] ARITHMETIC = 1,
+                [XmlEnum(Name = "geometric")] [Description("geometric")] GEOMETRIC = 2,
+                [XmlEnum(Name = "harmonic")] [Description("harmonic")] HARMONIC = 4,
+                [XmlEnum(Name = "weighted")] [Description("weighted")] WEIGHTED = 5
             }
 
             private readonly DECAY_TYPE decay = DECAY_TYPE.NONE;
             private readonly Stopwatch elapsed = new Stopwatch();
             private readonly object LockObject = new object();
             private readonly HashSet<double> times = new HashSet<double>();
-            private Timer alarm;
+            private System.Timers.Timer alarm;
 
             /// <summary>
             ///     The default constructor using no decay.
@@ -28531,7 +27966,7 @@ namespace Corrade
                     switch (alarm == null)
                     {
                         case true:
-                            alarm = new Timer(deadline);
+                            alarm = new System.Timers.Timer(deadline);
                             alarm.Elapsed += (o, p) =>
                             {
                                 lock (LockObject)
@@ -28586,737 +28021,6 @@ namespace Corrade
                 }
             }
         }
-
-        /// <summary>
-        ///     Semaphores that sense the state of the connection. When any of these semaphores fail,
-        ///     Corrade does not consider itself connected anymore and terminates.
-        /// </summary>
-        private static readonly Dictionary<char, ManualResetEvent> ConnectionSemaphores = new Dictionary
-            <char, ManualResetEvent>
-        {
-            {'l', new ManualResetEvent(false)},
-            {'s', new ManualResetEvent(false)},
-            {'u', new ManualResetEvent(false)}
-        };
-
-        public static string InstalledServiceName;
-        private static Thread programThread;
-        private static Thread HTTPListenerThread;
-        private static HttpListener HTTPListener;
-        private static Thread EffectsExpirationThread;
-        private static readonly Random CorradeRandom = new Random();
-        private static readonly EventLog CorradeEventLog = new EventLog();
-        private static readonly GridClient Client = new GridClient();
-
-        private static readonly Bot AIMLBot = new Bot
-        {
-            TrustAIML = false
-        };
-
-        private static readonly User AIMLBotUser = new User(CORRADE_CONSTANTS.CORRADE, AIMLBot);
-        private static readonly FileSystemWatcher AIMLBotConfigurationWatcher = new FileSystemWatcher();
-        private static readonly FileSystemWatcher ConfigurationWatcher = new FileSystemWatcher();
-        private static readonly FileSystemWatcher NotificationsWatcher = new FileSystemWatcher();
-        private static readonly object AIMLBotLock = new object();
-        private static readonly object ClientInstanceGroupsLock = new object();
-        private static readonly object ClientInstanceInventoryLock = new object();
-        private static readonly object ClientInstanceAvatarsLock = new object();
-        private static readonly object ClientInstanceSelfLock = new object();
-        private static readonly object ClientInstanceConfigurationLock = new object();
-        private static readonly object ClientInstanceParcelsLock = new object();
-        private static readonly object ClientInstanceNetworkLock = new object();
-        private static readonly object ClientInstanceGridLock = new object();
-        private static readonly object ClientInstanceDirectoryLock = new object();
-        private static readonly object ClientInstanceEstateLock = new object();
-        private static readonly object ClientInstanceObjectsLock = new object();
-        private static readonly object ClientInstanceFriendsLock = new object();
-        private static readonly object ClientInstanceAssetsLock = new object();
-        private static readonly object ClientInstanceAppearanceLock = new object();
-        private static readonly object ConfigurationFileLock = new object();
-        private static readonly object ClientLogFileLock = new object();
-        private static readonly object GroupLogFileLock = new object();
-        private static readonly object LocalLogFileLock = new object();
-        private static readonly object RegionLogFileLock = new object();
-        private static readonly object InstantMessageLogFileLock = new object();
-        private static readonly object DatabaseFileLock = new object();
-
-        private static readonly wasTimedThrottle TimedTeleportThrottle =
-            new wasTimedThrottle(LINDEN_CONSTANTS.TELEPORTS.THROTTLE.MAX_TELEPORTS,
-                LINDEN_CONSTANTS.TELEPORTS.THROTTLE.GRACE_SECONDS);
-
-        private static readonly Dictionary<string, object> DatabaseLocks = new Dictionary<string, object>();
-        private static readonly object GroupNotificationsLock = new object();
-        public static HashSet<Notification> GroupNotifications = new HashSet<Notification>();
-
-        private static readonly SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>
-            InventoryOffers =
-                new SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>();
-
-        private static readonly object InventoryOffersLock = new object();
-
-        private static readonly BlockingQueue<CallbackQueueElement> CallbackQueue =
-            new BlockingQueue<CallbackQueueElement>();
-
-        private static readonly BlockingQueue<NotificationQueueElement> NotificationQueue =
-            new BlockingQueue<NotificationQueueElement>();
-
-        private static readonly HashSet<GroupInvite> GroupInvites = new HashSet<GroupInvite>();
-        private static readonly object GroupInviteLock = new object();
-        private static readonly HashSet<TeleportLure> TeleportLures = new HashSet<TeleportLure>();
-        private static readonly object TeleportLureLock = new object();
-
-        private static readonly HashSet<ScriptPermissionRequest> ScriptPermissionRequests =
-            new HashSet<ScriptPermissionRequest>();
-
-        private static readonly object ScriptPermissionRequestLock = new object();
-        private static readonly HashSet<ScriptDialog> ScriptDialogs = new HashSet<ScriptDialog>();
-        private static readonly object ScriptDialogLock = new object();
-
-        private static readonly SerializableDictionary<UUID, HashSet<UUID>> GroupMembers =
-            new SerializableDictionary<UUID, HashSet<UUID>>();
-
-        private static readonly object GroupMembersLock = new object();
-        private static readonly Hashtable GroupWorkers = new Hashtable();
-        private static readonly object GroupWorkersLock = new object();
-        private static readonly Hashtable GroupDirectoryTrackers = new Hashtable();
-        private static readonly object GroupDirectoryTrackersLock = new object();
-        private static readonly HashSet<LookAtEffect> LookAtEffects = new HashSet<LookAtEffect>();
-        private static readonly HashSet<PointAtEffect> PointAtEffects = new HashSet<PointAtEffect>();
-        private static readonly HashSet<SphereEffect> SphereEffects = new HashSet<SphereEffect>();
-        private static readonly object SphereEffectsLock = new object();
-        private static readonly HashSet<BeamEffect> BeamEffects = new HashSet<BeamEffect>();
-        private static readonly Dictionary<UUID, Primitive> RadarObjects = new Dictionary<UUID, Primitive>();
-        private static readonly object RadarObjectsLock = new object();
-        private static readonly object BeamEffectsLock = new object();
-        private static readonly object InputFiltersLock = new object();
-        private static readonly object OutputFiltersLock = new object();
-        private static volatile bool AIMLBotBrainCompiled;
-
-        /// <summary>
-        ///     The various types of threads created by Corrade.
-        /// </summary>
-        private static readonly Dictionary<CorradeThreadType, CorradeThread> CorradeThreadPool =
-            new Dictionary<CorradeThreadType, CorradeThread>
-            {
-                {CorradeThreadType.COMMAND, new CorradeThread(CorradeThreadType.COMMAND)},
-                {CorradeThreadType.RLV, new CorradeThread(CorradeThreadType.RLV)},
-                {CorradeThreadType.NOTIFICATION, new CorradeThread(CorradeThreadType.NOTIFICATION)},
-                {CorradeThreadType.INSTANT_MESSAGE, new CorradeThread(CorradeThreadType.INSTANT_MESSAGE)},
-                {CorradeThreadType.LOG, new CorradeThread(CorradeThreadType.LOG)},
-                {CorradeThreadType.POST, new CorradeThread(CorradeThreadType.POST)}
-            };
-
-        /// <summary>
-        ///     Group membership sweep thread.
-        /// </summary>
-        private static Thread GroupMembershipSweepThread;
-
-        /// <summary>
-        ///     Group membership sweep thread starter.
-        /// </summary>
-        private static readonly System.Action StartGroupMembershipSweepThread = () =>
-        {
-            if (GroupMembershipSweepThread != null &&
-                (GroupMembershipSweepThread.ThreadState.Equals(ThreadState.Running) ||
-                 GroupMembershipSweepThread.ThreadState.Equals(ThreadState.WaitSleepJoin))) return;
-            runGroupMembershipSweepThread = true;
-            GroupMembershipSweepThread = new Thread(GroupMembershipSweep)
-            {
-                IsBackground = true,
-                Priority = ThreadPriority.Lowest
-            };
-            GroupMembershipSweepThread.Start();
-        };
-
-        /// <summary>
-        ///     Group membership sweep thread stopper.
-        /// </summary>
-        private static readonly System.Action StopGroupMembershipSweepThread = () =>
-        {
-            // Stop the notification thread.
-            runGroupMembershipSweepThread = false;
-            if (GroupMembershipSweepThread == null ||
-                (!GroupMembershipSweepThread.ThreadState.Equals(ThreadState.Running) &&
-                 !GroupMembershipSweepThread.ThreadState.Equals(ThreadState.WaitSleepJoin))) return;
-            if (GroupMembershipSweepThread.Join(1000)) return;
-            try
-            {
-                GroupMembershipSweepThread.Abort();
-                GroupMembershipSweepThread.Join();
-            }
-            catch (ThreadStateException)
-            {
-            }
-        };
-
-        /// <summary>
-        ///     Schedules a load of the configuration file.
-        /// </summary>
-        private static readonly System.Threading.Timer ConfigurationChangedTimer =
-            new System.Threading.Timer(ConfigurationChanged =>
-            {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
-                Configuration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE);
-            });
-
-        /// <summary>
-        ///     Schedules a load of the configuration file.
-        /// </summary>
-        private static readonly System.Threading.Timer NotificationsChangedTimer =
-            new System.Threading.Timer(NotificationsChanged =>
-            {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATIONS_FILE_MODIFIED));
-                lock (GroupNotificationsLock)
-                {
-                    LoadNotificationState.Invoke();
-                }
-            });
-
-        /// <summary>
-        ///     Schedules a load of the AIML configuration file.
-        /// </summary>
-        private static readonly System.Threading.Timer AIMLConfigurationChangedTimer =
-            new System.Threading.Timer(AIMLConfigurationChanged =>
-            {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AIML_CONFIGURATION_MODIFIED));
-                new Thread(
-                    () =>
-                    {
-                        lock (AIMLBotLock)
-                        {
-                            LoadChatBotFiles.Invoke();
-                        }
-                    }) {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
-            });
-
-        /// <summary>
-        ///     Global rebake timer.
-        /// </summary>
-        private static readonly System.Threading.Timer RebakeTimer = new System.Threading.Timer(Rebake =>
-        {
-            lock (ClientInstanceAppearanceLock)
-            {
-                ManualResetEvent AppearanceSetEvent = new ManualResetEvent(false);
-                EventHandler<AppearanceSetEventArgs> HandleAppearanceSet = (sender, args) => AppearanceSetEvent.Set();
-                Client.Appearance.AppearanceSet += HandleAppearanceSet;
-                Client.Appearance.RequestSetAppearance(true);
-                AppearanceSetEvent.WaitOne((int) Configuration.SERVICES_TIMEOUT, false);
-                Client.Appearance.AppearanceSet -= HandleAppearanceSet;
-            }
-        });
-
-        /// <summary>
-        ///     Current land group activation timer.
-        /// </summary>
-        private static readonly System.Threading.Timer ActivateCurrentLandGroupTimer =
-            new System.Threading.Timer(ActivateCurrentLandGroup =>
-            {
-                Parcel parcel = null;
-                if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel)) return;
-                Group landGroup =
-                    Configuration.GROUPS.AsParallel().FirstOrDefault(o => o.UUID.Equals(parcel.GroupID));
-                if (landGroup.UUID.Equals(UUID.Zero)) return;
-                Client.Groups.ActivateGroup(landGroup.UUID);
-            });
-
-        public static EventHandler ConsoleEventHandler;
-
-        /// <summary>
-        ///     Corrade's input filter function.
-        /// </summary>
-        private static readonly Func<string, string> wasInput = o =>
-        {
-            if (string.IsNullOrEmpty(o)) return string.Empty;
-
-            List<Filter> safeFilters;
-            lock (InputFiltersLock)
-            {
-                safeFilters = Configuration.INPUT_FILTERS;
-            }
-            foreach (Filter filter in safeFilters)
-            {
-                switch (filter)
-                {
-                    case Filter.RFC1738:
-                        o = wasURLUnescapeDataString(o);
-                        break;
-                    case Filter.RFC3986:
-                        o = wasURIUnescapeDataString(o);
-                        break;
-                    case Filter.ENIGMA:
-                        o = wasEnigma(o, Configuration.ENIGMA.rotors.ToArray(), Configuration.ENIGMA.plugs.ToArray(),
-                            Configuration.ENIGMA.reflector);
-                        break;
-                    case Filter.VIGENERE:
-                        o = wasDecryptVIGENERE(o, Configuration.VIGENERE_SECRET);
-                        break;
-                    case Filter.ATBASH:
-                        o = wasATBASH(o);
-                        break;
-                    case Filter.BASE64:
-                        o = Encoding.UTF8.GetString(Convert.FromBase64String(o));
-                        break;
-                }
-            }
-            return o;
-        };
-
-        /// <summary>
-        ///     Corrade's output filter function.
-        /// </summary>
-        private static readonly Func<string, string> wasOutput = o =>
-        {
-            if (string.IsNullOrEmpty(o)) return string.Empty;
-
-            List<Filter> safeFilters;
-            lock (OutputFiltersLock)
-            {
-                safeFilters = Configuration.OUTPUT_FILTERS;
-            }
-            foreach (Filter filter in safeFilters)
-            {
-                switch (filter)
-                {
-                    case Filter.RFC1738:
-                        o = wasURLEscapeDataString(o);
-                        break;
-                    case Filter.RFC3986:
-                        o = wasURIEscapeDataString(o);
-                        break;
-                    case Filter.ENIGMA:
-                        o = wasEnigma(o, Configuration.ENIGMA.rotors.ToArray(), Configuration.ENIGMA.plugs.ToArray(),
-                            Configuration.ENIGMA.reflector);
-                        break;
-                    case Filter.VIGENERE:
-                        o = wasEncryptVIGENERE(o, Configuration.VIGENERE_SECRET);
-                        break;
-                    case Filter.ATBASH:
-                        o = wasATBASH(o);
-                        break;
-                    case Filter.BASE64:
-                        o = Convert.ToBase64String(Encoding.UTF8.GetBytes(o));
-                        break;
-                }
-            }
-            return o;
-        };
-
-        /// <summary>
-        ///     Determines whether a string is a Corrade command.
-        /// </summary>
-        /// <returns>true if the string is a Corrade command</returns>
-        private static readonly Func<string, bool> IsCorradeCommand = o =>
-        {
-            Dictionary<string, string> data = wasKeyValueDecode(o);
-            return data.Any() && data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND)) &&
-                   data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)) &&
-                   data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD));
-        };
-
-        /// <summary>
-        ///     Gets the first name and last name from an avatar name.
-        /// </summary>
-        /// <returns>the firstname and the lastname or Resident</returns>
-        private static readonly Func<string, IEnumerable<string>> GetAvatarNames =
-            o => !string.IsNullOrEmpty(o)
-                ? CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(o)
-                    .Cast<Match>()
-                    .ToDictionary(p => new[]
-                    {
-                        p.Groups["first"].Value,
-                        p.Groups["last"].Value
-                    })
-                    .SelectMany(
-                        p =>
-                            new[]
-                            {
-                                p.Key[0].Trim(),
-                                !string.IsNullOrEmpty(p.Key[1])
-                                    ? p.Key[1].Trim()
-                                    : LINDEN_CONSTANTS.AVATARS.LASTNAME_PLACEHOLDER
-                            })
-                : null;
-
-        /// <summary>
-        ///     Updates the inventory starting from a folder recursively.
-        /// </summary>
-        private static readonly Action<InventoryFolder> UpdateInventoryRecursive = o =>
-        {
-            Thread updateInventoryRecursiveThread = new Thread(() =>
-            {
-                try
-                {
-                    // Create the queue of folders.
-                    // Enqueue the first folder (as the root).
-                    Dictionary<UUID, ManualResetEvent> inventoryFolders = new Dictionary<UUID, ManualResetEvent>
-                    {
-                        {o.UUID, new ManualResetEvent(false)}
-                    };
-                    // Create a stopwatch for the root folder.
-                    Dictionary<UUID, Stopwatch> inventoryStopwatch = new Dictionary<UUID, Stopwatch>
-                    {
-                        {o.UUID, new Stopwatch()}
-                    };
-
-                    HashSet<long> times = new HashSet<long>(new[] {(long) Client.Settings.CAPS_TIMEOUT});
-
-                    object LockObject = new object();
-
-                    EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
-                    {
-                        // Enqueue all the new folders.
-                        Client.Inventory.Store.GetContents(q.FolderID).ForEach(r =>
-                        {
-                            if (r is InventoryFolder)
-                            {
-                                UUID inventoryFolderUUID = (r as InventoryFolder).UUID;
-                                lock (LockObject)
-                                {
-                                    if (!inventoryFolders.ContainsKey(inventoryFolderUUID))
-                                    {
-                                        inventoryFolders.Add(inventoryFolderUUID, new ManualResetEvent(false));
-                                    }
-                                    if (!inventoryStopwatch.ContainsKey(inventoryFolderUUID))
-                                    {
-                                        inventoryStopwatch.Add(inventoryFolderUUID, new Stopwatch());
-                                    }
-                                }
-                            }
-                            lock (LockObject)
-                            {
-                                inventoryStopwatch[q.FolderID].Stop();
-                                times.Add(inventoryStopwatch[q.FolderID].ElapsedMilliseconds);
-                                inventoryFolders[q.FolderID].Set();
-                            }
-                        });
-                    };
-
-                    do
-                    {
-                        // Don't choke the chicken.
-                        Thread.Yield();
-                        Dictionary<UUID, ManualResetEvent> closureFolders;
-                        lock (LockObject)
-                        {
-                            closureFolders =
-                                new Dictionary<UUID, ManualResetEvent>(
-                                    inventoryFolders.Where(p => !p.Key.Equals(UUID.Zero))
-                                        .ToDictionary(p => p.Key, q => q.Value));
-                        }
-                        lock (ClientInstanceInventoryLock)
-                        {
-                            Parallel.ForEach(closureFolders, p =>
-                            {
-                                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                                lock (LockObject)
-                                {
-                                    inventoryStopwatch[p.Key].Start();
-                                }
-                                Client.Inventory.RequestFolderContents(p.Key, Client.Self.AgentID, true, true,
-                                    InventorySortOrder.ByDate);
-                                ManualResetEvent folderEvent;
-                                int averageTime;
-                                lock (LockObject)
-                                {
-                                    folderEvent = closureFolders[p.Key];
-                                    averageTime = (int) times.Average();
-                                }
-                                folderEvent.WaitOne(averageTime, false);
-                                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                            });
-                        }
-                        Parallel.ForEach(closureFolders, p =>
-                        {
-                            if (inventoryFolders.ContainsKey(p.Key))
-                            {
-                                lock (LockObject)
-                                {
-                                    inventoryFolders.Remove(p.Key);
-                                }
-                            }
-                            if (inventoryStopwatch.ContainsKey(p.Key))
-                            {
-                                lock (LockObject)
-                                {
-                                    inventoryStopwatch.Remove(p.Key);
-                                }
-                            }
-                        });
-                    } while (inventoryFolders.Any());
-                }
-                catch (Exception)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
-                }
-            }) {IsBackground = true, Priority = ThreadPriority.Lowest};
-
-            updateInventoryRecursiveThread.Start();
-            updateInventoryRecursiveThread.Join(Timeout.Infinite);
-        };
-
-        /// <summary>
-        ///     Loads the OpenMetaverse inventory cache.
-        /// </summary>
-        private static readonly System.Action LoadInventoryCache = () =>
-        {
-            int itemsLoaded =
-                Client.Inventory.Store.RestoreFromDisk(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
-                    CORRADE_CONSTANTS.INVENTORY_CACHE_FILE));
-
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_LOADED),
-                itemsLoaded < 0 ? "0" : itemsLoaded.ToString(CultureInfo.DefaultThreadCurrentCulture));
-        };
-
-        /// <summary>
-        ///     Saves the OpenMetaverse inventory cache.
-        /// </summary>
-        private static readonly System.Action SaveInventoryCache = () =>
-        {
-            string path = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
-                CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
-            int itemsSaved = Client.Inventory.Store.Items.Count;
-            Client.Inventory.Store.SaveToDisk(path);
-
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_SAVED),
-                itemsSaved.ToString(CultureInfo.DefaultThreadCurrentCulture));
-        };
-
-        /// <summary>
-        ///     Loads Corrade's caches.
-        /// </summary>
-        private static readonly System.Action LoadCorradeCache = () =>
-        {
-            lock (Cache.Locks.AgentCacheLock)
-            {
-                Cache.AgentCache =
-                    Cache.Load(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
-                        Cache.AgentCache);
-            }
-            lock (Cache.Locks.GroupCacheLock)
-            {
-                Cache.GroupCache =
-                    Cache.Load(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
-                        Cache.GroupCache);
-            }
-        };
-
-        /// <summary>
-        ///     Saves Corrade's caches.
-        /// </summary>
-        private static readonly System.Action SaveCorradeCache = () =>
-        {
-            lock (Cache.Locks.AgentCacheLock)
-            {
-                Cache.Save(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
-                    Cache.AgentCache);
-            }
-            lock (Cache.Locks.GroupCacheLock)
-            {
-                Cache.Save(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
-                    Cache.GroupCache);
-            }
-        };
-
-        /// <summary>
-        ///     Saves Corrade group members.
-        /// </summary>
-        private static readonly System.Action SaveGroupMembersState = () =>
-        {
-            if (GroupMembers.Any())
-            {
-                try
-                {
-                    using (
-                        StreamWriter writer =
-                            new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                                CORRADE_CONSTANTS.GROUP_MEMBERS_STATE_FILE), false, Encoding.UTF8))
-                    {
-                        XmlSerializer serializer =
-                            new XmlSerializer(typeof (SerializableDictionary<UUID, HashSet<UUID>>));
-                        serializer.Serialize(writer, GroupMembers);
-                        writer.Flush();
-                    }
-                }
-                catch (Exception e)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_GROUP_MEMBERS_STATE),
-                        e.Message);
-                }
-            }
-        };
-
-        /// <summary>
-        ///     Loads Corrade notifications.
-        /// </summary>
-        private static readonly System.Action LoadGroupMembersState = () =>
-        {
-            string groupMembersStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                CORRADE_CONSTANTS.GROUP_MEMBERS_STATE_FILE);
-            if (File.Exists(groupMembersStateFile))
-            {
-                try
-                {
-                    using (StreamReader stream = new StreamReader(groupMembersStateFile, Encoding.UTF8))
-                    {
-                        XmlSerializer serializer =
-                            new XmlSerializer(typeof (SerializableDictionary<UUID, HashSet<UUID>>));
-                        Parallel.ForEach((SerializableDictionary<UUID, HashSet<UUID>>) serializer.Deserialize(stream),
-                            o =>
-                            {
-                                if (!Configuration.GROUPS.AsParallel().Any(p => p.UUID.Equals(o.Key)) ||
-                                    GroupMembers.Contains(o)) return;
-                                lock (GroupMembersLock)
-                                {
-                                    GroupMembers.Add(o.Key, o.Value);
-                                }
-                            });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(
-                        wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_GROUP_MEMBERS_STATE),
-                        ex.Message);
-                }
-            }
-        };
-
-        /// <summary>
-        ///     Saves Corrade notifications.
-        /// </summary>
-        private static readonly System.Action SaveNotificationState = () =>
-        {
-            NotificationsWatcher.EnableRaisingEvents = false;
-            try
-            {
-                using (
-                    StreamWriter writer =
-                        new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                            CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE), false, Encoding.UTF8))
-                {
-                    XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
-                    serializer.Serialize(writer, GroupNotifications);
-                    writer.Flush();
-                }
-            }
-            catch (Exception e)
-            {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE),
-                    e.Message);
-            }
-            NotificationsWatcher.EnableRaisingEvents = true;
-        };
-
-        /// <summary>
-        ///     Loads Corrade notifications.
-        /// </summary>
-        private static readonly System.Action LoadNotificationState = () =>
-        {
-            string groupNotificationsStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE);
-            if (File.Exists(groupNotificationsStateFile))
-            {
-                try
-                {
-                    using (StreamReader stream = new StreamReader(groupNotificationsStateFile, Encoding.UTF8))
-                    {
-                        XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
-                        Parallel.ForEach((HashSet<Notification>) serializer.Deserialize(stream),
-                            o =>
-                            {
-                                if (!Configuration.GROUPS.AsParallel().Any(p => p.Name.Equals(o.GroupName)) ||
-                                    GroupNotifications.Contains(o)) return;
-                                lock (GroupNotificationsLock)
-                                {
-                                    GroupNotifications.Add(o);
-                                }
-                            });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(
-                        wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE),
-                        ex.Message);
-                }
-            }
-        };
-
-        /// <summary>
-        ///     Loads the chatbot configuration and AIML files.
-        /// </summary>
-        private static readonly System.Action LoadChatBotFiles = () =>
-        {
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READING_AIML_BOT_CONFIGURATION));
-            try
-            {
-                AIMLBot.isAcceptingUserInput = false;
-                AIMLBot.loadSettings(wasPathCombine(
-                    Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
-                    AIML_BOT_CONSTANTS.CONFIG.DIRECTORY, AIML_BOT_CONSTANTS.CONFIG.SETTINGS_FILE));
-                string AIMLBotBrain =
-                    wasPathCombine(
-                        Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
-                        AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_FILE);
-                switch (File.Exists(AIMLBotBrain))
-                {
-                    case true:
-                        AIMLBot.loadFromBinaryFile(AIMLBotBrain);
-                        break;
-                    default:
-                        AIMLBot.loadAIMLFromFiles();
-                        AIMLBot.saveToBinaryFile(AIMLBotBrain);
-                        break;
-                }
-                string AIMLBotUserBrain =
-                    wasPathCombine(
-                        Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
-                        AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_SESSION_FILE);
-                if (File.Exists(AIMLBotUserBrain))
-                {
-                    AIMLBotUser.Predicates.loadSettings(AIMLBotUserBrain);
-                }
-                AIMLBot.isAcceptingUserInput = true;
-            }
-            catch (Exception ex)
-            {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_LOADING_AIML_BOT_FILES), ex.Message);
-                return;
-            }
-            finally
-            {
-                AIMLBotBrainCompiled = true;
-            }
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_AIML_BOT_CONFIGURATION));
-        };
-
-        /// <summary>
-        ///     Saves the chatbot configuration and AIML files.
-        /// </summary>
-        private static readonly System.Action SaveChatBotFiles = () =>
-        {
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WRITING_AIML_BOT_CONFIGURATION));
-            try
-            {
-                AIMLBot.isAcceptingUserInput = false;
-                AIMLBotUser.Predicates.DictionaryAsXML.Save(wasPathCombine(
-                    Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
-                    AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_SESSION_FILE));
-                AIMLBot.isAcceptingUserInput = true;
-            }
-            catch (Exception ex)
-            {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SAVING_AIML_BOT_FILES), ex.Message);
-                return;
-            }
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WROTE_AIML_BOT_CONFIGURATION));
-        };
-
-        private static volatile bool runHTTPServer;
-        private static volatile bool runCallbackThread = true;
-        private static volatile bool runNotificationThread = true;
-        private static volatile bool runGroupMembershipSweepThread;
-        private static volatile bool runEffectsExpirationThread;
 
         #region KEY-VALUE DATA
 
@@ -30024,7 +28728,7 @@ namespace Corrade
             ref UUID groupUUID)
         {
             UUID localGroupUUID = UUID.Zero;
-            wasAdaptiveAlarm DirGroupsReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+            wasAdaptiveAlarm DirGroupsReceivedAlarm = new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
             EventHandler<DirGroupsReplyEventArgs> DirGroupsReplyDelegate = (sender, args) =>
             {
                 DirGroupsReceivedAlarm.Alarm(dataTimeout);
@@ -30181,7 +28885,7 @@ namespace Corrade
             ref UUID agentUUID)
         {
             UUID localAgentUUID = UUID.Zero;
-            wasAdaptiveAlarm DirPeopleReceivedAlarm = new wasAdaptiveAlarm(Configuration.DATA_DECAY_TYPE);
+            wasAdaptiveAlarm DirPeopleReceivedAlarm = new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
             EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyDelegate = (sender, args) =>
             {
                 DirPeopleReceivedAlarm.Alarm(dataTimeout);
