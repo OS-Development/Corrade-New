@@ -2479,6 +2479,7 @@
             this.MasterLastName.Size = new System.Drawing.Size(124, 20);
             this.MasterLastName.TabIndex = 0;
             this.toolTip1.SetToolTip(this.MasterLastName, "Master last name.");
+            this.MasterLastName.TextChanged += new System.EventHandler(this.MasterConfigurationChanged);
             // 
             // groupBox73
             // 
@@ -2498,6 +2499,7 @@
             this.MasterFirstName.Size = new System.Drawing.Size(124, 20);
             this.MasterFirstName.TabIndex = 0;
             this.toolTip1.SetToolTip(this.MasterFirstName, "Master first name.");
+            this.MasterFirstName.TextChanged += new System.EventHandler(this.MasterConfigurationChanged);
             // 
             // Masters
             // 
@@ -2509,6 +2511,7 @@
             this.Masters.TabIndex = 0;
             this.toolTip1.SetToolTip(this.Masters, "You can add agents by name here that will be able to teleport Corrade, send inven" +
         "tory items and execute administrative commands without having to use a script.");
+            this.Masters.SelectedIndexChanged += new System.EventHandler(this.MasterSelected);
             // 
             // tabPage12
             // 
@@ -2532,7 +2535,7 @@
             // 
             // AddGroup
             // 
-            this.AddGroup.Location = new System.Drawing.Point(523, 298);
+            this.AddGroup.Location = new System.Drawing.Point(523, 273);
             this.AddGroup.Name = "AddGroup";
             this.AddGroup.Size = new System.Drawing.Size(91, 23);
             this.AddGroup.TabIndex = 12;
@@ -2543,7 +2546,7 @@
             // 
             // DeleteGroup
             // 
-            this.DeleteGroup.Location = new System.Drawing.Point(523, 268);
+            this.DeleteGroup.Location = new System.Drawing.Point(523, 302);
             this.DeleteGroup.Name = "DeleteGroup";
             this.DeleteGroup.Size = new System.Drawing.Size(91, 23);
             this.DeleteGroup.TabIndex = 11;
@@ -2571,6 +2574,7 @@
             this.GroupChatLogFile.Size = new System.Drawing.Size(175, 22);
             this.GroupChatLogFile.TabIndex = 1;
             this.toolTip1.SetToolTip(this.GroupChatLogFile, "Path to the log file.");
+            this.GroupChatLogFile.TextChanged += new System.EventHandler(this.GroupConfigurationChanged);
             // 
             // GroupChatLogEnabled
             // 
@@ -2583,6 +2587,7 @@
             this.GroupChatLogEnabled.Text = "Enabled";
             this.toolTip1.SetToolTip(this.GroupChatLogEnabled, "Whether to enable logging group chat for this group. ");
             this.GroupChatLogEnabled.UseVisualStyleBackColor = true;
+            this.GroupChatLogEnabled.CheckedChanged += new System.EventHandler(this.GroupConfigurationChanged);
             // 
             // groupBox28
             // 
@@ -2602,6 +2607,7 @@
             this.GroupDatabaseFile.Size = new System.Drawing.Size(176, 22);
             this.GroupDatabaseFile.TabIndex = 0;
             this.toolTip1.SetToolTip(this.GroupDatabaseFile, "This is the path to a per-group database.");
+            this.GroupDatabaseFile.TextChanged += new System.EventHandler(this.GroupConfigurationChanged);
             // 
             // groupBox27
             // 
@@ -2715,6 +2721,7 @@
             this.GroupWorkers.TabIndex = 0;
             this.toolTip1.SetToolTip(this.GroupWorkers, "This limits the number of commands that can be lined up for execution for a confi" +
         "gured group in order to fairly share Corrade\'s resources.");
+            this.GroupWorkers.TextChanged += new System.EventHandler(this.GroupConfigurationChanged);
             // 
             // groupBox24
             // 
@@ -2734,6 +2741,7 @@
             this.GroupUUID.Size = new System.Drawing.Size(284, 22);
             this.GroupUUID.TabIndex = 0;
             this.toolTip1.SetToolTip(this.GroupUUID, "The UUID of the group.");
+            this.GroupUUID.TextChanged += new System.EventHandler(this.GroupConfigurationChanged);
             // 
             // groupBox23
             // 
@@ -2754,6 +2762,7 @@
             this.GroupPassword.TabIndex = 0;
             this.toolTip1.SetToolTip(this.GroupPassword, "This must be set to a password in order to identify scripts to the defined group." +
         "");
+            this.GroupPassword.TextChanged += new System.EventHandler(this.GroupConfigurationChanged);
             // 
             // groupBox22
             // 
@@ -2774,6 +2783,7 @@
             this.GroupName.TabIndex = 0;
             this.toolTip1.SetToolTip(this.GroupName, "The group-name must be set to the exact name of the group that Corrade will be ma" +
         "naging.");
+            this.GroupName.TextChanged += new System.EventHandler(this.GroupConfigurationChanged);
             // 
             // groupBox21
             // 
@@ -2796,7 +2806,7 @@
             this.Groups.TabIndex = 0;
             this.toolTip1.SetToolTip(this.Groups, "Every group is indexed by a group name. You can add the same group, several times" +
         ", using the same name but have different passwords.");
-            this.Groups.SelectedValueChanged += new System.EventHandler(this.GroupSelected);
+            this.Groups.SelectedIndexChanged += new System.EventHandler(this.GroupSelected);
             // 
             // button1
             // 

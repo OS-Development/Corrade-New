@@ -35,7 +35,7 @@ namespace Configurator
                 }
                 // Create the Linden culture from the globalization file and register it.
                 CultureAndRegionInfoBuilder cultureAndRegionInfoBuilder =
-                    CultureAndRegionInfoBuilder.CreateFromLdml(@"LindenGlobalization.xml");
+                    CultureAndRegionInfoBuilder.CreateFromLdml(Path.Combine(@"libs", @"LindenGlobalization.xml"));
                 cultureAndRegionInfoBuilder.Register();
                 CultureInfo.DefaultThreadCurrentCulture =
                     CultureInfo.CreateSpecificCulture(@"Linden-Lab");

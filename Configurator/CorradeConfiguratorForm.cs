@@ -13,6 +13,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -273,7 +274,7 @@ namespace Configurator
             {
                 mainForm.Groups.Items.Add(new ListViewItem
                 {
-                    Text = group.Name,
+                    Text = UnescapeXML(group.Name),
                     Tag = group
                 });
             }
@@ -627,15 +628,28 @@ namespace Configurator
             }));
         }
 
+        private void MasterSelected(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                ListViewItem listViewItem = Masters.SelectedItem as ListViewItem;
+                if (listViewItem == null)
+                    return;
+                Master master = (Master) listViewItem.Tag;
+                MasterFirstName.Text = master.FirstName;
+                MasterLastName.Text = master.LastName;
+            }));
+        }
+
         private void GroupSelected(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 ListViewItem listViewItem = Groups.SelectedItem as ListViewItem;
                 if (listViewItem == null)
                     return;
-                Group group = (Group) listViewItem.Tag;
 
+                Group group = (Group) listViewItem.Tag;
                 GroupName.Text = group.Name;
                 GroupPassword.Text = group.Password;
                 GroupUUID.Text = group.UUID.ToString();
@@ -682,7 +696,7 @@ namespace Configurator
 
         private void PermissionsSelected(object sender, ItemCheckEventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 ListViewItem listViewItem = Groups.SelectedItem as ListViewItem;
                 if (listViewItem == null)
@@ -712,7 +726,7 @@ namespace Configurator
 
         private void SelectedNotifications(object sender, ItemCheckEventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 ListViewItem listViewItem = Groups.SelectedItem as ListViewItem;
                 if (listViewItem == null)
@@ -742,7 +756,7 @@ namespace Configurator
 
         private void DeleteGroupRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 ListViewItem listViewItem = Groups.SelectedItem as ListViewItem;
                 if (listViewItem == null)
@@ -774,9 +788,163 @@ namespace Configurator
             }));
         }
 
+        private void MasterConfigurationChanged(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                ListViewItem listViewItem = Masters.SelectedItem as ListViewItem;
+                if (listViewItem == null)
+                    return;
+
+                Master master = (Master) listViewItem.Tag;
+
+                if (string.IsNullOrEmpty(MasterFirstName.Text) || string.IsNullOrEmpty(MasterLastName.Text))
+                {
+                    MasterFirstName.BackColor = Color.MistyRose;
+                    MasterLastName.BackColor = Color.MistyRose;
+                    return;
+                }
+
+                MasterFirstName.BackColor = Color.Empty;
+                MasterLastName.BackColor = Color.Empty;
+                corradeConfiguration.Masters.Remove(master);
+                master = new Master {FirstName = MasterFirstName.Text, LastName = MasterLastName.Text};
+                corradeConfiguration.Masters.Add(master);
+                Masters.Items[Masters.SelectedIndex] = new ListViewItem
+                {
+                    Text = MasterFirstName.Text + " " + MasterLastName.Text,
+                    Tag = master
+                };
+            }));
+        }
+
+        private static string EscapeXML(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return s;
+
+            return !SecurityElement.IsValidText(s)
+                ? SecurityElement.Escape(s)
+                : s;
+        }
+
+        private static string UnescapeXML(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return s;
+
+            string returnString = s;
+            returnString = returnString.Replace("&apos;", "'");
+            returnString = returnString.Replace("&quot;", "\"");
+            returnString = returnString.Replace("&gt;", ">");
+            returnString = returnString.Replace("&lt;", "<");
+            returnString = returnString.Replace("&amp;", "&");
+
+            return returnString;
+        }
+
+        private void GroupConfigurationChanged(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker) (() =>
+            {
+                ListViewItem listViewItem = Groups.SelectedItem as ListViewItem;
+                if (listViewItem == null)
+                    return;
+
+                Group group = (Group) listViewItem.Tag;
+
+                if (GroupName.Text.Equals(string.Empty))
+                {
+                    GroupName.BackColor = Color.MistyRose;
+                    return;
+                }
+                GroupName.BackColor = Color.Empty;
+
+                if (GroupPassword.Text.Equals(string.Empty))
+                {
+                    GroupPassword.BackColor = Color.MistyRose;
+                    return;
+                }
+                GroupPassword.BackColor = Color.Empty;
+
+                UUID groupUUID;
+                if (GroupUUID.Text.Equals(string.Empty) || !UUID.TryParse(GroupUUID.Text, out groupUUID))
+                {
+                    GroupUUID.BackColor = Color.MistyRose;
+                    return;
+                }
+                GroupUUID.BackColor = Color.Empty;
+
+                uint groupWorkers;
+                if (GroupWorkers.Text.Equals(string.Empty) || !uint.TryParse(GroupWorkers.Text, out groupWorkers))
+                {
+                    GroupWorkers.BackColor = Color.MistyRose;
+                    return;
+                }
+                GroupWorkers.BackColor = Color.Empty;
+
+                if (GroupDatabaseFile.Text.Equals(string.Empty))
+                {
+                    GroupDatabaseFile.BackColor = Color.MistyRose;
+                    return;
+                }
+                GroupDatabaseFile.BackColor = Color.Empty;
+
+                if (GroupChatLogFile.Text.Equals(string.Empty))
+                {
+                    GroupChatLogFile.BackColor = Color.MistyRose;
+                    return;
+                }
+                GroupChatLogFile.BackColor = Color.Empty;
+
+                // Permissions
+                HashSet<Permissions> permissions = new HashSet<Permissions>();
+                for (int i = 0; i < GroupPermissions.Items.Count; ++i)
+                {
+                    switch (GroupPermissions.GetItemCheckState(i))
+                    {
+                        case CheckState.Checked:
+                            permissions.Add(
+                                wasGetEnumValueFromDescription<Permissions>((string) GroupPermissions.Items[i]));
+                            break;
+                    }
+                }
+
+                // Notifications
+                HashSet<Notifications> notifications = new HashSet<Notifications>();
+                for (int i = 0; i < GroupNotifications.Items.Count; ++i)
+                {
+                    switch (GroupNotifications.GetItemCheckState(i))
+                    {
+                        case CheckState.Checked:
+                            notifications.Add(
+                                wasGetEnumValueFromDescription<Notifications>((string) GroupNotifications.Items[i]));
+                            break;
+                    }
+                }
+
+
+                corradeConfiguration.Groups.Remove(group);
+
+                group = new Group
+                {
+                    Name = EscapeXML(GroupName.Text),
+                    UUID = groupUUID,
+                    Password = EscapeXML(GroupPassword.Text),
+                    Workers = groupWorkers,
+                    DatabaseFile = GroupDatabaseFile.Text,
+                    ChatLog = GroupChatLogFile.Text,
+                    ChatLogEnabled = GroupChatLogEnabled.Checked,
+                    Permissions = permissions,
+                    Notifications = notifications
+                };
+
+                corradeConfiguration.Groups.Add(group);
+                Groups.Items[Groups.SelectedIndex] = new ListViewItem {Text = GroupName.Text, Tag = group};
+            }));
+        }
+
         private void AddGroupRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 if (GroupName.Text.Equals(string.Empty))
                 {
@@ -850,24 +1018,25 @@ namespace Configurator
 
                 Group group = new Group
                 {
-                    Name = GroupName.Text,
+                    Name = EscapeXML(GroupName.Text),
                     UUID = groupUUID,
-                    Password = GroupPassword.Text,
+                    Password = EscapeXML(GroupPassword.Text),
                     Workers = groupWorkers,
                     DatabaseFile = GroupDatabaseFile.Text,
                     ChatLog = GroupChatLogFile.Text,
+                    ChatLogEnabled = GroupChatLogEnabled.Checked,
                     Permissions = permissions,
                     Notifications = notifications
                 };
 
                 corradeConfiguration.Groups.Add(group);
-                Groups.Items.Add(new ListViewItem {Text = group.Name, Tag = group});
+                Groups.Items.Add(new ListViewItem {Text = GroupName.Text, Tag = group});
             }));
         }
 
         private void AddInputDecoderRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 if (string.IsNullOrEmpty(InputDecode.Text))
                 {
@@ -885,7 +1054,7 @@ namespace Configurator
 
         private void AddInputDecryptionRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 if (string.IsNullOrEmpty(InputDecryption.Text))
                 {
@@ -903,7 +1072,7 @@ namespace Configurator
 
         private void AddOutputEncryptionRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 if (string.IsNullOrEmpty(OutputEncrypt.Text))
                 {
@@ -921,7 +1090,7 @@ namespace Configurator
 
         private void AddOutputEncoderRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 if (string.IsNullOrEmpty(OutputEncode.Text))
                 {
@@ -939,7 +1108,7 @@ namespace Configurator
 
         private void DeleteSelectedOutputFilterRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 ListViewItem listViewItem = ActiveOutputFilters.SelectedItem as ListViewItem;
                 if (listViewItem == null)
@@ -954,7 +1123,7 @@ namespace Configurator
 
         private void DeleteSelectedInputFilterRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 ListViewItem listViewItem = ActiveInputFilters.SelectedItem as ListViewItem;
                 if (listViewItem == null)
@@ -969,7 +1138,7 @@ namespace Configurator
 
         private void AddENIGMARotorRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 if (string.IsNullOrEmpty(ENIGMARotor.Text))
                 {
@@ -987,7 +1156,7 @@ namespace Configurator
 
         private void DeleteENIGMARotorRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 ListViewItem listViewItem = ENIGMARotorSequence.SelectedItem as ListViewItem;
                 if (listViewItem == null)
@@ -1002,7 +1171,7 @@ namespace Configurator
 
         private void AddENIGMAPlugRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 if (string.IsNullOrEmpty(ENIGMARing.Text))
                 {
@@ -1020,7 +1189,7 @@ namespace Configurator
 
         private void DeleteENIGMAPlugRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 ListViewItem listViewItem = ENIGMAPlugSequence.SelectedItem as ListViewItem;
                 if (listViewItem == null)
@@ -1035,7 +1204,7 @@ namespace Configurator
 
         private void AddMasterRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 if (string.IsNullOrEmpty(MasterFirstName.Text) || string.IsNullOrEmpty(MasterLastName.Text))
                 {
@@ -1060,7 +1229,7 @@ namespace Configurator
 
         private void DeleteMasterRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() =>
+            mainForm.BeginInvoke((MethodInvoker) (() =>
             {
                 ListViewItem listViewItem = Masters.SelectedItem as ListViewItem;
                 if (listViewItem == null)
@@ -1076,7 +1245,7 @@ namespace Configurator
 
         private void ClearPasswordRequested(object sender, EventArgs e)
         {
-            BeginInvoke((MethodInvoker) (() => { mainForm.Password.Text = string.Empty; }));
+            mainForm.BeginInvoke((MethodInvoker) (() => { mainForm.Password.Text = string.Empty; }));
         }
 
         ///////////////////////////////////////////////////////////////////////////

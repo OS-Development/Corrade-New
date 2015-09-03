@@ -2549,30 +2549,36 @@ namespace Corrade
         /// <param name="groupUUID">the UUID of the group</param>
         /// <param name="powers">a GroupPowers structure</param>
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="dataTimeout">timeout in millisecons for each data burst</param>
         /// <returns>true if the agent has the powers</returns>
-        private static bool HasGroupPowers(UUID agentUUID, UUID groupUUID, GroupPowers powers,
-            uint millisecondsTimeout)
+        private static bool HasGroupPowers(UUID agentUUID, UUID groupUUID, GroupPowers powers, uint millisecondsTimeout,
+            uint dataTimeout)
         {
-            ManualResetEvent AvatarGroupsReceivedEvent = new ManualResetEvent(false);
-            List<AvatarGroup> avatarGroups = null;
+            List<AvatarGroup> avatarGroups = new List<AvatarGroup>();
+            wasAdaptiveAlarm AvatarGroupsReceivedAlarm = new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+            object LockObject = new object();
             EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
             {
-                avatarGroups = args.Groups;
-                AvatarGroupsReceivedEvent.Set();
+                AvatarGroupsReceivedAlarm.Alarm(dataTimeout);
+                lock (LockObject)
+                {
+                    avatarGroups.AddRange(args.Groups);
+                }
             };
             lock (ClientInstanceAvatarsLock)
             {
                 Client.Avatars.AvatarGroupsReply += AvatarGroupsReplyEventHandler;
                 Client.Avatars.RequestAvatarProperties(agentUUID);
-                if (!AvatarGroupsReceivedEvent.WaitOne((int) millisecondsTimeout, false))
+                if (!AvatarGroupsReceivedAlarm.Signal.WaitOne((int) millisecondsTimeout, false))
                 {
                     Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
                     return false;
                 }
                 Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
             }
-            return avatarGroups != null && avatarGroups.AsParallel().Any(
-                o => o.GroupID.Equals(groupUUID) && !(o.GroupPowers & powers).Equals(GroupPowers.None));
+            return
+                avatarGroups.AsParallel()
+                    .Any(o => o.GroupID.Equals(groupUUID) && !(o.GroupPowers & powers).Equals(GroupPowers.None));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -4349,7 +4355,8 @@ namespace Corrade
                 }
                 // Create the Linden culture from the globalization file and register it.
                 CultureAndRegionInfoBuilder cultureAndRegionInfoBuilder =
-                    CultureAndRegionInfoBuilder.CreateFromLdml(CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_FILE);
+                    CultureAndRegionInfoBuilder.CreateFromLdml(Path.Combine(CORRADE_CONSTANTS.LIBS_DIRECTORY,
+                    CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_FILE));
                 cultureAndRegionInfoBuilder.Register();
                 CultureInfo.DefaultThreadCurrentCulture =
                     CultureInfo.CreateSpecificCulture(CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_NAME);
@@ -4889,7 +4896,7 @@ namespace Corrade
             // Join group chat if possible.
             if (!Client.Self.GroupChatSessions.ContainsKey(e.GroupID) &&
                 HasGroupPowers(Client.Self.AgentID, e.GroupID, GroupPowers.JoinChat,
-                    corradeConfiguration.ServicesTimeout))
+                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
             {
                 JoinGroupChat(e.GroupID, corradeConfiguration.ServicesTimeout);
             }
@@ -8622,7 +8629,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.Invite,
-                                corradeConfiguration.ServicesTimeout))
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -8674,7 +8681,7 @@ namespace Corrade
                         }
                         if (!roleUUIDs.All(o => o.Equals(UUID.Zero)) &&
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AssignMember,
-                                corradeConfiguration.ServicesTimeout))
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -8690,7 +8697,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.Invite,
-                                corradeConfiguration.ServicesTimeout))
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -8722,7 +8729,7 @@ namespace Corrade
                         }
                         if (!roleUUIDs.All(o => o.Equals(UUID.Zero)) &&
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AssignMember,
-                                corradeConfiguration.ServicesTimeout))
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -8912,9 +8919,9 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.Eject,
-                                corradeConfiguration.ServicesTimeout) ||
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout) ||
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.RemoveMember,
-                                corradeConfiguration.ServicesTimeout))
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -9005,9 +9012,9 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.Eject,
-                                corradeConfiguration.ServicesTimeout) ||
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout) ||
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.RemoveMember,
-                                corradeConfiguration.ServicesTimeout))
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -9152,7 +9159,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.GroupBanAccess,
-                                corradeConfiguration.ServicesTimeout))
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -9483,7 +9490,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.ChangeIdentity,
-                                corradeConfiguration.ServicesTimeout))
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -9561,7 +9568,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.CreateRole,
-                                corradeConfiguration.ServicesTimeout))
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -9604,7 +9611,7 @@ namespace Corrade
                                         .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                     q => { powers |= ((ulong) q.GetValue(null)); }));
                         if (!HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.ChangeActions,
-                            corradeConfiguration.ServicesTimeout))
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -10002,7 +10009,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.RoleProperties,
-                                corradeConfiguration.ServicesTimeout))
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -10068,9 +10075,9 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.DeleteRole,
-                                corradeConfiguration.ServicesTimeout) ||
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout) ||
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.RemoveMember,
-                                corradeConfiguration.ServicesTimeout))
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -10139,7 +10146,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AssignMember,
-                                corradeConfiguration.ServicesTimeout))
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -10197,7 +10204,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.RemoveMember,
-                                corradeConfiguration.ServicesTimeout))
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -10367,7 +10374,7 @@ namespace Corrade
                                 {
                                     if (
                                         !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.JoinChat,
-                                            corradeConfiguration.ServicesTimeout))
+                                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                                     {
                                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                     }
@@ -10615,7 +10622,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.SendNotices,
-                                corradeConfiguration.ServicesTimeout))
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -11508,7 +11515,8 @@ namespace Corrade
                                     case AccessList.Access:
                                         if (
                                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
-                                                GroupPowers.LandManageAllowed, corradeConfiguration.ServicesTimeout))
+                                                GroupPowers.LandManageAllowed, corradeConfiguration.ServicesTimeout,
+                                                corradeConfiguration.DataTimeout))
                                         {
                                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                         }
@@ -11517,7 +11525,7 @@ namespace Corrade
                                         if (
                                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
                                                 GroupPowers.LandManageBanned,
-                                                corradeConfiguration.ServicesTimeout))
+                                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                                         {
                                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                         }
@@ -11525,14 +11533,15 @@ namespace Corrade
                                     case AccessList.Both:
                                         if (
                                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
-                                                GroupPowers.LandManageAllowed, corradeConfiguration.ServicesTimeout))
+                                                GroupPowers.LandManageAllowed, corradeConfiguration.ServicesTimeout,
+                                                corradeConfiguration.DataTimeout))
                                         {
                                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                         }
                                         if (
                                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
                                                 GroupPowers.LandManageBanned,
-                                                corradeConfiguration.ServicesTimeout))
+                                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                                         {
                                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                         }
@@ -11664,7 +11673,7 @@ namespace Corrade
                                 }
                                 if (
                                     !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.LandRelease,
-                                        corradeConfiguration.ServicesTimeout))
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                                 {
                                     throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                 }
@@ -11720,7 +11729,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.LandDeed,
-                                corradeConfiguration.ServicesTimeout))
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -11772,7 +11781,7 @@ namespace Corrade
                         {
                             if (
                                 !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.LandDeed,
-                                    corradeConfiguration.ServicesTimeout))
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                             {
                                 throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                             }
@@ -11910,7 +11919,7 @@ namespace Corrade
                                 if (
                                     !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
                                         GroupPowers.LandEjectAndFreeze,
-                                        corradeConfiguration.ServicesTimeout))
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                                 {
                                     throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                 }
@@ -11991,7 +12000,7 @@ namespace Corrade
                                 if (
                                     !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
                                         GroupPowers.LandEjectAndFreeze,
-                                        corradeConfiguration.ServicesTimeout))
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                                 {
                                     throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                 }
@@ -12776,7 +12785,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.ModerateChat,
-                                corradeConfiguration.ServicesTimeout))
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -13208,7 +13217,7 @@ namespace Corrade
                                                     break;
                                             }
                                             if (!HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, power,
-                                                corradeConfiguration.ServicesTimeout))
+                                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                                             {
                                                 throw new Exception(
                                                     wasGetDescriptionFromEnumValue(
@@ -13332,7 +13341,7 @@ namespace Corrade
                                     }, p =>
                                     {
                                         if (HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, p,
-                                            corradeConfiguration.ServicesTimeout))
+                                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                                         {
                                             permissions = true;
                                         }
@@ -14583,7 +14592,7 @@ namespace Corrade
                                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                     }
                                     if (!HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AllowRez,
-                                        corradeConfiguration.ServicesTimeout))
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                                     {
                                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                     }
@@ -14727,7 +14736,7 @@ namespace Corrade
                                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                     }
                                     if (!HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AllowRez,
-                                        corradeConfiguration.ServicesTimeout))
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                                     {
                                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                     }
@@ -16570,7 +16579,7 @@ namespace Corrade
                         }
                         if (
                             !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.StartProposal,
-                                corradeConfiguration.ServicesTimeout))
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                         }
@@ -23619,9 +23628,7 @@ namespace Corrade
         private struct Agent
         {
             [Description("firstname")] public string FirstName;
-
             [Description("lastname")] public string LastName;
-
             [Description("uuid")] public UUID UUID;
         }
 
@@ -23631,19 +23638,12 @@ namespace Corrade
         private struct BeamEffect
         {
             [Description("alpha")] public float Alpha;
-
             [Description("color")] public Vector3 Color;
-
             [Description("duration")] public float Duration;
-
             [Description("effect")] public UUID Effect;
-
             [Description("offset")] public Vector3d Offset;
-
             [Description("source")] public UUID Source;
-
             [Description("target")] public UUID Target;
-
             [Description("termination")] public DateTime Termination;
         }
 
@@ -23688,6 +23688,7 @@ namespace Corrade
             public const string STATE_DIRECTORY = @"state";
             public const string NOTIFICATIONS_STATE_FILE = @"Notifications.state";
             public const string GROUP_MEMBERS_STATE_FILE = @"GroupMembers.state";
+            public const string LIBS_DIRECTORY = @"libs";
             public const string LINDEN_GLOBALIZATION_FILE = @"LindenGlobalization.xml";
             public const string LINDEN_GLOBALIZATION_NAME = @"Linden-Lab";
 
@@ -26370,11 +26371,8 @@ namespace Corrade
         private struct DirItem
         {
             [Description("item")] public UUID Item;
-
             [Description("name")] public string Name;
-
             [Description("permissions")] public string Permissions;
-
             [Description("type")] public DirItemType Type;
 
             public static DirItem FromInventoryBase(InventoryBase inventoryBase)
@@ -26612,11 +26610,8 @@ namespace Corrade
         private struct GroupInvite
         {
             [Description("agent")] public Agent Agent;
-
             [Description("fee")] public int Fee;
-
             [Description("group")] public string Group;
-
             [Description("session")] public UUID Session;
         }
 
@@ -26813,13 +26808,9 @@ namespace Corrade
         private struct LookAtEffect
         {
             [Description("effect")] public UUID Effect;
-
             [Description("offset")] public Vector3d Offset;
-
             [Description("source")] public UUID Source;
-
             [Description("target")] public UUID Target;
-
             [Description("type")] public LookAtType Type;
         }
 
@@ -26871,13 +26862,9 @@ namespace Corrade
         private struct PointAtEffect
         {
             [Description("effect")] public UUID Effect;
-
             [Description("offset")] public Vector3d Offset;
-
             [Description("source")] public UUID Source;
-
             [Description("target")] public UUID Target;
-
             [Description("type")] public PointAtType Type;
         }
 
@@ -26899,15 +26886,10 @@ namespace Corrade
         private struct ScriptDialog
         {
             public Agent Agent;
-
             [Description("button")] public List<string> Button;
-
             [Description("channel")] public int Channel;
-
             [Description("item")] public UUID Item;
-
             [Description("message")] public string Message;
-
             [Description("name")] public string Name;
         }
 
@@ -27842,15 +27824,10 @@ namespace Corrade
         private struct ScriptPermissionRequest
         {
             public Agent Agent;
-
             [Description("item")] public UUID Item;
-
             [Description("name")] public string Name;
-
             [Description("permission")] public ScriptPermission Permission;
-
             [Description("region")] public string Region;
-
             [Description("task")] public UUID Task;
         }
 
@@ -28020,15 +27997,10 @@ namespace Corrade
         private struct SphereEffect
         {
             [Description("alpha")] public float Alpha;
-
             [Description("color")] public Vector3 Color;
-
             [Description("duration")] public float Duration;
-
             [Description("effect")] public UUID Effect;
-
             [Description("offset")] public Vector3d Offset;
-
             [Description("termination")] public DateTime Termination;
         }
 
