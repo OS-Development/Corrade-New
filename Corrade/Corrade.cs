@@ -390,7 +390,12 @@ namespace Corrade
             [Status(02193)] [Description("no avatars to ban or unban")] NO_AVATARS_TO_BAN_OR_UNBAN,
             [Status(45568)] [Description("could not retrieve broup ban list")] COULD_NOT_RETRIEVE_GROUP_BAN_LIST,
             [Status(15719)] [Description("timeout retrieving group ban list")] TIMEOUT_RETRIEVING_GROUP_BAN_LIST,
-            [Status(26749)] [Description("timeout modifying group ban list")] TIMEOUT_MODIFYING_GROUP_BAN_LIST
+            [Status(26749)] [Description("timeout modifying group ban list")] TIMEOUT_MODIFYING_GROUP_BAN_LIST,
+            [Status(26715)] [Description("mute entry not found")] MUTE_ENTRY_NOT_FOUND,
+            [Status(51086)] [Description("no name or UUID provided")] NO_NAME_OR_UUID_PROVIDED,
+            [Status(16450)] [Description("could not retrieve mute list")] COULD_NOT_RETRIEVE_MUTE_LIST,
+            [Status(39647)] [Description("mute entry already exists")] MUTE_ENTRY_ALREADY_EXISTS,
+            [Status(22961)] [Description("could not add mute entry")] COULD_NOT_ADD_MUTE_ENTRY
         }
 
         /// <summary>
@@ -1222,7 +1227,7 @@ namespace Corrade
                 Thread.Sleep((int) corradeConfiguration.MembershipSweepInterval);
                 if (!Client.Network.Connected) continue;
 
-                IEnumerable<UUID> currentGroups = null;
+                IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                 if (!GetCurrentGroups(corradeConfiguration.ServicesTimeout, ref currentGroups))
                     continue;
 
@@ -3805,6 +3810,63 @@ namespace Corrade
                 lock (Cache.Locks.GroupCacheLock)
                 {
                     Cache.CurrentGroupsCache = new HashSet<UUID>(groups);
+                }
+            }
+            return succeeded;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2013 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Requests the UUIDs of all the current groups.
+        /// </summary>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="mutes">an enumerable where to store mute entries</param>
+        /// <returns>true if the current groups could be fetched</returns>
+        private static bool directGetMutes(uint millisecondsTimeout, ref IEnumerable<MuteEntry> mutes)
+        {
+            ManualResetEvent MuteListUpdatedEvent = new ManualResetEvent(false);
+            EventHandler<EventArgs> MuteListUpdatedEventHandler =
+                (sender, args) => MuteListUpdatedEvent.Set();
+            Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
+            Client.Self.RequestMuteList();
+            if (!MuteListUpdatedEvent.WaitOne((int) millisecondsTimeout, false))
+            {
+                Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                return false;
+            }
+            Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+            mutes = Client.Self.MuteList.Copy().Values;
+            return true;
+        }
+
+        /// <summary>
+        ///     A wrapper for retrieveing all the current groups that implements caching.
+        /// </summary>
+        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
+        /// <param name="mutes">an enumerable where to store mute entries</param>
+        /// <returns>true if the current groups could be fetched</returns>
+        private static bool GetMutes(uint millisecondsTimeout, ref IEnumerable<MuteEntry> mutes)
+        {
+            lock (Cache.Locks.MutesCacheLock)
+            {
+                if (Cache.MutesCache.Any())
+                {
+                    mutes = Cache.MutesCache;
+                    return true;
+                }
+            }
+            bool succeeded;
+            lock (ClientInstanceSelfLock)
+            {
+                succeeded = directGetMutes(millisecondsTimeout, ref mutes);
+            }
+            if (succeeded)
+            {
+                lock (Cache.Locks.MutesCacheLock)
+                {
+                    Cache.MutesCache = new HashSet<MuteEntry>(mutes);
                 }
             }
             return succeeded;
@@ -6796,6 +6858,18 @@ namespace Corrade
 
         private static void HandleSelfIM(object sender, InstantMessageEventArgs args)
         {
+            // ignore stuff from muted entities
+            IEnumerable<MuteEntry> mutes = Enumerable.Empty<MuteEntry>();
+            if (!GetMutes(corradeConfiguration.ServicesTimeout, ref mutes))
+                return;
+            if (
+                mutes.ToList()
+                    .AsParallel()
+                    .Any(
+                        o =>
+                            args.IM.FromAgentID.Equals(o.ID) && args.IM.FromAgentName.Equals(o.Name) &&
+                            (o.Flags.Equals(MuteFlags.Default) || o.Flags.Equals(MuteFlags.TextChat))))
+                return;
             List<string> fullName =
                 new List<string>(
                     GetAvatarNames(args.IM.FromAgentName));
@@ -6975,7 +7049,7 @@ namespace Corrade
                     // such that the only way to determine if we have a group message is to check that the UUID
                     // of the session is actually the UUID of a current group. Furthermore, what's worse is that 
                     // group mesages can appear both through SessionSend and from MessageFromAgent. Hence the problem.
-                    IEnumerable<UUID> currentGroups = null;
+                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
@@ -7303,7 +7377,7 @@ namespace Corrade
                             return;
                         }
                         UUID groupUUID = Client.Self.ActiveGroup;
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -7330,7 +7404,7 @@ namespace Corrade
                         {
                             return;
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -8428,7 +8502,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -8729,7 +8803,7 @@ namespace Corrade
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
                                     .ToLowerInvariant());
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -9396,7 +9470,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -9432,7 +9506,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -9474,7 +9548,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -9568,7 +9642,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -9617,7 +9691,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -9675,7 +9749,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -9759,7 +9833,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -9834,7 +9908,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -9915,7 +9989,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -9981,7 +10055,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -10052,7 +10126,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -10110,7 +10184,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -10272,7 +10346,7 @@ namespace Corrade
                                 }
                                 break;
                             case Entity.GROUP:
-                                IEnumerable<UUID> currentGroups = null;
+                                IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                                 if (
                                     !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                         ref currentGroups))
@@ -10528,7 +10602,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -12723,7 +12797,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -15712,7 +15786,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -15735,7 +15809,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -15829,7 +15903,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -16483,7 +16557,7 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        IEnumerable<UUID> currentGroups = null;
+                        IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                         if (
                             !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                                 ref currentGroups))
@@ -16546,6 +16620,11 @@ namespace Corrade
                     };
                     break;
                 case ScriptKeys.MUTE:
+                    /* 
+                     * Muting and unmuting is masked by the Corrade cache since, although the entries are created, 
+                     * respectively removed, the change is indeed propagated to the grid but it takes an unuseful
+                     * amount of time for the grid to register them.
+                     */
                     execute = () =>
                     {
                         if (
@@ -16553,15 +16632,12 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
+                        ManualResetEvent MuteListUpdatedEvent = new ManualResetEvent(false);
+                        EventHandler<EventArgs> MuteListUpdatedEventHandler =
+                            (sender, args) => MuteListUpdatedEvent.Set();
                         UUID targetUUID;
-                        if (
-                            !UUID.TryParse(
-                                wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)), message)),
-                                out targetUUID))
-                        {
-                            throw new ScriptException(ScriptError.INVALID_MUTE_TARGET);
-                        }
+                        string name;
+                        IEnumerable<MuteEntry> mutes = Enumerable.Empty<MuteEntry>();
                         switch (
                             wasGetEnumValueFromDescription<Action>(
                                 wasInput(
@@ -16569,6 +16645,33 @@ namespace Corrade
                                         message)).ToLowerInvariant()))
                         {
                             case Action.MUTE:
+                                // we need an UUID and a name to create a mute
+                                if (
+                                    !UUID.TryParse(
+                                        wasInput(
+                                            wasKeyValueGet(
+                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)), message)),
+                                        out targetUUID))
+                                {
+                                    throw new ScriptException(ScriptError.INVALID_MUTE_TARGET);
+                                }
+
+                                name =
+                                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
+                                        message));
+
+                                if (string.IsNullOrEmpty(name))
+                                    throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
+
+                                // retrieve the current mute list
+                                if (!GetMutes(corradeConfiguration.ServicesTimeout, ref mutes))
+                                    throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
+
+                                // check that the mute list does not already exist
+                                if (mutes.ToList().AsParallel().Any(o => o.ID.Equals(targetUUID) && o.Name.Equals(name)))
+                                    throw new ScriptException(ScriptError.MUTE_ENTRY_ALREADY_EXISTS);
+
+                                // Get the mute type
                                 FieldInfo muteTypeInfo = typeof (MuteType).GetFields(BindingFlags.Public |
                                                                                      BindingFlags.Static)
                                     .AsParallel().FirstOrDefault(
@@ -16579,20 +16682,29 @@ namespace Corrade
                                                         wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
                                                         message)),
                                                 StringComparison.Ordinal));
-                                ManualResetEvent MuteListUpdatedEvent = new ManualResetEvent(false);
-                                EventHandler<EventArgs> MuteListUpdatedEventHandler =
-                                    (sender, args) => MuteListUpdatedEvent.Set();
+                                // ...or assume "Default" mute type from MuteType
+                                MuteType muteType = muteTypeInfo != null
+                                    ? (MuteType)
+                                        muteTypeInfo
+                                            .GetValue(null)
+                                    : MuteType.ByName;
+                                // Get the mute flags - default is "Default" equivalent to 0
+                                int muteFlags = 0;
+                                Parallel.ForEach(wasCSVToEnumerable(
+                                    wasInput(
+                                        wasKeyValueGet(
+                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FLAGS)),
+                                            message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
+                                    o =>
+                                        Parallel.ForEach(
+                                            typeof (MuteFlags).GetFields(BindingFlags.Public |
+                                                                         BindingFlags.Static)
+                                                .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
+                                            q => { muteFlags |= ((int) q.GetValue(null)); }));
                                 lock (ClientInstanceSelfLock)
                                 {
                                     Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
-                                    Client.Self.UpdateMuteListEntry(muteTypeInfo != null
-                                        ? (MuteType)
-                                            muteTypeInfo
-                                                .GetValue(null)
-                                        : MuteType.ByName, targetUUID,
-                                        wasInput(
-                                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
-                                                message)));
+                                    Client.Self.UpdateMuteListEntry(muteType, targetUUID, name);
                                     if (!MuteListUpdatedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                     {
                                         Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
@@ -16600,12 +16712,62 @@ namespace Corrade
                                     }
                                     Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                                 }
+                                // purge the cache
+                                lock (Cache.Locks.MutesCacheLock)
+                                {
+                                    Cache.MutesCache.Add(new MuteEntry
+                                    {
+                                        Flags = (MuteFlags) muteFlags,
+                                        ID = targetUUID,
+                                        Name = name,
+                                        Type = muteType
+                                    });
+                                }
                                 break;
                             case Action.UNMUTE:
-                                Client.Self.RemoveMuteListEntry(targetUUID,
-                                    wasInput(
-                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
-                                            message)));
+                                UUID.TryParse(
+                                    wasInput(wasKeyValueGet(
+                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)), message)),
+                                    out targetUUID);
+                                name = wasInput(
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
+                                        message));
+
+                                if (string.IsNullOrEmpty(name) && targetUUID.Equals(UUID.Zero))
+                                    throw new ScriptException(ScriptError.NO_NAME_OR_UUID_PROVIDED);
+
+                                // retrieve the current mute list
+                                if (!GetMutes(corradeConfiguration.ServicesTimeout, ref mutes))
+                                    throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
+
+                                // find the mute either by name or by target
+                                MuteEntry mute =
+                                    mutes.ToList().AsParallel()
+                                        .FirstOrDefault(
+                                            o =>
+                                                (!string.IsNullOrEmpty(name) && o.Name.Equals(name)) ||
+                                                (!targetUUID.Equals(UUID.Zero) && o.ID.Equals(targetUUID)));
+
+                                if (mute == null || mute.Equals(default(MuteEntry)))
+                                    throw new ScriptException(ScriptError.MUTE_ENTRY_NOT_FOUND);
+
+                                lock (ClientInstanceSelfLock)
+                                {
+                                    // remove the mute list
+                                    Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
+                                    Client.Self.RemoveMuteListEntry(mute.ID, mute.Name);
+                                    if (!MuteListUpdatedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                                    {
+                                        Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                                        throw new ScriptException(ScriptError.TIMEOUT_UPDATING_MUTE_LIST);
+                                    }
+                                    Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
+                                }
+                                // remove the mute from the cache
+                                lock (Cache.Locks.MutesCacheLock)
+                                {
+                                    Cache.MutesCache.Remove(mute);
+                                }
                                 break;
                             default:
                                 throw new ScriptException(ScriptError.UNKNOWN_ACTION);
@@ -16619,11 +16781,18 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        List<string> data = new List<string>(Client.Self.MuteList.Copy().AsParallel().Select(o => new[]
+                        IEnumerable<MuteEntry> mutes = Enumerable.Empty<MuteEntry>();
+                        if (!GetMutes(corradeConfiguration.ServicesTimeout, ref mutes))
                         {
-                            o.Value.Name,
-                            o.Value.ID.ToString()
-                        }).SelectMany(o => o));
+                            throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
+                        }
+                        List<string> data = mutes.ToList().AsParallel().Select(o => new[]
+                        {
+                            o.Name,
+                            o.ID.ToString(),
+                            o.Flags.ToString(),
+                            o.Type.ToString()
+                        }).SelectMany(o => o).ToList();
                         if (data.Any())
                         {
                             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
@@ -23450,7 +23619,9 @@ namespace Corrade
         private struct Agent
         {
             [Description("firstname")] public string FirstName;
+
             [Description("lastname")] public string LastName;
+
             [Description("uuid")] public UUID UUID;
         }
 
@@ -23460,12 +23631,19 @@ namespace Corrade
         private struct BeamEffect
         {
             [Description("alpha")] public float Alpha;
+
             [Description("color")] public Vector3 Color;
+
             [Description("duration")] public float Duration;
+
             [Description("effect")] public UUID Effect;
+
             [Description("offset")] public Vector3d Offset;
+
             [Description("source")] public UUID Source;
+
             [Description("target")] public UUID Target;
+
             [Description("termination")] public DateTime Termination;
         }
 
@@ -23914,6 +24092,7 @@ namespace Corrade
             public static HashSet<Agents> AgentCache = new HashSet<Agents>();
             public static HashSet<Groups> GroupCache = new HashSet<Groups>();
             public static HashSet<UUID> CurrentGroupsCache = new HashSet<UUID>();
+            public static HashSet<MuteEntry> MutesCache = new HashSet<MuteEntry>();
 
             internal static void Purge()
             {
@@ -23928,6 +24107,10 @@ namespace Corrade
                 lock (Locks.CurrentGroupsCacheLock)
                 {
                     CurrentGroupsCache.Clear();
+                }
+                lock (Locks.MutesCacheLock)
+                {
+                    MutesCache.Clear();
                 }
             }
 
@@ -24048,6 +24231,7 @@ namespace Corrade
                 public static readonly object AgentCacheLock = new object();
                 public static readonly object GroupCacheLock = new object();
                 public static readonly object CurrentGroupsCacheLock = new object();
+                public static readonly object MutesCacheLock = new object();
             }
         }
 
@@ -25499,7 +25683,7 @@ namespace Corrade
                                                 AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
                                             }
                                         })
-                                    { IsBackground = true, Priority = ThreadPriority.Lowest }.Start();
+                                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                                     break;
                                 default:
                                     AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
@@ -25525,7 +25709,7 @@ namespace Corrade
                     {
                         bool enabled = configuration.Groups.AsParallel().Any(
                             p =>
-                                !(p.NotificationMask & (uint)o).Equals(0));
+                                !(p.NotificationMask & (uint) o).Equals(0));
                         switch (o)
                         {
                             case Notifications.GroupMembership:
@@ -25694,7 +25878,7 @@ namespace Corrade
                 // start or stop the viwer effect expiration thread.
                 switch (
                     configuration.Groups.AsParallel()
-                        .Any(o => !(o.NotificationMask & (uint)Notifications.ViewerEffect).Equals(0)))
+                        .Any(o => !(o.NotificationMask & (uint) Notifications.ViewerEffect).Equals(0)))
                 {
                     case true:
                         // Don't start if the expiration thread is already started.
@@ -25716,7 +25900,7 @@ namespace Corrade
                                 }
                             } while (runEffectsExpirationThread);
                         })
-                        { IsBackground = true, Priority = ThreadPriority.Lowest };
+                        {IsBackground = true, Priority = ThreadPriority.Lowest};
                         EffectsExpirationThread.Start();
                         break;
                     default:
@@ -25753,8 +25937,8 @@ namespace Corrade
                 switch (
                     configuration.Groups.AsParallel().Any(
                         o =>
-                            !(o.NotificationMask & (uint)Notifications.RadarAvatars).Equals(0) ||
-                            !(o.NotificationMask & (uint)Notifications.RadarPrimitives).Equals(0)))
+                            !(o.NotificationMask & (uint) Notifications.RadarAvatars).Equals(0) ||
+                            !(o.NotificationMask & (uint) Notifications.RadarPrimitives).Equals(0)))
                 {
                     case true:
                         Client.Network.SimChanged += HandleRadarObjects;
@@ -25803,7 +25987,7 @@ namespace Corrade
                                             {
                                                 (HTTPListener.BeginGetContext(ProcessHTTPRequest,
                                                     HTTPListener)).AsyncWaitHandle.WaitOne(
-                                                        (int)configuration.HTTPServerTimeout,
+                                                        (int) configuration.HTTPServerTimeout,
                                                         false);
                                             }
                                         }
@@ -25814,7 +25998,7 @@ namespace Corrade
                                             ex.Message);
                                     }
                                 })
-                                { IsBackground = true, Priority = ThreadPriority.Lowest };
+                                {IsBackground = true, Priority = ThreadPriority.Lowest};
                                 HTTPListenerThread.Start();
                                 break;
                             default:
@@ -25856,9 +26040,9 @@ namespace Corrade
 
                 // Apply settings to the instance.
                 Client.Self.Movement.Camera.Far = configuration.Range;
-                Client.Settings.LOGIN_TIMEOUT = (int)configuration.ServicesTimeout;
-                Client.Settings.LOGOUT_TIMEOUT = (int)configuration.ServicesTimeout;
-                Client.Settings.SIMULATOR_TIMEOUT = (int)configuration.ServicesTimeout;
+                Client.Settings.LOGIN_TIMEOUT = (int) configuration.ServicesTimeout;
+                Client.Settings.LOGOUT_TIMEOUT = (int) configuration.ServicesTimeout;
+                Client.Settings.SIMULATOR_TIMEOUT = (int) configuration.ServicesTimeout;
             }
         }
 
@@ -26186,8 +26370,11 @@ namespace Corrade
         private struct DirItem
         {
             [Description("item")] public UUID Item;
+
             [Description("name")] public string Name;
+
             [Description("permissions")] public string Permissions;
+
             [Description("type")] public DirItemType Type;
 
             public static DirItem FromInventoryBase(InventoryBase inventoryBase)
@@ -26425,8 +26612,11 @@ namespace Corrade
         private struct GroupInvite
         {
             [Description("agent")] public Agent Agent;
+
             [Description("fee")] public int Fee;
+
             [Description("group")] public string Group;
+
             [Description("session")] public UUID Session;
         }
 
@@ -26623,9 +26813,13 @@ namespace Corrade
         private struct LookAtEffect
         {
             [Description("effect")] public UUID Effect;
+
             [Description("offset")] public Vector3d Offset;
+
             [Description("source")] public UUID Source;
+
             [Description("target")] public UUID Target;
+
             [Description("type")] public LookAtType Type;
         }
 
@@ -26677,9 +26871,13 @@ namespace Corrade
         private struct PointAtEffect
         {
             [Description("effect")] public UUID Effect;
+
             [Description("offset")] public Vector3d Offset;
+
             [Description("source")] public UUID Source;
+
             [Description("target")] public UUID Target;
+
             [Description("type")] public PointAtType Type;
         }
 
@@ -26701,10 +26899,15 @@ namespace Corrade
         private struct ScriptDialog
         {
             public Agent Agent;
+
             [Description("button")] public List<string> Button;
+
             [Description("channel")] public int Channel;
+
             [Description("item")] public UUID Item;
+
             [Description("message")] public string Message;
+
             [Description("name")] public string Name;
         }
 
@@ -27564,7 +27767,10 @@ namespace Corrade
                 "<command=mute>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<target=<UUID>>&<action=<mute|unmute>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.Mute)] [Description("mute")] MUTE,
             [IsCommand(true)] [CommandInputSyntax("<command=getmutes>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Mute)] [Description("getmutes")] GETMUTES,
-            [IsCommand(true)] [CommandInputSyntax("<command=getmutes>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Notifications)] [Description("notify")] NOTIFY,
+
+            [IsCommand(true)] [CommandInputSyntax(
+                "<command=notify>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<add|set|remove|list|clear|purge>>&action=add|set|remove|clear:<type=<STRING[,STRING...]>>&action=add|set|remove:<URL=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.Notifications)] [Description("notify")] NOTIFY,
             [Description("source")] SOURCE,
             [Description("effect")] EFFECT,
             [Description("id")] ID,
@@ -27636,10 +27842,15 @@ namespace Corrade
         private struct ScriptPermissionRequest
         {
             public Agent Agent;
+
             [Description("item")] public UUID Item;
+
             [Description("name")] public string Name;
+
             [Description("permission")] public ScriptPermission Permission;
+
             [Description("region")] public string Region;
+
             [Description("task")] public UUID Task;
         }
 
@@ -27809,10 +28020,15 @@ namespace Corrade
         private struct SphereEffect
         {
             [Description("alpha")] public float Alpha;
+
             [Description("color")] public Vector3 Color;
+
             [Description("duration")] public float Duration;
+
             [Description("effect")] public UUID Effect;
+
             [Description("offset")] public Vector3d Offset;
+
             [Description("termination")] public DateTime Termination;
         }
 

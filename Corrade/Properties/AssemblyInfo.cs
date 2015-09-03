@@ -29,5 +29,5 @@ using System.Runtime.InteropServices;
 //      Build Number
 //      Revision
 //
-[assembly: AssemblyVersion("9.1.*")]
+[assembly: AssemblyVersion("9.2.*")]
 [assembly: NeutralResourcesLanguage("Linden-Lab")]

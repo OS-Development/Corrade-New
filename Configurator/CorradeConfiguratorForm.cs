@@ -531,14 +531,14 @@ namespace Configurator
                         string file = mainForm.LoadLegacyConfigurationDialog.FileName;
                         new Thread(() =>
                         {
-                            mainForm.StatusText.Text = @"loading legacy configuration...";
-                            mainForm.StatusProgress.Value = 0;
-                            corradeConfiguration = new CorradeConfiguration();
-                            corradeConfiguration.LoadLegacy(file);
                             mainForm.BeginInvoke((MethodInvoker) (() =>
                             {
                                 try
                                 {
+                                    mainForm.StatusText.Text = @"loading legacy configuration...";
+                                    mainForm.StatusProgress.Value = 0;
+                                    corradeConfiguration = new CorradeConfiguration();
+                                    corradeConfiguration.LoadLegacy(file);
                                     mainForm.StatusText.Text = @"applying settings...";
                                     mainForm.StatusProgress.Value = 50;
                                     GetUserConfiguration.Invoke();
