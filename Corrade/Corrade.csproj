@@ -157,6 +157,9 @@
     <Compile Include="commands\Corrade\ChangePrimitiveLink.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\Configuration.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\CreateGrass.cs">
       <SubType>Component</SubType>
     </Compile>

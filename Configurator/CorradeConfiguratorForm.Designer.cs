@@ -2810,22 +2810,22 @@
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(613, 589);
+            this.button1.Location = new System.Drawing.Point(590, 589);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
+            this.button1.Size = new System.Drawing.Size(98, 23);
             this.button1.TabIndex = 2;
-            this.button1.Text = "Save...";
+            this.button1.Text = "Save File...";
             this.toolTip1.SetToolTip(this.button1, "Save Corrade configuration to Corrade.ini");
             this.button1.UseVisualStyleBackColor = true;
             this.button1.Click += new System.EventHandler(this.SaveCorradeConfigurationRequested);
             // 
             // button2
             // 
-            this.button2.Location = new System.Drawing.Point(93, 589);
+            this.button2.Location = new System.Drawing.Point(130, 589);
             this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(89, 23);
+            this.button2.Size = new System.Drawing.Size(108, 23);
             this.button2.TabIndex = 3;
-            this.button2.Text = "Load Legacy...";
+            this.button2.Text = "Load Legacy File...";
             this.toolTip1.SetToolTip(this.button2, "Load an old-style Corrade configuration.");
             this.button2.UseVisualStyleBackColor = true;
             this.button2.Click += new System.EventHandler(this.LoadCorradeLegacyConfigurationRequested);
@@ -2853,11 +2853,11 @@
             // 
             // button9
             // 
-            this.button9.Location = new System.Drawing.Point(12, 589);
+            this.button9.Location = new System.Drawing.Point(16, 589);
             this.button9.Name = "button9";
-            this.button9.Size = new System.Drawing.Size(75, 23);
+            this.button9.Size = new System.Drawing.Size(108, 23);
             this.button9.TabIndex = 5;
-            this.button9.Text = "Load...";
+            this.button9.Text = "Load File...";
             this.toolTip1.SetToolTip(this.button9, "Load a new configuration file generated with this tool.");
             this.button9.UseVisualStyleBackColor = true;
             this.button9.Click += new System.EventHandler(this.LoadCorradeConfigurationRequested);

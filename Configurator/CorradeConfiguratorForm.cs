@@ -1248,6 +1248,11 @@ namespace Configurator
             mainForm.BeginInvoke((MethodInvoker) (() => { mainForm.Password.Text = string.Empty; }));
         }
 
+        private void LoadRemoteRequested(object sender, EventArgs e)
+        {
+
+        }
+
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -1295,6 +1300,42 @@ namespace Configurator
                         f, a) => new {Field = f, Att = a}).SingleOrDefault(a => ((DescriptionAttribute) a.Att)
                             .Description.Equals(description));
             return field != null ? (T) field.Field.GetRawConstantValue() : default(T);
+        }
+
+        /// <summary>
+        ///     Constants used by Corrade.
+        /// </summary>
+        public struct CORRADE_CONSTANTS
+        {
+            /// <summary>
+            ///     Corrade compile date.
+            /// </summary>
+            public static readonly string CORRADE_CONFIGURATOR_COMPILE_DATE = new DateTime(2000, 1, 1).Add(new TimeSpan(
+                TimeSpan.TicksPerDay * Assembly.GetEntryAssembly().GetName().Version.Build + // days since 1 January 2000
+                TimeSpan.TicksPerSecond * 2 * Assembly.GetEntryAssembly().GetName().Version.Revision)).ToLongDateString();
+
+            /// <summary>
+            ///     Corrade version.
+            /// </summary>
+            public static readonly string CONFIGURATOR_VERSION = Assembly.GetEntryAssembly().GetName().Version.ToString();
+
+            public const string CORRADE = @"Corrade";
+            public const string WIZARDRY_AND_STEAMWORKS_WEBSITE = @"http://grimore.org";
+
+            /// <summary>
+            ///     Conten-types that Corrade can send and receive.
+            /// </summary>
+            public struct CONTENT_TYPE
+            {
+                public const string TEXT_PLAIN = @"text/plain";
+                public const string WWW_FORM_URLENCODED = @"application/x-www-form-urlencoded";
+            }
+
+            /// <summary>
+            ///     Corrade user agent.
+            /// </summary>
+            public static readonly string USER_AGENT =
+                $"{CORRADE}/{CONFIGURATOR_VERSION} ({WIZARDRY_AND_STEAMWORKS_WEBSITE})";
         }
 
         [Serializable]
@@ -4150,6 +4191,7 @@ namespace Configurator
             public string FirstName;
             public string LastName;
         }
+        
     }
 
     ///////////////////////////////////////////////////////////////////////////

@@ -781,7 +781,7 @@ namespace Corrade
                     EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
                     {
                         // Enqueue all the new folders.
-                        Client.Inventory.Store.GetContents(q.FolderID).ForEach(r =>
+                        /*Client.Inventory.Store.GetContents(q.FolderID).ForEach(r =>
                         {
                             if (r is InventoryFolder)
                             {
@@ -792,6 +792,33 @@ namespace Corrade
                                     {
                                         inventoryFolders.Add(inventoryFolderUUID, new ManualResetEvent(false));
                                     }
+                                    if (!inventoryStopwatch.ContainsKey(inventoryFolderUUID))
+                                    {
+                                        inventoryStopwatch.Add(inventoryFolderUUID, new Stopwatch());
+                                    }
+                                }
+                            }
+                            lock (LockObject)
+                            {
+                                inventoryStopwatch[q.FolderID].Stop();
+                                times.Add(inventoryStopwatch[q.FolderID].ElapsedMilliseconds);
+                                inventoryFolders[q.FolderID].Set();
+                            }
+                        });*/
+                        Parallel.ForEach(Client.Inventory.Store.GetContents(q.FolderID), r =>
+                        {
+                            if (r is InventoryFolder)
+                            {
+                                UUID inventoryFolderUUID = (r as InventoryFolder).UUID;
+                                lock (LockObject)
+                                {
+                                    if (!inventoryFolders.ContainsKey(inventoryFolderUUID))
+                                    {
+                                        inventoryFolders.Add(inventoryFolderUUID, new ManualResetEvent(false));
+                                    }
+                                }
+                                lock (LockObject)
+                                {
                                     if (!inventoryStopwatch.ContainsKey(inventoryFolderUUID))
                                     {
                                         inventoryStopwatch.Add(inventoryFolderUUID, new Stopwatch());
@@ -843,16 +870,16 @@ namespace Corrade
                         }
                         Parallel.ForEach(closureFolders, p =>
                         {
-                            if (inventoryFolders.ContainsKey(p.Key))
+                            lock (LockObject)
                             {
-                                lock (LockObject)
+                                if (inventoryFolders.ContainsKey(p.Key))
                                 {
                                     inventoryFolders.Remove(p.Key);
                                 }
                             }
-                            if (inventoryStopwatch.ContainsKey(p.Key))
+                            lock (LockObject)
                             {
-                                lock (LockObject)
+                                if (inventoryStopwatch.ContainsKey(p.Key))
                                 {
                                     inventoryStopwatch.Remove(p.Key);
                                 }
@@ -8086,9 +8113,8 @@ namespace Corrade
             /// <summary>
             ///     Corrade user agent.
             /// </summary>
-            public static readonly string USER_AGENT = string.Format("{0}/{1} ({2})", CORRADE,
-                CORRADE_VERSION,
-                WIZARDRY_AND_STEAMWORKS_WEBSITE);
+            public static readonly string USER_AGENT =
+                $"{CORRADE}/{CORRADE_VERSION} ({WIZARDRY_AND_STEAMWORKS_WEBSITE})";
 
             /// <summary>
             ///     Corrade compile date.
@@ -9996,6 +10022,25 @@ namespace Corrade
                     {
                         _logoutGrace = value;
                     }
+                }
+            }
+
+            public string Read(string file)
+            {
+                return File.ReadAllText(file, Encoding.UTF8);
+            }
+
+            public void Write(string file, string data)
+            {
+                File.WriteAllText(file, data, Encoding.UTF8);
+            }
+
+            public void Write(string file, XmlDocument document)
+            {
+                using (TextWriter writer = new StreamWriter(file, false, Encoding.UTF8))
+                {
+                    document.Save(writer);
+                    writer.Flush();
                 }
             }
 
