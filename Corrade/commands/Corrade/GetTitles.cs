@@ -1,0 +1,72 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using OpenMetaverse;
+
+namespace Corrade
+{
+    public partial class Corrade
+    {
+        public partial class CorradeCommands
+        {
+            public static Action<Group, string, Dictionary<string, string>> gettitles =
+                (commandGroup, message, result) =>
+                {
+                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
+                    {
+                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                    }
+                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    if (
+                        !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
+                            ref currentGroups))
+                    {
+                        throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
+                    }
+                    if (!currentGroups.ToList().Any(o => o.Equals(commandGroup.UUID)))
+                    {
+                        throw new ScriptException(ScriptError.NOT_IN_GROUP);
+                    }
+                    List<string> csv = new List<string>();
+                    Dictionary<UUID, GroupTitle> groupTitles = new Dictionary<UUID, GroupTitle>();
+                    ManualResetEvent GroupTitlesReplyEvent = new ManualResetEvent(false);
+                    EventHandler<GroupTitlesReplyEventArgs> GroupTitlesReplyEventHandler = (sender, args) =>
+                    {
+                        groupTitles = args.Titles;
+                        GroupTitlesReplyEvent.Set();
+                    };
+                    lock (ClientInstanceGroupsLock)
+                    {
+                        Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
+                        Client.Groups.RequestGroupTitles(commandGroup.UUID);
+                        if (!GroupTitlesReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        {
+                            Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
+                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_TITLES);
+                        }
+                        Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
+                    }
+                    foreach (KeyValuePair<UUID, GroupTitle> title in groupTitles)
+                    {
+                        string roleName = string.Empty;
+                        if (
+                            !RoleUUIDToName(title.Value.RoleID, commandGroup.UUID,
+                                corradeConfiguration.ServicesTimeout,
+                                corradeConfiguration.DataTimeout,
+                                ref roleName))
+                            continue;
+                        csv.Add(title.Value.Title);
+                        csv.Add(title.Key.ToString());
+                        csv.Add(roleName);
+                        csv.Add(title.Value.RoleID.ToString());
+                    }
+                    if (csv.Any())
+                    {
+                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                            wasEnumerableToCSV(csv));
+                    }
+                };
+        }
+    }
+}

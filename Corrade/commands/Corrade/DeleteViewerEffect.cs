@@ -1,0 +1,64 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using OpenMetaverse;
+
+namespace Corrade
+{
+    public partial class Corrade
+    {
+        public partial class CorradeCommands
+        {
+            public static Action<Group, string, Dictionary<string, string>> deleteviewereffect =
+                (commandGroup, message, result) =>
+                {
+                    if (
+                        !HasCorradePermission(commandGroup.Name,
+                            (int) Permissions.Interact))
+                    {
+                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                    }
+                    UUID effectUUID;
+                    if (!UUID.TryParse(wasInput(wasKeyValueGet(
+                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ID)), message)), out effectUUID))
+                    {
+                        throw new ScriptException(ScriptError.NO_EFFECT_UUID_PROVIDED);
+                    }
+                    ViewerEffectType viewerEffectType = wasGetEnumValueFromDescription<ViewerEffectType>(
+                        wasInput(
+                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.EFFECT)), message))
+                            .ToLowerInvariant());
+                    switch (viewerEffectType)
+                    {
+                        case ViewerEffectType.LOOK:
+                            LookAtEffect lookAtEffect =
+                                LookAtEffects.AsParallel().FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                            switch (!lookAtEffect.Equals(default(LookAtEffect)))
+                            {
+                                case false:
+                                    throw new ScriptException(ScriptError.EFFECT_NOT_FOUND);
+                            }
+                            Client.Self.LookAtEffect(Client.Self.AgentID, lookAtEffect.Target, Vector3.Zero,
+                                LookAtType.None, effectUUID);
+                            LookAtEffects.Remove(lookAtEffect);
+                            break;
+                        case ViewerEffectType.POINT:
+                            PointAtEffect pointAtEffect =
+                                PointAtEffects.AsParallel().FirstOrDefault(o => o.Effect.Equals(effectUUID));
+                            switch (!pointAtEffect.Equals(default(PointAtEffect)))
+                            {
+                                case false:
+                                    throw new ScriptException(ScriptError.EFFECT_NOT_FOUND);
+                            }
+                            Client.Self.PointAtEffect(Client.Self.AgentID, pointAtEffect.Target,
+                                Vector3.Zero,
+                                PointAtType.None, effectUUID);
+                            PointAtEffects.Remove(pointAtEffect);
+                            break;
+                        default:
+                            throw new ScriptException(ScriptError.INVALID_VIEWER_EFFECT);
+                    }
+                };
+        }
+    }
+}
