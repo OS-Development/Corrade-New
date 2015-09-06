@@ -3839,8 +3839,8 @@ namespace Corrade
             Client.Self.RequestMuteList();
             if (!MuteListUpdatedEvent.WaitOne((int) millisecondsTimeout, false))
             {
-                Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
-                return false;
+                mutes = Client.Self.MuteList.Copy().Values;
+                return true;
             }
             Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
             mutes = Client.Self.MuteList.Copy().Values;
@@ -6865,18 +6865,6 @@ namespace Corrade
 
         private static void HandleSelfIM(object sender, InstantMessageEventArgs args)
         {
-            // ignore stuff from muted entities
-            IEnumerable<MuteEntry> mutes = Enumerable.Empty<MuteEntry>();
-            if (!GetMutes(corradeConfiguration.ServicesTimeout, ref mutes))
-                return;
-            if (
-                mutes.ToList()
-                    .AsParallel()
-                    .Any(
-                        o =>
-                            args.IM.FromAgentID.Equals(o.ID) && args.IM.FromAgentName.Equals(o.Name) &&
-                            (o.Flags.Equals(MuteFlags.Default) || o.Flags.Equals(MuteFlags.TextChat))))
-                return;
             List<string> fullName =
                 new List<string>(
                     GetAvatarNames(args.IM.FromAgentName));
@@ -8015,9 +8003,7 @@ namespace Corrade
         private struct Agent
         {
             [Description("firstname")] public string FirstName;
-
             [Description("lastname")] public string LastName;
-
             [Description("uuid")] public UUID UUID;
         }
 
@@ -8027,19 +8013,12 @@ namespace Corrade
         private struct BeamEffect
         {
             [Description("alpha")] public float Alpha;
-
             [Description("color")] public Vector3 Color;
-
             [Description("duration")] public float Duration;
-
             [Description("effect")] public UUID Effect;
-
             [Description("offset")] public Vector3d Offset;
-
             [Description("source")] public UUID Source;
-
             [Description("target")] public UUID Target;
-
             [Description("termination")] public DateTime Termination;
         }
 
@@ -10767,11 +10746,8 @@ namespace Corrade
         private struct DirItem
         {
             [Description("item")] public UUID Item;
-
             [Description("name")] public string Name;
-
             [Description("permissions")] public string Permissions;
-
             [Description("type")] public DirItemType Type;
 
             public static DirItem FromInventoryBase(InventoryBase inventoryBase)
@@ -11009,11 +10985,8 @@ namespace Corrade
         private struct GroupInvite
         {
             [Description("agent")] public Agent Agent;
-
             [Description("fee")] public int Fee;
-
             [Description("group")] public string Group;
-
             [Description("session")] public UUID Session;
         }
 
@@ -11210,13 +11183,9 @@ namespace Corrade
         private struct LookAtEffect
         {
             [Description("effect")] public UUID Effect;
-
             [Description("offset")] public Vector3d Offset;
-
             [Description("source")] public UUID Source;
-
             [Description("target")] public UUID Target;
-
             [Description("type")] public LookAtType Type;
         }
 
@@ -11268,13 +11237,9 @@ namespace Corrade
         private struct PointAtEffect
         {
             [Description("effect")] public UUID Effect;
-
             [Description("offset")] public Vector3d Offset;
-
             [Description("source")] public UUID Source;
-
             [Description("target")] public UUID Target;
-
             [Description("type")] public PointAtType Type;
         }
 
@@ -11296,15 +11261,10 @@ namespace Corrade
         private struct ScriptDialog
         {
             public Agent Agent;
-
             [Description("button")] public List<string> Button;
-
             [Description("channel")] public int Channel;
-
             [Description("item")] public UUID Item;
-
             [Description("message")] public string Message;
-
             [Description("name")] public string Name;
         }
 
@@ -12301,15 +12261,10 @@ namespace Corrade
         private struct ScriptPermissionRequest
         {
             public Agent Agent;
-
             [Description("item")] public UUID Item;
-
             [Description("name")] public string Name;
-
             [Description("permission")] public ScriptPermission Permission;
-
             [Description("region")] public string Region;
-
             [Description("task")] public UUID Task;
         }
 
@@ -12479,15 +12434,10 @@ namespace Corrade
         private struct SphereEffect
         {
             [Description("alpha")] public float Alpha;
-
             [Description("color")] public Vector3 Color;
-
             [Description("duration")] public float Duration;
-
             [Description("effect")] public UUID Effect;
-
             [Description("offset")] public Vector3d Offset;
-
             [Description("termination")] public DateTime Termination;
         }
 

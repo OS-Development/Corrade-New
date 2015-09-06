@@ -55,8 +55,7 @@ namespace Corrade
                             throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
 
                         // retrieve the current mute list
-                        if (!GetMutes(corradeConfiguration.ServicesTimeout, ref mutes))
-                            throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
+                        GetMutes(corradeConfiguration.ServicesTimeout, ref mutes);
 
                         // check that the mute list does not already exist
                         if (mutes.ToList().AsParallel().Any(o => o.ID.Equals(targetUUID) && o.Name.Equals(name)))
@@ -128,8 +127,7 @@ namespace Corrade
                             throw new ScriptException(ScriptError.NO_NAME_OR_UUID_PROVIDED);
 
                         // retrieve the current mute list
-                        if (!GetMutes(corradeConfiguration.ServicesTimeout, ref mutes))
-                            throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
+                        GetMutes(corradeConfiguration.ServicesTimeout, ref mutes);
 
                         // find the mute either by name or by target
                         MuteEntry mute =
