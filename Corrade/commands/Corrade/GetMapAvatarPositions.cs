@@ -35,7 +35,7 @@ namespace Corrade
                     ManualResetEvent GridRegionEvent = new ManualResetEvent(false);
                     EventHandler<GridRegionEventArgs> GridRegionEventHandler = (sender, args) =>
                     {
-                        if (!args.Region.Name.Equals(region, StringComparison.InvariantCultureIgnoreCase))
+                        if (!args.Region.Name.Equals(region, StringComparison.OrdinalIgnoreCase))
                             return;
                         regionHandle = args.Region.RegionHandle;
                         GridRegionEvent.Set();

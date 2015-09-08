@@ -73,12 +73,12 @@ namespace Corrade
                         InventoryItem item = o as InventoryItem;
                         if (item is InventoryWearable)
                         {
-                            Wear(item, false);
+                            Wear(item, true);
                             return;
                         }
                         if (item is InventoryAttachment || item is InventoryObject)
                         {
-                            Attach(item, AttachmentPoint.Default, false);
+                            Attach(item, AttachmentPoint.Default, true);
                         }
                     });
                     // And rebake.

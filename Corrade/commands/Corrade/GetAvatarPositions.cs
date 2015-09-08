@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenMetaverse;
+using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -44,7 +45,7 @@ namespace Corrade
                             o =>
                                 o.Name.Equals(
                                     string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                    StringComparison.InvariantCultureIgnoreCase));
+                                    StringComparison.OrdinalIgnoreCase));
                     if (simulator == null)
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
@@ -67,29 +68,32 @@ namespace Corrade
                     List<string> csv = new List<string>();
                     Dictionary<UUID, Vector3> avatarPositions = new Dictionary<UUID, Vector3>();
                     simulator.AvatarPositions.ForEach(o => avatarPositions.Add(o.Key, o.Value));
-                    foreach (KeyValuePair<UUID, Vector3> p in avatarPositions)
+                    object LockObject = new object();
+                    Parallel.ForEach(avatarPositions, p =>
                     {
                         string name = string.Empty;
                         if (
                             !AgentUUIDToName(p.Key, corradeConfiguration.ServicesTimeout,
                                 ref name))
-                            continue;
+                            return;
                         switch (entity)
                         {
                             case Entity.REGION:
                                 break;
                             case Entity.PARCEL:
-                                if (parcel == null) return;
                                 Parcel avatarParcel = null;
                                 if (!GetParcelAtPosition(simulator, p.Value, ref avatarParcel))
-                                    continue;
-                                if (!avatarParcel.LocalID.Equals(parcel.LocalID)) continue;
+                                    return;
+                                if (!avatarParcel.LocalID.Equals(parcel.LocalID)) return;
                                 break;
                         }
-                        csv.Add(name);
-                        csv.Add(p.Key.ToString());
-                        csv.Add(p.Value.ToString());
-                    }
+                        lock (LockObject)
+                        {
+                            csv.Add(name);
+                            csv.Add(p.Key.ToString());
+                            csv.Add(p.Value.ToString());
+                        }
+                    });
                     if (csv.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

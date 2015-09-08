@@ -8,6 +8,7 @@ using System;
 using System.Linq;
 using System.Text;
 using OpenMetaverse;
+using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {

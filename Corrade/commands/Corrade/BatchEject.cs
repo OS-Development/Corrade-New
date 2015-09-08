@@ -24,6 +24,17 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    if (
+                        !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
+                            ref currentGroups))
+                    {
+                        throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
+                    }
+                    if (!new HashSet<UUID>(currentGroups).Contains(commandGroup.UUID))
+                    {
+                        throw new ScriptException(ScriptError.NOT_IN_GROUP);
+                    }
                     if (
                         !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.Eject,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout) ||

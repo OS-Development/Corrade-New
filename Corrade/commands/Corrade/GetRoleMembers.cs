@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using OpenMetaverse;
+using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -30,7 +31,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
-                    if (!currentGroups.ToList().Any(o => o.Equals(commandGroup.UUID)))
+                    if (!new HashSet<UUID>(currentGroups).Contains(commandGroup.UUID))
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
@@ -48,7 +49,6 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
                     }
-                    List<string> csv = new List<string>();
                     // get all roles and members
                     HashSet<KeyValuePair<UUID, UUID>> groupRolesMembers = new HashSet<KeyValuePair<UUID, UUID>>();
                     ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
@@ -69,21 +69,20 @@ namespace Corrade
                         }
                         Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                     }
-                    foreach (
-                        KeyValuePair<UUID, UUID> pair in
-                            groupRolesMembers.AsParallel().Where(o => o.Key.Equals(roleUUID)))
+                    List<string> csv = new List<string>();
+                    object LockObject = new object();
+                    Parallel.ForEach(groupRolesMembers.AsParallel().Where(o => o.Key.Equals(roleUUID)), o =>
                     {
                         string agentName = string.Empty;
-                        switch (!AgentUUIDToName(pair.Value, corradeConfiguration.ServicesTimeout, ref agentName))
+                        if (AgentUUIDToName(o.Value, corradeConfiguration.ServicesTimeout, ref agentName))
                         {
-                            case true:
-                                continue;
-                            default:
+                            lock (LockObject)
+                            {
                                 csv.Add(agentName);
-                                csv.Add(pair.Value.ToString());
-                                break;
+                                csv.Add(o.Value.ToString());
+                            }
                         }
-                    }
+                    });
                     if (csv.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

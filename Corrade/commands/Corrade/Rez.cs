@@ -65,7 +65,7 @@ namespace Corrade
                         o =>
                             o.Name.Equals(
                                 string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                StringComparison.InvariantCultureIgnoreCase));
+                                StringComparison.OrdinalIgnoreCase));
                 if (simulator == null)
                 {
                     throw new ScriptException(ScriptError.REGION_NOT_FOUND);

@@ -28,7 +28,7 @@ namespace Corrade
                 {
                     throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                 }
-                if (!currentGroups.ToList().Any(o => o.Equals(commandGroup.UUID)))
+                if (!new HashSet<UUID>(currentGroups).Contains(commandGroup.UUID))
                 {
                     throw new ScriptException(ScriptError.NOT_IN_GROUP);
                 }

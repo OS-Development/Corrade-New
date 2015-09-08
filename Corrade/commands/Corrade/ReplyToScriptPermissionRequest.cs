@@ -52,10 +52,11 @@ namespace Corrade
                                 typeof (ScriptPermission).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
                                 q => { permissionMask |= ((int) q.GetValue(null)); }));
-                    Simulator simulator = Client.Network.Simulators.FirstOrDefault(
-                        o => o.Name.Equals(wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                                message)), StringComparison.InvariantCultureIgnoreCase));
+                    string region = wasInput(
+                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                            message));
+                    Simulator simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
+                        o => o.Name.Equals(region, StringComparison.OrdinalIgnoreCase));
                     if (simulator == null)
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);

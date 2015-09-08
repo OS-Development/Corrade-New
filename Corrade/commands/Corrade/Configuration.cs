@@ -6,9 +6,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Xml;
-using OpenMetaverse;
 
 namespace Corrade
 {
@@ -19,28 +17,19 @@ namespace Corrade
             public static Action<Group, string, Dictionary<string, string>> configuration =
                 (commandGroup, message, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int)Permissions.System))
-
+                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.System))
                     {
-
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
-
                     }
 
                     Action action = wasGetEnumValueFromDescription<Action>(wasInput(
-
                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
-
                         .ToLowerInvariant());
 
                     switch (action)
-
                     {
-
                         case Action.READ:
-
                             try
-
                             {
                                 lock (ConfigurationFileLock)
                                 {
@@ -48,21 +37,13 @@ namespace Corrade
                                         corradeConfiguration.Read(CORRADE_CONSTANTS.CONFIGURATION_FILE));
                                 }
                             }
-
                             catch (Exception)
-
                             {
-
                                 throw new ScriptException(ScriptError.UNABLE_TO_LOAD_CONFIGURATION);
-
                             }
-
                             break;
-
                         case Action.WRITE:
-
                             try
-
                             {
                                 lock (ConfigurationFileLock)
                                 {
@@ -71,151 +52,84 @@ namespace Corrade
                                         message));
                                 }
                             }
-
                             catch (Exception)
-
                             {
-
                                 throw new ScriptException(ScriptError.UNABLE_TO_SAVE_CONFIGURATION);
-
                             }
-
                             break;
-
                         case Action.SET:
-
                         case Action.GET:
-
                             string path =
-
                                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATH)),
-
                                     message));
-
                             if (string.IsNullOrEmpty(path))
-
                             {
-
                                 throw new ScriptException(ScriptError.NO_PATH_PROVIDED);
-
                             }
-
                             XmlDocument conf = new XmlDocument();
-
                             try
-
                             {
                                 lock (ConfigurationFileLock)
                                 {
                                     conf.LoadXml(corradeConfiguration.Read(CORRADE_CONSTANTS.CONFIGURATION_FILE));
                                 }
                             }
-
                             catch (Exception)
-
                             {
-
                                 throw new ScriptException(ScriptError.UNABLE_TO_LOAD_CONFIGURATION);
-
                             }
-
                             string data;
-
                             switch (action)
-
                             {
-
                                 case Action.GET:
-
                                     try
-
                                     {
-
                                         data = conf.SelectSingleNode(path).InnerXml;
-
                                     }
-
                                     catch (Exception)
-
                                     {
-
                                         throw new ScriptException(ScriptError.INVALID_XML_PATH);
-
                                     }
-
                                     if (!string.IsNullOrEmpty(data))
-
                                     {
-
                                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), data);
-
                                     }
-
                                     break;
-
                                 case Action.SET:
-
                                     data =
-
                                         wasInput(
-
                                             wasKeyValueGet(
-
                                                 wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-
                                                 message));
-
                                     if (string.IsNullOrEmpty(data))
-
                                     {
-
                                         throw new ScriptException(ScriptError.NO_DATA_PROVIDED);
-
                                     }
-
                                     try
-
                                     {
-
                                         conf.SelectSingleNode(path).InnerXml = data;
-
                                     }
-
                                     catch (Exception)
-
                                     {
-
                                         throw new ScriptException(ScriptError.INVALID_XML_PATH);
-
                                     }
 
                                     try
-
                                     {
                                         lock (ConfigurationFileLock)
                                         {
                                             corradeConfiguration.Write(CORRADE_CONSTANTS.CONFIGURATION_FILE, conf);
                                         }
                                     }
-
                                     catch (Exception)
-
                                     {
-
                                         throw new ScriptException(ScriptError.UNABLE_TO_SAVE_CONFIGURATION);
-
                                     }
-
                                     break;
-
                             }
-
                             break;
-
                         default:
-
                             throw new ScriptException(ScriptError.UNKNOWN_ACTION);
-
                     }
                 };
         }

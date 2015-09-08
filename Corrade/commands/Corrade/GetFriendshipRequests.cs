@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Corrade
 {
@@ -22,17 +23,19 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     List<string> csv = new List<string>();
-                    Client.Friends.FriendRequests.ForEach(o =>
+                    object LockObject = new object();
+                    Parallel.ForEach(Client.Friends.FriendRequests.Copy(), o =>
                     {
                         string name = string.Empty;
                         if (
                             !AgentUUIDToName(o.Key, corradeConfiguration.ServicesTimeout,
                                 ref name))
-                        {
                             return;
+                        lock (LockObject)
+                        {
+                            csv.Add(name);
+                            csv.Add(o.Key.ToString());
                         }
-                        csv.Add(name);
-                        csv.Add(o.Key.ToString());
                     });
                     if (csv.Any())
                     {

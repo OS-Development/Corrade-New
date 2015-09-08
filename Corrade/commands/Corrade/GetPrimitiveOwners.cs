@@ -33,7 +33,7 @@ namespace Corrade
                             o =>
                                 o.Name.Equals(
                                     string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                    StringComparison.InvariantCultureIgnoreCase));
+                                    StringComparison.OrdinalIgnoreCase));
                     if (simulator == null)
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
@@ -105,30 +105,17 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                             }
                         });
-                    ManualResetEvent ParcelObjectOwnersReplyEvent = new ManualResetEvent(false);
                     Dictionary<string, int> primitives = new Dictionary<string, int>();
-                    EventHandler<ParcelObjectOwnersReplyEventArgs> ParcelObjectOwnersEventHandler =
-                        (sender, args) =>
-                        {
-                            //object LockObject = new object();
-                            foreach (ParcelManager.ParcelPrimOwners primowner in args.PrimOwners)
-                            {
-                                string owner = string.Empty;
-                                if (
-                                    !AgentUUIDToName(primowner.OwnerID, corradeConfiguration.ServicesTimeout,
-                                        ref owner))
-                                    continue;
-                                if (!primitives.ContainsKey(owner))
-                                {
-                                    primitives.Add(owner, primowner.Count);
-                                    continue;
-                                }
-                                primitives[owner] += primowner.Count;
-                            }
-                            ParcelObjectOwnersReplyEvent.Set();
-                        };
                     foreach (Parcel parcel in parcels)
                     {
+                        ManualResetEvent ParcelObjectOwnersReplyEvent = new ManualResetEvent(false);
+                        List<ParcelManager.ParcelPrimOwners> parcelPrimOwners = null;
+                        EventHandler<ParcelObjectOwnersReplyEventArgs> ParcelObjectOwnersEventHandler =
+                            (sender, args) =>
+                            {
+                                parcelPrimOwners = args.PrimOwners;
+                                ParcelObjectOwnersReplyEvent.Set();
+                            };
                         lock (ClientInstanceParcelsLock)
                         {
                             Client.Parcels.ParcelObjectOwnersReply += ParcelObjectOwnersEventHandler;
@@ -141,20 +128,36 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_LAND_USERS);
                             }
                             Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
+                            object LockObject = new object();
+                            Parallel.ForEach(parcelPrimOwners, o =>
+                            {
+                                string owner = string.Empty;
+                                if (
+                                    !AgentUUIDToName(o.OwnerID, corradeConfiguration.ServicesTimeout,
+                                        ref owner))
+                                    return;
+                                lock (LockObject)
+                                {
+                                    if (!primitives.ContainsKey(owner))
+                                    {
+                                        primitives.Add(owner, o.Count);
+                                        return;
+                                    }
+                                }
+                                lock (LockObject)
+                                {
+                                    primitives[owner] += o.Count;
+                                }
+                            });
                         }
                     }
-                    if (!primitives.Any())
-                    {
-                        throw new ScriptException(ScriptError.COULD_NOT_GET_LAND_USERS);
-                    }
-                    List<string> data = new List<string>(primitives.AsParallel().Select(
-                        p =>
-                            wasEnumerableToCSV(new[]
-                            {p.Key, p.Value.ToString(CultureInfo.DefaultThreadCurrentCulture)})));
-                    if (data.Any())
+                    if (primitives.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            wasEnumerableToCSV(data));
+                            wasEnumerableToCSV(primitives.AsParallel().Select(
+                                p =>
+                                    wasEnumerableToCSV(new[]
+                                    {p.Key, p.Value.ToString(CultureInfo.DefaultThreadCurrentCulture)}))));
                     }
                 };
         }

@@ -29,7 +29,7 @@ namespace Corrade
                 {
                     throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                 }
-                if (currentGroups.ToList().Any(o => o.Equals(commandGroup.UUID)))
+                if (new HashSet<UUID>(currentGroups).Contains(commandGroup.UUID))
                 {
                     throw new ScriptException(ScriptError.ALREADY_IN_GROUP);
                 }
@@ -44,7 +44,7 @@ namespace Corrade
                 }
                 if (!Client.Network.MaxAgentGroups.Equals(-1))
                 {
-                    if (currentGroups.ToList().Count >= Client.Network.MaxAgentGroups)
+                    if (new HashSet<UUID>(currentGroups).Count >= Client.Network.MaxAgentGroups)
                     {
                         throw new ScriptException(ScriptError.MAXIMUM_NUMBER_OF_GROUPS_REACHED);
                     }
@@ -63,13 +63,14 @@ namespace Corrade
                     }
                     Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
                 }
+                currentGroups = Enumerable.Empty<UUID>();
                 if (
                     !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
                         ref currentGroups))
                 {
                     throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                 }
-                if (!currentGroups.Any(o => o.Equals(commandGroup.UUID)))
+                if (!new HashSet<UUID>(currentGroups).Contains(commandGroup.UUID))
                 {
                     throw new ScriptException(ScriptError.COULD_NOT_JOIN_GROUP);
                 }

@@ -48,7 +48,7 @@ namespace Corrade
                             o =>
                                 string.Equals(o.Name, wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MATERIAL)), message)),
-                                    StringComparison.InvariantCultureIgnoreCase));
+                                    StringComparison.OrdinalIgnoreCase));
                     if (materialFieldInfo == null)
                         throw new ScriptException(ScriptError.UNKNOWN_MATERIAL_TYPE);
                     Client.Objects.SetMaterial(

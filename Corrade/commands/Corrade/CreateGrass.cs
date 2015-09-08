@@ -54,11 +54,11 @@ namespace Corrade
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
                             message));
                     Simulator simulator =
-                        Client.Network.Simulators.FirstOrDefault(
+                        Client.Network.Simulators.AsParallel().FirstOrDefault(
                             o =>
                                 o.Name.Equals(
                                     string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                    StringComparison.InvariantCultureIgnoreCase));
+                                    StringComparison.OrdinalIgnoreCase));
                     if (simulator == null)
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
@@ -92,16 +92,16 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS);
                     }
+                    string type = wasInput(
+                        wasKeyValueGet(
+                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                            message));
                     FieldInfo grassFieldInfo = typeof (Grass).GetFields(
                         BindingFlags.Public |
                         BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
                             o =>
-                                o.Name.Equals(
-                                    wasInput(
-                                        wasKeyValueGet(
-                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                                            message)),
+                                o.Name.Equals(type,
                                     StringComparison.OrdinalIgnoreCase));
                     if (grassFieldInfo == null)
                     {

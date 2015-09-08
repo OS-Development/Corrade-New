@@ -11,6 +11,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using OpenMetaverse;
+using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -44,7 +45,7 @@ namespace Corrade
                             o =>
                                 o.Name.Equals(
                                     string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                    StringComparison.InvariantCultureIgnoreCase));
+                                    StringComparison.OrdinalIgnoreCase));
                     if (simulator == null)
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
@@ -115,22 +116,11 @@ namespace Corrade
                             }
                         }
                     }
-                    List<string> csv = new List<string>();
                     ManualResetEvent ParcelAccessListEvent = new ManualResetEvent(false);
+                    List<ParcelManager.ParcelAccessEntry> accessList = null;
                     EventHandler<ParcelAccessListReplyEventArgs> ParcelAccessListHandler = (sender, args) =>
                     {
-                        foreach (ParcelManager.ParcelAccessEntry parcelAccess in args.AccessList)
-                        {
-                            string agent = string.Empty;
-                            if (
-                                !AgentUUIDToName(parcelAccess.AgentID, corradeConfiguration.ServicesTimeout,
-                                    ref agent))
-                                continue;
-                            csv.Add(agent);
-                            csv.Add(parcelAccess.AgentID.ToString());
-                            csv.Add(parcelAccess.Flags.ToString());
-                            csv.Add(parcelAccess.Time.ToString(CultureInfo.DefaultThreadCurrentCulture));
-                        }
+                        accessList = args.AccessList;
                         ParcelAccessListEvent.Set();
                     };
                     lock (ClientInstanceParcelsLock)
@@ -144,6 +134,23 @@ namespace Corrade
                         }
                         Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
                     }
+                    List<string> csv = new List<string>();
+                    object LockObject = new object();
+                    Parallel.ForEach(accessList, o =>
+                    {
+                        string agent = string.Empty;
+                        if (
+                            !AgentUUIDToName(o.AgentID, corradeConfiguration.ServicesTimeout,
+                                ref agent))
+                            return;
+                        lock (LockObject)
+                        {
+                            csv.Add(agent);
+                            csv.Add(o.AgentID.ToString());
+                            csv.Add(o.Flags.ToString());
+                            csv.Add(o.Time.ToString(CultureInfo.DefaultThreadCurrentCulture));
+                        }
+                    });
                     if (csv.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

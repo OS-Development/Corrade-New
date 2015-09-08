@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using OpenMetaverse;
+using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -31,12 +32,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
-                    if (!currentGroups.ToList().Any(o => o.Equals(commandGroup.UUID)))
+                    if (!new HashSet<UUID>(currentGroups).Contains(commandGroup.UUID))
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
-                    List<string> csv = new List<string>();
-                    HashSet<KeyValuePair<UUID, UUID>> groupRolesMembers = new HashSet<KeyValuePair<UUID, UUID>>();
+                    HashSet<KeyValuePair<UUID, UUID>> groupRolesMembers = null;
                     ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler =
                         (sender, args) =>
@@ -75,22 +75,22 @@ namespace Corrade
                         }
                     }
                     // Next, associate role names with agent names and UUIDs.
-                    foreach (KeyValuePair<UUID, UUID> pair in groupRolesMembers)
+                    List<string> csv = new List<string>();
+                    object LockObject = new object();
+                    Parallel.ForEach(groupRolesMembers, o =>
                     {
-                        if (!roleUUIDNames.ContainsKey(pair.Key)) continue;
+                        if (!roleUUIDNames.ContainsKey(o.Key)) return;
                         string agentName = string.Empty;
-                        switch (
-                            !AgentUUIDToName(pair.Value, corradeConfiguration.ServicesTimeout, ref agentName))
+                        if (AgentUUIDToName(o.Value, corradeConfiguration.ServicesTimeout, ref agentName))
                         {
-                            case true:
-                                continue;
-                            default:
-                                csv.Add(roleUUIDNames[pair.Key] as string);
+                            lock (LockObject)
+                            {
+                                csv.Add(roleUUIDNames[o.Key] as string);
                                 csv.Add(agentName);
-                                csv.Add(pair.Value.ToString());
-                                break;
+                                csv.Add(o.Value.ToString());
+                            }
                         }
-                    }
+                    });
                     if (csv.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

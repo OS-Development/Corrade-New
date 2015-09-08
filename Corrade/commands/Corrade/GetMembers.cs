@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using OpenMetaverse;
+using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -30,7 +31,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
-                    if (!currentGroups.ToList().Any(o => o.Equals(commandGroup.UUID)))
+                    if (!new HashSet<UUID>(currentGroups).Contains(commandGroup.UUID))
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
@@ -53,20 +54,19 @@ namespace Corrade
                         }
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                     }
-                    foreach (KeyValuePair<UUID, GroupMember> pair in groupMembers)
+                    object LockObject = new object();
+                    Parallel.ForEach(groupMembers, o =>
                     {
                         string agentName = string.Empty;
-                        switch (
-                            !AgentUUIDToName(pair.Value.ID, corradeConfiguration.ServicesTimeout, ref agentName))
+                        if (AgentUUIDToName(o.Value.ID, corradeConfiguration.ServicesTimeout, ref agentName))
                         {
-                            case true:
-                                continue;
-                            default:
+                            lock (LockObject)
+                            {
                                 csv.Add(agentName);
-                                csv.Add(pair.Key.ToString());
-                                break;
+                                csv.Add(o.Key.ToString());
+                            }
                         }
-                    }
+                    });
                     if (csv.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
