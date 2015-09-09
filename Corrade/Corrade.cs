@@ -8045,8 +8045,6 @@ namespace Corrade
             public const string NOTIFICATIONS_STATE_FILE = @"Notifications.state";
             public const string GROUP_MEMBERS_STATE_FILE = @"GroupMembers.state";
             public const string LIBS_DIRECTORY = @"libs";
-            public const string LINDEN_GLOBALIZATION_FILE = @"LindenGlobalization.xml";
-            public const string LINDEN_GLOBALIZATION_NAME = @"Linden-Lab";
 
             public static readonly Regex AvatarFullNameRegex = new Regex(@"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$",
                 RegexOptions.Compiled);
