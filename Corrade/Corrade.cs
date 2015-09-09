@@ -781,30 +781,6 @@ namespace Corrade
                     EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
                     {
                         // Enqueue all the new folders.
-                        /*Client.Inventory.Store.GetContents(q.FolderID).ForEach(r =>
-                        {
-                            if (r is InventoryFolder)
-                            {
-                                UUID inventoryFolderUUID = (r as InventoryFolder).UUID;
-                                lock (LockObject)
-                                {
-                                    if (!inventoryFolders.ContainsKey(inventoryFolderUUID))
-                                    {
-                                        inventoryFolders.Add(inventoryFolderUUID, new ManualResetEvent(false));
-                                    }
-                                    if (!inventoryStopwatch.ContainsKey(inventoryFolderUUID))
-                                    {
-                                        inventoryStopwatch.Add(inventoryFolderUUID, new Stopwatch());
-                                    }
-                                }
-                            }
-                            lock (LockObject)
-                            {
-                                inventoryStopwatch[q.FolderID].Stop();
-                                times.Add(inventoryStopwatch[q.FolderID].ElapsedMilliseconds);
-                                inventoryFolders[q.FolderID].Set();
-                            }
-                        });*/
                         Parallel.ForEach(Client.Inventory.Store.GetContents(q.FolderID), r =>
                         {
                             if (r is InventoryFolder)
@@ -1189,12 +1165,12 @@ namespace Corrade
             }
             CorradeEventLog.Source = InstalledServiceName;
             CorradeEventLog.Log = CORRADE_CONSTANTS.LOG_FACILITY;
-            ((ISupportInitialize) (CorradeEventLog)).BeginInit();
+            CorradeEventLog.BeginInit();
             if (!EventLog.SourceExists(CorradeEventLog.Source))
             {
                 EventLog.CreateEventSource(CorradeEventLog.Source, CorradeEventLog.Log);
             }
-            ((ISupportInitialize) (CorradeEventLog)).EndInit();
+            CorradeEventLog.EndInit();
         }
 
         /// <summary>
@@ -1250,16 +1226,17 @@ namespace Corrade
                 Thread.Sleep((int) corradeConfiguration.MembershipSweepInterval);
                 if (!Client.Network.Connected) continue;
 
-                IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
-                if (!GetCurrentGroups(corradeConfiguration.ServicesTimeout, ref currentGroups))
+                IEnumerable<UUID> groups = Enumerable.Empty<UUID>();
+                if (!GetCurrentGroups(corradeConfiguration.ServicesTimeout, ref groups))
                     continue;
 
                 // Enqueue configured groups that are currently joined groups.
                 groupUUIDs.Clear();
                 object LockObject = new object();
+                HashSet<UUID> currentGroups = new HashSet<UUID>(groups);
                 Parallel.ForEach(
                     corradeConfiguration.Groups.AsParallel().Select(o => new {group = o, groupUUID = o.UUID})
-                        .Where(p => currentGroups.ToList().Any(o => o.Equals(p.groupUUID)))
+                        .Where(p => currentGroups.Contains(p.groupUUID))
                         .Select(o => o.group), o =>
                         {
                             lock (LockObject)
@@ -1292,7 +1269,7 @@ namespace Corrade
                 do
                 {
                     // Pause a second between group sweeps.
-                    Thread.Sleep(1000);
+                    Thread.Yield();
                     // Dequeue the first group.
                     UUID groupUUID = groupUUIDs.Dequeue();
                     // Clear the total list of members.
@@ -1356,8 +1333,9 @@ namespace Corrade
                                                 corradeConfiguration.MaximumNotificationThreads);
                                         }
                                     });
+
+                                joinedMembers.Clear();
                             }
-                            joinedMembers.Clear();
                             if (partedMembers.Any())
                             {
                                 Parallel.ForEach(
@@ -1387,9 +1365,9 @@ namespace Corrade
                                                 corradeConfiguration.MaximumNotificationThreads);
                                         }
                                     });
+                                partedMembers.Clear();
                             }
                         }
-                        partedMembers.Clear();
                     }
                     lock (GroupMembersLock)
                     {
@@ -1773,7 +1751,7 @@ namespace Corrade
             foreach (FieldInfo fi in @object.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public))
             {
                 if (fi.FieldType.FullName.Split('.', '+')
-                    .Contains(@namespace, StringComparer.InvariantCultureIgnoreCase))
+                    .Contains(@namespace, StringComparer.OrdinalIgnoreCase))
                 {
                     foreach (KeyValuePair<FieldInfo, object> sf in wasGetFields(fi.GetValue(@object), @namespace))
                     {
@@ -1802,7 +1780,7 @@ namespace Corrade
             foreach (PropertyInfo pi in @object.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
             {
                 if (pi.PropertyType.FullName.Split('.', '+')
-                    .Contains(@namespace, StringComparer.InvariantCultureIgnoreCase))
+                    .Contains(@namespace, StringComparer.OrdinalIgnoreCase))
                 {
                     MethodInfo getMethod = pi.GetGetMethod();
                     if (getMethod.ReturnType.IsArray)
@@ -4369,30 +4347,37 @@ namespace Corrade
         {
             // Set the current directory to the service directory.
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
-            // Load the Linden Lab Globalization.
-            try
+            // mono does not have custom cultures since 2006 - it sucks!
+            switch (Environment.OSVersion.Platform)
             {
-                // If the Linden Lab culture exists, then unregister it (for updates).
-                CultureInfo[] customCultures = CultureInfo.GetCultures(CultureTypes.UserCustomCulture);
-                if (
-                    customCultures.FirstOrDefault(
-                        o => o.Name.Equals(CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_NAME)) != null)
-                {
-                    CultureAndRegionInfoBuilder.Unregister(CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_NAME);
-                }
-                // Create the Linden culture from the globalization file and register it.
-                CultureAndRegionInfoBuilder cultureAndRegionInfoBuilder =
-                    CultureAndRegionInfoBuilder.CreateFromLdml(Path.Combine(CORRADE_CONSTANTS.LIBS_DIRECTORY,
-                        CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_FILE));
-                cultureAndRegionInfoBuilder.Register();
-                CultureInfo.DefaultThreadCurrentCulture =
-                    CultureInfo.CreateSpecificCulture(CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_NAME);
-            }
-            catch (Exception ex)
-            {
-                // If the culture could not be created and registered then abort everything since we need this.
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_LINDEN_GLOBALIZATION), ex.Message);
-                Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
+                case PlatformID.Win32NT:
+                    // Load the Linden Lab Globalization.
+                    try
+                    {
+                        // If the Linden Lab culture exists, then unregister it (for updates).
+                        CultureInfo[] customCultures = CultureInfo.GetCultures(CultureTypes.UserCustomCulture);
+                        if (
+                            customCultures.FirstOrDefault(
+                                o => o.Name.Equals(CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_NAME)) != null)
+                        {
+                            CultureAndRegionInfoBuilder.Unregister(CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_NAME);
+                        }
+                        // Create the Linden culture from the globalization file and register it.
+                        CultureAndRegionInfoBuilder cultureAndRegionInfoBuilder =
+                            CultureAndRegionInfoBuilder.CreateFromLdml(Path.Combine(CORRADE_CONSTANTS.LIBS_DIRECTORY,
+                                CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_FILE));
+                        cultureAndRegionInfoBuilder.Register();
+                        CultureInfo.DefaultThreadCurrentCulture =
+                            CultureInfo.CreateSpecificCulture(CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_NAME);
+                    }
+                    catch (Exception ex)
+                    {
+                        // If the culture could not be created and registered then abort everything since we need this.
+                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_LINDEN_GLOBALIZATION),
+                            ex.Message);
+                        Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
+                    }
+                    break;
             }
             // Load the configuration file.
             lock (ConfigurationFileLock)
@@ -6996,9 +6981,9 @@ namespace Corrade
                             Client.Self.Stand();
                         }
                         // stop all non-built-in animations
-                        List<UUID> lindenAnimations = new List<UUID>(typeof (Animations).GetProperties(
+                        HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetProperties(
                             BindingFlags.Public |
-                            BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)).ToList());
+                            BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
                         Parallel.ForEach(Client.Self.SignaledAnimations.Copy().Keys, o =>
                         {
                             if (!lindenAnimations.Contains(o))
@@ -7077,7 +7062,7 @@ namespace Corrade
                             ref currentGroups))
                         return;
 
-                    if (currentGroups.AsParallel().Any(o => o.Equals(args.IM.IMSessionID)))
+                    if (new HashSet<UUID>(currentGroups).Contains(args.IM.IMSessionID))
                     {
                         Group messageGroup =
                             corradeConfiguration.Groups.AsParallel()
@@ -7327,7 +7312,7 @@ namespace Corrade
                                 o =>
                                     o.Behaviour.Equals(
                                         RLVrule.Behaviour,
-                                        StringComparison.InvariantCultureIgnoreCase) &&
+                                        StringComparison.OrdinalIgnoreCase) &&
                                     o.ObjectUUID.Equals(RLVrule.ObjectUUID));
                         }
                         goto CONTINUE;
@@ -7338,9 +7323,9 @@ namespace Corrade
                             o =>
                                 o.Behaviour.Equals(
                                     RLVrule.Behaviour,
-                                    StringComparison.InvariantCultureIgnoreCase) &&
+                                    StringComparison.OrdinalIgnoreCase) &&
                                 o.ObjectUUID.Equals(RLVrule.ObjectUUID) &&
-                                o.Option.Equals(RLVrule.Option, StringComparison.InvariantCultureIgnoreCase));
+                                o.Option.Equals(RLVrule.Option, StringComparison.OrdinalIgnoreCase));
                     }
                     goto CONTINUE;
                 case RLV_CONSTANTS.N:
@@ -7351,8 +7336,8 @@ namespace Corrade
                             o =>
                                 o.Behaviour.Equals(
                                     RLVrule.Behaviour,
-                                    StringComparison.InvariantCultureIgnoreCase) &&
-                                o.Option.Equals(RLVrule.Option, StringComparison.InvariantCultureIgnoreCase) &&
+                                    StringComparison.OrdinalIgnoreCase) &&
+                                o.Option.Equals(RLVrule.Option, StringComparison.OrdinalIgnoreCase) &&
                                 o.ObjectUUID.Equals(RLVrule.ObjectUUID));
                         RLVRules.Add(RLVrule);
                     }
@@ -7444,7 +7429,7 @@ namespace Corrade
             {
                 if ((uint) GroupWorkers[commandGroup.Name] >
                     corradeConfiguration.Groups.AsParallel().FirstOrDefault(
-                        o => o.Name.Equals(commandGroup.Name, StringComparison.InvariantCultureIgnoreCase)).Workers)
+                        o => o.Name.Equals(commandGroup.Name, StringComparison.OrdinalIgnoreCase)).Workers)
                 {
                     // And refuse to proceed if they have.
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WORKERS_EXCEEDED),
@@ -7468,7 +7453,7 @@ namespace Corrade
             // do not send a callback if the callback queue is saturated
             if (CallbackQueue.Count >= corradeConfiguration.CallbackQueueLength)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CallbackThrottleD));
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CALLBACK_THROTTLED));
                 return result;
             }
             // send callback if registered
@@ -7530,7 +7515,8 @@ namespace Corrade
                 string data = string.Empty;
                 switch (
                     !string.IsNullOrEmpty(pattern) &&
-                    result.TryGetValue(wasGetDescriptionFromEnumValue(ResultKeys.DATA), out data))
+                    result.TryGetValue(wasGetDescriptionFromEnumValue(ResultKeys.DATA), out data) &&
+                    !string.IsNullOrEmpty(data))
                 {
                     case true:
                         data = wasEnumerableToCSV((((new Regex(pattern, RegexOptions.Compiled)).Matches(data)
@@ -8160,8 +8146,7 @@ namespace Corrade
 
             public struct PRIMTIVE_BODIES
             {
-                [Description("cube")] public static readonly Primitive.ConstructionData CUBE = new Primitive.
-                    ConstructionData
+                [Description("cube")] public static readonly Primitive.ConstructionData CUBE = new Primitive.ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8187,8 +8172,7 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("prism")] public static readonly Primitive.ConstructionData PRISM = new Primitive.
-                    ConstructionData
+                [Description("prism")] public static readonly Primitive.ConstructionData PRISM = new Primitive.ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8214,8 +8198,7 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("pyramid")] public static readonly Primitive.ConstructionData PYRAMID = new Primitive.
-                    ConstructionData
+                [Description("pyramid")] public static readonly Primitive.ConstructionData PYRAMID = new Primitive.ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8241,8 +8224,7 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("tetrahedron")] public static readonly Primitive.ConstructionData TETRAHEDRON = new Primitive
-                    .ConstructionData
+                [Description("tetrahedron")] public static readonly Primitive.ConstructionData TETRAHEDRON = new Primitive.ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8268,8 +8250,7 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("cylinder")] public static readonly Primitive.ConstructionData CYLINDER = new Primitive.
-                    ConstructionData
+                [Description("cylinder")] public static readonly Primitive.ConstructionData CYLINDER = new Primitive.ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8295,8 +8276,7 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("hemicylinder")] public static readonly Primitive.ConstructionData HEMICYLINDER = new Primitive
-                    .ConstructionData
+                [Description("hemicylinder")] public static readonly Primitive.ConstructionData HEMICYLINDER = new Primitive.ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8322,8 +8302,7 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("cone")] public static readonly Primitive.ConstructionData CONE = new Primitive.
-                    ConstructionData
+                [Description("cone")] public static readonly Primitive.ConstructionData CONE = new Primitive.ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8349,8 +8328,7 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("hemicone")] public static readonly Primitive.ConstructionData HEMICONE = new Primitive.
-                    ConstructionData
+                [Description("hemicone")] public static readonly Primitive.ConstructionData HEMICONE = new Primitive.ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8376,8 +8354,7 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("sphere")] public static readonly Primitive.ConstructionData SPHERE = new Primitive.
-                    ConstructionData
+                [Description("sphere")] public static readonly Primitive.ConstructionData SPHERE = new Primitive.ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8403,8 +8380,7 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("hemisphere")] public static readonly Primitive.ConstructionData HEMISPHERE = new Primitive
-                    .ConstructionData
+                [Description("hemisphere")] public static readonly Primitive.ConstructionData HEMISPHERE = new Primitive.ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8430,8 +8406,7 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("torus")] public static readonly Primitive.ConstructionData TORUS = new Primitive.
-                    ConstructionData
+                [Description("torus")] public static readonly Primitive.ConstructionData TORUS = new Primitive.ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8457,8 +8432,7 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("ring")] public static readonly Primitive.ConstructionData RING = new Primitive.
-                    ConstructionData
+                [Description("ring")] public static readonly Primitive.ConstructionData RING = new Primitive.ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -10530,7 +10504,7 @@ namespace Corrade
             [Description("uncaught exception for thread")] UNCAUGHT_EXCEPTION_FOR_THREAD,
             [Description("error setting up configuration watcher")] ERROR_SETTING_UP_CONFIGURATION_WATCHER,
             [Description("error setting up AIML configuration watcher")] ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER,
-            [Description("callback throttled")] CallbackThrottleD,
+            [Description("callback throttled")] CALLBACK_THROTTLED,
             [Description("notification throttled")] NOTIFICATION_THROTTLED,
             [Description("error updating inventory")] ERROR_UPDATING_INVENTORY,
             [Description("unable to load group members state")] UNABLE_TO_LOAD_GROUP_MEMBERS_STATE,
@@ -10824,7 +10798,7 @@ namespace Corrade
                                 string.Equals(o.Name,
                                     Enum.GetName(typeof (WearableType),
                                         (inventoryItem as InventoryWearable).WearableType),
-                                    StringComparison.InvariantCultureIgnoreCase)).GetValue(null);
+                                    StringComparison.OrdinalIgnoreCase)).GetValue(null);
                     return item;
                 }
 
@@ -11325,10 +11299,7 @@ namespace Corrade
                 this.statusCode = statusCode;
             }
 
-            public uint Status
-            {
-                get { return statusCode; }
-            }
+            public uint Status => statusCode;
         }
 
         /// <summary>
@@ -12196,17 +12167,12 @@ namespace Corrade
         /// </summary>
         private class CommandPermissionMaskAttribute : Attribute
         {
-            protected readonly uint permissionMask;
-
             public CommandPermissionMaskAttribute(uint permissionMask)
             {
-                this.permissionMask = permissionMask;
+                PermissionMask = permissionMask;
             }
 
-            public uint PermissionMask
-            {
-                get { return permissionMask; }
-            }
+            public uint PermissionMask { get; }
         }
 
         /// <summary>
@@ -12214,37 +12180,27 @@ namespace Corrade
         /// </summary>
         private class IsCorradeCommandAttribute : Attribute
         {
-            protected readonly bool isCorradeCommand;
-
             public IsCorradeCommandAttribute(bool isCorradeCommand)
             {
-                this.isCorradeCommand = isCorradeCommand;
+                IsCorradeCorradeCommand = isCorradeCommand;
             }
 
-            public bool IsCorradeCorradeCommand
-            {
-                get { return isCorradeCommand; }
-            }
+            public bool IsCorradeCorradeCommand { get; }
         }
 
         private class IsRLVBehaviourAttribute : Attribute
         {
-            protected readonly bool isRLVBehaviour;
-
             public IsRLVBehaviourAttribute(bool isRLVBehaviour)
             {
-                this.isRLVBehaviour = isRLVBehaviour;
+                IsRLVBehaviour = isRLVBehaviour;
             }
 
-            public bool IsRLVBehaviour
-            {
-                get { return isRLVBehaviour; }
-            }
+            public bool IsRLVBehaviour { get; }
         }
 
         private class CorradeCommandAttribute : Attribute
         {
-            protected readonly Action<Group, string, Dictionary<string, string>> command;
+            private readonly Action<Group, string, Dictionary<string, string>> command;
 
             public CorradeCommandAttribute(string command)
             {
@@ -12256,15 +12212,12 @@ namespace Corrade
                 this.command = (Action<Group, string, Dictionary<string, string>>) fi?.GetValue(null);
             }
 
-            public Action<Group, string, Dictionary<string, string>> CorradeCommand
-            {
-                get { return command; }
-            }
+            public Action<Group, string, Dictionary<string, string>> CorradeCommand => command;
         }
 
         private class RLVBehaviourAttribute : Attribute
         {
-            protected readonly Action<string, RLVRule, UUID> behaviour;
+            private readonly Action<string, RLVRule, UUID> behaviour;
 
             public RLVBehaviourAttribute(string behaviour)
             {
@@ -12276,10 +12229,7 @@ namespace Corrade
                 this.behaviour = (Action<string, RLVRule, UUID>) fi?.GetValue(null);
             }
 
-            public Action<string, RLVRule, UUID> RLVBehaviour
-            {
-                get { return behaviour; }
-            }
+            public Action<string, RLVRule, UUID> RLVBehaviour => behaviour;
         }
 
         /// <summary>
@@ -12287,17 +12237,12 @@ namespace Corrade
         /// </summary>
         private class CommandInputSyntaxAttribute : Attribute
         {
-            protected readonly string syntax;
-
             public CommandInputSyntaxAttribute(string syntax)
             {
-                this.syntax = syntax;
+                Syntax = syntax;
             }
 
-            public string Syntax
-            {
-                get { return syntax; }
-            }
+            public string Syntax { get; }
         }
 
         /// <summary>

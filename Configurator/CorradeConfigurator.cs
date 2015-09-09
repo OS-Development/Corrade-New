@@ -22,28 +22,34 @@ namespace Configurator
         {
             // Set the current directory to the service directory.
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
-            // Load the Linden Lab Globalization.
-            try
+            // mono does not have custom cultures since 2006 - it sucks!
+            switch (Environment.OSVersion.Platform)
             {
-                // If the Linden Lab culture exists, then unregister it (for updates).
-                CultureInfo[] customCultures = CultureInfo.GetCultures(CultureTypes.UserCustomCulture);
-                if (
-                    customCultures.FirstOrDefault(
-                        o => o.Name.Equals(@"Linden-Lab")) != null)
-                {
-                    CultureAndRegionInfoBuilder.Unregister(@"Linden-Lab");
-                }
-                // Create the Linden culture from the globalization file and register it.
-                CultureAndRegionInfoBuilder cultureAndRegionInfoBuilder =
-                    CultureAndRegionInfoBuilder.CreateFromLdml(Path.Combine(@"libs", @"LindenGlobalization.xml"));
-                cultureAndRegionInfoBuilder.Register();
-                CultureInfo.DefaultThreadCurrentCulture =
-                    CultureInfo.CreateSpecificCulture(@"Linden-Lab");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(@"Could not create Linden globalization: " + ex.Message);
-                Environment.Exit(-1);
+                case PlatformID.Win32NT:
+                    // Load the Linden Lab Globalization.
+                    try
+                    {
+                        // If the Linden Lab culture exists, then unregister it (for updates).
+                        CultureInfo[] customCultures = CultureInfo.GetCultures(CultureTypes.UserCustomCulture);
+                        if (
+                            customCultures.FirstOrDefault(
+                                o => o.Name.Equals(@"Linden-Lab")) != null)
+                        {
+                            CultureAndRegionInfoBuilder.Unregister(@"Linden-Lab");
+                        }
+                        // Create the Linden culture from the globalization file and register it.
+                        CultureAndRegionInfoBuilder cultureAndRegionInfoBuilder =
+                            CultureAndRegionInfoBuilder.CreateFromLdml(Path.Combine(@"libs", @"LindenGlobalization.xml"));
+                        cultureAndRegionInfoBuilder.Register();
+                        CultureInfo.DefaultThreadCurrentCulture =
+                            CultureInfo.CreateSpecificCulture(@"Linden-Lab");
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(@"Could not create Linden globalization: " + ex.Message);
+                        Environment.Exit(-1);
+                    }
+                    break;
             }
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
