@@ -4347,38 +4347,6 @@ namespace Corrade
         {
             // Set the current directory to the service directory.
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
-            // mono does not have custom cultures since 2006 - it sucks!
-            switch (Environment.OSVersion.Platform)
-            {
-                case PlatformID.Win32NT:
-                    // Load the Linden Lab Globalization.
-                    try
-                    {
-                        // If the Linden Lab culture exists, then unregister it (for updates).
-                        CultureInfo[] customCultures = CultureInfo.GetCultures(CultureTypes.UserCustomCulture);
-                        if (
-                            customCultures.FirstOrDefault(
-                                o => o.Name.Equals(CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_NAME)) != null)
-                        {
-                            CultureAndRegionInfoBuilder.Unregister(CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_NAME);
-                        }
-                        // Create the Linden culture from the globalization file and register it.
-                        CultureAndRegionInfoBuilder cultureAndRegionInfoBuilder =
-                            CultureAndRegionInfoBuilder.CreateFromLdml(Path.Combine(CORRADE_CONSTANTS.LIBS_DIRECTORY,
-                                CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_FILE));
-                        cultureAndRegionInfoBuilder.Register();
-                        CultureInfo.DefaultThreadCurrentCulture =
-                            CultureInfo.CreateSpecificCulture(CORRADE_CONSTANTS.LINDEN_GLOBALIZATION_NAME);
-                    }
-                    catch (Exception ex)
-                    {
-                        // If the culture could not be created and registered then abort everything since we need this.
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_LINDEN_GLOBALIZATION),
-                            ex.Message);
-                        Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
-                    }
-                    break;
-            }
             // Load the configuration file.
             lock (ConfigurationFileLock)
             {
@@ -8146,7 +8114,8 @@ namespace Corrade
 
             public struct PRIMTIVE_BODIES
             {
-                [Description("cube")] public static readonly Primitive.ConstructionData CUBE = new Primitive.ConstructionData
+                [Description("cube")] public static readonly Primitive.ConstructionData CUBE = new Primitive.
+                    ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8172,7 +8141,8 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("prism")] public static readonly Primitive.ConstructionData PRISM = new Primitive.ConstructionData
+                [Description("prism")] public static readonly Primitive.ConstructionData PRISM = new Primitive.
+                    ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8198,7 +8168,8 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("pyramid")] public static readonly Primitive.ConstructionData PYRAMID = new Primitive.ConstructionData
+                [Description("pyramid")] public static readonly Primitive.ConstructionData PYRAMID = new Primitive.
+                    ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8224,7 +8195,8 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("tetrahedron")] public static readonly Primitive.ConstructionData TETRAHEDRON = new Primitive.ConstructionData
+                [Description("tetrahedron")] public static readonly Primitive.ConstructionData TETRAHEDRON = new Primitive
+                    .ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8250,7 +8222,8 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("cylinder")] public static readonly Primitive.ConstructionData CYLINDER = new Primitive.ConstructionData
+                [Description("cylinder")] public static readonly Primitive.ConstructionData CYLINDER = new Primitive.
+                    ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8276,7 +8249,8 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("hemicylinder")] public static readonly Primitive.ConstructionData HEMICYLINDER = new Primitive.ConstructionData
+                [Description("hemicylinder")] public static readonly Primitive.ConstructionData HEMICYLINDER = new Primitive
+                    .ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8302,7 +8276,8 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("cone")] public static readonly Primitive.ConstructionData CONE = new Primitive.ConstructionData
+                [Description("cone")] public static readonly Primitive.ConstructionData CONE = new Primitive.
+                    ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8328,7 +8303,8 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("hemicone")] public static readonly Primitive.ConstructionData HEMICONE = new Primitive.ConstructionData
+                [Description("hemicone")] public static readonly Primitive.ConstructionData HEMICONE = new Primitive.
+                    ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8354,7 +8330,8 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("sphere")] public static readonly Primitive.ConstructionData SPHERE = new Primitive.ConstructionData
+                [Description("sphere")] public static readonly Primitive.ConstructionData SPHERE = new Primitive.
+                    ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8380,7 +8357,8 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("hemisphere")] public static readonly Primitive.ConstructionData HEMISPHERE = new Primitive.ConstructionData
+                [Description("hemisphere")] public static readonly Primitive.ConstructionData HEMISPHERE = new Primitive
+                    .ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8406,7 +8384,8 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("torus")] public static readonly Primitive.ConstructionData TORUS = new Primitive.ConstructionData
+                [Description("torus")] public static readonly Primitive.ConstructionData TORUS = new Primitive.
+                    ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8432,7 +8411,8 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("ring")] public static readonly Primitive.ConstructionData RING = new Primitive.ConstructionData
+                [Description("ring")] public static readonly Primitive.ConstructionData RING = new Primitive.
+                    ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -12200,8 +12180,6 @@ namespace Corrade
 
         private class CorradeCommandAttribute : Attribute
         {
-            private readonly Action<Group, string, Dictionary<string, string>> command;
-
             public CorradeCommandAttribute(string command)
             {
                 FieldInfo fi =
@@ -12209,16 +12187,14 @@ namespace Corrade
                         .AsParallel()
                         .Where(o => o.FieldType == typeof (Action<Group, string, Dictionary<string, string>>))
                         .SingleOrDefault(o => o.Name.Equals(command));
-                this.command = (Action<Group, string, Dictionary<string, string>>) fi?.GetValue(null);
+                this.CorradeCommand = (Action<Group, string, Dictionary<string, string>>) fi?.GetValue(null);
             }
 
-            public Action<Group, string, Dictionary<string, string>> CorradeCommand => command;
+            public Action<Group, string, Dictionary<string, string>> CorradeCommand { get; }
         }
 
         private class RLVBehaviourAttribute : Attribute
         {
-            private readonly Action<string, RLVRule, UUID> behaviour;
-
             public RLVBehaviourAttribute(string behaviour)
             {
                 FieldInfo fi =
@@ -12226,10 +12202,10 @@ namespace Corrade
                         .AsParallel()
                         .Where(o => o.FieldType == typeof (Action<string, RLVRule, UUID>))
                         .SingleOrDefault(o => o.Name.Equals(behaviour));
-                this.behaviour = (Action<string, RLVRule, UUID>) fi?.GetValue(null);
+                this.RLVBehaviour = (Action<string, RLVRule, UUID>) fi?.GetValue(null);
             }
 
-            public Action<string, RLVRule, UUID> RLVBehaviour => behaviour;
+            public Action<string, RLVRule, UUID> RLVBehaviour { get; }
         }
 
         /// <summary>
