@@ -51,9 +51,9 @@ namespace Corrade
                     ManualResetEvent PayPrceReceivedEvent = new ManualResetEvent(false);
                     EventHandler<PayPriceReplyEventArgs> PayPriceReplyEventHandler = (sender, args) =>
                     {
-                        csv.Add(args.DefaultPrice.ToString(CultureInfo.DefaultThreadCurrentCulture));
+                        csv.Add(args.DefaultPrice.ToString(CultureInfo.InvariantCulture));
                         csv.AddRange(
-                            args.ButtonPrices.Select(o => o.ToString(CultureInfo.DefaultThreadCurrentCulture)));
+                            args.ButtonPrices.Select(o => o.ToString(CultureInfo.InvariantCulture)));
                         PayPrceReceivedEvent.Set();
                     };
                     lock (ClientInstanceObjectsLock)

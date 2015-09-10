@@ -99,7 +99,7 @@ namespace Corrade
                                         {
                                             logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                 DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                    CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat),
+                                                    CultureInfo.InvariantCulture.DateTimeFormat),
                                                 myName.First(),
                                                 myName.Last(),
                                                 data);
@@ -170,7 +170,7 @@ namespace Corrade
                                             {
                                                 logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                     DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                        CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat),
+                                                        CultureInfo.InvariantCulture.DateTimeFormat),
                                                     myName.First(),
                                                     myName.Last(),
                                                     data);
@@ -249,7 +249,7 @@ namespace Corrade
                                         {
                                             logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
                                                 DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                    CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat),
+                                                    CultureInfo.InvariantCulture.DateTimeFormat),
                                                 fullName.First(),
                                                 fullName.Last(), Enum.GetName(typeof (ChatType), chatType),
                                                 data);

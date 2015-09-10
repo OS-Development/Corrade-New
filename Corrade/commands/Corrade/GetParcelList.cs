@@ -148,7 +148,7 @@ namespace Corrade
                             csv.Add(agent);
                             csv.Add(o.AgentID.ToString());
                             csv.Add(o.Flags.ToString());
-                            csv.Add(o.Time.ToString(CultureInfo.DefaultThreadCurrentCulture));
+                            csv.Add(o.Time.ToString(CultureInfo.InvariantCulture));
                         }
                     });
                     if (csv.Any())

@@ -44,7 +44,7 @@ namespace Corrade
                             // Manually override Client.Estate.RestartRegion();
                             Client.Estate.EstateOwnerMessage(
                                 LINDEN_CONSTANTS.ESTATE.MESSAGES.REGION_RESTART_MESSAGE,
-                                delay.ToString(CultureInfo.DefaultThreadCurrentCulture));
+                                delay.ToString(CultureInfo.InvariantCulture));
                             break;
                         case Action.CANCEL:
                             Client.Estate.CancelRestart();

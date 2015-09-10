@@ -28,7 +28,7 @@ namespace Corrade
                             csv.AddRange(new List<string>
                             {
                                 o.Key.ToString(),
-                                o.Value.ToString(CultureInfo.DefaultThreadCurrentCulture)
+                                o.Value.ToString(CultureInfo.InvariantCulture)
                             }));
                     if (csv.Any())
                     {

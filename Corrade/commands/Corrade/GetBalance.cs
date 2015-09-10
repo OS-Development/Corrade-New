@@ -27,7 +27,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                     }
                     result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                        Client.Self.Balance.ToString(CultureInfo.DefaultThreadCurrentCulture));
+                        Client.Self.Balance.ToString(CultureInfo.InvariantCulture));
                 };
         }
     }

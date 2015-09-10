@@ -157,7 +157,7 @@ namespace Corrade
                             wasEnumerableToCSV(primitives.AsParallel().Select(
                                 p =>
                                     wasEnumerableToCSV(new[]
-                                    {p.Key, p.Value.ToString(CultureInfo.DefaultThreadCurrentCulture)}))));
+                                    {p.Key, p.Value.ToString(CultureInfo.InvariantCulture)}))));
                     }
                 };
         }

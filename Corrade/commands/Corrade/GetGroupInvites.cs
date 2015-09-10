@@ -43,7 +43,7 @@ namespace Corrade
                                 csv.AddRange(new[]
                                 {
                                     wasGetStructureMemberDescription(o, o.Fee),
-                                    o.Fee.ToString(CultureInfo.DefaultThreadCurrentCulture)
+                                    o.Fee.ToString(CultureInfo.InvariantCulture)
                                 });
                             }
                         });

@@ -67,7 +67,7 @@ namespace Corrade
                             .Where(o => (o as MapAgentLocation) != null)
                             .Select(o => new[]
                             {
-                                ((MapAgentLocation) o).AvatarCount.ToString(CultureInfo.DefaultThreadCurrentCulture),
+                                ((MapAgentLocation) o).AvatarCount.ToString(CultureInfo.InvariantCulture),
                                 new Vector3(o.LocalX, o.LocalY, 0).ToString()
                             }).SelectMany(o => o));
                     if (data.Any())

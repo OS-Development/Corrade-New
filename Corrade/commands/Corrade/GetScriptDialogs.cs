@@ -41,7 +41,7 @@ namespace Corrade
                                 csv.AddRange(new[]
                                 {
                                     wasGetStructureMemberDescription(o, o.Channel),
-                                    o.Channel.ToString(CultureInfo.DefaultThreadCurrentCulture)
+                                    o.Channel.ToString(CultureInfo.InvariantCulture)
                                 });
                                 csv.AddRange(new[] {wasGetStructureMemberDescription(o, o.Name), o.Name});
                                 csv.AddRange(new[] {wasGetStructureMemberDescription(o, o.Item), o.Item.ToString()});

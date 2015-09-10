@@ -884,7 +884,7 @@ namespace Corrade
                     CORRADE_CONSTANTS.INVENTORY_CACHE_FILE));
 
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_LOADED),
-                itemsLoaded < 0 ? "0" : itemsLoaded.ToString(CultureInfo.DefaultThreadCurrentCulture));
+                itemsLoaded < 0 ? "0" : itemsLoaded.ToString(CultureInfo.InvariantCulture));
         };
 
         /// <summary>
@@ -898,7 +898,7 @@ namespace Corrade
             Client.Inventory.Store.SaveToDisk(path);
 
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_SAVED),
-                itemsSaved.ToString(CultureInfo.DefaultThreadCurrentCulture));
+                itemsSaved.ToString(CultureInfo.InvariantCulture));
         };
 
         /// <summary>
@@ -3113,7 +3113,7 @@ namespace Corrade
                 StringBuilder sb = new StringBuilder();
                 for (int i = 0; i < vals.Count; i++)
                 {
-                    sb.Append(vals[i].ToString(CultureInfo.DefaultThreadCurrentCulture));
+                    sb.Append(vals[i].ToString(CultureInfo.InvariantCulture));
                     if (i != vals.Count - 1)
                     {
                         sb.Append(" ");
@@ -3347,15 +3347,15 @@ namespace Corrade
                         var diffuseColor = diffuse.AppendChild(Doc.CreateElement("color"));
                         diffuseColor.Attributes.Append(Doc.CreateAttribute("sid")).InnerText = "diffuse";
                         diffuseColor.InnerText = string.Format("{0} {1} {2} {3}",
-                            color.R.ToString(CultureInfo.DefaultThreadCurrentCulture),
-                            color.G.ToString(CultureInfo.DefaultThreadCurrentCulture),
-                            color.B.ToString(CultureInfo.DefaultThreadCurrentCulture),
-                            color.A.ToString(CultureInfo.DefaultThreadCurrentCulture));
+                            color.R.ToString(CultureInfo.InvariantCulture),
+                            color.G.ToString(CultureInfo.InvariantCulture),
+                            color.B.ToString(CultureInfo.InvariantCulture),
+                            color.A.ToString(CultureInfo.InvariantCulture));
                     }
 
                     phong.AppendChild(Doc.CreateElement("transparency"))
                         .AppendChild(Doc.CreateElement("float"))
-                        .InnerText = color.A.ToString(CultureInfo.DefaultThreadCurrentCulture);
+                        .InnerText = color.A.ToString(CultureInfo.InvariantCulture);
                 }
 
                 return true;
@@ -3436,7 +3436,7 @@ namespace Corrade
                 {
                     for (int j = 0; j < 4; j++)
                     {
-                        matrixVal += srt[j*4 + i].ToString(CultureInfo.DefaultThreadCurrentCulture) + " ";
+                        matrixVal += srt[j*4 + i].ToString(CultureInfo.InvariantCulture) + " ";
                     }
                 }
                 matrix.InnerText = matrixVal.TrimEnd();
@@ -4111,9 +4111,9 @@ namespace Corrade
                         !string.IsNullOrEmpty(InstalledServiceName)
                             ? InstalledServiceName
                             : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME,
-                        string.Format(CultureInfo.DefaultThreadCurrentCulture, "[{0}]",
+                        string.Format(CultureInfo.InvariantCulture, "[{0}]",
                             DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat))
+                                CultureInfo.InvariantCulture.DateTimeFormat))
                     };
 
                     output.AddRange(messages.Select(message => message));
@@ -4137,7 +4137,7 @@ namespace Corrade
                         catch (Exception ex)
                         {
                             // or fail and append the fail message.
-                            output.Add(string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0} {1}",
+                            output.Add(string.Format(CultureInfo.InvariantCulture, "{0} {1}",
                                 wasGetDescriptionFromEnumValue(
                                     ConsoleError.COULD_NOT_WRITE_TO_CLIENT_LOG_FILE),
                                 ex.Message));
@@ -4179,12 +4179,12 @@ namespace Corrade
                     List<string> output =
                         new List<string>(
                             messages.Select(
-                                o => string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0}{1}[{2}]{3}{4}",
+                                o => string.Format(CultureInfo.InvariantCulture, "{0}{1}[{2}]{3}{4}",
                                     !string.IsNullOrEmpty(InstalledServiceName)
                                         ? InstalledServiceName
                                         : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME, CORRADE_CONSTANTS.ERROR_SEPARATOR,
                                     DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                        CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat),
+                                        CultureInfo.InvariantCulture.DateTimeFormat),
                                     CORRADE_CONSTANTS.ERROR_SEPARATOR,
                                     o)));
 
@@ -4210,7 +4210,7 @@ namespace Corrade
                         catch (Exception ex)
                         {
                             // or fail and append the fail message.
-                            output.Add(string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0} {1}",
+                            output.Add(string.Format(CultureInfo.InvariantCulture, "{0} {1}",
                                 wasGetDescriptionFromEnumValue(
                                     ConsoleError.COULD_NOT_WRITE_TO_CLIENT_LOG_FILE),
                                 ex.Message));
@@ -4480,7 +4480,7 @@ namespace Corrade
                 corradeConfiguration.LastName,
                 corradeConfiguration.Password,
                 CORRADE_CONSTANTS.CLIENT_CHANNEL,
-                CORRADE_CONSTANTS.CORRADE_VERSION.ToString(CultureInfo.DefaultThreadCurrentCulture),
+                CORRADE_CONSTANTS.CORRADE_VERSION.ToString(CultureInfo.InvariantCulture),
                 corradeConfiguration.LoginURL)
             {
                 Author = CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS,
@@ -5122,7 +5122,7 @@ namespace Corrade
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
                                 scriptDialogEventArgs.LastName);
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CHANNEL),
-                                scriptDialogEventArgs.Channel.ToString(CultureInfo.DefaultThreadCurrentCulture));
+                                scriptDialogEventArgs.Channel.ToString(CultureInfo.InvariantCulture));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
                                 scriptDialogEventArgs.ObjectName);
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
@@ -5186,7 +5186,7 @@ namespace Corrade
                                 return;
                             }
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BALANCE),
-                                balanceEventArgs.Balance.ToString(CultureInfo.DefaultThreadCurrentCulture));
+                                balanceEventArgs.Balance.ToString(CultureInfo.InvariantCulture));
                         };
                         break;
                     case Notifications.AlertMessage:
@@ -5707,7 +5707,7 @@ namespace Corrade
                                     notificationViewerEffectEventArgs.TargetPosition.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
                                     notificationViewerEffectEventArgs.Duration.ToString(
-                                        CultureInfo.DefaultThreadCurrentCulture));
+                                        CultureInfo.InvariantCulture));
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
                                     notificationViewerEffectEventArgs.EffectID.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
@@ -5734,7 +5734,7 @@ namespace Corrade
                                     notificationViewerPointAtEventArgs.TargetPosition.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
                                     notificationViewerPointAtEventArgs.Duration.ToString(
-                                        CultureInfo.DefaultThreadCurrentCulture));
+                                        CultureInfo.InvariantCulture));
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
                                     notificationViewerPointAtEventArgs.EffectID.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
@@ -5761,7 +5761,7 @@ namespace Corrade
                                     notificationViewerLookAtEventArgs.TargetPosition.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
                                     notificationViewerLookAtEventArgs.Duration.ToString(
-                                        CultureInfo.DefaultThreadCurrentCulture));
+                                        CultureInfo.InvariantCulture));
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
                                     notificationViewerLookAtEventArgs.EffectID.ToString());
                                 notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
@@ -5785,7 +5785,7 @@ namespace Corrade
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGGRESSOR),
                                 meanCollisionEventArgs.Aggressor.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MAGNITUDE),
-                                meanCollisionEventArgs.Magnitude.ToString(CultureInfo.DefaultThreadCurrentCulture));
+                                meanCollisionEventArgs.Magnitude.ToString(CultureInfo.InvariantCulture));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TIME),
                                 meanCollisionEventArgs.Time.ToLongDateString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
@@ -5961,22 +5961,22 @@ namespace Corrade
                             }
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BALANCE),
                                 notificationMoneyBalanceEventArgs.Balance.ToString(
-                                    CultureInfo.DefaultThreadCurrentCulture));
+                                    CultureInfo.InvariantCulture));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
                                 notificationMoneyBalanceEventArgs.Description);
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.COMMITTED),
                                 notificationMoneyBalanceEventArgs.MetersCommitted.ToString(
-                                    CultureInfo.DefaultThreadCurrentCulture));
+                                    CultureInfo.InvariantCulture));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CREDIT),
                                 notificationMoneyBalanceEventArgs.MetersCredit.ToString(
-                                    CultureInfo.DefaultThreadCurrentCulture));
+                                    CultureInfo.InvariantCulture));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SUCCESS),
                                 notificationMoneyBalanceEventArgs.Success.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
                                 notificationMoneyBalanceEventArgs.TransactionID.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT),
                                 notificationMoneyBalanceEventArgs.TransactionInfo.Amount.ToString(
-                                    CultureInfo.DefaultThreadCurrentCulture));
+                                    CultureInfo.InvariantCulture));
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
                                 notificationMoneyBalanceEventArgs.TransactionInfo.DestID.ToString());
                             notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
@@ -6508,7 +6508,7 @@ namespace Corrade
                                     {
                                         logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
                                             DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat),
+                                                CultureInfo.InvariantCulture.DateTimeFormat),
                                             fullName.First(), fullName.Last(),
                                             Enum.GetName(typeof (ChatType), e.Type),
                                             e.Message);
@@ -6571,7 +6571,7 @@ namespace Corrade
             // Accept anything from master avatars.
             if (
                 corradeConfiguration.Masters.AsParallel().Select(
-                    o => string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0} {1}", o.FirstName, o.LastName))
+                    o => string.Format(CultureInfo.InvariantCulture, "{0} {1}", o.FirstName, o.LastName))
                     .Any(p => p.Equals(e.Offer.FromAgentName, StringComparison.OrdinalIgnoreCase)))
             {
                 e.Accept = true;
@@ -7076,7 +7076,7 @@ namespace Corrade
                                                 {
                                                     logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                         DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                            CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat),
+                                                            CultureInfo.InvariantCulture.DateTimeFormat),
                                                         fullName.First(),
                                                         fullName.Last(),
                                                         args.IM.Message);
@@ -7141,7 +7141,7 @@ namespace Corrade
                                             {
                                                 logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                     DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                        CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat),
+                                                        CultureInfo.InvariantCulture.DateTimeFormat),
                                                     fullName.First(),
                                                     fullName.Last(),
                                                     args.IM.Message);
@@ -7189,7 +7189,7 @@ namespace Corrade
                                             {
                                                 logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                     DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                        CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat),
+                                                        CultureInfo.InvariantCulture.DateTimeFormat),
                                                     fullName.First(),
                                                     fullName.Last(),
                                                     args.IM.Message);
@@ -7379,7 +7379,7 @@ namespace Corrade
             }
 
             // Log the command.
-            Feedback(string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0} ({1}) : {2}", sender,
+            Feedback(string.Format(CultureInfo.InvariantCulture, "{0} ({1}) : {2}", sender,
                 identifier,
                 message));
 
@@ -7524,7 +7524,7 @@ namespace Corrade
 
             // add the final success status
             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.SUCCESS),
-                success.ToString(CultureInfo.DefaultThreadCurrentCulture));
+                success.ToString(CultureInfo.InvariantCulture));
 
             // build afterburn
             object AfterBurnLock = new object();
@@ -8091,9 +8091,9 @@ namespace Corrade
                 @"               \  ",
                 @"                 Good day!  ",
                 @"",
-                string.Format(CultureInfo.DefaultThreadCurrentCulture, "Version: {0}, Compiled: {1}", CORRADE_VERSION,
+                string.Format(CultureInfo.InvariantCulture, "Version: {0}, Compiled: {1}", CORRADE_VERSION,
                     CORRADE_COMPILE_DATE),
-                string.Format(CultureInfo.DefaultThreadCurrentCulture, "Copyright: {0}", COPYRIGHT)
+                string.Format(CultureInfo.InvariantCulture, "Copyright: {0}", COPYRIGHT)
             };
 
             /// <summary>
@@ -13508,7 +13508,7 @@ namespace Corrade
             };
             Client.Directory.DirPeopleReply += DirPeopleReplyDelegate;
             Client.Directory.StartPeopleSearch(
-                string.Format(CultureInfo.DefaultThreadCurrentCulture, "{0} {1}", agentFirstName, agentLastName), 0);
+                string.Format(CultureInfo.InvariantCulture, "{0} {1}", agentFirstName, agentLastName), 0);
             if (!DirPeopleReceivedAlarm.Signal.WaitOne((int) millisecondsTimeout, false))
             {
                 Client.Directory.DirPeopleReply -= DirPeopleReplyDelegate;

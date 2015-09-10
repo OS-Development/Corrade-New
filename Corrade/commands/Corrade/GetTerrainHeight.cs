@@ -86,7 +86,7 @@ namespace Corrade
                     if (csv.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            wasEnumerableToCSV(csv.Select(o => o.ToString(CultureInfo.DefaultThreadCurrentCulture))));
+                            wasEnumerableToCSV(csv.Select(o => o.ToString(CultureInfo.InvariantCulture))));
                     }
                 };
         }

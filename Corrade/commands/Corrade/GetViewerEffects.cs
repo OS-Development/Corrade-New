@@ -92,17 +92,17 @@ namespace Corrade
                                         csv.AddRange(new[]
                                         {
                                             wasGetStructureMemberDescription(o, o.Alpha),
-                                            o.Alpha.ToString(CultureInfo.DefaultThreadCurrentCulture)
+                                            o.Alpha.ToString(CultureInfo.InvariantCulture)
                                         });
                                         csv.AddRange(new[]
                                         {
                                             wasGetStructureMemberDescription(o, o.Duration),
-                                            o.Duration.ToString(CultureInfo.DefaultThreadCurrentCulture)
+                                            o.Duration.ToString(CultureInfo.InvariantCulture)
                                         });
                                         csv.AddRange(new[]
                                         {
                                             wasGetStructureMemberDescription(o, o.Termination),
-                                            o.Termination.ToString(CultureInfo.DefaultThreadCurrentCulture)
+                                            o.Termination.ToString(CultureInfo.InvariantCulture)
                                         });
                                     }
                                 });
@@ -128,17 +128,17 @@ namespace Corrade
                                         csv.AddRange(new[]
                                         {
                                             wasGetStructureMemberDescription(o, o.Alpha),
-                                            o.Alpha.ToString(CultureInfo.DefaultThreadCurrentCulture)
+                                            o.Alpha.ToString(CultureInfo.InvariantCulture)
                                         });
                                         csv.AddRange(new[]
                                         {
                                             wasGetStructureMemberDescription(o, o.Duration),
-                                            o.Duration.ToString(CultureInfo.DefaultThreadCurrentCulture)
+                                            o.Duration.ToString(CultureInfo.InvariantCulture)
                                         });
                                         csv.AddRange(new[]
                                         {
                                             wasGetStructureMemberDescription(o, o.Termination),
-                                            o.Termination.ToString(CultureInfo.DefaultThreadCurrentCulture)
+                                            o.Termination.ToString(CultureInfo.InvariantCulture)
                                         });
                                     }
                                 });
