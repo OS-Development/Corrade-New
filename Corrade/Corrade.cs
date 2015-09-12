@@ -472,12 +472,13 @@ namespace Corrade
         private static readonly object GroupInviteLock = new object();
         private static readonly HashSet<TeleportLure> TeleportLures = new HashSet<TeleportLure>();
         private static readonly object TeleportLureLock = new object();
-
-        private static readonly HashSet<ScriptPermissionRequest> ScriptPermissionRequests =
-            new HashSet<ScriptPermissionRequest>();
+        // permission requests can be identical
+        private static readonly List<ScriptPermissionRequest> ScriptPermissionRequests =
+            new List<ScriptPermissionRequest>();
 
         private static readonly object ScriptPermissionRequestLock = new object();
-        private static readonly HashSet<ScriptDialog> ScriptDialogs = new HashSet<ScriptDialog>();
+        // script dialogs can be identical
+        private static readonly List<ScriptDialog> ScriptDialogs = new List<ScriptDialog>();
         private static readonly object ScriptDialogLock = new object();
 
         private static readonly SerializableDictionary<UUID, HashSet<UUID>> GroupMembers =
@@ -4515,7 +4516,7 @@ namespace Corrade
             LoadCorradeCache.Invoke();
             // Load group members.
             LoadGroupMembersState.Invoke();
-            // Load Corrade states.
+            // Load notification states.
             LoadNotificationState.Invoke();
             // Start the callback thread to send callbacks.
             Thread CallbackThread = new Thread(() =>
@@ -4587,7 +4588,7 @@ namespace Corrade
                 corradeConfiguration.MaximumInstantMessageThreads);
             // Log-in to the grid.
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGGING_IN));
-            Client.Network.Login(login);
+            Client.Network.BeginLogin(login);
             /*
              * The main thread spins around waiting for the semaphores to become invalidated,
              * at which point Corrade will consider its connection to the grid severed and
@@ -4631,7 +4632,7 @@ namespace Corrade
             Client.Appearance.AppearanceSet -= HandleAppearanceSet;
             Client.Network.LoginProgress -= HandleLoginProgress;
             Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
-            // Save Corrade states.
+            // Save notification states.
             lock (GroupNotificationsLock)
             {
                 SaveNotificationState.Invoke();
@@ -12185,7 +12186,7 @@ namespace Corrade
                         .AsParallel()
                         .Where(o => o.FieldType == typeof (Action<Group, string, Dictionary<string, string>>))
                         .SingleOrDefault(o => o.Name.Equals(command));
-                this.CorradeCommand = (Action<Group, string, Dictionary<string, string>>) fi?.GetValue(null);
+                CorradeCommand = (Action<Group, string, Dictionary<string, string>>) fi?.GetValue(null);
             }
 
             public Action<Group, string, Dictionary<string, string>> CorradeCommand { get; }
@@ -12200,7 +12201,7 @@ namespace Corrade
                         .AsParallel()
                         .Where(o => o.FieldType == typeof (Action<string, RLVRule, UUID>))
                         .SingleOrDefault(o => o.Name.Equals(behaviour));
-                this.RLVBehaviour = (Action<string, RLVRule, UUID>) fi?.GetValue(null);
+                RLVBehaviour = (Action<string, RLVRule, UUID>) fi?.GetValue(null);
             }
 
             public Action<string, RLVRule, UUID> RLVBehaviour { get; }

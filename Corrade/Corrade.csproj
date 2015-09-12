@@ -79,6 +79,7 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\libopenmetaverse\bin\OpenMetaverseTypes.dll</HintPath>
     </Reference>
+    <Reference Include="sysglobl" />
     <Reference Include="System">
       <Private>False</Private>
     </Reference>
