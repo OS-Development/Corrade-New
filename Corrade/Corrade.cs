@@ -11328,7 +11328,7 @@ namespace Corrade
             [Description("none")] NONE = 0,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=flyto>&<group=<UUID|STRING>>&<position=<VECTOR3>>&[duration=<INTGEGER>]&[affinity=<INTEGER>]&[callback=<STRING>]"
+                "<command=flyto>&<group=<UUID|STRING>>&<position=<VECTOR3>>&[duration=<INTGEGER>]&[affinity=<INTEGER>]&[fly=<BOOL>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("flyto")] [Description("flyto")] FLYTO,
 
             [Description("vicinity")] VICINITY,

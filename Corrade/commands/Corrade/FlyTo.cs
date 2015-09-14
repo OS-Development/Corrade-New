@@ -44,7 +44,7 @@ namespace Corrade
                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.VICINITY)), message)),
                     out vicinity))
                 {
-                    vicinity = 1;
+                    vicinity = 2;
                 }
 
                 int affinity;
