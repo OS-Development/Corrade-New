@@ -391,7 +391,8 @@ namespace Corrade
             [Status(51086)] [Description("no name or UUID provided")] NO_NAME_OR_UUID_PROVIDED,
             [Status(16450)] [Description("could not retrieve mute list")] COULD_NOT_RETRIEVE_MUTE_LIST,
             [Status(39647)] [Description("mute entry already exists")] MUTE_ENTRY_ALREADY_EXISTS,
-            [Status(22961)] [Description("could not add mute entry")] COULD_NOT_ADD_MUTE_ENTRY
+            [Status(22961)] [Description("could not add mute entry")] COULD_NOT_ADD_MUTE_ENTRY,
+            [Status(39787)] [Description("timeout reaching destination")] TIMEOUT_REACHING_DESTINATION
         }
 
         /// <summary>
@@ -6447,6 +6448,7 @@ namespace Corrade
             // Ignore chat with no message (ie: start / stop typing)
             if (string.IsNullOrEmpty(e.Message)) return;
             List<string> fullName = new List<string>(GetAvatarNames(e.FromName));
+            Group commandGroup;
             switch (e.Type)
             {
                 case ChatType.OwnerSay:
@@ -6466,6 +6468,23 @@ namespace Corrade
                             () => HandleRLVBehaviour(e.Message.Substring(1, e.Message.Length - 1), e.SourceID),
                             corradeConfiguration.MaximumRLVThreads);
                         break;
+                    }
+                    // If this is a Corrade command, process it and terminate.
+                    if (IsCorradeCommand(e.Message))
+                    {
+                        // If the group was not set properly, then bail.
+                        commandGroup = GetCorradeGroupFromMessage(e.Message);
+                        switch (!commandGroup.Equals(default(Group)))
+                        {
+                            case false:
+                                return;
+                        }
+                        // Spawn the command.
+                        CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
+                            () => HandleCorradeCommand(e.Message, e.FromName, e.OwnerID.ToString(), commandGroup),
+                            corradeConfiguration.MaximumCommandThreads, commandGroup.UUID,
+                            corradeConfiguration.SchedulerExpiration);
+                        return;
                     }
                     // Otherwise, send llOwnerSay notifications.
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
@@ -6540,7 +6559,7 @@ namespace Corrade
                         break;
                     }
                     // If the group was not set properly, then bail.
-                    Group commandGroup = GetCorradeGroupFromMessage(e.Message);
+                    commandGroup = GetCorradeGroupFromMessage(e.Message);
                     switch (!commandGroup.Equals(default(Group)))
                     {
                         case false:
@@ -11307,6 +11326,13 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Description("none")] NONE = 0,
+
+            [IsCorradeCommand(true)] [CommandInputSyntax(
+                "<command=flyto>&<group=<UUID|STRING>>&<position=<VECTOR3>>&[duration=<INTGEGER>]&[affinity=<INTEGER>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("flyto")] [Description("flyto")] FLYTO,
+
+            [Description("vicinity")] VICINITY,
+            [Description("affinity")] AFFINITY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=batchmute>&<group=<UUID|STRING>>&<action=<mute|unmute>>&[mutes=<STRING|UUID[,STRING|UUID...]>]&action=mute:[type=MuteType]&action=mute:[flags=MuteFlags]&[callback=<STRING>]"

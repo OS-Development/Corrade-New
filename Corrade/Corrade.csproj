@@ -238,6 +238,9 @@
     <Compile Include="commands\Corrade\Fly.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\FlyTo.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\GetAnimations.cs">
       <SubType>Component</SubType>
     </Compile>
