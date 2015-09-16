@@ -15,12 +15,12 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> getcommand =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> getcommand =
+                (corradeCommandParameters, result) =>
                 {
                     string name =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
-                            message));
+                            corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
                         throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
@@ -39,7 +39,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    switch (!commandGroup.Equals(default(Group)))
+                    switch (!corradeCommandParameters.Group.Equals(default(Group)))
                     {
                         case false:
                             throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
@@ -48,14 +48,14 @@ namespace Corrade
                         wasGetEnumValueFromDescription<Entity>(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
-                                    message)).ToLowerInvariant()))
+                                    corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Entity.SYNTAX:
                             switch (
                                 wasGetEnumValueFromDescription<Type>(
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                                            message)).ToLowerInvariant()))
+                                            corradeCommandParameters.Message)).ToLowerInvariant()))
                             {
                                 case Type.INPUT:
                                     CommandInputSyntaxAttribute commandInputSyntaxAttribute = wasGetAttributeFromEnumValue

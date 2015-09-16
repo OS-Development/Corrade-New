@@ -16,24 +16,25 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> inventory =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> inventory =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Inventory))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Inventory))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
                     lock (GroupDirectoryTrackersLock)
                     {
-                        if (!GroupDirectoryTrackers.Contains(commandGroup.UUID))
+                        if (!GroupDirectoryTrackers.Contains(corradeCommandParameters.Group.UUID))
                         {
-                            GroupDirectoryTrackers.Add(commandGroup.UUID, Client.Inventory.Store.RootFolder);
+                            GroupDirectoryTrackers.Add(corradeCommandParameters.Group.UUID,
+                                Client.Inventory.Store.RootFolder);
                         }
                     }
                     string path =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATH)),
-                            message));
+                            corradeCommandParameters.Message));
                     Func<string, InventoryBase, InventoryBase> findPath = null;
                     findPath = (o, p) =>
                     {
@@ -90,7 +91,8 @@ namespace Corrade
                     List<string> csv = new List<string>();
                     Action action = wasGetEnumValueFromDescription<Action>(
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
+                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                                corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     switch (action)
                     {
@@ -107,7 +109,8 @@ namespace Corrade
                                 default:
                                     lock (GroupDirectoryTrackersLock)
                                     {
-                                        item = GroupDirectoryTrackers[commandGroup.UUID] as InventoryBase;
+                                        item =
+                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase;
                                     }
                                     break;
                             }
@@ -164,7 +167,7 @@ namespace Corrade
                             {
                                 DirItem dirItem =
                                     DirItem.FromInventoryBase(
-                                        GroupDirectoryTrackers[commandGroup.UUID] as InventoryBase);
+                                        GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase);
                                 csv.AddRange(new[]
                                 {wasGetStructureMemberDescription(dirItem, dirItem.Name), dirItem.Name});
                                 csv.AddRange(new[]
@@ -191,7 +194,8 @@ namespace Corrade
                                 case true:
                                     lock (GroupDirectoryTrackersLock)
                                     {
-                                        item = GroupDirectoryTrackers[commandGroup.UUID] as InventoryBase;
+                                        item =
+                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase;
                                     }
                                     break;
                                 default:
@@ -205,13 +209,13 @@ namespace Corrade
                             }
                             lock (GroupDirectoryTrackersLock)
                             {
-                                GroupDirectoryTrackers[commandGroup.UUID] = item;
+                                GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] = item;
                             }
                             break;
                         case Action.MKDIR:
                             string mkdirName =
                                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
-                                    message));
+                                    corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(mkdirName))
                             {
                                 throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
@@ -228,7 +232,8 @@ namespace Corrade
                                 default:
                                     lock (GroupDirectoryTrackersLock)
                                     {
-                                        item = GroupDirectoryTrackers[commandGroup.UUID] as InventoryBase;
+                                        item =
+                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase;
                                     }
                                     break;
                             }
@@ -247,7 +252,8 @@ namespace Corrade
                             string itemPermissions =
                                 wasInput(
                                     wasKeyValueGet(
-                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS)), message));
+                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS)),
+                                        corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(itemPermissions))
                             {
                                 throw new ScriptException(ScriptError.NO_PERMISSIONS_PROVIDED);
@@ -264,7 +270,8 @@ namespace Corrade
                                 default:
                                     lock (GroupDirectoryTrackersLock)
                                     {
-                                        item = GroupDirectoryTrackers[commandGroup.UUID] as InventoryBase;
+                                        item =
+                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase;
                                     }
                                     break;
                             }
@@ -328,7 +335,8 @@ namespace Corrade
                                 default:
                                     lock (GroupDirectoryTrackersLock)
                                     {
-                                        item = GroupDirectoryTrackers[commandGroup.UUID] as InventoryBase;
+                                        item =
+                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase;
                                     }
                                     break;
                             }
@@ -352,7 +360,7 @@ namespace Corrade
                             string lnSourcePath =
                                 wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE)),
-                                    message));
+                                    corradeCommandParameters.Message));
                             InventoryBase sourceItem;
                             switch (!string.IsNullOrEmpty(lnSourcePath))
                             {
@@ -366,7 +374,8 @@ namespace Corrade
                                 default:
                                     lock (GroupDirectoryTrackersLock)
                                     {
-                                        sourceItem = GroupDirectoryTrackers[commandGroup.UUID] as InventoryBase;
+                                        sourceItem =
+                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase;
                                     }
                                     break;
                             }
@@ -384,7 +393,7 @@ namespace Corrade
                             string lnTargetPath =
                                 wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)),
-                                    message));
+                                    corradeCommandParameters.Message));
                             InventoryBase targetItem;
                             switch (!string.IsNullOrEmpty(lnTargetPath))
                             {
@@ -398,7 +407,8 @@ namespace Corrade
                                 default:
                                     lock (GroupDirectoryTrackersLock)
                                     {
-                                        targetItem = GroupDirectoryTrackers[commandGroup.UUID] as InventoryBase;
+                                        targetItem =
+                                            GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase;
                                     }
                                     break;
                             }

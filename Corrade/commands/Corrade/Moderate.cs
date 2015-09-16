@@ -15,15 +15,16 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> moderate =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> moderate =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     if (
-                        !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.ModerateChat,
+                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                            GroupPowers.ModerateChat,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
@@ -32,14 +33,15 @@ namespace Corrade
                     if (
                         !UUID.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
+                                corradeCommandParameters.Message)),
                             out agentUUID) && !AgentNameToUUID(
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 ref agentUUID))
                     {
@@ -52,7 +54,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
-                    if (!new HashSet<UUID>(currentGroups).Contains(commandGroup.UUID))
+                    if (!new HashSet<UUID>(currentGroups).Contains(corradeCommandParameters.Group.UUID))
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
@@ -61,7 +63,7 @@ namespace Corrade
                         !bool.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SILENCE)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out silence))
                     {
                         silence = false;
@@ -69,13 +71,14 @@ namespace Corrade
                     Type type =
                         wasGetEnumValueFromDescription<Type>(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)), message))
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                corradeCommandParameters.Message))
                                 .ToLowerInvariant());
                     switch (type)
                     {
                         case Type.TEXT:
                         case Type.VOICE:
-                            Client.Self.ModerateChatSessions(commandGroup.UUID, agentUUID,
+                            Client.Self.ModerateChatSessions(corradeCommandParameters.Group.UUID, agentUUID,
                                 wasGetDescriptionFromEnumValue(type),
                                 silence);
                             break;

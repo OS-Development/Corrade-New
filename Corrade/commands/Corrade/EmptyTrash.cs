@@ -13,11 +13,11 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> emptytrash =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> emptytrash =
+                (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(commandGroup.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
                             (int) Permissions.Inventory))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);

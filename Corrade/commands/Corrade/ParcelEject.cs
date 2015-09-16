@@ -15,10 +15,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> parceleject =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> parceleject =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -27,14 +27,14 @@ namespace Corrade
                         !Vector3.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out position))
                     {
                         position = Client.Self.SimPosition;
                     }
                     string region =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                            message));
+                            corradeCommandParameters.Message));
                     Simulator simulator =
                         Client.Network.Simulators.FirstOrDefault(
                             o =>
@@ -54,12 +54,12 @@ namespace Corrade
                     {
                         if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                         {
-                            if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(commandGroup.UUID))
+                            if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
                             {
                                 throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                             }
                             if (
-                                !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
+                                !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
                                     GroupPowers.LandEjectAndFreeze,
                                     corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                             {
@@ -71,14 +71,15 @@ namespace Corrade
                     if (
                         !UUID.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
+                                corradeCommandParameters.Message)),
                             out agentUUID) && !AgentNameToUUID(
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 ref agentUUID))
                     {
@@ -88,7 +89,7 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.BAN)),
-                                message)),
+                                corradeCommandParameters.Message)),
                             out alsoban))
                     {
                         alsoban = false;

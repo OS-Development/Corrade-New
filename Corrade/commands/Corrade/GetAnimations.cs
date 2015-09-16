@@ -15,10 +15,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> getanimations =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> getanimations =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Grooming))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }

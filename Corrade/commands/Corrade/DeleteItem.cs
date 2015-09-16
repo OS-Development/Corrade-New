@@ -16,11 +16,11 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> deleteitem =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> deleteitem =
+                (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(commandGroup.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
                             (int) Permissions.Inventory))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
@@ -28,7 +28,8 @@ namespace Corrade
                     HashSet<InventoryItem> items =
                         new HashSet<InventoryItem>(FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
                             StringOrUUID(wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message)))
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                                corradeCommandParameters.Message)))
                             ).Cast<InventoryItem>());
                     if (!items.Any())
                     {

@@ -15,49 +15,49 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> database =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> database =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Database))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Database))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
-                    if (string.IsNullOrEmpty(commandGroup.DatabaseFile))
+                    if (string.IsNullOrEmpty(corradeCommandParameters.Group.DatabaseFile))
                     {
                         throw new ScriptException(ScriptError.NO_DATABASE_FILE_CONFIGURED);
                     }
-                    if (!File.Exists(commandGroup.DatabaseFile))
+                    if (!File.Exists(corradeCommandParameters.Group.DatabaseFile))
                     {
                         // create the file and close it
-                        File.Create(commandGroup.DatabaseFile).Close();
+                        File.Create(corradeCommandParameters.Group.DatabaseFile).Close();
                     }
                     switch (
                         wasGetEnumValueFromDescription<Action>(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
-                                    message)).ToLowerInvariant()))
+                                    corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.GET:
                             string databaseGetkey =
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.KEY)),
-                                        message));
+                                        corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(databaseGetkey))
                             {
                                 throw new ScriptException(ScriptError.NO_DATABASE_KEY_SPECIFIED);
                             }
                             lock (DatabaseFileLock)
                             {
-                                if (!DatabaseLocks.ContainsKey(commandGroup.Name))
+                                if (!DatabaseLocks.ContainsKey(corradeCommandParameters.Group.Name))
                                 {
-                                    DatabaseLocks.Add(commandGroup.Name, new object());
+                                    DatabaseLocks.Add(corradeCommandParameters.Group.Name, new object());
                                 }
                             }
-                            lock (DatabaseLocks[commandGroup.Name])
+                            lock (DatabaseLocks[corradeCommandParameters.Group.Name])
                             {
                                 string databaseGetValue = wasKeyValueGet(databaseGetkey,
-                                    File.ReadAllText(commandGroup.DatabaseFile, Encoding.UTF8));
+                                    File.ReadAllText(corradeCommandParameters.Group.DatabaseFile, Encoding.UTF8));
                                 if (!string.IsNullOrEmpty(databaseGetValue))
                                 {
                                     result.Add(databaseGetkey,
@@ -66,9 +66,9 @@ namespace Corrade
                             }
                             lock (DatabaseFileLock)
                             {
-                                if (DatabaseLocks.ContainsKey(commandGroup.Name))
+                                if (DatabaseLocks.ContainsKey(corradeCommandParameters.Group.Name))
                                 {
-                                    DatabaseLocks.Remove(commandGroup.Name);
+                                    DatabaseLocks.Remove(corradeCommandParameters.Group.Name);
                                 }
                             }
                             break;
@@ -76,7 +76,7 @@ namespace Corrade
                             string databaseSetKey =
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.KEY)),
-                                        message));
+                                        corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(databaseSetKey))
                             {
                                 throw new ScriptException(ScriptError.NO_DATABASE_KEY_SPECIFIED);
@@ -84,24 +84,26 @@ namespace Corrade
                             string databaseSetValue =
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.VALUE)),
-                                        message));
+                                        corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(databaseSetValue))
                             {
                                 throw new ScriptException(ScriptError.NO_DATABASE_VALUE_SPECIFIED);
                             }
                             lock (DatabaseFileLock)
                             {
-                                if (!DatabaseLocks.ContainsKey(commandGroup.Name))
+                                if (!DatabaseLocks.ContainsKey(corradeCommandParameters.Group.Name))
                                 {
-                                    DatabaseLocks.Add(commandGroup.Name, new object());
+                                    DatabaseLocks.Add(corradeCommandParameters.Group.Name, new object());
                                 }
                             }
-                            lock (DatabaseLocks[commandGroup.Name])
+                            lock (DatabaseLocks[corradeCommandParameters.Group.Name])
                             {
-                                string contents = File.ReadAllText(commandGroup.DatabaseFile, Encoding.UTF8);
+                                string contents = File.ReadAllText(corradeCommandParameters.Group.DatabaseFile,
+                                    Encoding.UTF8);
                                 using (
-                                    StreamWriter recreateDatabase = new StreamWriter(commandGroup.DatabaseFile,
-                                        false, Encoding.UTF8))
+                                    StreamWriter recreateDatabase =
+                                        new StreamWriter(corradeCommandParameters.Group.DatabaseFile,
+                                            false, Encoding.UTF8))
                                 {
                                     recreateDatabase.Write(wasKeyValueSet(databaseSetKey,
                                         databaseSetValue, contents));
@@ -111,9 +113,9 @@ namespace Corrade
                             }
                             lock (DatabaseFileLock)
                             {
-                                if (DatabaseLocks.ContainsKey(commandGroup.Name))
+                                if (DatabaseLocks.ContainsKey(corradeCommandParameters.Group.Name))
                                 {
-                                    DatabaseLocks.Remove(commandGroup.Name);
+                                    DatabaseLocks.Remove(corradeCommandParameters.Group.Name);
                                 }
                             }
                             break;
@@ -121,24 +123,26 @@ namespace Corrade
                             string databaseDeleteKey =
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.KEY)),
-                                        message));
+                                        corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(databaseDeleteKey))
                             {
                                 throw new ScriptException(ScriptError.NO_DATABASE_KEY_SPECIFIED);
                             }
                             lock (DatabaseFileLock)
                             {
-                                if (!DatabaseLocks.ContainsKey(commandGroup.Name))
+                                if (!DatabaseLocks.ContainsKey(corradeCommandParameters.Group.Name))
                                 {
-                                    DatabaseLocks.Add(commandGroup.Name, new object());
+                                    DatabaseLocks.Add(corradeCommandParameters.Group.Name, new object());
                                 }
                             }
-                            lock (DatabaseLocks[commandGroup.Name])
+                            lock (DatabaseLocks[corradeCommandParameters.Group.Name])
                             {
-                                string contents = File.ReadAllText(commandGroup.DatabaseFile, Encoding.UTF8);
+                                string contents = File.ReadAllText(corradeCommandParameters.Group.DatabaseFile,
+                                    Encoding.UTF8);
                                 using (
-                                    StreamWriter recreateDatabase = new StreamWriter(commandGroup.DatabaseFile,
-                                        false, Encoding.UTF8))
+                                    StreamWriter recreateDatabase =
+                                        new StreamWriter(corradeCommandParameters.Group.DatabaseFile,
+                                            false, Encoding.UTF8))
                                 {
                                     recreateDatabase.Write(wasKeyValueDelete(databaseDeleteKey, contents));
                                     recreateDatabase.Flush();
@@ -147,9 +151,9 @@ namespace Corrade
                             }
                             lock (DatabaseFileLock)
                             {
-                                if (DatabaseLocks.ContainsKey(commandGroup.Name))
+                                if (DatabaseLocks.ContainsKey(corradeCommandParameters.Group.Name))
                                 {
-                                    DatabaseLocks.Remove(commandGroup.Name);
+                                    DatabaseLocks.Remove(corradeCommandParameters.Group.Name);
                                 }
                             }
                             break;

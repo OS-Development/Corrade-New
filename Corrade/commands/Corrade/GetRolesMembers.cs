@@ -18,10 +18,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> getrolesmembers =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> getrolesmembers =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -32,7 +32,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
-                    if (!new HashSet<UUID>(currentGroups).Contains(commandGroup.UUID))
+                    if (!new HashSet<UUID>(currentGroups).Contains(corradeCommandParameters.Group.UUID))
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
@@ -47,7 +47,7 @@ namespace Corrade
                     lock (ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
-                        Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
+                        Client.Groups.RequestGroupRolesMembers(corradeCommandParameters.Group.UUID);
                         if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
@@ -63,7 +63,8 @@ namespace Corrade
                     {
                         string roleName = string.Empty;
                         switch (
-                            !RoleUUIDToName(roleUUID, commandGroup.UUID, corradeConfiguration.ServicesTimeout,
+                            !RoleUUIDToName(roleUUID, corradeCommandParameters.Group.UUID,
+                                corradeConfiguration.ServicesTimeout,
                                 corradeConfiguration.DataTimeout,
                                 ref roleName))
                         {

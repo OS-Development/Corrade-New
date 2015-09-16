@@ -17,16 +17,16 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> createnotecard =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> createnotecard =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Inventory))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Inventory))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string text =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TEXT)),
-                            message));
+                            corradeCommandParameters.Message));
                     if (IsSecondLife() &&
                         Encoding.UTF8.GetByteCount(text) >
                         LINDEN_CONSTANTS.ASSETS.NOTECARD.MAXIMUM_BODY_LENTH)
@@ -35,7 +35,7 @@ namespace Corrade
                     }
                     string name =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
-                            message));
+                            corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
                         throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
@@ -47,7 +47,7 @@ namespace Corrade
                         name,
                         wasInput(
                             wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
-                                message)),
+                                corradeCommandParameters.Message)),
                         AssetType.Notecard,
                         UUID.Random(), InventoryType.Notecard, PermissionMask.All,
                         delegate(bool completed, InventoryItem createdItem)

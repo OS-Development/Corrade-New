@@ -15,10 +15,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> addtorole =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> addtorole =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -29,12 +29,13 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
-                    if (!new HashSet<UUID>(currentGroups).Contains(commandGroup.UUID))
+                    if (!new HashSet<UUID>(currentGroups).Contains(corradeCommandParameters.Group.UUID))
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
                     if (
-                        !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AssignMember,
+                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                            GroupPowers.AssignMember,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
@@ -43,14 +44,15 @@ namespace Corrade
                     if (
                         !UUID.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
+                                corradeCommandParameters.Message)),
                             out agentUUID) && !AgentNameToUUID(
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 ref agentUUID))
                     {
@@ -58,9 +60,9 @@ namespace Corrade
                     }
                     string role =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
-                            message));
+                            corradeCommandParameters.Message));
                     UUID roleUUID;
-                    if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, commandGroup.UUID,
+                    if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, corradeCommandParameters.Group.UUID,
                         corradeConfiguration.ServicesTimeout,
                         ref roleUUID))
                     {
@@ -70,7 +72,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.GROUP_MEMBERS_ARE_BY_DEFAULT_IN_THE_EVERYONE_ROLE);
                     }
-                    Client.Groups.AddToRole(commandGroup.UUID, roleUUID, agentUUID);
+                    Client.Groups.AddToRole(corradeCommandParameters.Group.UUID, roleUUID, agentUUID);
                 };
         }
     }

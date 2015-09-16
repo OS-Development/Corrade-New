@@ -15,10 +15,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> getgroupmemberdata =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> getgroupmemberdata =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -26,14 +26,15 @@ namespace Corrade
                     if (
                         !UUID.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
+                                corradeCommandParameters.Message)),
                             out agentUUID) && !AgentNameToUUID(
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 ref agentUUID))
                     {
@@ -45,7 +46,8 @@ namespace Corrade
                     EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
                     {
                         AvatarGroupsReceivedEvent.Alarm(corradeConfiguration.DataTimeout);
-                        avatarGroup = args.Groups.FirstOrDefault(o => o.GroupID.Equals(commandGroup.UUID));
+                        avatarGroup =
+                            args.Groups.FirstOrDefault(o => o.GroupID.Equals(corradeCommandParameters.Group.UUID));
                     };
                     lock (ClientInstanceAvatarsLock)
                     {
@@ -62,7 +64,7 @@ namespace Corrade
                     }
                     List<string> data = new List<string>(GetStructuredData(avatarGroup,
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                            message))));
+                            corradeCommandParameters.Message))));
                     if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

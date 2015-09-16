@@ -18,16 +18,16 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> getprimitiveowners =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> getprimitiveowners =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string region =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                            message));
+                            corradeCommandParameters.Message));
                     Simulator simulator =
                         Client.Network.Simulators.FirstOrDefault(
                             o =>
@@ -42,7 +42,8 @@ namespace Corrade
                     HashSet<Parcel> parcels = new HashSet<Parcel>();
                     switch (Vector3.TryParse(
                         wasInput(wasKeyValueGet(
-                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)), message)),
+                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                            corradeCommandParameters.Message)),
                         out position))
                     {
                         case true:
@@ -81,7 +82,7 @@ namespace Corrade
                     Parallel.ForEach(parcels.AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)),
                         o =>
                         {
-                            if (!o.IsGroupOwned || !o.GroupID.Equals(commandGroup.UUID))
+                            if (!o.IsGroupOwned || !o.GroupID.Equals(corradeCommandParameters.Group.UUID))
                             {
                                 throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                             }
@@ -94,7 +95,7 @@ namespace Corrade
                                     GroupPowers.ReturnNonGroup
                                 }, p =>
                                 {
-                                    if (HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, p,
+                                    if (HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID, p,
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                                     {
                                         permissions = true;

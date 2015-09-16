@@ -14,16 +14,17 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> configuration =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> configuration =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.System))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.System))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
                     Action action = wasGetEnumValueFromDescription<Action>(wasInput(
-                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
+                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                            corradeCommandParameters.Message))
                         .ToLowerInvariant());
 
                     switch (action)
@@ -49,7 +50,7 @@ namespace Corrade
                                 {
                                     corradeConfiguration.Write(CORRADE_CONSTANTS.CONFIGURATION_FILE, wasKeyValueGet(
                                         wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                        message));
+                                        corradeCommandParameters.Message));
                                 }
                             }
                             catch (Exception)
@@ -61,7 +62,7 @@ namespace Corrade
                         case Action.GET:
                             string path =
                                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATH)),
-                                    message));
+                                    corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(path))
                             {
                                 throw new ScriptException(ScriptError.NO_PATH_PROVIDED);
@@ -100,7 +101,7 @@ namespace Corrade
                                         wasInput(
                                             wasKeyValueGet(
                                                 wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                                message));
+                                                corradeCommandParameters.Message));
                                     if (string.IsNullOrEmpty(data))
                                     {
                                         throw new ScriptException(ScriptError.NO_DATA_PROVIDED);

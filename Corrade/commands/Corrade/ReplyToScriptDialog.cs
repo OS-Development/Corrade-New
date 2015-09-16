@@ -15,10 +15,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> replytoscriptdialog =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> replytoscriptdialog =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -27,7 +27,7 @@ namespace Corrade
                         !int.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.CHANNEL)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out channel))
                     {
                         throw new ScriptException(ScriptError.NO_CHANNEL_SPECIFIED);
@@ -36,14 +36,15 @@ namespace Corrade
                     if (
                         !int.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.INDEX)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.INDEX)),
+                                corradeCommandParameters.Message)),
                             out index))
                     {
                         throw new ScriptException(ScriptError.NO_BUTTON_INDEX_SPECIFIED);
                     }
                     string label =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.BUTTON)),
-                            message));
+                            corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(label))
                     {
                         throw new ScriptException(ScriptError.NO_BUTTON_SPECIFIED);
@@ -52,7 +53,8 @@ namespace Corrade
                     if (
                         !UUID.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                                corradeCommandParameters.Message)),
                             out itemUUID))
                     {
                         throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);

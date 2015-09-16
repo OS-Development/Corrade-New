@@ -15,10 +15,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> primitivebuy =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> primitivebuy =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -26,7 +26,8 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)),
+                                corradeCommandParameters.Message)),
                             out range))
                     {
                         range = corradeConfiguration.Range;
@@ -35,7 +36,8 @@ namespace Corrade
                     if (
                         !FindPrimitive(
                             StringOrUUID(wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                                corradeCommandParameters.Message))),
                             range,
                             ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                     {
@@ -46,7 +48,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOR_SALE);
                     }
                     if (!primitive.Properties.SalePrice.Equals(0) &&
-                        !HasCorradePermission(commandGroup.Name, (int) Permissions.Economy))
+                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Economy))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -54,7 +56,7 @@ namespace Corrade
                     string folder =
                         wasInput(
                             wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER)),
-                                message));
+                                corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
                     {
                         folderUUID = Client.Inventory.Store.RootFolder.UUID;
@@ -63,7 +65,7 @@ namespace Corrade
                         Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         primitive.LocalID, primitive.Properties.SaleType,
                         primitive.Properties.SalePrice,
-                        commandGroup.UUID, folderUUID);
+                        corradeCommandParameters.Group.UUID, folderUUID);
                 };
         }
     }

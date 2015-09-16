@@ -16,10 +16,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> setobjectsaleinfo =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> setobjectsaleinfo =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -27,7 +27,8 @@ namespace Corrade
                     if (
                         !int.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PRICE)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PRICE)),
+                                corradeCommandParameters.Message)),
                             out price))
                     {
                         throw new ScriptException(ScriptError.INVALID_PRICE);
@@ -40,7 +41,8 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)),
+                                corradeCommandParameters.Message)),
                             out range))
                     {
                         range = corradeConfiguration.Range;
@@ -49,7 +51,8 @@ namespace Corrade
                     if (
                         !FindPrimitive(
                             StringOrUUID(wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                                corradeCommandParameters.Message))),
                             range,
                             ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                     {
@@ -67,7 +70,7 @@ namespace Corrade
                             o.Name.Equals(
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 StringComparison.Ordinal));
                     Client.Objects.SetSaleInfo(
                         Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),

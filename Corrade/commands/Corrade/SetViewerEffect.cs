@@ -16,18 +16,19 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> setviewereffect =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> setviewereffect =
+                (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(commandGroup.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
                             (int) Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID effectUUID;
                     if (!UUID.TryParse(wasInput(wasKeyValueGet(
-                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ID)), message)), out effectUUID))
+                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ID)), corradeCommandParameters.Message)),
+                        out effectUUID))
                     {
                         effectUUID = UUID.Random();
                     }
@@ -38,14 +39,15 @@ namespace Corrade
                                 wasKeyValueGet(
                                     wasOutput(
                                         wasGetDescriptionFromEnumValue(ScriptKeys.OFFSET)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out offset))
                     {
                         offset = Client.Self.SimPosition;
                     }
                     ViewerEffectType viewerEffectType = wasGetEnumValueFromDescription<ViewerEffectType>(
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.EFFECT)), message))
+                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.EFFECT)),
+                                corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     switch (viewerEffectType)
                     {
@@ -53,7 +55,8 @@ namespace Corrade
                         case ViewerEffectType.POINT:
                         case ViewerEffectType.LOOK:
                             string item = wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message));
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                                corradeCommandParameters.Message));
                             UUID targetUUID;
                             switch (!string.IsNullOrEmpty(item))
                             {
@@ -62,7 +65,8 @@ namespace Corrade
                                     if (
                                         !float.TryParse(
                                             wasInput(wasKeyValueGet(
-                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)),
+                                                corradeCommandParameters.Message)),
                                             out range))
                                     {
                                         range = corradeConfiguration.Range;
@@ -83,17 +87,18 @@ namespace Corrade
                                     if (
                                         !UUID.TryParse(
                                             wasInput(wasKeyValueGet(
-                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
+                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
+                                                corradeCommandParameters.Message)),
                                             out targetUUID) && !AgentNameToUUID(
                                                 wasInput(
                                                     wasKeyValueGet(
                                                         wasOutput(
                                                             wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
-                                                        message)),
+                                                        corradeCommandParameters.Message)),
                                                 wasInput(
                                                     wasKeyValueGet(
                                                         wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
-                                                        message)),
+                                                        corradeCommandParameters.Message)),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
                                                 ref targetUUID))
@@ -113,7 +118,7 @@ namespace Corrade
                                                     wasInput(
                                                         wasKeyValueGet(
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                                                            message)),
+                                                            corradeCommandParameters.Message)),
                                                     StringComparison.Ordinal));
                                     LookAtType lookAtType = lookAtTypeInfo != null
                                         ? (LookAtType)
@@ -147,7 +152,7 @@ namespace Corrade
                                                     wasInput(
                                                         wasKeyValueGet(
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                                                            message)),
+                                                            corradeCommandParameters.Message)),
                                                     StringComparison.Ordinal));
                                     PointAtType pointAtType = pointAtTypeInfo != null
                                         ? (PointAtType)
@@ -180,7 +185,7 @@ namespace Corrade
                                             wasInput(
                                                 wasKeyValueGet(
                                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.COLOR)),
-                                                    message)),
+                                                    corradeCommandParameters.Message)),
                                             out RGB))
                                     {
                                         RGB = new Vector3(Client.Settings.DEFAULT_EFFECT_COLOR.R,
@@ -192,7 +197,7 @@ namespace Corrade
                                         wasInput(
                                             wasKeyValueGet(
                                                 wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ALPHA)),
-                                                message)), out alpha))
+                                                corradeCommandParameters.Message)), out alpha))
                                     {
                                         alpha = Client.Settings.DEFAULT_EFFECT_COLOR.A;
                                     }
@@ -202,7 +207,7 @@ namespace Corrade
                                             wasInput(
                                                 wasKeyValueGet(
                                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION)),
-                                                    message)),
+                                                    corradeCommandParameters.Message)),
                                             out duration))
                                     {
                                         duration = 1;

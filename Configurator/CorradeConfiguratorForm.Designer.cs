@@ -230,6 +230,8 @@
             this.MasterFirstName = new System.Windows.Forms.TextBox();
             this.Masters = new System.Windows.Forms.ListBox();
             this.tabPage12 = new System.Windows.Forms.TabPage();
+            this.groupBox75 = new System.Windows.Forms.GroupBox();
+            this.GroupSchedules = new System.Windows.Forms.TextBox();
             this.AddGroup = new System.Windows.Forms.Button();
             this.DeleteGroup = new System.Windows.Forms.Button();
             this.groupBox29 = new System.Windows.Forms.GroupBox();
@@ -342,6 +344,7 @@
             this.groupBox74.SuspendLayout();
             this.groupBox73.SuspendLayout();
             this.tabPage12.SuspendLayout();
+            this.groupBox75.SuspendLayout();
             this.groupBox29.SuspendLayout();
             this.groupBox28.SuspendLayout();
             this.groupBox27.SuspendLayout();
@@ -2515,6 +2518,7 @@
             // 
             // tabPage12
             // 
+            this.tabPage12.Controls.Add(this.groupBox75);
             this.tabPage12.Controls.Add(this.AddGroup);
             this.tabPage12.Controls.Add(this.DeleteGroup);
             this.tabPage12.Controls.Add(this.groupBox29);
@@ -2533,9 +2537,28 @@
             this.tabPage12.Text = "Groups";
             this.tabPage12.UseVisualStyleBackColor = true;
             // 
+            // groupBox75
+            // 
+            this.groupBox75.Controls.Add(this.GroupSchedules);
+            this.groupBox75.Location = new System.Drawing.Point(475, 127);
+            this.groupBox75.Name = "groupBox75";
+            this.groupBox75.Size = new System.Drawing.Size(188, 55);
+            this.groupBox75.TabIndex = 13;
+            this.groupBox75.TabStop = false;
+            this.groupBox75.Text = "Scheduled Commands";
+            // 
+            // GroupSchedules
+            // 
+            this.GroupSchedules.Location = new System.Drawing.Point(7, 21);
+            this.GroupSchedules.Name = "GroupSchedules";
+            this.GroupSchedules.Size = new System.Drawing.Size(175, 22);
+            this.GroupSchedules.TabIndex = 0;
+            this.toolTip1.SetToolTip(this.GroupSchedules, "This limits the number of commands that the group may schedule.");
+            this.GroupSchedules.TextChanged += new System.EventHandler(this.GroupConfigurationChanged);
+            // 
             // AddGroup
             // 
-            this.AddGroup.Location = new System.Drawing.Point(523, 273);
+            this.AddGroup.Location = new System.Drawing.Point(574, 328);
             this.AddGroup.Name = "AddGroup";
             this.AddGroup.Size = new System.Drawing.Size(91, 23);
             this.AddGroup.TabIndex = 12;
@@ -2546,7 +2569,7 @@
             // 
             // DeleteGroup
             // 
-            this.DeleteGroup.Location = new System.Drawing.Point(523, 302);
+            this.DeleteGroup.Location = new System.Drawing.Point(475, 328);
             this.DeleteGroup.Name = "DeleteGroup";
             this.DeleteGroup.Size = new System.Drawing.Size(91, 23);
             this.DeleteGroup.TabIndex = 11;
@@ -2560,7 +2583,7 @@
             this.groupBox29.Controls.Add(this.GroupChatLogFile);
             this.groupBox29.Controls.Add(this.GroupChatLogEnabled);
             this.groupBox29.Font = new System.Drawing.Font("Palatino Linotype", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.groupBox29.Location = new System.Drawing.Point(475, 193);
+            this.groupBox29.Location = new System.Drawing.Point(475, 253);
             this.groupBox29.Name = "groupBox29";
             this.groupBox29.Size = new System.Drawing.Size(188, 69);
             this.groupBox29.TabIndex = 10;
@@ -2593,7 +2616,7 @@
             // 
             this.groupBox28.Controls.Add(this.GroupDatabaseFile);
             this.groupBox28.Font = new System.Drawing.Font("Palatino Linotype", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.groupBox28.Location = new System.Drawing.Point(475, 127);
+            this.groupBox28.Location = new System.Drawing.Point(475, 188);
             this.groupBox28.Name = "groupBox28";
             this.groupBox28.Size = new System.Drawing.Size(188, 59);
             this.groupBox28.TabIndex = 9;
@@ -2614,7 +2637,7 @@
             this.groupBox27.Controls.Add(this.GroupNotifications);
             this.groupBox27.Location = new System.Drawing.Point(340, 126);
             this.groupBox27.Name = "groupBox27";
-            this.groupBox27.Size = new System.Drawing.Size(128, 199);
+            this.groupBox27.Size = new System.Drawing.Size(128, 225);
             this.groupBox27.TabIndex = 8;
             this.groupBox27.TabStop = false;
             this.groupBox27.Text = "Group Notifications";
@@ -2654,9 +2677,9 @@
             "avatars",
             "primitives",
             "control"});
-            this.GroupNotifications.Location = new System.Drawing.Point(6, 24);
+            this.GroupNotifications.Location = new System.Drawing.Point(6, 19);
             this.GroupNotifications.Name = "GroupNotifications";
-            this.GroupNotifications.Size = new System.Drawing.Size(115, 169);
+            this.GroupNotifications.Size = new System.Drawing.Size(115, 199);
             this.GroupNotifications.TabIndex = 0;
             this.toolTip1.SetToolTip(this.GroupNotifications, "Corrade can send certain notifications (such as alerts or group messages) to prim" +
         "itives.");
@@ -2667,7 +2690,7 @@
             this.groupBox26.Controls.Add(this.GroupPermissions);
             this.groupBox26.Location = new System.Drawing.Point(200, 126);
             this.groupBox26.Name = "groupBox26";
-            this.groupBox26.Size = new System.Drawing.Size(134, 199);
+            this.groupBox26.Size = new System.Drawing.Size(134, 223);
             this.groupBox26.TabIndex = 7;
             this.groupBox26.TabStop = false;
             this.groupBox26.Text = "Group Permissions";
@@ -2693,10 +2716,11 @@
             "friendship",
             "execute",
             "group",
-            "filter"});
-            this.GroupPermissions.Location = new System.Drawing.Point(6, 24);
+            "filter",
+            "schedule"});
+            this.GroupPermissions.Location = new System.Drawing.Point(6, 19);
             this.GroupPermissions.Name = "GroupPermissions";
-            this.GroupPermissions.Size = new System.Drawing.Size(120, 169);
+            this.GroupPermissions.Size = new System.Drawing.Size(120, 199);
             this.GroupPermissions.TabIndex = 6;
             this.toolTip1.SetToolTip(this.GroupPermissions, "These controls grant access to Corrade\'s more intimate functions, such as telepor" +
         "ting users, Corrade\'s money stash or movement.");
@@ -2791,7 +2815,7 @@
             this.groupBox21.Font = new System.Drawing.Font("Palatino Linotype", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.groupBox21.Location = new System.Drawing.Point(4, 4);
             this.groupBox21.Name = "groupBox21";
-            this.groupBox21.Size = new System.Drawing.Size(189, 325);
+            this.groupBox21.Size = new System.Drawing.Size(189, 345);
             this.groupBox21.TabIndex = 1;
             this.groupBox21.TabStop = false;
             this.groupBox21.Text = "Groups";
@@ -2802,7 +2826,7 @@
             this.Groups.FormattingEnabled = true;
             this.Groups.Location = new System.Drawing.Point(6, 19);
             this.Groups.Name = "Groups";
-            this.Groups.Size = new System.Drawing.Size(177, 303);
+            this.Groups.Size = new System.Drawing.Size(177, 316);
             this.Groups.TabIndex = 0;
             this.toolTip1.SetToolTip(this.Groups, "Every group is indexed by a group name. You can add the same group, several times" +
         ", using the same name but have different passwords.");
@@ -3023,6 +3047,8 @@
             this.groupBox73.ResumeLayout(false);
             this.groupBox73.PerformLayout();
             this.tabPage12.ResumeLayout(false);
+            this.groupBox75.ResumeLayout(false);
+            this.groupBox75.PerformLayout();
             this.groupBox29.ResumeLayout(false);
             this.groupBox29.PerformLayout();
             this.groupBox28.ResumeLayout(false);
@@ -3278,6 +3304,8 @@
         private System.Windows.Forms.OpenFileDialog LoadLegacyConfigurationDialog;
         private System.Windows.Forms.SaveFileDialog SaveConfigurationDialog;
         private System.Windows.Forms.ToolTip toolTip1;
+        private System.Windows.Forms.GroupBox groupBox75;
+        private System.Windows.Forms.TextBox GroupSchedules;
     }
 }
 

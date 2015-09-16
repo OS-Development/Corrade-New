@@ -18,10 +18,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> returnprimitives =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> returnprimitives =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -29,14 +29,15 @@ namespace Corrade
                     if (
                         !UUID.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
+                                corradeCommandParameters.Message)),
                             out agentUUID) && !AgentNameToUUID(
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 ref agentUUID))
                     {
@@ -44,7 +45,7 @@ namespace Corrade
                     }
                     string region =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                            message));
+                            corradeCommandParameters.Message));
                     Simulator simulator =
                         Client.Network.Simulators.FirstOrDefault(
                             o =>
@@ -57,12 +58,12 @@ namespace Corrade
                     }
                     string type =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                            message));
+                            corradeCommandParameters.Message));
                     switch (
                         wasGetEnumValueFromDescription<Entity>(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
-                                    message)).ToLowerInvariant()))
+                                    corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Entity.PARCEL:
                             Vector3 position;
@@ -70,7 +71,7 @@ namespace Corrade
                             switch (Vector3.TryParse(
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 out position))
                             {
                                 case false:
@@ -124,7 +125,7 @@ namespace Corrade
                                 Parallel.ForEach(
                                     parcels.AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)), o =>
                                     {
-                                        if (!o.IsGroupOwned || !o.GroupID.Equals(commandGroup.UUID))
+                                        if (!o.IsGroupOwned || !o.GroupID.Equals(corradeCommandParameters.Group.UUID))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(
@@ -143,8 +144,10 @@ namespace Corrade
                                                 power = GroupPowers.ReturnGroupOwned;
                                                 break;
                                         }
-                                        if (!HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, power,
-                                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                                        if (
+                                            !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                                                power,
+                                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                                         {
                                             throw new Exception(
                                                 wasGetDescriptionFromEnumValue(
@@ -169,7 +172,7 @@ namespace Corrade
                                 !bool.TryParse(
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ALL)),
-                                            message)),
+                                            corradeCommandParameters.Message)),
                                     out allEstates))
                             {
                                 allEstates = false;

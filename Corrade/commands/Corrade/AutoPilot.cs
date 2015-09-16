@@ -17,11 +17,11 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> autopilot =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> autopilot =
+                (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(commandGroup.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
                             (int) Permissions.Movement))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
@@ -30,14 +30,15 @@ namespace Corrade
                         wasGetEnumValueFromDescription<Action>(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
-                                    message)).ToLowerInvariant()))
+                                    corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.START:
                             Vector3 position;
                             if (
                                 !Vector3.TryParse(
                                     wasInput(wasKeyValueGet(
-                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)), message)),
+                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                        corradeCommandParameters.Message)),
                                     out position))
                             {
                                 throw new ScriptException(ScriptError.INVALID_POSITION);

@@ -18,11 +18,11 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> teleport =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> teleport =
+                (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(commandGroup.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
                             (int) Permissions.Movement))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
@@ -31,7 +31,7 @@ namespace Corrade
                     ulong regionHandle = 0;
                     string region =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                            message));
+                            corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(region))
                     {
                         region = Client.Network.CurrentSim.Name;
@@ -65,7 +65,7 @@ namespace Corrade
                         !Vector3.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out position))
                     {
                         position = Client.Self.SimPosition;

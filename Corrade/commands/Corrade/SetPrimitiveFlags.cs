@@ -16,10 +16,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> setprimitiveflags =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> setprimitiveflags =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -27,7 +27,8 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)),
+                                corradeCommandParameters.Message)),
                             out range))
                     {
                         range = corradeConfiguration.Range;
@@ -36,7 +37,8 @@ namespace Corrade
                     if (
                         !FindPrimitive(
                             StringOrUUID(wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                                corradeCommandParameters.Message))),
                             range,
                             ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                     {
@@ -47,7 +49,7 @@ namespace Corrade
                         !Vector3.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out position))
                     {
                         throw new ScriptException(ScriptError.INVALID_POSITION);
@@ -57,7 +59,7 @@ namespace Corrade
                         !bool.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PHYSICS)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out physics))
                     {
                         physics = !(primitive.Flags & PrimFlags.Physics).Equals(0);
@@ -67,7 +69,7 @@ namespace Corrade
                         !bool.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TEMPORARY)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out temporary))
                     {
                         temporary = !(primitive.Flags & PrimFlags.Temporary).Equals(0);
@@ -77,7 +79,7 @@ namespace Corrade
                         !bool.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PHANTOM)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out phantom))
                     {
                         phantom = !(primitive.Flags & PrimFlags.Phantom).Equals(0);
@@ -87,7 +89,7 @@ namespace Corrade
                         !bool.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SHADOWS)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out shadows))
                     {
                         shadows = !(primitive.Flags & PrimFlags.CastShadows).Equals(0);
@@ -96,7 +98,7 @@ namespace Corrade
                                                                                           BindingFlags.Static)
                         .AsParallel().FirstOrDefault(p => p.Name.Equals(wasInput(
                             wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                                message)), StringComparison.Ordinal));
+                                corradeCommandParameters.Message)), StringComparison.Ordinal));
                     PhysicsShapeType physicsShapeType;
                     switch (physicsShapeFieldInfo != null)
                     {
@@ -112,7 +114,7 @@ namespace Corrade
                         !float.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DENSITY)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out density))
                     {
                         density = primitive.PhysicsProps.Density;
@@ -122,7 +124,7 @@ namespace Corrade
                         !float.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FRICTION)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out friction))
                     {
                         friction = primitive.PhysicsProps.Friction;
@@ -132,7 +134,7 @@ namespace Corrade
                         !float.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RESTITUTION)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out restitution))
                     {
                         restitution = primitive.PhysicsProps.Restitution;
@@ -142,7 +144,7 @@ namespace Corrade
                         !float.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GRAVITY)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out gravity))
                     {
                         gravity = primitive.PhysicsProps.GravityMultiplier;

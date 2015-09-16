@@ -15,20 +15,20 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> getstatus =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> getstatus =
+                (corradeCommandParameters, result) =>
                 {
                     uint status;
                     if (!uint.TryParse(wasInput(wasKeyValueGet(
                         wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.STATUS)),
-                        message)), out status))
+                        corradeCommandParameters.Message)), out status))
                     {
                         throw new ScriptException(ScriptError.INVALID_STATUS_SUPPLIED);
                     }
                     switch (wasGetEnumValueFromDescription<Entity>(
                         wasInput(
                             wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
-                                message)).ToLowerInvariant()))
+                                corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Entity.DESCRIPTION:
                             FieldInfo scriptErrorFieldInfo = typeof (ScriptError).GetFields(

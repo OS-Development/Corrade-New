@@ -13,31 +13,33 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> run = (commandGroup, message, result) =>
-            {
-                if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Movement))
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> run =
+                (corradeCommandParameters, result) =>
                 {
-                    throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
-                }
-                Action action = wasGetEnumValueFromDescription<Action>(
-                    wasInput(
-                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
-                        .ToLowerInvariant());
-                switch (action)
-                {
-                    case Action.ENABLE:
-                    case Action.DISABLE:
-                        Client.Self.Movement.AlwaysRun = !action.Equals(Action.DISABLE);
-                        Client.Self.Movement.SendUpdate(true);
-                        break;
-                    case Action.GET:
-                        result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                            Client.Self.Movement.AlwaysRun.ToString());
-                        break;
-                    default:
-                        throw new ScriptException(ScriptError.UNKNOWN_ACTION);
-                }
-            };
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Movement))
+                    {
+                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                    }
+                    Action action = wasGetEnumValueFromDescription<Action>(
+                        wasInput(
+                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                                corradeCommandParameters.Message))
+                            .ToLowerInvariant());
+                    switch (action)
+                    {
+                        case Action.ENABLE:
+                        case Action.DISABLE:
+                            Client.Self.Movement.AlwaysRun = !action.Equals(Action.DISABLE);
+                            Client.Self.Movement.SendUpdate(true);
+                            break;
+                        case Action.GET:
+                            result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                                Client.Self.Movement.AlwaysRun.ToString());
+                            break;
+                        default:
+                            throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                    }
+                };
         }
     }
 }

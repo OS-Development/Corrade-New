@@ -15,10 +15,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> startproposal =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> startproposal =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -29,12 +29,13 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
-                    if (!new HashSet<UUID>(currentGroups).Contains(commandGroup.UUID))
+                    if (!new HashSet<UUID>(currentGroups).Contains(corradeCommandParameters.Group.UUID))
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
                     if (
-                        !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.StartProposal,
+                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                            GroupPowers.StartProposal,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
@@ -44,7 +45,7 @@ namespace Corrade
                         !int.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out duration))
                     {
                         throw new ScriptException(ScriptError.INVALID_PROPOSAL_DURATION);
@@ -54,7 +55,7 @@ namespace Corrade
                         !float.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MAJORITY)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out majority))
                     {
                         throw new ScriptException(ScriptError.INVALID_PROPOSAL_MAJORITY);
@@ -63,19 +64,20 @@ namespace Corrade
                     if (
                         !int.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.QUORUM)), message)),
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.QUORUM)),
+                                    corradeCommandParameters.Message)),
                             out quorum))
                     {
                         throw new ScriptException(ScriptError.INVALID_PROPOSAL_QUORUM);
                     }
                     string text =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TEXT)),
-                            message));
+                            corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(text))
                     {
                         throw new ScriptException(ScriptError.INVALID_PROPOSAL_TEXT);
                     }
-                    Client.Groups.StartProposal(commandGroup.UUID, new GroupProposal
+                    Client.Groups.StartProposal(corradeCommandParameters.Group.UUID, new GroupProposal
                     {
                         Duration = duration,
                         Majority = majority,

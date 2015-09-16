@@ -124,6 +124,9 @@
     <Compile Include="commands\Corrade\Animation.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\At.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\Attach.cs">
       <SubType>Component</SubType>
     </Compile>

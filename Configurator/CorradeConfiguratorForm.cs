@@ -113,7 +113,8 @@ namespace Configurator
             [XmlEnum(Name = "friendship")] [Description("friendship")] Friendship = 4096,
             [XmlEnum(Name = "execute")] [Description("execute")] Execute = 8192,
             [XmlEnum(Name = "group")] [Description("group")] Group = 16384,
-            [XmlEnum(Name = "filter")] [Description("filter")] Filter = 32768
+            [XmlEnum(Name = "filter")] [Description("filter")] Filter = 32768,
+            [XmlEnum(Name = "schedule")] [Description("schedule")] Schedule = 65536
         }
 
         private static readonly object ClientInstanceConfigurationLock = new object();
@@ -654,6 +655,7 @@ namespace Configurator
                 GroupPassword.Text = group.Password;
                 GroupUUID.Text = group.UUID.ToString();
                 GroupWorkers.Text = group.Workers.ToString();
+                GroupSchedules.Text = group.Schedules.ToString();
                 GroupDatabaseFile.Text = group.DatabaseFile;
                 GroupChatLogEnabled.Checked = group.ChatLogEnabled;
                 GroupChatLogFile.Text = group.ChatLog;
@@ -770,6 +772,7 @@ namespace Configurator
                 GroupPassword.Text = string.Empty;
                 GroupUUID.Text = string.Empty;
                 GroupWorkers.Text = string.Empty;
+                GroupSchedules.Text = string.Empty;
                 GroupDatabaseFile.Text = string.Empty;
                 GroupChatLogEnabled.Checked = false;
                 GroupChatLogFile.Text = string.Empty;
@@ -881,6 +884,15 @@ namespace Configurator
                 }
                 GroupWorkers.BackColor = Color.Empty;
 
+                uint groupSchedules;
+                if (GroupSchedules.Text.Equals(string.Empty) ||
+                    !uint.TryParse(GroupSchedules.Text, out groupSchedules))
+                {
+                    GroupSchedules.BackColor = Color.MistyRose;
+                    return;
+                }
+                GroupSchedules.BackColor = Color.Empty;
+
                 if (GroupDatabaseFile.Text.Equals(string.Empty))
                 {
                     GroupDatabaseFile.BackColor = Color.MistyRose;
@@ -930,6 +942,7 @@ namespace Configurator
                     UUID = groupUUID,
                     Password = EscapeXML(GroupPassword.Text),
                     Workers = groupWorkers,
+                    Schedules = groupSchedules,
                     DatabaseFile = GroupDatabaseFile.Text,
                     ChatLog = GroupChatLogFile.Text,
                     ChatLogEnabled = GroupChatLogEnabled.Checked,
@@ -975,6 +988,14 @@ namespace Configurator
                     return;
                 }
                 GroupWorkers.BackColor = Color.Empty;
+
+                uint groupSchedules;
+                if (GroupSchedules.Text.Equals(string.Empty) || !uint.TryParse(GroupSchedules.Text, out groupSchedules))
+                {
+                    GroupSchedules.BackColor = Color.MistyRose;
+                    return;
+                }
+                GroupSchedules.BackColor = Color.Empty;
 
                 if (GroupDatabaseFile.Text.Equals(string.Empty))
                 {
@@ -1022,6 +1043,7 @@ namespace Configurator
                     UUID = groupUUID,
                     Password = EscapeXML(GroupPassword.Text),
                     Workers = groupWorkers,
+                    Schedules = groupSchedules,
                     DatabaseFile = GroupDatabaseFile.Text,
                     ChatLog = GroupChatLogFile.Text,
                     ChatLogEnabled = GroupChatLogEnabled.Checked,
@@ -1250,7 +1272,6 @@ namespace Configurator
 
         private void LoadRemoteRequested(object sender, EventArgs e)
         {
-
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1307,20 +1328,27 @@ namespace Configurator
         /// </summary>
         public struct CORRADE_CONSTANTS
         {
+            public const string CORRADE = @"Corrade";
+            public const string WIZARDRY_AND_STEAMWORKS_WEBSITE = @"http://grimore.org";
+
             /// <summary>
             ///     Corrade compile date.
             /// </summary>
             public static readonly string CORRADE_CONFIGURATOR_COMPILE_DATE = new DateTime(2000, 1, 1).Add(new TimeSpan(
-                TimeSpan.TicksPerDay * Assembly.GetEntryAssembly().GetName().Version.Build + // days since 1 January 2000
-                TimeSpan.TicksPerSecond * 2 * Assembly.GetEntryAssembly().GetName().Version.Revision)).ToLongDateString();
+                TimeSpan.TicksPerDay*Assembly.GetEntryAssembly().GetName().Version.Build + // days since 1 January 2000
+                TimeSpan.TicksPerSecond*2*Assembly.GetEntryAssembly().GetName().Version.Revision)).ToLongDateString();
 
             /// <summary>
             ///     Corrade version.
             /// </summary>
-            public static readonly string CONFIGURATOR_VERSION = Assembly.GetEntryAssembly().GetName().Version.ToString();
+            public static readonly string CONFIGURATOR_VERSION =
+                Assembly.GetEntryAssembly().GetName().Version.ToString();
 
-            public const string CORRADE = @"Corrade";
-            public const string WIZARDRY_AND_STEAMWORKS_WEBSITE = @"http://grimore.org";
+            /// <summary>
+            ///     Corrade user agent.
+            /// </summary>
+            public static readonly string USER_AGENT =
+                $"{CORRADE}/{CONFIGURATOR_VERSION} ({WIZARDRY_AND_STEAMWORKS_WEBSITE})";
 
             /// <summary>
             ///     Conten-types that Corrade can send and receive.
@@ -1330,12 +1358,6 @@ namespace Configurator
                 public const string TEXT_PLAIN = @"text/plain";
                 public const string WWW_FORM_URLENCODED = @"application/x-www-form-urlencoded";
             }
-
-            /// <summary>
-            ///     Corrade user agent.
-            /// </summary>
-            public static readonly string USER_AGENT =
-                $"{CORRADE}/{CONFIGURATOR_VERSION} ({WIZARDRY_AND_STEAMWORKS_WEBSITE})";
         }
 
         [Serializable]
@@ -4157,6 +4179,7 @@ namespace Configurator
             public HashSet<Notifications> Notifications;
             public string Password;
             public HashSet<Permissions> Permissions;
+            public uint Schedules;
             public UUID UUID;
             public uint Workers;
 
@@ -4191,7 +4214,6 @@ namespace Configurator
             public string FirstName;
             public string LastName;
         }
-        
     }
 
     ///////////////////////////////////////////////////////////////////////////

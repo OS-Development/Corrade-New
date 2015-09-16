@@ -16,16 +16,16 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> getgridregiondata =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> getgridregiondata =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string region =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                            message));
+                            corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(region))
                     {
                         region = Client.Network.CurrentSim.Name;
@@ -57,7 +57,7 @@ namespace Corrade
                     }
                     List<string> data = new List<string>(GetStructuredData(gridRegion,
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                            message))));
+                            corradeCommandParameters.Message))));
                     if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

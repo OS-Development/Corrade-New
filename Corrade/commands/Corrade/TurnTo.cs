@@ -14,31 +14,32 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> turnto = (commandGroup, message, result) =>
-            {
-                if (
-                    !HasCorradePermission(commandGroup.Name,
-                        (int) Permissions.Movement))
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> turnto =
+                (corradeCommandParameters, result) =>
                 {
-                    throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
-                }
-                Vector3 position;
-                if (
-                    !Vector3.TryParse(
-                        wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
-                                message)),
-                        out position))
-                {
-                    throw new ScriptException(ScriptError.INVALID_POSITION);
-                }
-                Client.Self.Movement.TurnToward(position, true);
-                // Set the camera on the avatar.
-                Client.Self.Movement.Camera.LookAt(
-                    Client.Self.SimPosition,
-                    Client.Self.SimPosition
-                    );
-            };
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Permissions.Movement))
+                    {
+                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                    }
+                    Vector3 position;
+                    if (
+                        !Vector3.TryParse(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                    corradeCommandParameters.Message)),
+                            out position))
+                    {
+                        throw new ScriptException(ScriptError.INVALID_POSITION);
+                    }
+                    Client.Self.Movement.TurnToward(position, true);
+                    // Set the camera on the avatar.
+                    Client.Self.Movement.Camera.LookAt(
+                        Client.Self.SimPosition,
+                        Client.Self.SimPosition
+                        );
+                };
         }
     }
 }

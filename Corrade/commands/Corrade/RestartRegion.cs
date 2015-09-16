@@ -14,10 +14,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> restartregion =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> restartregion =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -29,7 +29,8 @@ namespace Corrade
                     if (
                         !uint.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DELAY)), message))
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DELAY)),
+                                corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out delay))
                     {
                         delay = LINDEN_CONSTANTS.ESTATE.REGION_RESTART_DELAY;
@@ -38,7 +39,7 @@ namespace Corrade
                         wasGetEnumValueFromDescription<Action>(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
-                                    message)).ToLowerInvariant()))
+                                    corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.RESTART:
                             // Manually override Client.Estate.RestartRegion();

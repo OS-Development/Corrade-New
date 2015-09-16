@@ -17,10 +17,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> createprimitive =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> createprimitive =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -29,7 +29,7 @@ namespace Corrade
                         !Vector3.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out position))
                     {
                         throw new ScriptException(ScriptError.INVALID_POSITION);
@@ -46,14 +46,14 @@ namespace Corrade
                         !Quaternion.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out rotation))
                     {
                         rotation = Quaternion.CreateFromEulers(0, 0, 0);
                     }
                     string region =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                            message));
+                            corradeCommandParameters.Message));
                     Simulator simulator =
                         Client.Network.Simulators.FirstOrDefault(
                             o =>
@@ -75,12 +75,14 @@ namespace Corrade
                         {
                             if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                             {
-                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(commandGroup.UUID))
+                                if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
                                 {
                                     throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                 }
-                                if (!HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AllowRez,
-                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                                if (
+                                    !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                                        GroupPowers.AllowRez,
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                                 {
                                     throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                 }
@@ -92,7 +94,7 @@ namespace Corrade
                         !Vector3.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SCALE)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out scale))
                     {
                         scale = new Vector3(0.5f, 0.5f, 0.5f);
@@ -117,7 +119,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(
                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                                            message)),
+                                            corradeCommandParameters.Message)),
                                     StringComparison.OrdinalIgnoreCase));
                     Primitive.ConstructionData constructionData;
                     switch (primitiveShapesFieldInfo != null)
@@ -132,14 +134,15 @@ namespace Corrade
                     }
                     // ... and overwrite with manual data settings.
                     wasCSVToStructure(
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)), message)),
+                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                            corradeCommandParameters.Message)),
                         ref constructionData);
                     // Get any primitive flags.
                     uint primFlags = 0;
                     Parallel.ForEach(wasCSVToEnumerable(
                         wasInput(
                             wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FLAGS)),
-                                message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
+                                corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                         o =>
                             Parallel.ForEach(
                                 typeof (PrimFlags).GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -147,7 +150,8 @@ namespace Corrade
                                 q => { primFlags |= ((uint) q.GetValue(null)); }));
 
                     // Finally, add the primitive to the simulator.
-                    Client.Objects.AddPrim(simulator, constructionData, commandGroup.UUID, position, scale, rotation,
+                    Client.Objects.AddPrim(simulator, constructionData, corradeCommandParameters.Group.UUID, position,
+                        scale, rotation,
                         (PrimFlags) primFlags);
                 };
         }

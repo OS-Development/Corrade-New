@@ -15,11 +15,11 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> setobjectmediadata =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> setobjectmediadata =
+                (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(commandGroup.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
                             (int) Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
@@ -28,7 +28,8 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)),
+                                corradeCommandParameters.Message)),
                             out range))
                     {
                         range = corradeConfiguration.Range;
@@ -37,7 +38,8 @@ namespace Corrade
                     if (
                         !FindPrimitive(
                             StringOrUUID(wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                                corradeCommandParameters.Message))),
                             range,
                             ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                     {
@@ -53,7 +55,7 @@ namespace Corrade
                     if (
                         !uint.TryParse(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FACE)),
-                                message)), out face))
+                                corradeCommandParameters.Message)), out face))
                         throw new ScriptException(ScriptError.INVALID_FACE_SPECIFIED);
                     MediaEntry[] faceMediaEntries = null;
                     Client.Objects.RequestObjectMedia(primitive.ID,
@@ -72,7 +74,8 @@ namespace Corrade
                             }
                         });
                     wasCSVToStructure(
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)), message)),
+                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                            corradeCommandParameters.Message)),
                         ref faceMediaEntries[face]);
                     Client.Objects.UpdateObjectMedia(primitive.ID, faceMediaEntries,
                         Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)));

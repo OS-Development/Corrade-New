@@ -16,10 +16,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> directorysearch =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> directorysearch =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Directory))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Directory))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -27,10 +27,10 @@ namespace Corrade
                         new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
                     string name =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
-                            message));
+                            corradeCommandParameters.Message));
                     string fields =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                            message));
+                            corradeCommandParameters.Message));
                     object LockObject = new object();
                     List<string> csv = new List<string>();
                     int handledEvents = 0;
@@ -38,7 +38,8 @@ namespace Corrade
                     switch (
                         wasGetEnumValueFromDescription<Type>(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)), message))
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                corradeCommandParameters.Message))
                                 .ToLowerInvariant()))
                     {
                         case Type.CLASSIFIED:
@@ -46,7 +47,7 @@ namespace Corrade
                             wasCSVToStructure(
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 ref searchClassified);
                             Dictionary<DirectoryManager.Classified, int> classifieds =
                                 new Dictionary<DirectoryManager.Classified, int>();
@@ -107,7 +108,7 @@ namespace Corrade
                             wasCSVToStructure(
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 ref searchEvent);
                             Dictionary<DirectoryManager.EventsSearchData, int> events =
                                 new Dictionary<DirectoryManager.EventsSearchData, int>();
@@ -182,7 +183,7 @@ namespace Corrade
                             wasCSVToStructure(
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 ref searchGroup);
                             Dictionary<DirectoryManager.GroupSearchData, int> groups =
                                 new Dictionary<DirectoryManager.GroupSearchData, int>();
@@ -252,7 +253,7 @@ namespace Corrade
                             wasCSVToStructure(
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 ref searchLand);
                             Dictionary<DirectoryManager.DirectoryParcel, int> lands =
                                 new Dictionary<DirectoryManager.DirectoryParcel, int>();
@@ -398,7 +399,7 @@ namespace Corrade
                             wasCSVToStructure(
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 ref searchPlaces);
                             Dictionary<DirectoryManager.PlacesSearchData, int> places =
                                 new Dictionary<DirectoryManager.PlacesSearchData, int>();

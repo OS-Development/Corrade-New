@@ -16,10 +16,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> getgroupaccountsummarydata =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> getgroupaccountsummarydata =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -28,7 +28,8 @@ namespace Corrade
                     if (
                         !int.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DAYS)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DAYS)),
+                                corradeCommandParameters.Message)),
                             out days))
                     {
                         throw new ScriptException(ScriptError.INVALID_DAYS);
@@ -38,7 +39,7 @@ namespace Corrade
                         !int.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.INTERVAL)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out interval))
                     {
                         throw new ScriptException(ScriptError.INVALID_INTERVAL);
@@ -54,7 +55,7 @@ namespace Corrade
                     lock (ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupAccountSummaryReply += RequestGroupAccountSummaryEventHandler;
-                        Client.Groups.RequestGroupAccountSummary(commandGroup.UUID, days, interval);
+                        Client.Groups.RequestGroupAccountSummary(corradeCommandParameters.Group.UUID, days, interval);
                         if (
                             !RequestGroupAccountSummaryEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
                                 false))
@@ -66,7 +67,7 @@ namespace Corrade
                     }
                     List<string> data = new List<string>(GetStructuredData(summary,
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                            message)))
+                            corradeCommandParameters.Message)))
                         );
                     if (data.Any())
                     {

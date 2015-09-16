@@ -15,24 +15,26 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> deleteviewereffect =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> deleteviewereffect =
+                (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(commandGroup.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
                             (int) Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID effectUUID;
                     if (!UUID.TryParse(wasInput(wasKeyValueGet(
-                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ID)), message)), out effectUUID))
+                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ID)), corradeCommandParameters.Message)),
+                        out effectUUID))
                     {
                         throw new ScriptException(ScriptError.NO_EFFECT_UUID_PROVIDED);
                     }
                     ViewerEffectType viewerEffectType = wasGetEnumValueFromDescription<ViewerEffectType>(
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.EFFECT)), message))
+                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.EFFECT)),
+                                corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     switch (viewerEffectType)
                     {

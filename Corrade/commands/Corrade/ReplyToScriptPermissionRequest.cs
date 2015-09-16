@@ -17,10 +17,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> replytoscriptpermissionrequest =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> replytoscriptpermissionrequest =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -28,7 +28,8 @@ namespace Corrade
                     if (
                         !UUID.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                                corradeCommandParameters.Message)),
                             out itemUUID))
                     {
                         throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
@@ -37,7 +38,8 @@ namespace Corrade
                     if (
                         !UUID.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TASK)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TASK)),
+                                corradeCommandParameters.Message)),
                             out taskUUID))
                     {
                         throw new ScriptException(ScriptError.NO_TASK_SPECIFIED);
@@ -46,7 +48,7 @@ namespace Corrade
                     Parallel.ForEach(wasCSVToEnumerable(
                         wasInput(
                             wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS)),
-                                message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
+                                corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                         o =>
                             Parallel.ForEach(
                                 typeof (ScriptPermission).GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -54,7 +56,7 @@ namespace Corrade
                                 q => { permissionMask |= ((int) q.GetValue(null)); }));
                     string region = wasInput(
                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                            message));
+                            corradeCommandParameters.Message));
                     Simulator simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
                         o => o.Name.Equals(region, StringComparison.OrdinalIgnoreCase));
                     if (simulator == null)

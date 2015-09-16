@@ -17,18 +17,18 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> addclassified =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> addclassified =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming) ||
-                        !HasCorradePermission(commandGroup.Name, (int) Permissions.Economy))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Grooming) ||
+                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Economy))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     object item =
                         StringOrUUID(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
-                                message)));
+                                corradeCommandParameters.Message)));
                     UUID textureUUID = UUID.Zero;
                     if (item != null)
                     {
@@ -43,7 +43,7 @@ namespace Corrade
                     }
                     string name =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
-                            message));
+                            corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
                         throw new ScriptException(ScriptError.EMPTY_CLASSIFIED_NAME);
@@ -51,7 +51,7 @@ namespace Corrade
                     string classifiedDescription =
                         wasInput(
                             wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
-                                message));
+                                corradeCommandParameters.Message));
                     ManualResetEvent AvatarClassifiedReplyEvent = new ManualResetEvent(false);
                     UUID classifiedUUID = UUID.Zero;
                     int classifiedCount = 0;
@@ -90,7 +90,8 @@ namespace Corrade
                     if (
                         !int.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PRICE)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PRICE)),
+                                corradeCommandParameters.Message)),
                             out price))
                     {
                         throw new ScriptException(ScriptError.INVALID_PRICE);
@@ -103,7 +104,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RENEW)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RENEW)),
+                                corradeCommandParameters.Message)),
                             out renew))
                     {
                         renew = false;
@@ -115,7 +117,7 @@ namespace Corrade
                             o.Name.Equals(
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 StringComparison.Ordinal));
                     Client.Self.UpdateClassifiedInfo(classifiedUUID, classifiedCategoriesField != null
                         ? (DirectoryManager.ClassifiedCategories)

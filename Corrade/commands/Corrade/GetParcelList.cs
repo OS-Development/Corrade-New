@@ -19,10 +19,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> getparcellist =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> getparcellist =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -32,14 +32,14 @@ namespace Corrade
                         !Vector3.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out position))
                     {
                         position = Client.Self.SimPosition;
                     }
                     string region =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                            message));
+                            corradeCommandParameters.Message));
                     Simulator simulator =
                         Client.Network.Simulators.FirstOrDefault(
                             o =>
@@ -62,7 +62,7 @@ namespace Corrade
                                 o.Name.Equals(
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                                            message)),
+                                            corradeCommandParameters.Message)),
                                     StringComparison.Ordinal));
                     if (accessField == null)
                     {
@@ -73,7 +73,7 @@ namespace Corrade
                     {
                         if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                         {
-                            if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(commandGroup.UUID))
+                            if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
                             {
                                 throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                             }
@@ -81,7 +81,7 @@ namespace Corrade
                             {
                                 case AccessList.Access:
                                     if (
-                                        !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
+                                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
                                             GroupPowers.LandManageAllowed, corradeConfiguration.ServicesTimeout,
                                             corradeConfiguration.DataTimeout))
                                     {
@@ -90,7 +90,7 @@ namespace Corrade
                                     break;
                                 case AccessList.Ban:
                                     if (
-                                        !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
+                                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
                                             GroupPowers.LandManageBanned,
                                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                                     {
@@ -99,14 +99,14 @@ namespace Corrade
                                     break;
                                 case AccessList.Both:
                                     if (
-                                        !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
+                                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
                                             GroupPowers.LandManageAllowed, corradeConfiguration.ServicesTimeout,
                                             corradeConfiguration.DataTimeout))
                                     {
                                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                                     }
                                     if (
-                                        !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID,
+                                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
                                             GroupPowers.LandManageBanned,
                                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                                     {

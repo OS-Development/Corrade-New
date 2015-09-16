@@ -13,10 +13,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> setregiondebug =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> setregiondebug =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -29,7 +29,7 @@ namespace Corrade
                         !bool.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SCRIPTS)),
-                                    message))
+                                    corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out scripts))
                     {
                         scripts = false;
@@ -39,7 +39,7 @@ namespace Corrade
                         !bool.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.COLLISIONS)),
-                                    message))
+                                    corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out collisions))
                     {
                         collisions = false;
@@ -49,7 +49,7 @@ namespace Corrade
                         !bool.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PHYSICS)),
-                                    message))
+                                    corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out physics))
                     {
                         physics = false;

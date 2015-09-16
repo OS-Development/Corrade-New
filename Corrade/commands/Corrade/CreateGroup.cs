@@ -15,16 +15,16 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> creategroup =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> creategroup =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     // if the grid is SecondLife and the group name length exceeds the allowed length...
                     if (IsSecondLife() &&
-                        commandGroup.Name.Length > LINDEN_CONSTANTS.GROUPS.MAXIMUM_GROUP_NAME_LENGTH)
+                        corradeCommandParameters.Group.Name.Length > LINDEN_CONSTANTS.GROUPS.MAXIMUM_GROUP_NAME_LENGTH)
                     {
                         throw new ScriptException(ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_NAME);
                     }
@@ -37,17 +37,17 @@ namespace Corrade
                         throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
                     }
                     if (!corradeConfiguration.GroupCreateFee.Equals(0) &&
-                        !HasCorradePermission(commandGroup.Name, (int) Permissions.Economy))
+                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Economy))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     OpenMetaverse.Group targetGroup = new OpenMetaverse.Group
                     {
-                        Name = commandGroup.Name
+                        Name = corradeCommandParameters.Group.Name
                     };
                     wasCSVToStructure(
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                            message)),
+                            corradeCommandParameters.Message)),
                         ref targetGroup);
                     bool succeeded = false;
                     ManualResetEvent GroupCreatedReplyEvent = new ManualResetEvent(false);

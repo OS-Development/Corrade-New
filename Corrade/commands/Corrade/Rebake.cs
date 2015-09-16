@@ -13,16 +13,17 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> rebake = (commandGroup, message, result) =>
-            {
-                if (
-                    !HasCorradePermission(commandGroup.Name,
-                        (int) Permissions.Grooming))
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> rebake =
+                (corradeCommandParameters, result) =>
                 {
-                    throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
-                }
-                RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
-            };
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Permissions.Grooming))
+                    {
+                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                    }
+                    RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
+                };
         }
     }
 }

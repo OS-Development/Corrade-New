@@ -15,17 +15,18 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> replytogroupinvite =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> replytogroupinvite =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     uint action =
                         (uint) wasGetEnumValueFromDescription<Action>(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                                    corradeCommandParameters.Message))
                                 .ToLowerInvariant());
                     IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
                     if (
@@ -34,7 +35,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
-                    if (new HashSet<UUID>(currentGroups).Contains(commandGroup.UUID))
+                    if (new HashSet<UUID>(currentGroups).Contains(corradeCommandParameters.Group.UUID))
                     {
                         throw new ScriptException(ScriptError.ALREADY_IN_GROUP);
                     }
@@ -43,7 +44,7 @@ namespace Corrade
                         !UUID.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out sessionUUID))
                     {
                         throw new ScriptException(ScriptError.NO_SESSION_SPECIFIED);
@@ -71,7 +72,7 @@ namespace Corrade
                     }
                     if (!amount.Equals(0) && action.Equals((uint) Action.ACCEPT))
                     {
-                        if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Economy))
+                        if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Economy))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }
@@ -84,7 +85,7 @@ namespace Corrade
                             throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
                         }
                     }
-                    Client.Self.GroupInviteRespond(commandGroup.UUID, sessionUUID,
+                    Client.Self.GroupInviteRespond(corradeCommandParameters.Group.UUID, sessionUUID,
                         action.Equals((uint) Action.ACCEPT));
                 };
         }

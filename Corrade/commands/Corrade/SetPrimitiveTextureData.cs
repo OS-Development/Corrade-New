@@ -15,10 +15,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> setprimitivetexturedata =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> setprimitivetexturedata =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -26,7 +26,8 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)),
+                                corradeCommandParameters.Message)),
                             out range))
                     {
                         range = corradeConfiguration.Range;
@@ -35,7 +36,8 @@ namespace Corrade
                     if (
                         !FindPrimitive(
                             StringOrUUID(wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message))),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                                corradeCommandParameters.Message))),
                             range,
                             ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                     {
@@ -43,7 +45,7 @@ namespace Corrade
                     }
                     string face =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FACE)),
-                            message));
+                            corradeCommandParameters.Message));
                     int i;
                     switch (!int.TryParse(face, out i))
                     {
@@ -63,7 +65,7 @@ namespace Corrade
                                             wasInput(
                                                 wasKeyValueGet(
                                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                                    message)),
+                                                    corradeCommandParameters.Message)),
                                             ref primitive.Textures.FaceTextures[i]);
                                     } while (--i > -1);
                                     break;
@@ -72,7 +74,7 @@ namespace Corrade
                                         wasInput(
                                             wasKeyValueGet(
                                                 wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                                message)),
+                                                corradeCommandParameters.Message)),
                                         ref primitive.Textures.DefaultTexture);
                                     break;
                                 default:
@@ -88,7 +90,7 @@ namespace Corrade
                             }
                             wasCSVToStructure(
                                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                                 ref primitive.Textures.FaceTextures[i]);
                             break;
                     }

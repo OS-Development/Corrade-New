@@ -18,10 +18,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> getinventorypath =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> getinventorypath =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Inventory))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Inventory))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -29,7 +29,7 @@ namespace Corrade
                     object LockObject = new object();
                     Parallel.ForEach(wasCSVToEnumerable(
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                            message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
+                            corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                         o => Parallel.ForEach(
                             typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
                                 .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
@@ -42,7 +42,7 @@ namespace Corrade
                             }));
                     string pattern =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATTERN)),
-                            message));
+                            corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(pattern))
                     {
                         throw new ScriptException(ScriptError.NO_PATTERN_PROVIDED);

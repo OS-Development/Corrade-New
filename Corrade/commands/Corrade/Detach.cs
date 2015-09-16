@@ -16,37 +16,38 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> detach = (commandGroup, message, result) =>
-            {
-                if (
-                    !HasCorradePermission(commandGroup.Name,
-                        (int) Permissions.Grooming))
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> detach =
+                (corradeCommandParameters, result) =>
                 {
-                    throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
-                }
-                string attachments =
-                    wasInput(
-                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ATTACHMENTS)),
-                            message));
-                if (string.IsNullOrEmpty(attachments))
-                {
-                    throw new ScriptException(ScriptError.EMPTY_ATTACHMENTS);
-                }
-                Parallel.ForEach(wasCSVToEnumerable(
-                    attachments).AsParallel().Where(o => !string.IsNullOrEmpty(o)), o =>
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Permissions.Grooming))
                     {
-                        InventoryBase inventoryBaseItem =
-                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, StringOrUUID(o)
-                                )
-                                .AsParallel().FirstOrDefault(
-                                    p =>
-                                        p is InventoryObject || p is InventoryAttachment);
-                        if (inventoryBaseItem == null)
-                            return;
-                        Detach(inventoryBaseItem as InventoryItem);
-                    });
-                RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
-            };
+                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                    }
+                    string attachments =
+                        wasInput(
+                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ATTACHMENTS)),
+                                corradeCommandParameters.Message));
+                    if (string.IsNullOrEmpty(attachments))
+                    {
+                        throw new ScriptException(ScriptError.EMPTY_ATTACHMENTS);
+                    }
+                    Parallel.ForEach(wasCSVToEnumerable(
+                        attachments).AsParallel().Where(o => !string.IsNullOrEmpty(o)), o =>
+                        {
+                            InventoryBase inventoryBaseItem =
+                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, StringOrUUID(o)
+                                    )
+                                    .AsParallel().FirstOrDefault(
+                                        p =>
+                                            p is InventoryObject || p is InventoryAttachment);
+                            if (inventoryBaseItem == null)
+                                return;
+                            Detach(inventoryBaseItem as InventoryItem);
+                        });
+                    RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
+                };
         }
     }
 }

@@ -15,10 +15,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> setestatelist =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> setestatelist =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -30,7 +30,7 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ALL)),
-                                message)),
+                                corradeCommandParameters.Message)),
                             out allEstates))
                     {
                         allEstates = false;
@@ -42,7 +42,8 @@ namespace Corrade
                     switch (
                         wasGetEnumValueFromDescription<Type>(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)), message))
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                corradeCommandParameters.Message))
                                 .ToLowerInvariant()))
                     {
                         case Type.BAN:
@@ -50,16 +51,16 @@ namespace Corrade
                                 !UUID.TryParse(
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
-                                            message)), out targetUUID) && !AgentNameToUUID(
+                                            corradeCommandParameters.Message)), out targetUUID) && !AgentNameToUUID(
                                                 wasInput(
                                                     wasKeyValueGet(
                                                         wasOutput(
                                                             wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
-                                                        message)),
+                                                        corradeCommandParameters.Message)),
                                                 wasInput(
                                                     wasKeyValueGet(
                                                         wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
-                                                        message)),
+                                                        corradeCommandParameters.Message)),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
                                                 ref targetUUID))
@@ -70,7 +71,8 @@ namespace Corrade
                                 wasGetEnumValueFromDescription<Action>(
                                     wasInput(
                                         wasKeyValueGet(
-                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
+                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                                            corradeCommandParameters.Message))
                                         .ToLowerInvariant()))
                             {
                                 case Action.ADD:
@@ -131,12 +133,12 @@ namespace Corrade
                                 !UUID.TryParse(
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)),
-                                            message)),
+                                            corradeCommandParameters.Message)),
                                     out targetUUID) && !GroupNameToUUID(
                                         wasInput(
                                             wasKeyValueGet(
                                                 wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)),
-                                                message)),
+                                                corradeCommandParameters.Message)),
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                         ref targetUUID))
                             {
@@ -146,7 +148,8 @@ namespace Corrade
                                 wasGetEnumValueFromDescription<Action>(
                                     wasInput(
                                         wasKeyValueGet(
-                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
+                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                                            corradeCommandParameters.Message))
                                         .ToLowerInvariant()))
                             {
                                 case Action.ADD:
@@ -206,16 +209,16 @@ namespace Corrade
                                 !UUID.TryParse(
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
-                                            message)), out targetUUID) && !AgentNameToUUID(
+                                            corradeCommandParameters.Message)), out targetUUID) && !AgentNameToUUID(
                                                 wasInput(
                                                     wasKeyValueGet(
                                                         wasOutput(
                                                             wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
-                                                        message)),
+                                                        corradeCommandParameters.Message)),
                                                 wasInput(
                                                     wasKeyValueGet(
                                                         wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
-                                                        message)),
+                                                        corradeCommandParameters.Message)),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
                                                 ref targetUUID))
@@ -226,7 +229,8 @@ namespace Corrade
                                 wasGetEnumValueFromDescription<Action>(
                                     wasInput(
                                         wasKeyValueGet(
-                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
+                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                                            corradeCommandParameters.Message))
                                         .ToLowerInvariant()))
                             {
                                 case Action.ADD:
@@ -285,16 +289,16 @@ namespace Corrade
                                 !UUID.TryParse(
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
-                                            message)), out targetUUID) && !AgentNameToUUID(
+                                            corradeCommandParameters.Message)), out targetUUID) && !AgentNameToUUID(
                                                 wasInput(
                                                     wasKeyValueGet(
                                                         wasOutput(
                                                             wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
-                                                        message)),
+                                                        corradeCommandParameters.Message)),
                                                 wasInput(
                                                     wasKeyValueGet(
                                                         wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
-                                                        message)),
+                                                        corradeCommandParameters.Message)),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
                                                 ref targetUUID))
@@ -305,7 +309,8 @@ namespace Corrade
                                 wasGetEnumValueFromDescription<Action>(
                                     wasInput(
                                         wasKeyValueGet(
-                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
+                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                                            corradeCommandParameters.Message))
                                         .ToLowerInvariant()))
                             {
                                 case Action.ADD:

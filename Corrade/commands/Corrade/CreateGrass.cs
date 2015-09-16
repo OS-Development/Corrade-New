@@ -16,10 +16,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> creategrass =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> creategrass =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -28,7 +28,7 @@ namespace Corrade
                         !Vector3.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out position))
                     {
                         throw new ScriptException(ScriptError.INVALID_POSITION);
@@ -45,14 +45,14 @@ namespace Corrade
                         !Quaternion.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out rotation))
                     {
                         rotation = Quaternion.CreateFromEulers(0, 0, 0);
                     }
                     string region =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                            message));
+                            corradeCommandParameters.Message));
                     Simulator simulator =
                         Client.Network.Simulators.AsParallel().FirstOrDefault(
                             o =>
@@ -77,7 +77,7 @@ namespace Corrade
                         !Vector3.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SCALE)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out scale))
                     {
                         scale = new Vector3(0.5f, 0.5f, 0.5f);
@@ -95,7 +95,7 @@ namespace Corrade
                     string type = wasInput(
                         wasKeyValueGet(
                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                            message));
+                            corradeCommandParameters.Message));
                     FieldInfo grassFieldInfo = typeof (Grass).GetFields(
                         BindingFlags.Public |
                         BindingFlags.Static)
@@ -110,7 +110,7 @@ namespace Corrade
                     // Finally, add the grass to the simulator.
                     Client.Objects.AddGrass(simulator, scale, rotation, position,
                         (Grass) grassFieldInfo.GetValue(null),
-                        commandGroup.UUID);
+                        corradeCommandParameters.Group.UUID);
                 };
         }
     }

@@ -15,8 +15,8 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> listcommands =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> listcommands =
+                (corradeCommandParameters, result) =>
                 {
                     HashSet<string> data = new HashSet<string>();
                     object LockObject = new object();
@@ -30,8 +30,9 @@ namespace Corrade
                         CommandPermissionMaskAttribute commandPermissionMaskAttribute =
                             wasGetAttributeFromEnumValue<CommandPermissionMaskAttribute>(scriptKey);
                         if (commandPermissionMaskAttribute == null) return;
-                        if (!commandGroup.Equals(default(Group)) &&
-                            !(commandGroup.PermissionMask & commandPermissionMaskAttribute.PermissionMask).Equals(0))
+                        if (!corradeCommandParameters.Group.Equals(default(Group)) &&
+                            !(corradeCommandParameters.Group.PermissionMask &
+                              commandPermissionMaskAttribute.PermissionMask).Equals(0))
                         {
                             lock (LockObject)
                             {

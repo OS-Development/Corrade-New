@@ -18,11 +18,11 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> batchmute =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> batchmute =
+                (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(commandGroup.Name, (int) Permissions.Mute))
+                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Mute))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -35,7 +35,7 @@ namespace Corrade
 
                     Parallel.ForEach(wasCSVToEnumerable(
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MUTES)),
-                            message)))
+                            corradeCommandParameters.Message)))
                         .AsParallel()
                         .Select((o, p) => new {o, p})
                         .GroupBy(q => q.p/2, q => q.o)
@@ -52,7 +52,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(
                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
-                                            message)).ToLowerInvariant()))
+                                            corradeCommandParameters.Message)).ToLowerInvariant()))
                             {
                                 case Action.MUTE:
 
@@ -89,7 +89,7 @@ namespace Corrade
                                                     wasInput(
                                                         wasKeyValueGet(
                                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                                                            message)),
+                                                            corradeCommandParameters.Message)),
                                                     StringComparison.Ordinal));
                                     // ...or assume "Default" mute type from MuteType
                                     MuteType muteType = muteTypeInfo != null
@@ -103,7 +103,9 @@ namespace Corrade
                                         wasInput(
                                             wasKeyValueGet(
                                                 wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FLAGS)),
-                                                message))).AsParallel().Where(p => !string.IsNullOrEmpty(p)),
+                                                corradeCommandParameters.Message)))
+                                        .AsParallel()
+                                        .Where(p => !string.IsNullOrEmpty(p)),
                                         p =>
                                             Parallel.ForEach(
                                                 typeof (MuteFlags).GetFields(BindingFlags.Public |

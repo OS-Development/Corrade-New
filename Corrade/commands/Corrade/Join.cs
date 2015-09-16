@@ -16,65 +16,68 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> join = (commandGroup, message, result) =>
-            {
-                if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> join =
+                (corradeCommandParameters, result) =>
                 {
-                    throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
-                }
-                IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
-                if (
-                    !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
-                        ref currentGroups))
-                {
-                    throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                }
-                if (new HashSet<UUID>(currentGroups).Contains(commandGroup.UUID))
-                {
-                    throw new ScriptException(ScriptError.ALREADY_IN_GROUP);
-                }
-                OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
-                if (!RequestGroup(commandGroup.UUID, corradeConfiguration.ServicesTimeout, ref targetGroup))
-                {
-                    throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
-                }
-                if (!targetGroup.OpenEnrollment)
-                {
-                    throw new ScriptException(ScriptError.GROUP_NOT_OPEN);
-                }
-                if (!Client.Network.MaxAgentGroups.Equals(-1))
-                {
-                    if (new HashSet<UUID>(currentGroups).Count >= Client.Network.MaxAgentGroups)
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
                     {
-                        throw new ScriptException(ScriptError.MAXIMUM_NUMBER_OF_GROUPS_REACHED);
+                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                }
-                ManualResetEvent GroupJoinedReplyEvent = new ManualResetEvent(false);
-                EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
-                    (sender, args) => GroupJoinedReplyEvent.Set();
-                lock (ClientInstanceGroupsLock)
-                {
-                    Client.Groups.GroupJoinedReply += GroupOperationEventHandler;
-                    Client.Groups.RequestJoinGroup(commandGroup.UUID);
-                    if (!GroupJoinedReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                    IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
+                    if (
+                        !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
+                            ref currentGroups))
                     {
+                        throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
+                    }
+                    if (new HashSet<UUID>(currentGroups).Contains(corradeCommandParameters.Group.UUID))
+                    {
+                        throw new ScriptException(ScriptError.ALREADY_IN_GROUP);
+                    }
+                    OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
+                    if (
+                        !RequestGroup(corradeCommandParameters.Group.UUID, corradeConfiguration.ServicesTimeout,
+                            ref targetGroup))
+                    {
+                        throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
+                    }
+                    if (!targetGroup.OpenEnrollment)
+                    {
+                        throw new ScriptException(ScriptError.GROUP_NOT_OPEN);
+                    }
+                    if (!Client.Network.MaxAgentGroups.Equals(-1))
+                    {
+                        if (new HashSet<UUID>(currentGroups).Count >= Client.Network.MaxAgentGroups)
+                        {
+                            throw new ScriptException(ScriptError.MAXIMUM_NUMBER_OF_GROUPS_REACHED);
+                        }
+                    }
+                    ManualResetEvent GroupJoinedReplyEvent = new ManualResetEvent(false);
+                    EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
+                        (sender, args) => GroupJoinedReplyEvent.Set();
+                    lock (ClientInstanceGroupsLock)
+                    {
+                        Client.Groups.GroupJoinedReply += GroupOperationEventHandler;
+                        Client.Groups.RequestJoinGroup(corradeCommandParameters.Group.UUID);
+                        if (!GroupJoinedReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                        {
+                            Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
+                            throw new ScriptException(ScriptError.TIMEOUT_JOINING_GROUP);
+                        }
                         Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
-                        throw new ScriptException(ScriptError.TIMEOUT_JOINING_GROUP);
                     }
-                    Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
-                }
-                currentGroups = Enumerable.Empty<UUID>();
-                if (
-                    !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
-                        ref currentGroups))
-                {
-                    throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                }
-                if (!new HashSet<UUID>(currentGroups).Contains(commandGroup.UUID))
-                {
-                    throw new ScriptException(ScriptError.COULD_NOT_JOIN_GROUP);
-                }
-            };
+                    currentGroups = Enumerable.Empty<UUID>();
+                    if (
+                        !GetCurrentGroups(corradeConfiguration.ServicesTimeout,
+                            ref currentGroups))
+                    {
+                        throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
+                    }
+                    if (!new HashSet<UUID>(currentGroups).Contains(corradeCommandParameters.Group.UUID))
+                    {
+                        throw new ScriptException(ScriptError.COULD_NOT_JOIN_GROUP);
+                    }
+                };
         }
     }
 }

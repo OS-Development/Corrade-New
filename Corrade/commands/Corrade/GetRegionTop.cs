@@ -17,10 +17,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> getregiontop =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> getregiontop =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -32,7 +32,8 @@ namespace Corrade
                     switch (
                         wasGetEnumValueFromDescription<Type>(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)), message))
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                corradeCommandParameters.Message))
                                 .ToLowerInvariant()))
                     {
                         case Type.SCRIPTS:
@@ -87,7 +88,8 @@ namespace Corrade
                     if (
                         !int.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT)), message)),
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT)),
+                                    corradeCommandParameters.Message)),
                             out amount))
                     {
                         amount = topTasks.Count;

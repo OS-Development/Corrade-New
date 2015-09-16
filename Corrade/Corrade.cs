@@ -144,7 +144,8 @@ namespace Corrade
             [XmlEnum(Name = "friendship")] [Description("friendship")] Friendship = 4096,
             [XmlEnum(Name = "execute")] [Description("execute")] Execute = 8192,
             [XmlEnum(Name = "group")] [Description("group")] Group = 16384,
-            [XmlEnum(Name = "filter")] [Description("filter")] Filter = 32768
+            [XmlEnum(Name = "filter")] [Description("filter")] Filter = 32768,
+            [XmlEnum(Name = "schedule")] [Description("schedule")] Schedule = 65536
         }
 
         /// <summary>
@@ -392,7 +393,11 @@ namespace Corrade
             [Status(16450)] [Description("could not retrieve mute list")] COULD_NOT_RETRIEVE_MUTE_LIST,
             [Status(39647)] [Description("mute entry already exists")] MUTE_ENTRY_ALREADY_EXISTS,
             [Status(22961)] [Description("could not add mute entry")] COULD_NOT_ADD_MUTE_ENTRY,
-            [Status(39787)] [Description("timeout reaching destination")] TIMEOUT_REACHING_DESTINATION
+            [Status(39787)] [Description("timeout reaching destination")] TIMEOUT_REACHING_DESTINATION,
+            [Status(10776)] [Description("group schedules exceeded")] GROUP_SCHEDULES_EXCEEDED,
+            [Status(36896)] [Description("no index provided")] NO_INDEX_PROVIDED,
+            [Status(56094)] [Description("no schedule found")] NO_SCHEDULE_FOUND,
+            [Status(41612)] [Description("unknown date time stamp")] UNKNOWN_DATE_TIME_STAMP
         }
 
         /// <summary>
@@ -413,6 +418,7 @@ namespace Corrade
         private static Thread HTTPListenerThread;
         private static HttpListener HTTPListener;
         private static Thread EffectsExpirationThread;
+        private static Thread GroupSchedulesThread;
         private static readonly Random CorradeRandom = new Random();
         private static readonly EventLog CorradeEventLog = new EventLog();
         private static readonly GridClient Client = new GridClient();
@@ -426,6 +432,7 @@ namespace Corrade
         private static readonly FileSystemWatcher AIMLBotConfigurationWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher ConfigurationWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher NotificationsWatcher = new FileSystemWatcher();
+        private static readonly FileSystemWatcher SchedulesWatcher = new FileSystemWatcher();
         private static readonly object AIMLBotLock = new object();
         private static readonly object ClientInstanceGroupsLock = new object();
         private static readonly object ClientInstanceInventoryLock = new object();
@@ -484,7 +491,7 @@ namespace Corrade
 
         private static readonly SerializableDictionary<UUID, HashSet<UUID>> GroupMembers =
             new SerializableDictionary<UUID, HashSet<UUID>>();
-
+        
         private static readonly object GroupMembersLock = new object();
         private static readonly Hashtable GroupWorkers = new Hashtable();
         private static readonly object GroupWorkersLock = new object();
@@ -500,6 +507,8 @@ namespace Corrade
         private static readonly object BeamEffectsLock = new object();
         private static readonly object InputFiltersLock = new object();
         private static readonly object OutputFiltersLock = new object();
+        private static readonly HashSet<GroupSchedule> GroupSchedules = new HashSet<GroupSchedule>();
+        private static readonly object GroupSchedulesLock = new object();
         private static volatile bool AIMLBotBrainCompiled;
 
         /// <summary>
@@ -575,7 +584,7 @@ namespace Corrade
             });
 
         /// <summary>
-        ///     Schedules a load of the configuration file.
+        ///     Schedules a load of the notifications file.
         /// </summary>
         private static readonly Timer NotificationsChangedTimer =
             new Timer(NotificationsChanged =>
@@ -603,6 +612,19 @@ namespace Corrade
                         }
                     })
                 {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+            });
+
+        /// <summary>
+        ///     Schedules a load of the group schedules file.
+        /// </summary>
+        private static readonly Timer GroupSchedulesChangedTimer =
+            new Timer(GroupSchedulesChanged =>
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.GROUP_SCHEDULES_FILE_MODIFIED));
+                lock (GroupSchedulesLock)
+                {
+                    LoadGroupSchedulesState.Invoke();
+                }
             });
 
         /// <summary>
@@ -944,26 +966,23 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action SaveGroupMembersState = () =>
         {
-            if (GroupMembers.Any())
+            try
             {
-                try
+                using (
+                    StreamWriter writer =
+                        new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                            CORRADE_CONSTANTS.GROUP_MEMBERS_STATE_FILE), false, Encoding.UTF8))
                 {
-                    using (
-                        StreamWriter writer =
-                            new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                                CORRADE_CONSTANTS.GROUP_MEMBERS_STATE_FILE), false, Encoding.UTF8))
-                    {
-                        XmlSerializer serializer =
-                            new XmlSerializer(typeof (SerializableDictionary<UUID, HashSet<UUID>>));
-                        serializer.Serialize(writer, GroupMembers);
-                        writer.Flush();
-                    }
+                    XmlSerializer serializer =
+                        new XmlSerializer(typeof (SerializableDictionary<UUID, HashSet<UUID>>));
+                    serializer.Serialize(writer, GroupMembers);
+                    writer.Flush();
                 }
-                catch (Exception e)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_GROUP_MEMBERS_STATE),
-                        e.Message);
-                }
+            }
+            catch (Exception e)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_GROUP_MEMBERS_STATE),
+                    e.Message);
             }
         };
 
@@ -999,6 +1018,73 @@ namespace Corrade
                 {
                     Feedback(
                         wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_GROUP_MEMBERS_STATE),
+                        ex.Message);
+                }
+            }
+        };
+
+        /// <summary>
+        ///     Saves Corrade notifications.
+        /// </summary>
+        private static readonly System.Action SaveGroupSchedulesState = () =>
+        {
+            SchedulesWatcher.EnableRaisingEvents = false;
+            try
+            {
+                using (
+                    StreamWriter writer =
+                        new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                            CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE), false, Encoding.UTF8))
+                {
+                    XmlSerializer serializer = new XmlSerializer(typeof (HashSet<GroupSchedule>));
+                    serializer.Serialize(writer, GroupSchedules);
+                    writer.Flush();
+                }
+            }
+            catch (Exception e)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_GROUP_SCHEDULES_STATE),
+                    e.Message);
+            }
+            SchedulesWatcher.EnableRaisingEvents = true;
+        };
+
+        /// <summary>
+        ///     Loads Corrade notifications.
+        /// </summary>
+        private static readonly System.Action LoadGroupSchedulesState = () =>
+        {
+            string groupSchedulesStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE);
+            if (File.Exists(groupSchedulesStateFile))
+            {
+                try
+                {
+                    using (StreamReader stream = new StreamReader(groupSchedulesStateFile, Encoding.UTF8))
+                    {
+                        XmlSerializer serializer = new XmlSerializer(typeof(HashSet<GroupSchedule>));
+                        Parallel.ForEach((HashSet<GroupSchedule>)serializer.Deserialize(stream),
+                            o =>
+                            {
+                                if (
+                                    !corradeConfiguration.Groups.AsParallel()
+                                        .Any(
+                                            p =>
+                                                p.UUID.Equals(o.Group.UUID) &&
+                                                !(p.PermissionMask & (uint)Permissions.Schedule).Equals(0) &&
+                                                !p.Schedules.Equals(0)))
+                                    return;
+                                lock (GroupSchedulesLock)
+                                {
+                                    GroupSchedules.Add(o);
+                                }
+                            });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_GROUP_SCHEDULES_STATE),
                         ex.Message);
                 }
             }
@@ -1139,6 +1225,7 @@ namespace Corrade
         private static volatile bool runHTTPServer;
         private static volatile bool runCallbackThread = true;
         private static volatile bool runNotificationThread = true;
+        private static volatile bool runGroupSchedulesThread;
         private static volatile bool runGroupMembershipSweepThread;
         private static volatile bool runEffectsExpirationThread;
 
@@ -2034,6 +2121,11 @@ namespace Corrade
                     }
                 }
                 yield break;
+            }
+            // Handle date and time as an LSL timestamp
+            if (data is DateTime)
+            {
+                yield return ((DateTime)data).ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP);
             }
 
             string @string = data.ToString();
@@ -4389,7 +4481,7 @@ namespace Corrade
                 Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_CONFIGURATION_WATCHER), ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
-            // Set-up watcher for dynamically reading the configuration file.
+            // Set-up watcher for dynamically reading the notifications file.
             FileSystemEventHandler HandleNotificationsFileChanged = null;
             try
             {
@@ -4403,7 +4495,24 @@ namespace Corrade
             }
             catch (Exception ex)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_CONFIGURATION_WATCHER), ex.Message);
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_NOTIFICATIONS_WATCHER), ex.Message);
+                Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
+            }
+            // Set-up watcher for dynamically reading the group schedules file.
+            FileSystemEventHandler HandleGroupSchedulesFileChanged = null;
+            try
+            {
+                SchedulesWatcher.Path = wasPathCombine(Directory.GetCurrentDirectory(),
+                    CORRADE_CONSTANTS.STATE_DIRECTORY);
+                SchedulesWatcher.Filter = CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE;
+                SchedulesWatcher.NotifyFilter = NotifyFilters.LastWrite;
+                HandleGroupSchedulesFileChanged = (sender, args) => GroupSchedulesChangedTimer.Change(1000, 0);
+                SchedulesWatcher.Changed += HandleGroupSchedulesFileChanged;
+                SchedulesWatcher.EnableRaisingEvents = true;
+            }
+            catch (Exception ex)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_SCHEDULES_WATCHER), ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
             // Set-up the AIML bot in case it has been enabled.
@@ -4517,8 +4626,10 @@ namespace Corrade
             LoadCorradeCache.Invoke();
             // Load group members.
             LoadGroupMembersState.Invoke();
-            // Load notification states.
+            // Load notification state.
             LoadNotificationState.Invoke();
+            // Load group scheduls state.
+            LoadGroupSchedulesState.Invoke();
             // Start the callback thread to send callbacks.
             Thread CallbackThread = new Thread(() =>
             {
@@ -4642,6 +4753,10 @@ namespace Corrade
             lock (GroupMembersLock)
             {
                 SaveGroupMembersState.Invoke();
+            }
+            lock (GroupSchedulesLock)
+            {
+                SaveGroupSchedulesState.Invoke();
             }
             // Save Corrade caches.
             SaveCorradeCache.Invoke();
@@ -4776,6 +4891,16 @@ namespace Corrade
             {
                 NotificationsWatcher.EnableRaisingEvents = false;
                 NotificationsWatcher.Changed -= HandleNotificationsFileChanged;
+            }
+            catch (Exception)
+            {
+                /* We are going down and we do not care. */
+            }
+            // Disable the group schedule watcher.
+            try
+            {
+                SchedulesWatcher.EnableRaisingEvents = false;
+                SchedulesWatcher.Changed -= HandleGroupSchedulesFileChanged;
             }
             catch (Exception)
             {
@@ -7432,7 +7557,13 @@ namespace Corrade
                 GroupWorkers[commandGroup.Name] = ((uint) GroupWorkers[commandGroup.Name]) + 1;
             }
             // Perform the command.
-            Dictionary<string, string> result = ProcessCommand(message, commandGroup);
+            Dictionary<string, string> result = ProcessCommand(new CorradeCommandParameters
+            {
+                Message = message,
+                Sender = sender,
+                Identifier = identifier,
+                Group = commandGroup
+            });
             // Decrement the group workers.
             lock (GroupWorkersLock)
             {
@@ -7460,20 +7591,19 @@ namespace Corrade
         /// <summary>
         ///     This function is responsible for processing commands.
         /// </summary>
-        /// <param name="message">the message</param>
-        /// <param name="commandGroup">the group for the Corrade command</param>
+        /// <param name="corradeCommandParameters">the command parameters</param>
         /// <returns>a dictionary of key-value pairs representing the results of the command</returns>
-        private static Dictionary<string, string> ProcessCommand(string message, Group commandGroup)
+        private static Dictionary<string, string> ProcessCommand(CorradeCommandParameters corradeCommandParameters)
         {
             Dictionary<string, string> result = new Dictionary<string, string>
             {
                 // add the command group to the response.
-                {wasGetDescriptionFromEnumValue(ScriptKeys.GROUP), commandGroup.Name}
+                {wasGetDescriptionFromEnumValue(ScriptKeys.GROUP), corradeCommandParameters.Group.Name}
             };
 
             // retrieve the command from the message.
             string command =
-                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND)), message));
+                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND)), corradeCommandParameters.Message));
             if (!string.IsNullOrEmpty(command))
             {
                 result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND), command);
@@ -7495,11 +7625,11 @@ namespace Corrade
                     wasGetAttributeFromEnumValue<CorradeCommandAttribute>(scriptKey);
 
                 // Execute the command.
-                execute.CorradeCommand.Invoke(commandGroup, message, result);
+                execute.CorradeCommand.Invoke(corradeCommandParameters, result);
 
                 // Sift the results
                 string pattern =
-                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SIFT)), message));
+                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SIFT)), corradeCommandParameters.Message));
                 string data = string.Empty;
                 switch (
                     !string.IsNullOrEmpty(pattern) &&
@@ -7546,11 +7676,15 @@ namespace Corrade
             result.Add(wasGetDescriptionFromEnumValue(ResultKeys.SUCCESS),
                 success.ToString(CultureInfo.InvariantCulture));
 
+            // add the time stamp
+            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.TIME),
+                DateTime.Now.ToUniversalTime().ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP));
+
             // build afterburn
             object AfterBurnLock = new object();
             HashSet<string> resultKeys = new HashSet<string>(wasGetEnumDescriptions<ResultKeys>());
             HashSet<string> scriptKeys = new HashSet<string>(wasGetEnumDescriptions<ScriptKeys>());
-            Parallel.ForEach(wasKeyValueDecode(message), o =>
+            Parallel.ForEach(wasKeyValueDecode(corradeCommandParameters.Message), o =>
             {
                 // remove keys that are script keys, result keys or invalid key-value pairs
                 if (string.IsNullOrEmpty(o.Key) || resultKeys.Contains(wasInput(o.Key)) ||
@@ -8052,7 +8186,7 @@ namespace Corrade
             public const string LOG_FACILITY = @"Application";
             public const string WEB_REQUEST = @"Web Request";
             public const string CONFIGURATION_FILE = @"Corrade.ini";
-            public const string DATE_TIME_STAMP = @"dd-MM-yyyy HH:mm";
+            public const string DATE_TIME_STAMP = @"dd-MM-yyyy HH:mm:ss";
             public const string INVENTORY_CACHE_FILE = @"Inventory.cache";
             public const string AGENT_CACHE_FILE = @"Agent.cache";
             public const string GROUP_CACHE_FILE = @"Group.cache";
@@ -8064,6 +8198,7 @@ namespace Corrade
             public const string STATE_DIRECTORY = @"state";
             public const string NOTIFICATIONS_STATE_FILE = @"Notifications.state";
             public const string GROUP_MEMBERS_STATE_FILE = @"GroupMembers.state";
+            public const string GROUP_SCHEDULES_STATE_FILE = @"GroupSchedules.state";
             public const string LIBS_DIRECTORY = @"libs";
 
             public static readonly Regex AvatarFullNameRegex = new Regex(@"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$",
@@ -10058,6 +10193,83 @@ namespace Corrade
 
             public void UpdateDynamicConfiguration(CorradeConfiguration configuration)
             {
+                // Enable the group scheduling thread if permissions were granted to groups.
+                switch (configuration.Groups.AsParallel()
+                    .Any(o => !(o.PermissionMask & (uint) Permissions.Schedule).Equals(0) && !o.Schedules.Equals(0)))
+                {
+                    case true:
+                        // Don't start if the expiration thread is already started.
+                        if (GroupSchedulesThread != null) return;
+                        // Start sphere and beam effect expiration thread
+                        runGroupSchedulesThread = true;
+                        GroupSchedulesThread = new Thread(() =>
+                        {
+                            do
+                            {
+                                Thread.Sleep(1000);
+                                HashSet<GroupSchedule> groupSchedules;
+                                lock (GroupSchedulesLock)
+                                {
+                                    groupSchedules =
+                                        new HashSet<GroupSchedule>(GroupSchedules.AsParallel()
+                                            .Where(
+                                                o =>
+                                                    DateTime.Compare(DateTime.Now.ToUniversalTime(),
+                                                        o.At) >= 0));
+                                }
+                                if (groupSchedules.Any())
+                                {
+                                    Parallel.ForEach(groupSchedules,
+                                        o =>
+                                        {
+                                            // Spawn the command.
+                                            CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
+                                                () => HandleCorradeCommand(o.Message, o.Sender, o.Identifier, o.Group),
+                                                corradeConfiguration.MaximumCommandThreads, o.Group.UUID,
+                                                corradeConfiguration.SchedulerExpiration);
+                                            lock (GroupSchedulesLock)
+                                            {
+                                                GroupSchedules.Remove(o);
+                                            }
+                                        });
+                                    lock (GroupSchedulesLock)
+                                    {
+                                        SaveGroupSchedulesState.Invoke();
+                                    }
+                                }
+                            } while (runGroupSchedulesThread);
+                        })
+                        { IsBackground = true, Priority = ThreadPriority.Lowest };
+                        GroupSchedulesThread.Start();
+                        break;
+                    default:
+                        runGroupSchedulesThread = false;
+                        try
+                        {
+                            if (GroupSchedulesThread != null)
+                            {
+                                if (
+                                    (GroupSchedulesThread.ThreadState.Equals(ThreadState.Running) ||
+                                     GroupSchedulesThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                                {
+                                    if (!GroupSchedulesThread.Join(1000))
+                                    {
+                                        GroupSchedulesThread.Abort();
+                                        GroupSchedulesThread.Join();
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            /* We are going down and we do not care. */
+                        }
+                        finally
+                        {
+                            GroupSchedulesThread = null;
+                        }
+                        break;
+                }
                 // Enable AIML in case it was enabled in the configuration file.
                 try
                 {
@@ -10512,7 +10724,12 @@ namespace Corrade
             [Description("notifications file modified")] NOTIFICATIONS_FILE_MODIFIED,
             [Description("error setting up Linden globalization")] ERROR_SETTING_UP_LINDEN_GLOBALIZATION,
             [Description("unable to load Corrade configuration")] UNABLE_TO_LOAD_CORRADE_CONFIGURATION,
-            [Description("unable to save Corrade configuration")] UNABLE_TO_SAVE_CORRADE_CONFIGURATION
+            [Description("unable to save Corrade configuration")] UNABLE_TO_SAVE_CORRADE_CONFIGURATION,
+            [Description("unable to load Corrade group schedules state")] UNABLE_TO_LOAD_CORRADE_GROUP_SCHEDULES_STATE,
+            [Description("unable to save Corrade group schedules state")] UNABLE_TO_SAVE_CORRADE_GROUP_SCHEDULES_STATE,
+            [Description("group schedules file modified")] GROUP_SCHEDULES_FILE_MODIFIED,
+            [Description("error setting up notifications watcher")] ERROR_SETTING_UP_NOTIFICATIONS_WATCHER,
+            [Description("error setting up schedules watcher")] ERROR_SETTING_UP_SCHEDULES_WATCHER
         }
 
         /// <summary>
@@ -10972,6 +11189,7 @@ namespace Corrade
             public HashSet<Permissions> Permissions;
             public UUID UUID;
             public uint Workers;
+            public uint Schedules;
 
             public uint NotificationMask
             {
@@ -11005,6 +11223,27 @@ namespace Corrade
             [Description("fee")] public int Fee;
             [Description("group")] public string Group;
             [Description("session")] public UUID Session;
+        }
+
+        public struct CorradeCommandParameters
+        {
+            [Description("group")] public Group Group;
+            [Description("sender")] public string Sender;
+            [Description("identifier")] public string Identifier;
+            [Description("message")] public string Message;
+        }
+
+        /// <summary>
+        ///     A structure for group scheduled commands.
+        /// </summary>
+        [Serializable]
+        public struct GroupSchedule
+        {
+            [Description("group")] public Group Group;
+            [Description("at")] public DateTime At;
+            [Description("sender")] public string Sender;
+            [Description("identifier")] public string Identifier;
+            [Description("message")] public string Message;
         }
 
         /// <summary>
@@ -11148,6 +11387,7 @@ namespace Corrade
             public struct GRID
             {
                 public const string SECOND_LIFE = @"Second Life";
+                public const string TIME_ZONE = @"Pacific Standard Time";
             }
 
             public struct CHAT
@@ -11172,6 +11412,7 @@ namespace Corrade
             {
                 public const string CSV_DELIMITER = @", ";
                 public const float SENSOR_RANGE = 96;
+                public const string DATE_TIME_STAMP = @"yyy-MM-ddTHH:mm:ss.ffffffZ";
             }
 
             public struct REGION
@@ -11218,6 +11459,7 @@ namespace Corrade
         /// <summary>
         ///     A Corrade notification.
         /// </summary>
+        [Serializable]
         public struct Notification
         {
             public SerializableDictionary<string, string> Afterburn;
@@ -11269,7 +11511,8 @@ namespace Corrade
             [Description("data")] DATA,
             [Description("success")] SUCCESS,
             [Description("error")] ERROR,
-            [Description("status")] STATUS
+            [Description("status")] STATUS,
+            [Description("time")] TIME
         }
 
         /// <summary>
@@ -11327,15 +11570,24 @@ namespace Corrade
         {
             [Description("none")] NONE = 0,
 
+            [IsCorradeCommand(true)]
+            [CommandInputSyntax(
+                "<command=at>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<add|get|remove|list>>&action=add:<time=<Timestamp>>&action=add:<data=<STRING>>&action=get,remove:<index=<INTEGER>>&[callback=<STRING>]"
+                )]
+            [CommandPermissionMask((uint)Permissions.Schedule)]
+            [CorradeCommand("at")]
+            [Description("at")]
+            AT,
+
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=flyto>&<group=<UUID|STRING>>&<position=<VECTOR3>>&[duration=<INTGEGER>]&[affinity=<INTEGER>]&[fly=<BOOL>]&[callback=<STRING>]"
+                "<command=flyto>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR3>>&[duration=<INTGEGER>]&[affinity=<INTEGER>]&[fly=<BOOL>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("flyto")] [Description("flyto")] FLYTO,
 
             [Description("vicinity")] VICINITY,
             [Description("affinity")] AFFINITY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=batchmute>&<group=<UUID|STRING>>&<action=<mute|unmute>>&[mutes=<STRING|UUID[,STRING|UUID...]>]&action=mute:[type=MuteType]&action=mute:[flags=MuteFlags]&[callback=<STRING>]"
+                "<command=batchmute>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<mute|unmute>>&[mutes=<STRING|UUID[,STRING|UUID...]>]&action=mute:[type=MuteType]&action=mute:[flags=MuteFlags]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("batchmute")] [Description("batchmute")] BATCHMUTE,
 
             [Description("mutes")] MUTES,
@@ -12210,12 +12462,12 @@ namespace Corrade
                 FieldInfo fi =
                     typeof (CorradeCommands).GetFields(BindingFlags.Static | BindingFlags.Public)
                         .AsParallel()
-                        .Where(o => o.FieldType == typeof (Action<Group, string, Dictionary<string, string>>))
+                        .Where(o => o.FieldType == typeof (Action<CorradeCommandParameters, Dictionary<string, string>>))
                         .SingleOrDefault(o => o.Name.Equals(command));
-                CorradeCommand = (Action<Group, string, Dictionary<string, string>>) fi?.GetValue(null);
+                CorradeCommand = (Action<CorradeCommandParameters, Dictionary<string, string>>) fi?.GetValue(null);
             }
 
-            public Action<Group, string, Dictionary<string, string>> CorradeCommand { get; }
+            public Action<CorradeCommandParameters, Dictionary<string, string>> CorradeCommand { get; }
         }
 
         private class RLVBehaviourAttribute : Attribute

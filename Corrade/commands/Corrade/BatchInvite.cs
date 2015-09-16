@@ -17,10 +17,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> batchinvite =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> batchinvite =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -31,12 +31,12 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
-                    if (!new HashSet<UUID>(currentGroups).Contains(commandGroup.UUID))
+                    if (!new HashSet<UUID>(currentGroups).Contains(corradeCommandParameters.Group.UUID))
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
                     if (
-                        !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.Invite,
+                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID, GroupPowers.Invite,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
@@ -47,12 +47,12 @@ namespace Corrade
                         string role in
                             wasCSVToEnumerable(
                                 wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
-                                    message)))
+                                    corradeCommandParameters.Message)))
                                 .AsParallel().Where(o => !string.IsNullOrEmpty(o)))
                     {
                         UUID roleUUID;
                         if (!UUID.TryParse(role, out roleUUID) &&
-                            !RoleNameToUUID(role, commandGroup.UUID,
+                            !RoleNameToUUID(role, corradeCommandParameters.Group.UUID,
                                 corradeConfiguration.ServicesTimeout, ref roleUUID))
                         {
                             throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
@@ -68,7 +68,8 @@ namespace Corrade
                         roleUUIDs.Add(UUID.Zero);
                     }
                     if (!roleUUIDs.All(o => o.Equals(UUID.Zero)) &&
-                        !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.AssignMember,
+                        !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                            GroupPowers.AssignMember,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
@@ -84,7 +85,7 @@ namespace Corrade
                     lock (ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
-                        Client.Groups.RequestGroupMembers(commandGroup.UUID);
+                        Client.Groups.RequestGroupMembers(corradeCommandParameters.Group.UUID);
                         if (!groupMembersReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
@@ -97,40 +98,41 @@ namespace Corrade
                     Parallel.ForEach(
                         wasCSVToEnumerable(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AVATARS)),
-                                message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)), o =>
+                                corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
+                        o =>
+                        {
+                            UUID agentUUID;
+                            if (!UUID.TryParse(o, out agentUUID))
+                            {
+                                List<string> fullName = new List<string>(GetAvatarNames(o));
+                                if (
+                                    !AgentNameToUUID(fullName.First(), fullName.Last(),
+                                        corradeConfiguration.ServicesTimeout,
+                                        corradeConfiguration.DataTimeout, ref agentUUID))
                                 {
-                                    UUID agentUUID;
-                                    if (!UUID.TryParse(o, out agentUUID))
+                                    // Add all the unrecognized agents to the returned list.
+                                    lock (LockObject)
                                     {
-                                        List<string> fullName = new List<string>(GetAvatarNames(o));
-                                        if (
-                                            !AgentNameToUUID(fullName.First(), fullName.Last(),
-                                                corradeConfiguration.ServicesTimeout,
-                                                corradeConfiguration.DataTimeout, ref agentUUID))
-                                        {
-                                            // Add all the unrecognized agents to the returned list.
-                                            lock (LockObject)
-                                            {
-                                                data.Add(o);
-                                            }
-                                            return;
-                                        }
+                                        data.Add(o);
                                     }
-                                    // Check if they are in the group already.
-                                    switch (groupMembers.AsParallel().Any(p => p.Value.ID.Equals(agentUUID)))
+                                    return;
+                                }
+                            }
+                            // Check if they are in the group already.
+                            switch (groupMembers.AsParallel().Any(p => p.Value.ID.Equals(agentUUID)))
+                            {
+                                case true: // if they are add to the returned list
+                                    lock (LockObject)
                                     {
-                                        case true: // if they are add to the returned list
-                                            lock (LockObject)
-                                            {
-                                                data.Add(o);
-                                            }
-                                            break;
-                                        default:
-                                            Client.Groups.Invite(commandGroup.UUID, roleUUIDs.ToList(),
-                                                agentUUID);
-                                            break;
+                                        data.Add(o);
                                     }
-                                });
+                                    break;
+                                default:
+                                    Client.Groups.Invite(corradeCommandParameters.Group.UUID, roleUUIDs.ToList(),
+                                        agentUUID);
+                                    break;
+                            }
+                        });
                     if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

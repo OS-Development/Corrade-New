@@ -24,17 +24,17 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> download =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> download =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     object item =
                         StringOrUUID(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
-                                message)));
+                                corradeCommandParameters.Message)));
                     if (item == null)
                         throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
                     FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
@@ -45,7 +45,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(
                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                                            message)),
+                                            corradeCommandParameters.Message)),
                                     StringComparison.Ordinal));
                     switch (assetTypeInfo != null)
                     {
@@ -109,7 +109,7 @@ namespace Corrade
                                 case AssetType.LSLText:
                                 case AssetType.Notecard:
                                     if (
-                                        !HasCorradePermission(commandGroup.Name,
+                                        !HasCorradePermission(corradeCommandParameters.Group.Name,
                                             (int) Permissions.Inventory))
                                     {
                                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
@@ -191,7 +191,7 @@ namespace Corrade
                             string format =
                                 wasInput(wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FORMAT)),
-                                    message));
+                                    corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(format))
                             {
                                 PropertyInfo formatProperty = typeof (ImageFormat).GetProperties(
@@ -249,7 +249,7 @@ namespace Corrade
                     string path =
                         wasInput(wasKeyValueGet(
                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATH)),
-                            message));
+                            corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(path))
                     {
                         result.Add(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
@@ -257,7 +257,7 @@ namespace Corrade
                         return;
                     }
                     if (
-                        !HasCorradePermission(commandGroup.Name, (int) Permissions.System))
+                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.System))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }

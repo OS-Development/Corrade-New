@@ -13,10 +13,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> setconfigurationdata =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> setconfigurationdata =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.System))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.System))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -24,7 +24,7 @@ namespace Corrade
                     {
                         wasCSVToStructure(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                message)), ref corradeConfiguration);
+                                corradeCommandParameters.Message)), ref corradeConfiguration);
                         corradeConfiguration.UpdateDynamicConfiguration(corradeConfiguration);
                         ConfigurationWatcher.EnableRaisingEvents = false;
                         corradeConfiguration.Save(CORRADE_CONSTANTS.CONFIGURATION_FILE, ref corradeConfiguration);

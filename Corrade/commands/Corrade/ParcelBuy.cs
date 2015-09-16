@@ -17,10 +17,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> parcelbuy =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> parcelbuy =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -29,14 +29,14 @@ namespace Corrade
                         !Vector3.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out position))
                     {
                         position = Client.Self.SimPosition;
                     }
                     string region =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                            message));
+                            corradeCommandParameters.Message));
                     Simulator simulator =
                         Client.Network.Simulators.FirstOrDefault(
                             o =>
@@ -57,11 +57,12 @@ namespace Corrade
                         !bool.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FORGROUP)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out forGroup))
                     {
                         if (
-                            !HasGroupPowers(Client.Self.AgentID, commandGroup.UUID, GroupPowers.LandDeed,
+                            !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                                GroupPowers.LandDeed,
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                         {
                             throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
@@ -72,7 +73,7 @@ namespace Corrade
                     if (!bool.TryParse(
                         wasInput(
                             wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REMOVECONTRIBUTION)),
-                                message)),
+                                corradeCommandParameters.Message)),
                         out removeContribution))
                     {
                         removeContribution = true;
@@ -146,11 +147,11 @@ namespace Corrade
                         throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
                     }
                     if (!parcel.SalePrice.Equals(0) &&
-                        !HasCorradePermission(commandGroup.Name, (int) Permissions.Economy))
+                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Economy))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    Client.Parcels.Buy(simulator, parcel.LocalID, forGroup, commandGroup.UUID,
+                    Client.Parcels.Buy(simulator, parcel.LocalID, forGroup, corradeCommandParameters.Group.UUID,
                         removeContribution, parcel.Area, parcel.SalePrice);
                 };
         }

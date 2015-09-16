@@ -13,14 +13,15 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> logout = (commandGroup, message, result) =>
-            {
-                if (!HasCorradePermission(commandGroup.Name, (int) Permissions.System))
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> logout =
+                (corradeCommandParameters, result) =>
                 {
-                    throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
-                }
-                ConnectionSemaphores['u'].Set();
-            };
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.System))
+                    {
+                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                    }
+                    ConnectionSemaphores['u'].Set();
+                };
         }
     }
 }

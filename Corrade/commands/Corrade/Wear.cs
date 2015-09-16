@@ -16,41 +16,43 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> wear = (commandGroup, message, result) =>
-            {
-                if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Grooming))
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> wear =
+                (corradeCommandParameters, result) =>
                 {
-                    throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
-                }
-                string wearables =
-                    wasInput(wasKeyValueGet(
-                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.WEARABLES)), message));
-                if (string.IsNullOrEmpty(wearables))
-                {
-                    throw new ScriptException(ScriptError.EMPTY_WEARABLES);
-                }
-                bool replace;
-                if (
-                    !bool.TryParse(
-                        wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REPLACE)),
-                                message)),
-                        out replace))
-                {
-                    replace = true;
-                }
-                Parallel.ForEach(wasCSVToEnumerable(
-                    wearables).AsParallel().Where(o => !string.IsNullOrEmpty(o)), o =>
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Grooming))
                     {
-                        InventoryBase inventoryBaseItem =
-                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, StringOrUUID(o)
-                                ).AsParallel().FirstOrDefault(p => p is InventoryWearable);
-                        if (inventoryBaseItem == null)
-                            return;
-                        Wear(inventoryBaseItem as InventoryItem, replace);
-                    });
-                RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
-            };
+                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                    }
+                    string wearables =
+                        wasInput(wasKeyValueGet(
+                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.WEARABLES)),
+                            corradeCommandParameters.Message));
+                    if (string.IsNullOrEmpty(wearables))
+                    {
+                        throw new ScriptException(ScriptError.EMPTY_WEARABLES);
+                    }
+                    bool replace;
+                    if (
+                        !bool.TryParse(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REPLACE)),
+                                    corradeCommandParameters.Message)),
+                            out replace))
+                    {
+                        replace = true;
+                    }
+                    Parallel.ForEach(wasCSVToEnumerable(
+                        wearables).AsParallel().Where(o => !string.IsNullOrEmpty(o)), o =>
+                        {
+                            InventoryBase inventoryBaseItem =
+                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, StringOrUUID(o)
+                                    ).AsParallel().FirstOrDefault(p => p is InventoryWearable);
+                            if (inventoryBaseItem == null)
+                                return;
+                            Wear(inventoryBaseItem as InventoryItem, replace);
+                        });
+                    RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
+                };
         }
     }
 }

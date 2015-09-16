@@ -15,10 +15,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> getestatelist =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> getestatelist =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -32,7 +32,8 @@ namespace Corrade
                     switch (
                         wasGetEnumValueFromDescription<Type>(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)), message))
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                corradeCommandParameters.Message))
                                 .ToLowerInvariant()))
                     {
                         case Type.BAN:

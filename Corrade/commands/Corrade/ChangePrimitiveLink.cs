@@ -16,10 +16,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> changeprimitivelink =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> changeprimitivelink =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Interact))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -27,14 +27,16 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)),
+                                corradeCommandParameters.Message)),
                             out range))
                     {
                         range = corradeConfiguration.Range;
                     }
                     Action action = wasGetEnumValueFromDescription<Action>(
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)), message))
+                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                                corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     switch (action)
                     {
@@ -45,7 +47,7 @@ namespace Corrade
                             throw new ScriptException(ScriptError.UNKNOWN_ACTION);
                     }
                     List<string> items = new List<string>(wasCSVToEnumerable(wasInput(wasKeyValueGet(
-                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), message)))
+                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), corradeCommandParameters.Message)))
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o)));
                     if (!items.Any() || (action.Equals(Action.LINK) && items.Count < 2))

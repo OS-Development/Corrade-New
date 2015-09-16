@@ -16,10 +16,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> getmemberroles =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> getmemberroles =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Group))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -30,7 +30,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
                     }
-                    if (!new HashSet<UUID>(currentGroups).Contains(commandGroup.UUID))
+                    if (!new HashSet<UUID>(currentGroups).Contains(corradeCommandParameters.Group.UUID))
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
@@ -38,21 +38,23 @@ namespace Corrade
                     if (
                         !UUID.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
+                                corradeCommandParameters.Message)),
                             out agentUUID) && !AgentNameToUUID(
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 wasInput(
                                     wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
-                                        message)),
+                                        corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 ref agentUUID))
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
                     if (
-                        !AgentInGroup(agentUUID, commandGroup.UUID, corradeConfiguration.ServicesTimeout))
+                        !AgentInGroup(agentUUID, corradeCommandParameters.Group.UUID,
+                            corradeConfiguration.ServicesTimeout))
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_IN_GROUP);
                     }
@@ -68,7 +70,7 @@ namespace Corrade
                     lock (ClientInstanceGroupsLock)
                     {
                         Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
-                        Client.Groups.RequestGroupRolesMembers(commandGroup.UUID);
+                        Client.Groups.RequestGroupRolesMembers(corradeCommandParameters.Group.UUID);
                         if (!GroupRoleMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
@@ -82,9 +84,11 @@ namespace Corrade
                             groupRolesMembers.AsParallel().Where(o => o.Value.Equals(agentUUID)))
                     {
                         string roleName = string.Empty;
-                        switch (!RoleUUIDToName(pair.Key, commandGroup.UUID, corradeConfiguration.ServicesTimeout,
-                            corradeConfiguration.DataTimeout,
-                            ref roleName))
+                        switch (
+                            !RoleUUIDToName(pair.Key, corradeCommandParameters.Group.UUID,
+                                corradeConfiguration.ServicesTimeout,
+                                corradeConfiguration.DataTimeout,
+                                ref roleName))
                         {
                             case true:
                                 continue;

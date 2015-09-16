@@ -16,11 +16,11 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> deletepick =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> deletepick =
+                (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(commandGroup.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
                             (int) Permissions.Grooming))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
@@ -28,7 +28,7 @@ namespace Corrade
                     ManualResetEvent AvatarPicksReplyEvent = new ManualResetEvent(false);
                     string input =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
-                            message));
+                            corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(input))
                     {
                         throw new ScriptException(ScriptError.EMPTY_PICK_NAME);

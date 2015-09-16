@@ -16,10 +16,10 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> replytoinventoryoffer =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> replytoinventoryoffer =
+                (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(commandGroup.Name, (int) Permissions.Inventory))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Inventory))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -28,7 +28,7 @@ namespace Corrade
                         !UUID.TryParse(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION)),
-                                    message)),
+                                    corradeCommandParameters.Message)),
                             out session))
                     {
                         throw new ScriptException(ScriptError.NO_SESSION_SPECIFIED);
@@ -50,7 +50,7 @@ namespace Corrade
                     object folder =
                         StringOrUUID(
                             wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER)),
-                                message)));
+                                corradeCommandParameters.Message)));
                     InventoryFolder inventoryFolder;
                     switch (folder != null)
                     {
@@ -79,7 +79,7 @@ namespace Corrade
                         wasGetEnumValueFromDescription<Action>(
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
-                                    message)).ToLowerInvariant()))
+                                    corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.ACCEPT:
                             lock (InventoryOffersLock)

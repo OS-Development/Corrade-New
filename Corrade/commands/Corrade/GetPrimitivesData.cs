@@ -17,11 +17,11 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static Action<Group, string, Dictionary<string, string>> getprimitivesdata =
-                (commandGroup, message, result) =>
+            public static Action<CorradeCommandParameters, Dictionary<string, string>> getprimitivesdata =
+                (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(commandGroup.Name,
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
                             (int) Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
@@ -30,7 +30,8 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)), message)),
+                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)),
+                                corradeCommandParameters.Message)),
                             out range))
                     {
                         range = corradeConfiguration.Range;
@@ -39,7 +40,8 @@ namespace Corrade
                     object LockObject = new object();
                     switch (wasGetEnumValueFromDescription<Entity>(
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)), message))
+                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
+                                corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
                         case Entity.RANGE:
@@ -63,7 +65,7 @@ namespace Corrade
                                     wasInput(
                                         wasKeyValueGet(
                                             wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
-                                            message)),
+                                            corradeCommandParameters.Message)),
                                     out position))
                             {
                                 position = Client.Self.SimPosition;
@@ -138,16 +140,16 @@ namespace Corrade
                                 !UUID.TryParse(
                                     wasInput(
                                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
-                                            message)), out agentUUID) && !AgentNameToUUID(
+                                            corradeCommandParameters.Message)), out agentUUID) && !AgentNameToUUID(
                                                 wasInput(
                                                     wasKeyValueGet(
                                                         wasOutput(
                                                             wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
-                                                        message)),
+                                                        corradeCommandParameters.Message)),
                                                 wasInput(
                                                     wasKeyValueGet(
                                                         wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
-                                                        message)),
+                                                        corradeCommandParameters.Message)),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
                                                 ref agentUUID))
@@ -203,7 +205,7 @@ namespace Corrade
                         IEnumerable<string> primitiveData = GetStructuredData(o,
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                    message)));
+                                    corradeCommandParameters.Message)));
                         if (primitiveData.Any())
                         {
                             lock (LockObject)
