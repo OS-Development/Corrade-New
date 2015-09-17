@@ -6720,6 +6720,10 @@ namespace Corrade
                     .Any(p => p.Equals(e.Offer.FromAgentName, StringComparison.OrdinalIgnoreCase)))
             {
                 e.Accept = true;
+                // It is accepted, so update the inventory.
+                UpdateInventoryRecursive.Invoke(
+                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                    InventoryFolder);
                 return;
             }
 
@@ -6731,6 +6735,7 @@ namespace Corrade
                 InventoryOffers.Add(e, wait);
             }
 
+            // It is temporary, so update the inventory.
             UpdateInventoryRecursive.Invoke(
                 Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
                     InventoryFolder);
