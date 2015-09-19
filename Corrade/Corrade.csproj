@@ -262,6 +262,9 @@
     <Compile Include="commands\Corrade\GetBalance.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\GetCameraData.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\GetCommand.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -314,6 +317,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetMembers.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\GetMovementData.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetMutes.cs">
@@ -568,6 +574,9 @@
     <Compile Include="commands\Corrade\SearchInventory.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\SetCameraData.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\SetConfigurationData.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -575,6 +584,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\SetHome.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\SetMovementData.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\SetObjectGroup.cs">

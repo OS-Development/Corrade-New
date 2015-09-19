@@ -22,9 +22,9 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     /* Muting and unmuting is masked by the Corrade cache since, although the entries are created,
-             * respectively removed, the change is indeed propagated to the grid but it takes an unuseful
-             * amount of time for the grid to return them when asked to return them.
-             */
+                     * respectively removed, the change is indeed propagated to the grid but it takes an unuseful
+                     * amount of time for the grid to return them when asked to return them.
+                     */
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Mute))
                     {
@@ -113,16 +113,14 @@ namespace Corrade
                                 Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                             }
                             // add the mute to the cache
-                            lock (Cache.Locks.MutesCacheLock)
+                            Cache.MutesCache.Add(new MuteEntry
                             {
-                                Cache.MutesCache.Add(new MuteEntry
-                                {
-                                    Flags = (MuteFlags) muteFlags,
-                                    ID = targetUUID,
-                                    Name = name,
-                                    Type = muteType
-                                });
-                            }
+                                Flags = (MuteFlags) muteFlags,
+                                ID = targetUUID,
+                                Name = name,
+                                Type = muteType
+                            });
+
                             break;
                         case Action.UNMUTE:
                             UUID.TryParse(
@@ -164,10 +162,8 @@ namespace Corrade
                                 Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                             }
                             // remove the mute from the cache
-                            lock (Cache.Locks.MutesCacheLock)
-                            {
-                                Cache.MutesCache.Remove(mute);
-                            }
+                            Cache.MutesCache.Remove(mute);
+
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ACTION);

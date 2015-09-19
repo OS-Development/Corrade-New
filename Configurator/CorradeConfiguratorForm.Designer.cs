@@ -263,6 +263,9 @@
             this.LoadLegacyConfigurationDialog = new System.Windows.Forms.OpenFileDialog();
             this.SaveConfigurationDialog = new System.Windows.Forms.SaveFileDialog();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
+            this.groupBox76 = new System.Windows.Forms.GroupBox();
+            this.LimitsSchedulesResolution = new System.Windows.Forms.TextBox();
+            this.label29 = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.tabPage1.SuspendLayout();
@@ -355,6 +358,7 @@
             this.groupBox22.SuspendLayout();
             this.groupBox21.SuspendLayout();
             this.Status.SuspendLayout();
+            this.groupBox76.SuspendLayout();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -1669,6 +1673,7 @@
             // 
             // tabPage10
             // 
+            this.tabPage10.Controls.Add(this.groupBox76);
             this.tabPage10.Controls.Add(this.groupBox71);
             this.tabPage10.Controls.Add(this.groupBox70);
             this.tabPage10.Controls.Add(this.groupBox69);
@@ -2902,6 +2907,33 @@
             // 
             this.toolTip1.IsBalloon = true;
             // 
+            // groupBox76
+            // 
+            this.groupBox76.Controls.Add(this.label29);
+            this.groupBox76.Controls.Add(this.LimitsSchedulesResolution);
+            this.groupBox76.Location = new System.Drawing.Point(165, 309);
+            this.groupBox76.Name = "groupBox76";
+            this.groupBox76.Size = new System.Drawing.Size(156, 51);
+            this.groupBox76.TabIndex = 15;
+            this.groupBox76.TabStop = false;
+            this.groupBox76.Text = "Schedules Resolution";
+            // 
+            // LimitsSchedulesResolution
+            // 
+            this.LimitsSchedulesResolution.Location = new System.Drawing.Point(62, 21);
+            this.LimitsSchedulesResolution.Name = "LimitsSchedulesResolution";
+            this.LimitsSchedulesResolution.Size = new System.Drawing.Size(87, 22);
+            this.LimitsSchedulesResolution.TabIndex = 0;
+            // 
+            // label29
+            // 
+            this.label29.AutoSize = true;
+            this.label29.Location = new System.Drawing.Point(11, 24);
+            this.label29.Name = "label29";
+            this.label29.Size = new System.Drawing.Size(45, 16);
+            this.label29.TabIndex = 1;
+            this.label29.Text = "Interval";
+            // 
             // CorradeConfiguratorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -3066,6 +3098,8 @@
             this.groupBox21.ResumeLayout(false);
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
+            this.groupBox76.ResumeLayout(false);
+            this.groupBox76.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -3306,6 +3340,9 @@
         private System.Windows.Forms.ToolTip toolTip1;
         private System.Windows.Forms.GroupBox groupBox75;
         private System.Windows.Forms.TextBox GroupSchedules;
+        private System.Windows.Forms.GroupBox groupBox76;
+        private System.Windows.Forms.Label label29;
+        private System.Windows.Forms.TextBox LimitsSchedulesResolution;
     }
 }
 

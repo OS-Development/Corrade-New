@@ -132,16 +132,14 @@ namespace Corrade
                                     {
                                         case true:
                                             // add the mute to the cache
-                                            lock (Cache.Locks.MutesCacheLock)
+                                            Cache.MutesCache.Add(new MuteEntry
                                             {
-                                                Cache.MutesCache.Add(new MuteEntry
-                                                {
-                                                    Flags = (MuteFlags) muteFlags,
-                                                    ID = targetUUID,
-                                                    Name = o.Key,
-                                                    Type = muteType
-                                                });
-                                            }
+                                                Flags = (MuteFlags) muteFlags,
+                                                ID = targetUUID,
+                                                Name = o.Key,
+                                                Type = muteType
+                                            });
+
                                             break;
                                         case false:
                                             lock (LockObject)
@@ -201,10 +199,8 @@ namespace Corrade
                                     {
                                         case true:
                                             // remove the mute from the cache
-                                            lock (Cache.Locks.MutesCacheLock)
-                                            {
-                                                Cache.MutesCache.Remove(mute);
-                                            }
+                                            Cache.MutesCache.Remove(mute);
+
                                             break;
                                         case false:
                                             lock (LockObject)

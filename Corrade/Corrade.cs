@@ -491,7 +491,7 @@ namespace Corrade
 
         private static readonly SerializableDictionary<UUID, HashSet<UUID>> GroupMembers =
             new SerializableDictionary<UUID, HashSet<UUID>>();
-        
+
         private static readonly object GroupMembersLock = new object();
         private static readonly Hashtable GroupWorkers = new Hashtable();
         private static readonly object GroupWorkersLock = new object();
@@ -810,18 +810,21 @@ namespace Corrade
                             if (r is InventoryFolder)
                             {
                                 UUID inventoryFolderUUID = (r as InventoryFolder).UUID;
-                                lock (LockObject)
+                                if (Client.Inventory.Store.GetNodeFor(inventoryFolderUUID).NeedsUpdate)
                                 {
-                                    if (!inventoryFolders.ContainsKey(inventoryFolderUUID))
+                                    lock (LockObject)
                                     {
-                                        inventoryFolders.Add(inventoryFolderUUID, new ManualResetEvent(false));
+                                        if (!inventoryFolders.ContainsKey(inventoryFolderUUID))
+                                        {
+                                            inventoryFolders.Add(inventoryFolderUUID, new ManualResetEvent(false));
+                                        }
                                     }
-                                }
-                                lock (LockObject)
-                                {
-                                    if (!inventoryStopwatch.ContainsKey(inventoryFolderUUID))
+                                    lock (LockObject)
                                     {
-                                        inventoryStopwatch.Add(inventoryFolderUUID, new Stopwatch());
+                                        if (!inventoryStopwatch.ContainsKey(inventoryFolderUUID))
+                                        {
+                                            inventoryStopwatch.Add(inventoryFolderUUID, new Stopwatch());
+                                        }
                                     }
                                 }
                             }
@@ -930,18 +933,13 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action LoadCorradeCache = () =>
         {
-            lock (Cache.Locks.AgentCacheLock)
-            {
-                Cache.AgentCache =
-                    Cache.Load(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
-                        Cache.AgentCache);
-            }
-            lock (Cache.Locks.GroupCacheLock)
-            {
-                Cache.GroupCache =
-                    Cache.Load(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
-                        Cache.GroupCache);
-            }
+            Cache.AgentCache =
+                Cache.Load(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
+                    Cache.AgentCache);
+
+            Cache.GroupCache =
+                Cache.Load(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
+                    Cache.GroupCache);
         };
 
         /// <summary>
@@ -949,16 +947,11 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action SaveCorradeCache = () =>
         {
-            lock (Cache.Locks.AgentCacheLock)
-            {
-                Cache.Save(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
-                    Cache.AgentCache);
-            }
-            lock (Cache.Locks.GroupCacheLock)
-            {
-                Cache.Save(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
-                    Cache.GroupCache);
-            }
+            Cache.Save(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
+                Cache.AgentCache);
+
+            Cache.Save(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
+                Cache.GroupCache);
         };
 
         /// <summary>
@@ -1062,8 +1055,8 @@ namespace Corrade
                 {
                     using (StreamReader stream = new StreamReader(groupSchedulesStateFile, Encoding.UTF8))
                     {
-                        XmlSerializer serializer = new XmlSerializer(typeof(HashSet<GroupSchedule>));
-                        Parallel.ForEach((HashSet<GroupSchedule>)serializer.Deserialize(stream),
+                        XmlSerializer serializer = new XmlSerializer(typeof (HashSet<GroupSchedule>));
+                        Parallel.ForEach((HashSet<GroupSchedule>) serializer.Deserialize(stream),
                             o =>
                             {
                                 if (
@@ -1071,7 +1064,7 @@ namespace Corrade
                                         .Any(
                                             p =>
                                                 p.UUID.Equals(o.Group.UUID) &&
-                                                !(p.PermissionMask & (uint)Permissions.Schedule).Equals(0) &&
+                                                !(p.PermissionMask & (uint) Permissions.Schedule).Equals(0) &&
                                                 !p.Schedules.Equals(0)))
                                     return;
                                 lock (GroupSchedulesLock)
@@ -1147,6 +1140,81 @@ namespace Corrade
                 {
                     Feedback(
                         wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE),
+                        ex.Message);
+                }
+            }
+        };
+
+        /// <summary>
+        ///     Saves Corrade notifications.
+        /// </summary>
+        private static readonly System.Action SaveMovementState = () =>
+        {
+            try
+            {
+                using (
+                    StreamWriter writer =
+                        new StreamWriter(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                            CORRADE_CONSTANTS.MOVEMENT_STATE_FILE), false, Encoding.UTF8))
+                {
+                    XmlSerializer serializer = new XmlSerializer(typeof (AgentMovement));
+                    AgentMovement movement = new AgentMovement
+                    {
+                        AlwaysRun = Client.Self.Movement.AlwaysRun,
+                        AutoResetControls = Client.Self.Movement.AutoResetControls,
+                        Away = Client.Self.Movement.Away,
+                        BodyRotation = Client.Self.Movement.BodyRotation,
+                        Flags = Client.Self.Movement.Flags,
+                        Fly = Client.Self.Movement.Fly,
+                        HeadRotation = Client.Self.Movement.HeadRotation,
+                        Mouselook = Client.Self.Movement.Mouselook,
+                        SitOnGround = Client.Self.Movement.SitOnGround,
+                        StandUp = Client.Self.Movement.StandUp,
+                        State = Client.Self.Movement.State
+                    };
+                    serializer.Serialize(writer, movement);
+                    writer.Flush();
+                }
+            }
+            catch (Exception e)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_MOVEMENT_STATE),
+                    e.Message);
+            }
+        };
+
+        /// <summary>
+        ///     Loads Corrade notifications.
+        /// </summary>
+        private static readonly System.Action LoadMovementState = () =>
+        {
+            string movementStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                CORRADE_CONSTANTS.MOVEMENT_STATE_FILE);
+            if (File.Exists(movementStateFile))
+            {
+                try
+                {
+                    using (StreamReader stream = new StreamReader(movementStateFile, Encoding.UTF8))
+                    {
+                        XmlSerializer serializer = new XmlSerializer(typeof (AgentMovement));
+                        AgentMovement movement = (AgentMovement) serializer.Deserialize(stream);
+                        Client.Self.Movement.AlwaysRun = movement.AlwaysRun;
+                        Client.Self.Movement.AutoResetControls = movement.AutoResetControls;
+                        Client.Self.Movement.Away = movement.Away;
+                        Client.Self.Movement.BodyRotation = movement.BodyRotation;
+                        Client.Self.Movement.Flags = movement.Flags;
+                        Client.Self.Movement.Fly = movement.Fly;
+                        Client.Self.Movement.HeadRotation = movement.HeadRotation;
+                        Client.Self.Movement.Mouselook = movement.Mouselook;
+                        Client.Self.Movement.SitOnGround = movement.SitOnGround;
+                        Client.Self.Movement.StandUp = movement.StandUp;
+                        Client.Self.Movement.State = movement.State;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_MOVEMENT_STATE),
                         ex.Message);
                 }
             }
@@ -2125,7 +2193,7 @@ namespace Corrade
             // Handle date and time as an LSL timestamp
             if (data is DateTime)
             {
-                yield return ((DateTime)data).ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP);
+                yield return ((DateTime) data).ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP);
             }
 
             string @string = data.ToString();
@@ -3897,13 +3965,10 @@ namespace Corrade
         /// <returns>true if the current groups could be fetched</returns>
         private static bool GetCurrentGroups(uint millisecondsTimeout, ref IEnumerable<UUID> groups)
         {
-            lock (Cache.Locks.CurrentGroupsCacheLock)
+            if (Cache.CurrentGroupsCache.Any())
             {
-                if (Cache.CurrentGroupsCache.Any())
-                {
-                    groups = Cache.CurrentGroupsCache;
-                    return true;
-                }
+                groups = Cache.CurrentGroupsCache;
+                return true;
             }
             bool succeeded;
             lock (ClientInstanceGroupsLock)
@@ -3912,10 +3977,7 @@ namespace Corrade
             }
             if (succeeded)
             {
-                lock (Cache.Locks.GroupCacheLock)
-                {
-                    Cache.CurrentGroupsCache = new HashSet<UUID>(groups);
-                }
+                Cache.CurrentGroupsCache = new HashSet<UUID>(groups);
             }
             return succeeded;
         }
@@ -3934,14 +3996,13 @@ namespace Corrade
             ManualResetEvent MuteListUpdatedEvent = new ManualResetEvent(false);
             EventHandler<EventArgs> MuteListUpdatedEventHandler =
                 (sender, args) => MuteListUpdatedEvent.Set();
-            Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
-            Client.Self.RequestMuteList();
-            if (!MuteListUpdatedEvent.WaitOne((int) millisecondsTimeout, false))
+            lock (ClientInstanceSelfLock)
             {
-                mutes = Client.Self.MuteList.Copy().Values;
-                return true;
+                Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
+                Client.Self.RequestMuteList();
+                MuteListUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
+                Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
             }
-            Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
             mutes = Client.Self.MuteList.Copy().Values;
             return true;
         }
@@ -3954,13 +4015,10 @@ namespace Corrade
         /// <returns>true if the current groups could be fetched</returns>
         private static bool GetMutes(uint millisecondsTimeout, ref IEnumerable<MuteEntry> mutes)
         {
-            lock (Cache.Locks.MutesCacheLock)
+            if (Cache.MutesCache != null)
             {
-                if (Cache.MutesCache.Any())
-                {
-                    mutes = Cache.MutesCache;
-                    return true;
-                }
+                mutes = Cache.MutesCache;
+                return true;
             }
             bool succeeded;
             lock (ClientInstanceSelfLock)
@@ -3969,9 +4027,14 @@ namespace Corrade
             }
             if (succeeded)
             {
-                lock (Cache.Locks.MutesCacheLock)
+                switch (Cache.MutesCache != null)
                 {
-                    Cache.MutesCache = new HashSet<MuteEntry>(mutes);
+                    case true:
+                        Cache.MutesCache.UnionWith(mutes);
+                        break;
+                    default:
+                        Cache.MutesCache = new HashSet<MuteEntry>(mutes);
+                        break;
                 }
             }
             return succeeded;
@@ -4630,6 +4693,8 @@ namespace Corrade
             LoadNotificationState.Invoke();
             // Load group scheduls state.
             LoadGroupSchedulesState.Invoke();
+            // Load movement state.
+            LoadMovementState.Invoke();
             // Start the callback thread to send callbacks.
             Thread CallbackThread = new Thread(() =>
             {
@@ -4754,9 +4819,15 @@ namespace Corrade
             {
                 SaveGroupMembersState.Invoke();
             }
+            // Save group schedules.
             lock (GroupSchedulesLock)
             {
                 SaveGroupSchedulesState.Invoke();
+            }
+            // Save movement state.
+            lock (ClientInstanceSelfLock)
+            {
+                SaveMovementState.Invoke();
             }
             // Save Corrade caches.
             SaveCorradeCache.Invoke();
@@ -4993,13 +5064,11 @@ namespace Corrade
         private static void HandleGroupJoined(object sender, GroupOperationEventArgs e)
         {
             // Add the group to the cache.
-            lock (Cache.Locks.CurrentGroupsCacheLock)
+            if (!Cache.CurrentGroupsCache.Contains(e.GroupID))
             {
-                if (!Cache.CurrentGroupsCache.Contains(e.GroupID))
-                {
-                    Cache.CurrentGroupsCache.Add(e.GroupID);
-                }
+                Cache.CurrentGroupsCache.Add(e.GroupID);
             }
+
             // Join group chat if possible.
             if (!Client.Self.GroupChatSessions.ContainsKey(e.GroupID) &&
                 HasGroupPowers(Client.Self.AgentID, e.GroupID, GroupPowers.JoinChat,
@@ -5012,10 +5081,7 @@ namespace Corrade
         private static void HandleGroupLeave(object sender, GroupOperationEventArgs e)
         {
             // Remove the group from the cache.
-            lock (Cache.Locks.CurrentGroupsCacheLock)
-            {
-                Cache.CurrentGroupsCache.Remove(e.GroupID);
-            }
+            Cache.CurrentGroupsCache.Remove(e.GroupID);
         }
 
         private static void HandleLoadURL(object sender, LoadUrlEventArgs e)
@@ -6572,6 +6638,10 @@ namespace Corrade
         {
             // Ignore chat with no message (ie: start / stop typing)
             if (string.IsNullOrEmpty(e.Message)) return;
+            // Check if message is from muted agent or object and ignore it.
+            if (Cache.MutesCache != null && Cache.MutesCache.Any(o => o.ID.Equals(e.SourceID) || o.ID.Equals(e.OwnerID)))
+                return;
+            // Get the full name.
             List<string> fullName = new List<string>(GetAvatarNames(e.FromName));
             Group commandGroup;
             switch (e.Type)
@@ -6722,8 +6792,8 @@ namespace Corrade
                 e.Accept = true;
                 // It is accepted, so update the inventory.
                 UpdateInventoryRecursive.Invoke(
-                Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
-                    InventoryFolder);
+                    Client.Inventory.Store.Items[Client.Inventory.FindFolderForType(e.AssetType)].Data as
+                        InventoryFolder);
                 return;
             }
 
@@ -6926,6 +6996,15 @@ namespace Corrade
                         }
                     })
                     {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                    // Request the mute list.
+                    new Thread(() =>
+                    {
+                        IEnumerable<MuteEntry> mutes = Enumerable.Empty<MuteEntry>();
+                        if (!GetMutes(corradeConfiguration.ServicesTimeout, ref mutes))
+                            return;
+                        Cache.MutesCache.UnionWith(mutes);
+                    })
+                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                     // Set the camera on the avatar.
                     Client.Self.Movement.Camera.LookAt(
                         Client.Self.SimPosition,
@@ -6995,6 +7074,9 @@ namespace Corrade
 
         private static void HandleSelfIM(object sender, InstantMessageEventArgs args)
         {
+            // Check if message is from muted agent and ignore it.
+            if (Cache.MutesCache != null && Cache.MutesCache.Any(o => o.ID.Equals(args.IM.FromAgentID)))
+                return;
             List<string> fullName =
                 new List<string>(
                     GetAvatarNames(args.IM.FromAgentName));
@@ -7266,10 +7348,7 @@ namespace Corrade
                                     ref groupUUID))
                             {
                                 // Remove the group from the cache.
-                                lock (Cache.Locks.CurrentGroupsCacheLock)
-                                {
-                                    Cache.CurrentGroupsCache.Remove(groupUUID);
-                                }
+                                Cache.CurrentGroupsCache.Remove(groupUUID);
                             }
 
                             // Log instant messages,
@@ -7608,7 +7687,8 @@ namespace Corrade
 
             // retrieve the command from the message.
             string command =
-                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND)), corradeCommandParameters.Message));
+                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND)),
+                    corradeCommandParameters.Message));
             if (!string.IsNullOrEmpty(command))
             {
                 result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND), command);
@@ -7634,7 +7714,8 @@ namespace Corrade
 
                 // Sift the results
                 string pattern =
-                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SIFT)), corradeCommandParameters.Message));
+                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SIFT)),
+                        corradeCommandParameters.Message));
                 string data = string.Empty;
                 switch (
                     !string.IsNullOrEmpty(pattern) &&
@@ -8204,6 +8285,7 @@ namespace Corrade
             public const string NOTIFICATIONS_STATE_FILE = @"Notifications.state";
             public const string GROUP_MEMBERS_STATE_FILE = @"GroupMembers.state";
             public const string GROUP_SCHEDULES_STATE_FILE = @"GroupSchedules.state";
+            public const string MOVEMENT_STATE_FILE = @"Movement.state";
             public const string LIBS_DIRECTORY = @"libs";
 
             public static readonly Regex AvatarFullNameRegex = new Regex(@"^(?<first>.*?)([\s\.]|$)(?<last>.*?)$",
@@ -8603,29 +8685,93 @@ namespace Corrade
         /// </summary>
         public struct Cache
         {
-            public static HashSet<Agents> AgentCache = new HashSet<Agents>();
-            public static HashSet<Groups> GroupCache = new HashSet<Groups>();
-            public static HashSet<UUID> CurrentGroupsCache = new HashSet<UUID>();
-            public static HashSet<MuteEntry> MutesCache = new HashSet<MuteEntry>();
+            private static HashSet<Agents> _agentCache = new HashSet<Agents>();
+            private static HashSet<Groups> _groupCache = new HashSet<Groups>();
+            private static HashSet<UUID> _currentGroupsCache = new HashSet<UUID>();
+            private static HashSet<MuteEntry> _mutesCache;
+            private static readonly object AgentCacheLock = new object();
+            private static readonly object GroupCacheLock = new object();
+            private static readonly object CurrentGroupsCacheLock = new object();
+            private static readonly object MutesCacheLock = new object();
+
+            public static HashSet<Agents> AgentCache
+            {
+                get
+                {
+                    lock (AgentCacheLock)
+                    {
+                        return _agentCache;
+                    }
+                }
+                set
+                {
+                    lock (AgentCacheLock)
+                    {
+                        _agentCache = value;
+                    }
+                }
+            }
+
+            public static HashSet<Groups> GroupCache
+            {
+                get
+                {
+                    lock (GroupCacheLock)
+                    {
+                        return _groupCache;
+                    }
+                }
+                set
+                {
+                    lock (AgentCacheLock)
+                    {
+                        _groupCache = value;
+                    }
+                }
+            }
+
+            public static HashSet<UUID> CurrentGroupsCache
+            {
+                get
+                {
+                    lock (CurrentGroupsCacheLock)
+                    {
+                        return _currentGroupsCache;
+                    }
+                }
+                set
+                {
+                    lock (AgentCacheLock)
+                    {
+                        _currentGroupsCache = value;
+                    }
+                }
+            }
+
+            public static HashSet<MuteEntry> MutesCache
+            {
+                get
+                {
+                    lock (MutesCacheLock)
+                    {
+                        return _mutesCache;
+                    }
+                }
+                set
+                {
+                    lock (AgentCacheLock)
+                    {
+                        _mutesCache = value;
+                    }
+                }
+            }
 
             internal static void Purge()
             {
-                lock (Locks.AgentCacheLock)
-                {
-                    AgentCache.Clear();
-                }
-                lock (Locks.GroupCacheLock)
-                {
-                    GroupCache.Clear();
-                }
-                lock (Locks.CurrentGroupsCacheLock)
-                {
-                    CurrentGroupsCache.Clear();
-                }
-                lock (Locks.MutesCacheLock)
-                {
-                    MutesCache.Clear();
-                }
+                AgentCache.Clear();
+                GroupCache.Clear();
+                CurrentGroupsCache.Clear();
+                MutesCache.Clear();
             }
 
             public static void AddAgent(string FirstName, string LastName, UUID agentUUID)
@@ -8637,32 +8783,23 @@ namespace Corrade
                     UUID = agentUUID
                 };
 
-                lock (Locks.AgentCacheLock)
+                if (!AgentCache.Contains(agent))
                 {
-                    if (!AgentCache.Contains(agent))
-                    {
-                        AgentCache.Add(agent);
-                    }
+                    AgentCache.Add(agent);
                 }
             }
 
             public static Agents GetAgent(string FirstName, string LastName)
             {
-                lock (Locks.AgentCacheLock)
-                {
-                    return AgentCache.AsParallel().FirstOrDefault(
-                        o =>
-                            o.FirstName.Equals(FirstName, StringComparison.OrdinalIgnoreCase) &&
-                            o.LastName.Equals(LastName, StringComparison.OrdinalIgnoreCase));
-                }
+                return AgentCache.AsParallel().FirstOrDefault(
+                    o =>
+                        o.FirstName.Equals(FirstName, StringComparison.OrdinalIgnoreCase) &&
+                        o.LastName.Equals(LastName, StringComparison.OrdinalIgnoreCase));
             }
 
             public static Agents GetAgent(UUID agentUUID)
             {
-                lock (Locks.AgentCacheLock)
-                {
-                    return AgentCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(agentUUID));
-                }
+                return AgentCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(agentUUID));
             }
 
             public static void AddGroup(string GroupName, UUID GroupUUID)
@@ -8672,12 +8809,9 @@ namespace Corrade
                     Name = GroupName,
                     UUID = GroupUUID
                 };
-                lock (Locks.GroupCacheLock)
+                if (!GroupCache.Contains(group))
                 {
-                    if (!GroupCache.Contains(group))
-                    {
-                        GroupCache.Add(group);
-                    }
+                    GroupCache.Add(group);
                 }
             }
 
@@ -8738,14 +8872,6 @@ namespace Corrade
             {
                 public string Name;
                 public UUID UUID;
-            }
-
-            public struct Locks
-            {
-                public static readonly object AgentCacheLock = new object();
-                public static readonly object GroupCacheLock = new object();
-                public static readonly object CurrentGroupsCacheLock = new object();
-                public static readonly object MutesCacheLock = new object();
             }
         }
 
@@ -8826,6 +8952,7 @@ namespace Corrade
             private string _regionMessageLogDirectory = @"logs/region";
             private bool _regionMessageLogEnabled;
             private uint _schedulerExpiration = 60000;
+            private uint _schedulesResolution = 1000;
             private uint _servicesTimeout = 60000;
             private string _startLocation = "last";
             private uint _throttleAsset = 100000;
@@ -10137,6 +10264,24 @@ namespace Corrade
                 }
             }
 
+            public uint SchedulesResolution
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _schedulesResolution;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _schedulesResolution = value;
+                    }
+                }
+            }
+
             public string Read(string file)
             {
                 return File.ReadAllText(file, Encoding.UTF8);
@@ -10211,7 +10356,8 @@ namespace Corrade
                         {
                             do
                             {
-                                Thread.Sleep(1000);
+                                // Check schedules with a one second resolution.
+                                Thread.Sleep((int) corradeConfiguration.SchedulesResolution);
                                 HashSet<GroupSchedule> groupSchedules;
                                 lock (GroupSchedulesLock)
                                 {
@@ -10244,7 +10390,7 @@ namespace Corrade
                                 }
                             } while (runGroupSchedulesThread);
                         })
-                        { IsBackground = true, Priority = ThreadPriority.Lowest };
+                        {IsBackground = true, Priority = ThreadPriority.Lowest};
                         GroupSchedulesThread.Start();
                         break;
                     default:
@@ -10734,7 +10880,9 @@ namespace Corrade
             [Description("unable to save Corrade group schedules state")] UNABLE_TO_SAVE_CORRADE_GROUP_SCHEDULES_STATE,
             [Description("group schedules file modified")] GROUP_SCHEDULES_FILE_MODIFIED,
             [Description("error setting up notifications watcher")] ERROR_SETTING_UP_NOTIFICATIONS_WATCHER,
-            [Description("error setting up schedules watcher")] ERROR_SETTING_UP_SCHEDULES_WATCHER
+            [Description("error setting up schedules watcher")] ERROR_SETTING_UP_SCHEDULES_WATCHER,
+            [Description("unable to load Corrade movement state")] UNABLE_TO_LOAD_CORRADE_MOVEMENT_STATE,
+            [Description("unable to save Corrade movement state")] UNABLE_TO_SAVE_CORRADE_MOVEMENT_STATE
         }
 
         /// <summary>
@@ -11192,9 +11340,9 @@ namespace Corrade
             public HashSet<Notifications> Notifications;
             public string Password;
             public HashSet<Permissions> Permissions;
+            public uint Schedules;
             public UUID UUID;
             public uint Workers;
-            public uint Schedules;
 
             public uint NotificationMask
             {
@@ -11233,9 +11381,9 @@ namespace Corrade
         public struct CorradeCommandParameters
         {
             [Description("group")] public Group Group;
-            [Description("sender")] public string Sender;
             [Description("identifier")] public string Identifier;
             [Description("message")] public string Message;
+            [Description("sender")] public string Sender;
         }
 
         /// <summary>
@@ -11244,11 +11392,30 @@ namespace Corrade
         [Serializable]
         public struct GroupSchedule
         {
-            [Description("group")] public Group Group;
             [Description("at")] public DateTime At;
-            [Description("sender")] public string Sender;
+            [Description("group")] public Group Group;
             [Description("identifier")] public string Identifier;
             [Description("message")] public string Message;
+            [Description("sender")] public string Sender;
+        }
+
+        /// <summary>
+        ///     A structure for the agent movement.
+        /// </summary>
+        [Serializable]
+        public struct AgentMovement
+        {
+            public bool AlwaysRun;
+            public bool AutoResetControls;
+            public bool Away;
+            public Quaternion BodyRotation;
+            public AgentFlags Flags;
+            public bool Fly;
+            public Quaternion HeadRotation;
+            public bool Mouselook;
+            public bool SitOnGround;
+            public bool StandUp;
+            public AgentState State;
         }
 
         /// <summary>
@@ -11575,14 +11742,25 @@ namespace Corrade
         {
             [Description("none")] NONE = 0,
 
-            [IsCorradeCommand(true)]
-            [CommandInputSyntax(
+            [IsCorradeCommand(true)] [CommandInputSyntax(
+                "<command=setcameradata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager.AgentMovement.AgentCamera[,AgentManager.AgentMovement.AgentCamera...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("setcameradata")] [Description("setcameradata")] SETCAMERADATA,
+
+            [IsCorradeCommand(true)] [CommandInputSyntax(
+                "<command=getcameradata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager.AgentMovement.AgentCamera[,AgentManager.AgentMovement.AgentCamera...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("getcameradata")] [Description("getcameradata")] GETCAMERADATA,
+
+            [IsCorradeCommand(true)] [CommandInputSyntax(
+                "<command=setmovementdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager.AgentMovement[,AgentManager.AgentMovement...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("setmovementdata")] [Description("setmovementdata")] SETMOVEMENTDATA,
+
+            [IsCorradeCommand(true)] [CommandInputSyntax(
+                "<command=getmovementdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager.AgentMovement[,AgentManager.AgentMovement...]>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("getmovementdata")] [Description("getmovementdata")] GETMOVEMENTDATA,
+
+            [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=at>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<add|get|remove|list>>&action=add:<time=<Timestamp>>&action=add:<data=<STRING>>&action=get,remove:<index=<INTEGER>>&[callback=<STRING>]"
-                )]
-            [CommandPermissionMask((uint)Permissions.Schedule)]
-            [CorradeCommand("at")]
-            [Description("at")]
-            AT,
+                )] [CommandPermissionMask((uint) Permissions.Schedule)] [CorradeCommand("at")] [Description("at")] AT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=flyto>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR3>>&[duration=<INTGEGER>]&[affinity=<INTEGER>]&[fly=<BOOL>]&[callback=<STRING>]"
@@ -12116,8 +12294,7 @@ namespace Corrade
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getselfdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager[,AgentManager...]>>&[callback=<STRING>]"
-                )
-                                     ] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("getselfdata")] [Description("getselfdata")] GETSELFDATA,
+                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("getselfdata")] [Description("getselfdata")] GETSELFDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=deleteclassified>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[callback=<STRING>]"
@@ -13655,16 +13832,14 @@ namespace Corrade
         private static bool GroupNameToUUID(string groupName, uint millisecondsTimeout, uint dataTimeout,
             ref UUID groupUUID)
         {
-            lock (Cache.Locks.GroupCacheLock)
-            {
-                Cache.Groups @group = Cache.GroupCache.AsParallel().FirstOrDefault(o => o.Name.Equals(groupName));
+            Cache.Groups @group = Cache.GroupCache.AsParallel().FirstOrDefault(o => o.Name.Equals(groupName));
 
-                if (!@group.Equals(default(Cache.Groups)))
-                {
-                    groupUUID = @group.UUID;
-                    return true;
-                }
+            if (!@group.Equals(default(Cache.Groups)))
+            {
+                groupUUID = @group.UUID;
+                return true;
             }
+
             bool succeeded;
             lock (ClientInstanceDirectoryLock)
             {
@@ -13672,14 +13847,11 @@ namespace Corrade
             }
             if (succeeded)
             {
-                lock (Cache.Locks.GroupCacheLock)
+                Cache.GroupCache.Add(new Cache.Groups
                 {
-                    Cache.GroupCache.Add(new Cache.Groups
-                    {
-                        Name = groupName,
-                        UUID = groupUUID
-                    });
-                }
+                    Name = groupName,
+                    UUID = groupUUID
+                });
             }
             return succeeded;
         }
@@ -13726,16 +13898,14 @@ namespace Corrade
         private static bool GroupUUIDToName(UUID groupUUID, uint millisecondsTimeout,
             ref string groupName)
         {
-            lock (Cache.Locks.GroupCacheLock)
-            {
-                Cache.Groups @group = Cache.GroupCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
+            Cache.Groups @group = Cache.GroupCache.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID));
 
-                if (!@group.Equals(default(Cache.Groups)))
-                {
-                    groupName = @group.Name;
-                    return true;
-                }
+            if (!@group.Equals(default(Cache.Groups)))
+            {
+                groupName = @group.Name;
+                return true;
             }
+
             bool succeeded;
             lock (ClientInstanceGroupsLock)
             {
@@ -13743,14 +13913,11 @@ namespace Corrade
             }
             if (succeeded)
             {
-                lock (Cache.Locks.GroupCacheLock)
+                Cache.GroupCache.Add(new Cache.Groups
                 {
-                    Cache.GroupCache.Add(new Cache.Groups
-                    {
-                        Name = groupName,
-                        UUID = groupUUID
-                    });
-                }
+                    Name = groupName,
+                    UUID = groupUUID
+                });
             }
             return succeeded;
         }

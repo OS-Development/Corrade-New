@@ -235,6 +235,7 @@ namespace Configurator
             mainForm.LimitsCommandsThreads.Text = corradeConfiguration.MaximumCommandThreads.ToString();
             mainForm.LimitsRLVThreads.Text = corradeConfiguration.MaximumRLVThreads.ToString();
             mainForm.LimitsInstantMessageThreads.Text = corradeConfiguration.MaximumInstantMessageThreads.ToString();
+            mainForm.LimitsSchedulesResolution.Text = corradeConfiguration.SchedulesResolution.ToString();
             mainForm.LimitsClientConnections.Text = corradeConfiguration.ConnectionLimit.ToString();
             mainForm.LimitsClientIdle.Text = corradeConfiguration.ConnectionIdleTime.ToString();
             mainForm.LimitsCallbacksTimeout.Text = corradeConfiguration.CallbackTimeout.ToString();
@@ -416,6 +417,10 @@ namespace Configurator
             if (uint.TryParse(mainForm.LimitsInstantMessageThreads.Text, out outUint))
             {
                 corradeConfiguration.MaximumInstantMessageThreads = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsSchedulesResolution.Text, out outUint))
+            {
+                corradeConfiguration.SchedulesResolution = outUint;
             }
             if (uint.TryParse(mainForm.LimitsClientConnections.Text, out outUint))
             {
@@ -1442,6 +1447,7 @@ namespace Configurator
             private bool _useExpect100Continue;
             private bool _useNaggle;
             private string _vigenereSecret = string.Empty;
+            private uint _schedulesResolution = 1000;
 
             public string FirstName
             {
@@ -2735,6 +2741,24 @@ namespace Configurator
                     lock (ClientInstanceConfigurationLock)
                     {
                         _logoutGrace = value;
+                    }
+                }
+            }
+
+            public uint SchedulesResolution
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _schedulesResolution;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _schedulesResolution = value;
                     }
                 }
             }
