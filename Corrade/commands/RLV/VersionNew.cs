@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
+using OpenMetaverse;
 
 namespace Corrade
 {
@@ -12,7 +13,7 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule> versionnew = version;
+            public static Action<string, RLVRule, UUID> versionnew = version;
         }
     }
 }

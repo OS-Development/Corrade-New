@@ -13,7 +13,7 @@ namespace Corrade
     {
         public partial class RLVBehaviours
         {
-            public static Action<string, RLVRule> version = (message, rule) =>
+            public static Action<string, RLVRule, UUID> version = (message, rule, senderUUID) =>
             {
                 int channel;
                 if (!int.TryParse(rule.Param, out channel) || channel < 1)
