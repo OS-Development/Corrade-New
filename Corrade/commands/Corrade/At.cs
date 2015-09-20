@@ -60,6 +60,8 @@ namespace Corrade
                                     Message = data
                                 });
                             }
+                            // Save the group schedules state.
+                            SaveGroupSchedulesState.Invoke();
                             break;
                         case Action.GET:
                             if (!uint.TryParse(wasInput(
@@ -105,6 +107,8 @@ namespace Corrade
                             {
                                 GroupSchedules.Remove(groupSchedules[(int) index]);
                             }
+                            // Save the group schedules state.
+                            SaveGroupSchedulesState.Invoke();
                             break;
                         case Action.LIST:
                             List<string> csv = new List<string>();

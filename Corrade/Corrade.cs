@@ -906,9 +906,12 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action LoadInventoryCache = () =>
         {
-            int itemsLoaded =
-                Client.Inventory.Store.RestoreFromDisk(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+            int itemsLoaded;
+            lock (ClientInstanceInventoryLock)
+            {
+                itemsLoaded = Client.Inventory.Store.RestoreFromDisk(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
                     CORRADE_CONSTANTS.INVENTORY_CACHE_FILE));
+            }
 
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_LOADED),
                 itemsLoaded < 0 ? "0" : itemsLoaded.ToString(CultureInfo.InvariantCulture));
@@ -921,8 +924,12 @@ namespace Corrade
         {
             string path = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
                 CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
-            int itemsSaved = Client.Inventory.Store.Items.Count;
-            Client.Inventory.Store.SaveToDisk(path);
+            int itemsSaved;
+            lock (ClientInstanceInventoryLock)
+            {
+                itemsSaved = Client.Inventory.Store.Items.Count;
+                Client.Inventory.Store.SaveToDisk(path);
+            }
 
             Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_SAVED),
                 itemsSaved.ToString(CultureInfo.InvariantCulture));
@@ -968,7 +975,10 @@ namespace Corrade
                 {
                     XmlSerializer serializer =
                         new XmlSerializer(typeof (SerializableDictionary<UUID, HashSet<UUID>>));
-                    serializer.Serialize(writer, GroupMembers);
+                    lock (GroupMembersLock)
+                    {
+                        serializer.Serialize(writer, GroupMembers);
+                    }
                     writer.Flush();
                 }
             }
@@ -1030,7 +1040,10 @@ namespace Corrade
                             CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE), false, Encoding.UTF8))
                 {
                     XmlSerializer serializer = new XmlSerializer(typeof (HashSet<GroupSchedule>));
-                    serializer.Serialize(writer, GroupSchedules);
+                    lock (GroupSchedulesLock)
+                    {
+                        serializer.Serialize(writer, GroupSchedules);
+                    }
                     writer.Flush();
                 }
             }
@@ -1097,7 +1110,10 @@ namespace Corrade
                             CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE), false, Encoding.UTF8))
                 {
                     XmlSerializer serializer = new XmlSerializer(typeof (HashSet<Notification>));
-                    serializer.Serialize(writer, GroupNotifications);
+                    lock (GroupNotificationsLock)
+                    {
+                        serializer.Serialize(writer, GroupNotifications);
+                    }
                     writer.Flush();
                 }
             }
@@ -1158,20 +1174,24 @@ namespace Corrade
                             CORRADE_CONSTANTS.MOVEMENT_STATE_FILE), false, Encoding.UTF8))
                 {
                     XmlSerializer serializer = new XmlSerializer(typeof (AgentMovement));
-                    AgentMovement movement = new AgentMovement
+                    AgentMovement movement;
+                    lock (ClientInstanceSelfLock)
                     {
-                        AlwaysRun = Client.Self.Movement.AlwaysRun,
-                        AutoResetControls = Client.Self.Movement.AutoResetControls,
-                        Away = Client.Self.Movement.Away,
-                        BodyRotation = Client.Self.Movement.BodyRotation,
-                        Flags = Client.Self.Movement.Flags,
-                        Fly = Client.Self.Movement.Fly,
-                        HeadRotation = Client.Self.Movement.HeadRotation,
-                        Mouselook = Client.Self.Movement.Mouselook,
-                        SitOnGround = Client.Self.Movement.SitOnGround,
-                        StandUp = Client.Self.Movement.StandUp,
-                        State = Client.Self.Movement.State
-                    };
+                        movement = new AgentMovement
+                        {
+                            AlwaysRun = Client.Self.Movement.AlwaysRun,
+                            AutoResetControls = Client.Self.Movement.AutoResetControls,
+                            Away = Client.Self.Movement.Away,
+                            BodyRotation = Client.Self.Movement.BodyRotation,
+                            Flags = Client.Self.Movement.Flags,
+                            Fly = Client.Self.Movement.Fly,
+                            HeadRotation = Client.Self.Movement.HeadRotation,
+                            Mouselook = Client.Self.Movement.Mouselook,
+                            SitOnGround = Client.Self.Movement.SitOnGround,
+                            StandUp = Client.Self.Movement.StandUp,
+                            State = Client.Self.Movement.State
+                        };
+                    }
                     serializer.Serialize(writer, movement);
                     writer.Flush();
                 }
@@ -4810,25 +4830,13 @@ namespace Corrade
             Client.Network.LoginProgress -= HandleLoginProgress;
             Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
             // Save notification states.
-            lock (GroupNotificationsLock)
-            {
-                SaveNotificationState.Invoke();
-            }
+            SaveNotificationState.Invoke();
             // Save group members.
-            lock (GroupMembersLock)
-            {
-                SaveGroupMembersState.Invoke();
-            }
+            SaveGroupMembersState.Invoke();
             // Save group schedules.
-            lock (GroupSchedulesLock)
-            {
-                SaveGroupSchedulesState.Invoke();
-            }
+            SaveGroupSchedulesState.Invoke();
             // Save movement state.
-            lock (ClientInstanceSelfLock)
-            {
-                SaveMovementState.Invoke();
-            }
+            SaveMovementState.Invoke();
             // Save Corrade caches.
             SaveCorradeCache.Invoke();
             // Stop the sphere effects expiration thread.
@@ -5139,38 +5147,72 @@ namespace Corrade
         private static void ProcessHTTPRequest(IAsyncResult ar)
         {
             // We need to grab the context and everything else outside of the main request.
-            HttpListenerContext httpContext;
+            HttpListenerContext httpContext = null;
             HttpListenerRequest httpRequest;
             string message;
             Group commandGroup;
             // Now grab the message and check that the group is set or abandon.
             try
             {
-                HttpListener httpListener = ar.AsyncState as HttpListener;
+                HttpListener httpListener = (HttpListener) ar.AsyncState;
                 // bail if we are not listening
                 if (httpListener == null || !httpListener.IsListening) return;
                 httpContext = httpListener.EndGetContext(ar);
-                if (httpContext.Request == null) return;
+                if (httpContext.Request == null) throw new HTTPCommandException();
                 httpRequest = httpContext.Request;
                 // only accept POST requests
                 if (!httpRequest.HttpMethod.Equals(WebRequestMethods.Http.Post, StringComparison.OrdinalIgnoreCase))
-                    return;
+                    throw new HTTPCommandException();
                 // only accept connected remote endpoints
-                if (httpRequest.RemoteEndPoint == null) return;
-                // retrieve the message sent.
-                using (StreamReader reader = new StreamReader(httpRequest.InputStream, httpRequest.ContentEncoding))
+                if (httpRequest.RemoteEndPoint == null) throw new HTTPCommandException();
+                // Retrieve the message sent even if it is a compressed stream.
+                switch (httpRequest.ContentEncoding.EncodingName.ToLower())
                 {
-                    message = reader.ReadToEnd();
+                    case "gzip":
+                        using (MemoryStream inputStream = new MemoryStream())
+                        {
+                            using (GZipStream dataGZipStream = new GZipStream(httpRequest.InputStream,
+                                CompressionMode.Decompress, false))
+                            {
+                                dataGZipStream.CopyTo(inputStream);
+                                dataGZipStream.Flush();
+                            }
+                            message = inputStream.ToString();
+                        }
+                        break;
+                    case "deflate":
+                        using (MemoryStream inputStream = new MemoryStream())
+                        {
+                            using (
+                                DeflateStream dataDeflateStream = new DeflateStream(httpRequest.InputStream,
+                                    CompressionMode.Decompress, false))
+                            {
+                                dataDeflateStream.CopyTo(inputStream);
+                                dataDeflateStream.Flush();
+                            }
+                            message = inputStream.ToString();
+                        }
+                        break;
+                    default:
+                        using (
+                            StreamReader reader = new StreamReader(httpRequest.InputStream,
+                                httpRequest.ContentEncoding))
+                        {
+                            message = reader.ReadToEnd();
+                        }
+                        break;
                 }
                 // ignore empty messages right-away.
-                if (string.IsNullOrEmpty(message)) return;
+                if (string.IsNullOrEmpty(message)) throw new HTTPCommandException();
                 commandGroup = GetCorradeGroupFromMessage(message);
                 // do not process anything from unknown groups.
-                switch (!commandGroup.Equals(default(Group)))
-                {
-                    case false:
-                        return;
-                }
+                if (commandGroup.Equals(default(Group))) throw new HTTPCommandException();
+            }
+            catch (HTTPCommandException)
+            {
+                /* Close the connection and bail if the preconditions are not satisifed for running the command. */
+                httpContext?.Response.Close();
+                return;
             }
             catch (HttpListenerException)
             {
@@ -5248,6 +5290,7 @@ namespace Corrade
                             //responseStream.Flush();
                         }
                     }
+                    httpContext.Response.Close();
                 }
                 catch (HttpListenerException)
                 {
@@ -6958,23 +7001,14 @@ namespace Corrade
                 case LoginStatus.Success:
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_SUCCEEDED));
                     // Start inventory update thread.
-                    ManualResetEvent InventoryLoadedEvent = new ManualResetEvent(false);
                     new Thread(() =>
                     {
-                        lock (ClientInstanceInventoryLock)
-                        {
-                            // First load the caches.
-                            LoadInventoryCache.Invoke();
-                        }
+                        // First load the caches.
+                        LoadInventoryCache.Invoke();
                         // Update the inventory.
                         UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
-                        lock (ClientInstanceInventoryLock)
-                        {
-                            // Now save the caches.
-                            SaveInventoryCache.Invoke();
-                        }
-                        // Signal completion.
-                        InventoryLoadedEvent.Set();
+                        // Now save the caches.
+                        SaveInventoryCache.Invoke();
                     })
                     {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
                     // Set current group to land group.
@@ -6987,9 +7021,6 @@ namespace Corrade
                     // Retrieve instant messages.
                     new Thread(() =>
                     {
-                        // Wait till the inventory has loaded to retrieve messages since
-                        // instant messages may contain commands that must be replayed.
-                        InventoryLoadedEvent.WaitOne(Timeout.Infinite, false);
                         lock (ClientInstanceSelfLock)
                         {
                             Client.Self.RetrieveInstantMessages();
@@ -7936,7 +7967,34 @@ namespace Corrade
             }
             catch (WebException ex)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SENDING_POST_REQUEST), URL, ex.Message);
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SENDING_POST_DATA), URL, ex.Message);
+                return;
+            }
+
+            try
+            {
+                // read response
+                using (HttpWebResponse response = (HttpWebResponse) request.GetResponse())
+                {
+                    using (Stream dataStream = response.GetResponseStream())
+                    {
+                        if (dataStream != null)
+                        {
+                            using (
+                                StreamReader streamReader = new StreamReader(dataStream,
+                                    response.CharacterSet != null
+                                        ? Encoding.GetEncoding(response.CharacterSet)
+                                        : Encoding.UTF8))
+                            {
+                                streamReader.ReadToEnd();
+                            }
+                        }
+                    }
+                }
+            }
+            catch (WebException ex)
+            {
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_RECEIVING_POST_DATA), URL, ex.Message);
             }
         }
 
@@ -10383,10 +10441,7 @@ namespace Corrade
                                                 GroupSchedules.Remove(o);
                                             }
                                         });
-                                    lock (GroupSchedulesLock)
-                                    {
-                                        SaveGroupSchedulesState.Invoke();
-                                    }
+                                    SaveGroupSchedulesState.Invoke();
                                 }
                             } while (runGroupSchedulesThread);
                         })
@@ -10870,10 +10925,9 @@ namespace Corrade
             [Description("error updating inventory")] ERROR_UPDATING_INVENTORY,
             [Description("unable to load group members state")] UNABLE_TO_LOAD_GROUP_MEMBERS_STATE,
             [Description("unable to save group members state")] UNABLE_TO_SAVE_GROUP_MEMBERS_STATE,
-            [Description("error sending POST request")] ERROR_SENDING_POST_REQUEST,
+            [Description("error sending POST data")] ERROR_SENDING_POST_DATA,
             [Description("error building POST request")] ERROR_BUILDING_POST_REQUEST,
             [Description("notifications file modified")] NOTIFICATIONS_FILE_MODIFIED,
-            [Description("error setting up Linden globalization")] ERROR_SETTING_UP_LINDEN_GLOBALIZATION,
             [Description("unable to load Corrade configuration")] UNABLE_TO_LOAD_CORRADE_CONFIGURATION,
             [Description("unable to save Corrade configuration")] UNABLE_TO_SAVE_CORRADE_CONFIGURATION,
             [Description("unable to load Corrade group schedules state")] UNABLE_TO_LOAD_CORRADE_GROUP_SCHEDULES_STATE,
@@ -10882,7 +10936,8 @@ namespace Corrade
             [Description("error setting up notifications watcher")] ERROR_SETTING_UP_NOTIFICATIONS_WATCHER,
             [Description("error setting up schedules watcher")] ERROR_SETTING_UP_SCHEDULES_WATCHER,
             [Description("unable to load Corrade movement state")] UNABLE_TO_LOAD_CORRADE_MOVEMENT_STATE,
-            [Description("unable to save Corrade movement state")] UNABLE_TO_SAVE_CORRADE_MOVEMENT_STATE
+            [Description("unable to save Corrade movement state")] UNABLE_TO_SAVE_CORRADE_MOVEMENT_STATE,
+            [Description("error receiving POST data")] ERROR_RECEIVING_POST_DATA
         }
 
         /// <summary>
@@ -11733,6 +11788,27 @@ namespace Corrade
             }
 
             public uint Status { get; }
+        }
+
+        /// <summary>
+        ///     An exception thrown on processing commands via the HTTP server.
+        /// </summary>
+        [Serializable]
+        public class HTTPCommandException : Exception
+        {
+            public HTTPCommandException()
+            {
+            }
+
+            public HTTPCommandException(string message)
+                : base(message)
+            {
+            }
+
+            protected HTTPCommandException(SerializationInfo info, StreamingContext context)
+                : base(info, context)
+            {
+            }
         }
 
         /// <summary>

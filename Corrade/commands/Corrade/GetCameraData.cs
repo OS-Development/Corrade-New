@@ -21,9 +21,13 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<string> data = new List<string>(GetStructuredData(Client.Self.Movement.Camera,
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                            corradeCommandParameters.Message))));
+                    List<string> data = new List<string>();
+                    lock (ClientInstanceSelfLock)
+                    {
+                        data.AddRange(GetStructuredData(Client.Self.Movement.Camera,
+                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                corradeCommandParameters.Message))));
+                    }
                     if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

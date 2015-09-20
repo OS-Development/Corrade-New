@@ -26,11 +26,14 @@ namespace Corrade
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message)),
                         ref camera);
-                    Client.Self.Movement.Camera.AtAxis = camera.AtAxis;
-                    Client.Self.Movement.Camera.Far = camera.Far;
-                    Client.Self.Movement.Camera.LeftAxis = camera.LeftAxis;
-                    Client.Self.Movement.Camera.Position = camera.Position;
-                    Client.Self.Movement.Camera.UpAxis = camera.UpAxis;
+                    lock (ClientInstanceSelfLock)
+                    {
+                        Client.Self.Movement.Camera.AtAxis = camera.AtAxis;
+                        Client.Self.Movement.Camera.Far = camera.Far;
+                        Client.Self.Movement.Camera.LeftAxis = camera.LeftAxis;
+                        Client.Self.Movement.Camera.Position = camera.Position;
+                        Client.Self.Movement.Camera.UpAxis = camera.UpAxis;
+                    }
                 };
         }
     }

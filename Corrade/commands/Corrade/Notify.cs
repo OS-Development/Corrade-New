@@ -195,6 +195,8 @@ namespace Corrade
                                             StringComparison.OrdinalIgnoreCase));
                                 GroupNotifications.Add(notification);
                             }
+                            // Save the notifications state.
+                            SaveNotificationState.Invoke();
                             break;
                         case Action.REMOVE:
                             lock (GroupNotificationsLock)
@@ -268,6 +270,8 @@ namespace Corrade
                                     GroupNotifications = groupNotifications;
                                 }
                             }
+                            // Save the notifications state.
+                            SaveNotificationState.Invoke();
                             break;
                         case Action.LIST:
                             // If the group has no installed notifications, bail
@@ -343,6 +347,8 @@ namespace Corrade
                                 });
                                 GroupNotifications = groupNotifications;
                             }
+                            // Save the notifications state.
+                            SaveNotificationState.Invoke();
                             break;
                         case Action.PURGE:
                             lock (GroupNotificationsLock)
@@ -357,14 +363,11 @@ namespace Corrade
                                     GroupNotifications.Remove(groupNotification);
                                 }
                             }
+                            // Save the notifications state.
+                            SaveNotificationState.Invoke();
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ACTION);
-                    }
-                    // Now save the state.
-                    lock (GroupNotificationsLock)
-                    {
-                        SaveNotificationState.Invoke();
                     }
                 };
         }
