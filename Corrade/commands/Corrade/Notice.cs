@@ -70,6 +70,28 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
                         }
+                        InventoryItem inventoryItem = inventoryBaseItem as InventoryItem;
+                        if (inventoryItem == null)
+                        {
+                            throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
+                        }
+                        // Sending a notice attachment requires copy and transfer permission on the object.
+                        if (!inventoryItem.Permissions.OwnerMask.HasFlag(PermissionMask.Copy) ||
+                            !inventoryItem.Permissions.OwnerMask.HasFlag(PermissionMask.Transfer))
+                        {
+                            throw new ScriptException(ScriptError.NO_PERMISSIONS_FOR_ITEM);
+                        }
+                        // Set requested permissions if any on the item.
+                        string permissions = wasInput(
+                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS)),
+                                corradeCommandParameters.Message));
+                        if (!string.IsNullOrEmpty(permissions))
+                        {
+                            if (!wasSetInventoryItemPermissions(inventoryItem, permissions))
+                            {
+                                throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);
+                            }
+                        }
                         notice.AttachmentID = inventoryBaseItem.UUID;
                     }
                     Client.Groups.SendGroupNotice(corradeCommandParameters.Group.UUID, notice);

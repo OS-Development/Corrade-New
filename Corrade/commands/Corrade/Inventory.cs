@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using OpenMetaverse;
 
 namespace Corrade
@@ -276,48 +275,24 @@ namespace Corrade
                                     break;
                             }
                             item = findPath(path, item);
-                            Action<InventoryItem, string> setPermissions = (o, p) =>
-                            {
-                                OpenMetaverse.Permissions permissions = wasStringToPermissions(p);
-                                o.Permissions = permissions;
-                                Client.Inventory.RequestUpdateItem(o);
-                                bool succeeded = false;
-                                ManualResetEvent ItemReceivedEvent = new ManualResetEvent(false);
-                                EventHandler<ItemReceivedEventArgs> ItemReceivedEventHandler =
-                                    (sender, args) =>
-                                    {
-                                        if (!args.Item.UUID.Equals(o.UUID)) return;
-                                        succeeded = args.Item.Permissions.Equals(permissions);
-                                        ItemReceivedEvent.Set();
-                                    };
-                                lock (ClientInstanceInventoryLock)
-                                {
-                                    Client.Inventory.ItemReceived += ItemReceivedEventHandler;
-                                    Client.Inventory.RequestFetchInventory(o.UUID, o.OwnerID);
-                                    if (
-                                        !ItemReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
-                                    {
-                                        Client.Inventory.ItemReceived -= ItemReceivedEventHandler;
-                                        throw new ScriptException(ScriptError.TIMEOUT_RETRIEVING_ITEM);
-                                    }
-                                    Client.Inventory.ItemReceived -= ItemReceivedEventHandler;
-                                }
-                                if (!succeeded)
-                                {
-                                    throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);
-                                }
-                            };
                             switch (item is InventoryFolder)
                             {
                                 case true:
-                                    foreach (InventoryItem inventoryItem in Client.Inventory.Store.GetContents(
-                                        item.UUID).OfType<InventoryItem>())
+                                    if (Client.Inventory.Store.GetContents(
+                                        item.UUID)
+                                        .OfType<InventoryItem>()
+                                        .Any(
+                                            inventoryItem =>
+                                                !wasSetInventoryItemPermissions(inventoryItem, itemPermissions)))
                                     {
-                                        setPermissions.Invoke(inventoryItem, itemPermissions);
+                                        throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);
                                     }
                                     break;
                                 default:
-                                    setPermissions.Invoke(item as InventoryItem, itemPermissions);
+                                    if (!wasSetInventoryItemPermissions((item as InventoryItem), itemPermissions))
+                                    {
+                                        throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);
+                                    }
                                     break;
                             }
                             UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);

@@ -397,7 +397,8 @@ namespace Corrade
             [Status(10776)] [Description("group schedules exceeded")] GROUP_SCHEDULES_EXCEEDED,
             [Status(36896)] [Description("no index provided")] NO_INDEX_PROVIDED,
             [Status(56094)] [Description("no schedule found")] NO_SCHEDULE_FOUND,
-            [Status(41612)] [Description("unknown date time stamp")] UNKNOWN_DATE_TIME_STAMP
+            [Status(41612)] [Description("unknown date time stamp")] UNKNOWN_DATE_TIME_STAMP,
+            [Status(07457)] [Description("no permissions for item")] NO_PERMISSIONS_FOR_ITEM
         }
 
         /// <summary>
@@ -2567,6 +2568,49 @@ namespace Corrade
             {
                 wasSetInfoValue(info, ref @object, setting);
             }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Sets permissions on inventory items using the [WaS] permission mask format.
+        /// </summary>
+        /// <param name="inventoryItem">an inventory item</param>
+        /// <param name="wasPermissions">the string permissions to set</param>
+        /// <returns>true in case the permissions were set successfully</returns>
+        private static bool wasSetInventoryItemPermissions(InventoryItem inventoryItem, string wasPermissions)
+        {
+            // Update the object.
+            OpenMetaverse.Permissions permissions = wasStringToPermissions(wasPermissions);
+            inventoryItem.Permissions = permissions;
+            lock (ClientInstanceInventoryLock)
+            {
+                Client.Inventory.RequestUpdateItem(inventoryItem);
+            }
+            // Now check that the permissions were set.
+            bool succeeded = false;
+            ManualResetEvent ItemReceivedEvent = new ManualResetEvent(false);
+            EventHandler<ItemReceivedEventArgs> ItemReceivedEventHandler =
+                (sender, args) =>
+                {
+                    if (!args.Item.UUID.Equals(inventoryItem.UUID)) return;
+                    succeeded = args.Item.Permissions.Equals(permissions);
+                    ItemReceivedEvent.Set();
+                };
+            lock (ClientInstanceInventoryLock)
+            {
+                Client.Inventory.ItemReceived += ItemReceivedEventHandler;
+                Client.Inventory.RequestFetchInventory(inventoryItem.UUID, inventoryItem.OwnerID);
+                if (
+                    !ItemReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
+                {
+                    Client.Inventory.ItemReceived -= ItemReceivedEventHandler;
+                    succeeded = false;
+                }
+                Client.Inventory.ItemReceived -= ItemReceivedEventHandler;
+            }
+            return succeeded;
         }
 
         ///////////////////////////////////////////////////////////////////////////

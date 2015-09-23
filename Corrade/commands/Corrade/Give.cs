@@ -44,6 +44,22 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
                             }
+                            // Sending an item requires transfer permission.
+                            if (!inventoryItem.Permissions.OwnerMask.HasFlag(PermissionMask.Transfer))
+                            {
+                                throw new ScriptException(ScriptError.NO_PERMISSIONS_FOR_ITEM);
+                            }
+                            // Set requested permissions if any on the item.
+                            string permissions = wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS)),
+                                    corradeCommandParameters.Message));
+                            if (!string.IsNullOrEmpty(permissions))
+                            {
+                                if (!wasSetInventoryItemPermissions(inventoryItem, permissions))
+                                {
+                                    throw new ScriptException(ScriptError.SETTING_PERMISSIONS_FAILED);
+                                }
+                            }
                             break;
                         default:
                             throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
