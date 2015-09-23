@@ -5233,7 +5233,6 @@ namespace Corrade
                     Dictionary<string, string> result = HandleCorradeCommand(message,
                         CORRADE_CONSTANTS.WEB_REQUEST,
                         httpRequest.RemoteEndPoint.ToString(), commandGroup);
-                    if (result == null) return;
                     using (HttpListenerResponse response = httpContext.Response)
                     {
                         // set the content type based on chosen output filers
@@ -5246,13 +5245,20 @@ namespace Corrade
                                 response.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.TEXT_PLAIN;
                                 break;
                         }
-                        byte[] data = result.Any()
-                            ? Encoding.UTF8.GetBytes(wasKeyValueEncode(wasKeyValueEscape(result)))
-                            : new byte[0];
                         response.StatusCode = (int) HttpStatusCode.OK;
                         response.StatusDescription = "OK";
-                        response.ProtocolVersion = HttpVersion.Version11;
-                        response.KeepAlive = corradeConfiguration.HTTPServerKeepAlive;
+                        response.SendChunked = true;
+                        switch (corradeConfiguration.HTTPServerKeepAlive)
+                        {
+                            case true:
+                                response.ProtocolVersion = HttpVersion.Version11;
+                                break;
+                            default:
+                                response.ProtocolVersion = HttpVersion.Version10;
+                                response.KeepAlive = false;
+                                break;
+                        }
+                        byte[] data = Encoding.UTF8.GetBytes(wasKeyValueEncode(wasKeyValueEscape(result)));
                         using (MemoryStream outputStream = new MemoryStream())
                         {
                             switch (corradeConfiguration.HTTPServerCompression)
@@ -5283,14 +5289,14 @@ namespace Corrade
                                     break;
                             }
                         }
-                        response.ContentLength64 += data.Length;
                         using (Stream responseStream = response.OutputStream)
                         {
-                            responseStream.Write(data, 0, (int) response.ContentLength64);
-                            //responseStream.Flush();
+                            using (BinaryWriter responseStreamWriter = new BinaryWriter(responseStream))
+                            {
+                                responseStreamWriter.Write(data);
+                            }
                         }
                     }
-                    httpContext.Response.Close();
                 }
                 catch (HttpListenerException)
                 {
@@ -5299,6 +5305,11 @@ namespace Corrade
                 catch (Exception ex)
                 {
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_PROCESSING_ABORTED), ex.Message);
+                }
+                finally
+                {
+                    /* Close the connection. */
+                    httpContext?.Response.Close();
                 }
             }, corradeConfiguration.MaximumCommandThreads, commandGroup.UUID,
                 corradeConfiguration.SchedulerExpiration);
@@ -7923,19 +7934,14 @@ namespace Corrade
         /// <param name="millisecondsTimeout">the time in milliseconds for the request to timeout</param>
         private static void wasPOST(string URL, Dictionary<string, string> message, uint millisecondsTimeout)
         {
-            HttpWebRequest request;
-            byte[] byteArray;
             try
             {
-                request = (HttpWebRequest) WebRequest.Create(URL);
+                HttpWebRequest request = (HttpWebRequest) WebRequest.Create(URL);
+                request.UserAgent = CORRADE_CONSTANTS.USER_AGENT;
                 request.Proxy = WebRequest.DefaultWebProxy;
                 request.Timeout = (int) millisecondsTimeout;
                 request.AllowAutoRedirect = true;
                 request.AllowWriteStreamBuffering = true;
-                request.Pipelined = true;
-                request.KeepAlive = true;
-                request.ProtocolVersion = HttpVersion.Version11;
-                request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
                 request.Method = WebRequestMethods.Http.Post;
                 // set the content type based on chosen output filers
                 switch (corradeConfiguration.OutputFilters.Last())
@@ -7947,41 +7953,23 @@ namespace Corrade
                         request.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.TEXT_PLAIN;
                         break;
                 }
-                request.UserAgent = CORRADE_CONSTANTS.USER_AGENT;
-                byteArray =
-                    Encoding.UTF8.GetBytes(wasKeyValueEncode(message));
-                request.ContentLength = byteArray.Length;
-            }
-            catch (Exception ex)
-            {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_BUILDING_POST_REQUEST), URL, ex.Message);
-                return;
-            }
-
-            try
-            {
-                using (Stream dataStream = request.GetRequestStream())
+                // send request
+                using (Stream requestStream = request.GetRequestStream())
                 {
-                    dataStream.Write(byteArray, 0, byteArray.Length);
+                    using (StreamWriter dataStream = new StreamWriter(requestStream))
+                    {
+                        dataStream.Write(wasKeyValueEncode(message));
+                    }
                 }
-            }
-            catch (WebException ex)
-            {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SENDING_POST_DATA), URL, ex.Message);
-                return;
-            }
-
-            try
-            {
                 // read response
                 using (HttpWebResponse response = (HttpWebResponse) request.GetResponse())
                 {
-                    using (Stream dataStream = response.GetResponseStream())
+                    using (Stream responseStream = response.GetResponseStream())
                     {
-                        if (dataStream != null)
+                        if (responseStream != null)
                         {
                             using (
-                                StreamReader streamReader = new StreamReader(dataStream,
+                                StreamReader streamReader = new StreamReader(responseStream,
                                     response.CharacterSet != null
                                         ? Encoding.GetEncoding(response.CharacterSet)
                                         : Encoding.UTF8))
@@ -7992,9 +7980,9 @@ namespace Corrade
                     }
                 }
             }
-            catch (WebException ex)
+            catch (Exception ex)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_RECEIVING_POST_DATA), URL, ex.Message);
+                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_MAKING_POST_REQUEST), URL, ex.Message);
             }
         }
 
@@ -10925,8 +10913,7 @@ namespace Corrade
             [Description("error updating inventory")] ERROR_UPDATING_INVENTORY,
             [Description("unable to load group members state")] UNABLE_TO_LOAD_GROUP_MEMBERS_STATE,
             [Description("unable to save group members state")] UNABLE_TO_SAVE_GROUP_MEMBERS_STATE,
-            [Description("error sending POST data")] ERROR_SENDING_POST_DATA,
-            [Description("error building POST request")] ERROR_BUILDING_POST_REQUEST,
+            [Description("error making POST request")] ERROR_MAKING_POST_REQUEST,
             [Description("notifications file modified")] NOTIFICATIONS_FILE_MODIFIED,
             [Description("unable to load Corrade configuration")] UNABLE_TO_LOAD_CORRADE_CONFIGURATION,
             [Description("unable to save Corrade configuration")] UNABLE_TO_SAVE_CORRADE_CONFIGURATION,
@@ -10936,8 +10923,7 @@ namespace Corrade
             [Description("error setting up notifications watcher")] ERROR_SETTING_UP_NOTIFICATIONS_WATCHER,
             [Description("error setting up schedules watcher")] ERROR_SETTING_UP_SCHEDULES_WATCHER,
             [Description("unable to load Corrade movement state")] UNABLE_TO_LOAD_CORRADE_MOVEMENT_STATE,
-            [Description("unable to save Corrade movement state")] UNABLE_TO_SAVE_CORRADE_MOVEMENT_STATE,
-            [Description("error receiving POST data")] ERROR_RECEIVING_POST_DATA
+            [Description("unable to save Corrade movement state")] UNABLE_TO_SAVE_CORRADE_MOVEMENT_STATE
         }
 
         /// <summary>

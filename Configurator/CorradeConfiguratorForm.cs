@@ -247,7 +247,8 @@ namespace Configurator
             mainForm.LimitsNotificationsThreads.Text = corradeConfiguration.MaximumNotificationThreads.ToString();
             mainForm.LimitsHTTPServerDrain.Text = corradeConfiguration.HTTPServerDrainTimeout.ToString();
             mainForm.LimitsHTTPServerBody.Text = corradeConfiguration.HTTPServerBodyTimeout.ToString();
-            mainForm.LimitsHTTPServerHeader.Text = corradeConfiguration.HTTPServerIdleTimeout.ToString();
+            mainForm.LimitsHTTPServerHeader.Text = corradeConfiguration.HTTPServerHeaderTimeout.ToString();
+            mainForm.LimitsHTTPServerIdle.Text = corradeConfiguration.HTTPServerIdleTimeout.ToString();
             mainForm.LimitsHTTPServerQueue.Text = corradeConfiguration.HTTPServerQueueTimeout.ToString();
             mainForm.LimitsHTTPServerTimeout.Text = corradeConfiguration.HTTPServerTimeout.ToString();
             mainForm.LimitsServicesTimeout.Text = corradeConfiguration.ServicesTimeout.ToString();
@@ -467,6 +468,10 @@ namespace Configurator
                 corradeConfiguration.HTTPServerBodyTimeout = outUint;
             }
             if (uint.TryParse(mainForm.LimitsHTTPServerHeader.Text, out outUint))
+            {
+                corradeConfiguration.HTTPServerHeaderTimeout = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsHTTPServerIdle.Text, out outUint))
             {
                 corradeConfiguration.HTTPServerIdleTimeout = outUint;
             }
