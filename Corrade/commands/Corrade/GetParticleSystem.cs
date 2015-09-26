@@ -6,7 +6,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Text;
 using OpenMetaverse;
 
@@ -99,11 +98,11 @@ namespace Corrade
                         particleSystem.Append(" | PSYS_SRC_PATTERN_ANGLE_CONE_EMPTY");
                     particleSystem.Append(",");
                     particleSystem.Append("PSYS_PART_START_ALPHA, " +
-                                          string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                          string.Format(Utils.EnUsCulture, "{0:0.00000}",
                                               primitive.ParticleSys.PartStartColor.A) +
                                           ",");
                     particleSystem.Append("PSYS_PART_END_ALPHA, " +
-                                          string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                          string.Format(Utils.EnUsCulture, "{0:0.00000}",
                                               primitive.ParticleSys.PartEndColor.A) +
                                           ",");
                     particleSystem.Append("PSYS_PART_START_COLOR, " +
@@ -112,53 +111,53 @@ namespace Corrade
                     particleSystem.Append("PSYS_PART_END_COLOR, " + primitive.ParticleSys.PartEndColor.ToRGBString() +
                                           ",");
                     particleSystem.Append("PSYS_PART_START_SCALE, <" +
-                                          string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                          string.Format(Utils.EnUsCulture, "{0:0.00000}",
                                               primitive.ParticleSys.PartStartScaleX) + ", " +
-                                          string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                          string.Format(Utils.EnUsCulture, "{0:0.00000}",
                                               primitive.ParticleSys.PartStartScaleY) +
                                           ", 0>, ");
                     particleSystem.Append("PSYS_PART_END_SCALE, <" +
-                                          string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                          string.Format(Utils.EnUsCulture, "{0:0.00000}",
                                               primitive.ParticleSys.PartEndScaleX) + ", " +
-                                          string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                          string.Format(Utils.EnUsCulture, "{0:0.00000}",
                                               primitive.ParticleSys.PartEndScaleY) +
                                           ", 0>, ");
                     particleSystem.Append("PSYS_PART_MAX_AGE, " +
-                                          string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                          string.Format(Utils.EnUsCulture, "{0:0.00000}",
                                               primitive.ParticleSys.PartMaxAge) +
                                           ",");
                     particleSystem.Append("PSYS_SRC_MAX_AGE, " +
-                                          string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                          string.Format(Utils.EnUsCulture, "{0:0.00000}",
                                               primitive.ParticleSys.MaxAge) +
                                           ",");
                     particleSystem.Append("PSYS_SRC_ACCEL, " + primitive.ParticleSys.PartAcceleration +
                                           ",");
                     particleSystem.Append("PSYS_SRC_BURST_PART_COUNT, " +
-                                          string.Format(CultureInfo.InvariantCulture, "{0:0}",
+                                          string.Format(Utils.EnUsCulture, "{0:0}",
                                               primitive.ParticleSys.BurstPartCount) +
                                           ",");
                     particleSystem.Append("PSYS_SRC_BURST_RADIUS, " +
-                                          string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                          string.Format(Utils.EnUsCulture, "{0:0.00000}",
                                               primitive.ParticleSys.BurstRadius) +
                                           ",");
                     particleSystem.Append("PSYS_SRC_BURST_RATE, " +
-                                          string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                          string.Format(Utils.EnUsCulture, "{0:0.00000}",
                                               primitive.ParticleSys.BurstRate) +
                                           ",");
                     particleSystem.Append("PSYS_SRC_BURST_SPEED_MIN, " +
-                                          string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                          string.Format(Utils.EnUsCulture, "{0:0.00000}",
                                               primitive.ParticleSys.BurstSpeedMin) +
                                           ",");
                     particleSystem.Append("PSYS_SRC_BURST_SPEED_MAX, " +
-                                          string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                          string.Format(Utils.EnUsCulture, "{0:0.00000}",
                                               primitive.ParticleSys.BurstSpeedMax) +
                                           ",");
                     particleSystem.Append("PSYS_SRC_INNERANGLE, " +
-                                          string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                          string.Format(Utils.EnUsCulture, "{0:0.00000}",
                                               primitive.ParticleSys.InnerAngle) +
                                           ",");
                     particleSystem.Append("PSYS_SRC_OUTERANGLE, " +
-                                          string.Format(CultureInfo.InvariantCulture, "{0:0.00000}",
+                                          string.Format(Utils.EnUsCulture, "{0:0.00000}",
                                               primitive.ParticleSys.OuterAngle) +
                                           ",");
                     particleSystem.Append("PSYS_SRC_OMEGA, " + primitive.ParticleSys.AngularVelocity +

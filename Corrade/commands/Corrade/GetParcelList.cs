@@ -6,7 +6,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -148,7 +147,7 @@ namespace Corrade
                             csv.Add(agent);
                             csv.Add(o.AgentID.ToString());
                             csv.Add(o.Flags.ToString());
-                            csv.Add(o.Time.ToString(CultureInfo.InvariantCulture));
+                            csv.Add(o.Time.ToString(Utils.EnUsCulture));
                         }
                     });
                     if (csv.Any())

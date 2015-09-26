@@ -6,7 +6,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
 using OpenMetaverse;
@@ -96,7 +95,7 @@ namespace Corrade
                     }
                     List<string> data = new List<string>(topTasks.Take(amount).Select(o => new[]
                     {
-                        o.Value.Score.ToString(CultureInfo.InvariantCulture),
+                        o.Value.Score.ToString(Utils.EnUsCulture),
                         o.Value.TaskName,
                         o.Key.ToString(),
                         o.Value.OwnerName,

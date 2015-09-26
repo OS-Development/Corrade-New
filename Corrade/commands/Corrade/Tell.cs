@@ -6,7 +6,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -100,7 +99,7 @@ namespace Corrade
                                             {
                                                 logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                     DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                        CultureInfo.InvariantCulture.DateTimeFormat),
+                                                        Utils.EnUsCulture.DateTimeFormat),
                                                     myName.First(),
                                                     myName.Last(),
                                                     data);
@@ -174,7 +173,7 @@ namespace Corrade
                                                 {
                                                     logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                         DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                            CultureInfo.InvariantCulture.DateTimeFormat),
+                                                            Utils.EnUsCulture.DateTimeFormat),
                                                         myName.First(),
                                                         myName.Last(),
                                                         data);
@@ -253,7 +252,7 @@ namespace Corrade
                                             {
                                                 logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
                                                     DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                        CultureInfo.InvariantCulture.DateTimeFormat),
+                                                        Utils.EnUsCulture.DateTimeFormat),
                                                     fullName.First(),
                                                     fullName.Last(), Enum.GetName(typeof (ChatType), chatType),
                                                     data);

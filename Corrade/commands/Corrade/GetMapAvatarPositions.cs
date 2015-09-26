@@ -6,7 +6,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
 using OpenMetaverse;
@@ -67,7 +66,7 @@ namespace Corrade
                             .Where(o => (o as MapAgentLocation) != null)
                             .Select(o => new[]
                             {
-                                ((MapAgentLocation) o).AvatarCount.ToString(CultureInfo.InvariantCulture),
+                                ((MapAgentLocation) o).AvatarCount.ToString(Utils.EnUsCulture),
                                 new Vector3(o.LocalX, o.LocalY, 0).ToString()
                             }).SelectMany(o => o));
                     if (data.Any())

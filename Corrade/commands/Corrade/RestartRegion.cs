@@ -6,7 +6,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
+using OpenMetaverse;
 
 namespace Corrade
 {
@@ -45,7 +45,7 @@ namespace Corrade
                             // Manually override Client.Estate.RestartRegion();
                             Client.Estate.EstateOwnerMessage(
                                 LINDEN_CONSTANTS.ESTATE.MESSAGES.REGION_RESTART_MESSAGE,
-                                delay.ToString(CultureInfo.InvariantCulture));
+                                delay.ToString(Utils.EnUsCulture));
                             break;
                         case Action.CANCEL:
                             Client.Estate.CancelRestart();

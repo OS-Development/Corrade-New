@@ -6,8 +6,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
+using OpenMetaverse;
 
 namespace Corrade
 {
@@ -28,7 +28,7 @@ namespace Corrade
                             csv.AddRange(new List<string>
                             {
                                 o.Key.ToString(),
-                                o.Value.ToString(CultureInfo.InvariantCulture)
+                                o.Value.ToString(Utils.EnUsCulture)
                             }));
                     if (csv.Any())
                     {

@@ -6,9 +6,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
-using System.Threading.Tasks;
+using OpenMetaverse;
+using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -43,7 +43,7 @@ namespace Corrade
                                 csv.AddRange(new[]
                                 {
                                     wasGetStructureMemberDescription(o, o.Fee),
-                                    o.Fee.ToString(CultureInfo.InvariantCulture)
+                                    o.Fee.ToString(Utils.EnUsCulture)
                                 });
                             }
                         });

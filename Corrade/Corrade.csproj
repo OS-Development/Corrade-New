@@ -226,6 +226,9 @@
     <Compile Include="commands\Corrade\EmptyTrash.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\EstateTeleportUsersHome.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\Execute.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -272,6 +275,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetConnectedRegions.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\GetEstateCovenant.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetEstateList.cs">
@@ -392,6 +398,12 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetRegionParcelsBoundingBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\GetRegionTerrainHeights.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\GetRegionTerrainTextures.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\GetRegionTop.cs">
@@ -653,6 +665,18 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\SetRegionDebug.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\SetRegionInfo.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\SetRegionTerrainTextures.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\SetRegionTerrainHeights.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\Corrade\SetRegionTerrainVariables.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="commands\Corrade\SetScriptRunning.cs">

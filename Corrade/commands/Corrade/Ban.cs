@@ -6,7 +6,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
 using OpenMetaverse;
@@ -281,7 +280,7 @@ namespace Corrade
                                                     csv.Add(agentName);
                                                     csv.Add(o.Key.ToString());
                                                     csv.Add(
-                                                        o.Value.ToString(CultureInfo.InvariantCulture));
+                                                        o.Value.ToString(Utils.EnUsCulture));
                                                 }
                                                 break;
                                         }

@@ -6,7 +6,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
 using OpenMetaverse;
@@ -53,9 +52,9 @@ namespace Corrade
                     ManualResetEvent PayPrceReceivedEvent = new ManualResetEvent(false);
                     EventHandler<PayPriceReplyEventArgs> PayPriceReplyEventHandler = (sender, args) =>
                     {
-                        csv.Add(args.DefaultPrice.ToString(CultureInfo.InvariantCulture));
+                        csv.Add(args.DefaultPrice.ToString(Utils.EnUsCulture));
                         csv.AddRange(
-                            args.ButtonPrices.Select(o => o.ToString(CultureInfo.InvariantCulture)));
+                            args.ButtonPrices.Select(o => o.ToString(Utils.EnUsCulture)));
                         PayPrceReceivedEvent.Set();
                     };
                     lock (ClientInstanceObjectsLock)

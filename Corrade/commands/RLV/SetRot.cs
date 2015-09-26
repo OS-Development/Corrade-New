@@ -18,7 +18,7 @@ namespace Corrade
             {
                 double rotation;
                 if (!rule.Param.Equals(RLV_CONSTANTS.FORCE) ||
-                    !double.TryParse(rule.Option, NumberStyles.Float, CultureInfo.InvariantCulture,
+                    !double.TryParse(rule.Option, NumberStyles.Float, Utils.EnUsCulture,
                         out rotation))
                 {
                     return;

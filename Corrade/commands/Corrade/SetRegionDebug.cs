@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using OpenMetaverse;
 
 namespace Corrade
 {
@@ -32,7 +33,7 @@ namespace Corrade
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out scripts))
                     {
-                        scripts = false;
+                        scripts = !Client.Network.CurrentSim.Flags.HasFlag(RegionFlags.SkipScripts);
                     }
                     bool collisions;
                     if (
@@ -42,7 +43,7 @@ namespace Corrade
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out collisions))
                     {
-                        collisions = false;
+                        collisions = !Client.Network.CurrentSim.Flags.HasFlag(RegionFlags.SkipCollisions);
                     }
                     bool physics;
                     if (
@@ -52,7 +53,7 @@ namespace Corrade
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out physics))
                     {
-                        physics = false;
+                        physics = !Client.Network.CurrentSim.Flags.HasFlag(RegionFlags.SkipPhysics);
                     }
                     Client.Estate.SetRegionDebug(!scripts, !collisions, !physics);
                 };
