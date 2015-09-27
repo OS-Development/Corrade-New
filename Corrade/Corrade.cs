@@ -10815,16 +10815,41 @@ namespace Corrade
                                         using (HTTPListener = new HttpListener())
                                         {
                                             HTTPListener.Prefixes.Add(configuration.HTTPServerPrefix);
-                                            HTTPListener.TimeoutManager.DrainEntityBody =
-                                                TimeSpan.FromMilliseconds(configuration.HTTPServerDrainTimeout);
-                                            HTTPListener.TimeoutManager.EntityBody =
-                                                TimeSpan.FromMilliseconds(configuration.HTTPServerBodyTimeout);
-                                            HTTPListener.TimeoutManager.HeaderWait =
-                                                TimeSpan.FromMilliseconds(configuration.HTTPServerHeaderTimeout);
-                                            HTTPListener.TimeoutManager.IdleConnection =
-                                                TimeSpan.FromMilliseconds(configuration.HTTPServerIdleTimeout);
-                                            HTTPListener.TimeoutManager.RequestQueue =
-                                                TimeSpan.FromMilliseconds(configuration.HTTPServerQueueTimeout);
+                                            // TimeoutManager is not supported on mono (what is mono good for anyway, practically speaking?).
+                                            switch (Environment.OSVersion.Platform)
+                                            {
+                                                case PlatformID.Win32NT:
+                                                    // We have to set this through reflection to prevent mono from bombing.
+                                                    PropertyInfo pi =
+                                                        HTTPListener.GetType()
+                                                            .GetProperty("TimeoutManager",
+                                                                BindingFlags.Public | BindingFlags.Instance);
+                                                    object timeoutManager = pi?.GetValue(HTTPListener, null);
+                                                    // Check if we have TimeoutManager.
+                                                    if (timeoutManager == null) break;
+                                                    // Now, set the properties through reflection.
+                                                    pi = timeoutManager.GetType().GetProperty("DrainEntityBody");
+                                                    pi?.SetValue(timeoutManager,
+                                                        TimeSpan.FromMilliseconds(configuration.HTTPServerDrainTimeout),
+                                                        null);
+                                                    pi = timeoutManager.GetType().GetProperty("EntityBody");
+                                                    pi?.SetValue(timeoutManager,
+                                                        TimeSpan.FromMilliseconds(configuration.HTTPServerBodyTimeout),
+                                                        null);
+                                                    pi = timeoutManager.GetType().GetProperty("HeaderWait");
+                                                    pi?.SetValue(timeoutManager,
+                                                        TimeSpan.FromMilliseconds(configuration.HTTPServerHeaderTimeout),
+                                                        null);
+                                                    pi = timeoutManager.GetType().GetProperty("IdleConnection");
+                                                    pi?.SetValue(timeoutManager,
+                                                        TimeSpan.FromMilliseconds(configuration.HTTPServerIdleTimeout),
+                                                        null);
+                                                    pi = timeoutManager.GetType().GetProperty("RequestQueue");
+                                                    pi?.SetValue(timeoutManager,
+                                                        TimeSpan.FromMilliseconds(configuration.HTTPServerQueueTimeout),
+                                                        null);
+                                                    break;
+                                            }
                                             HTTPListener.Start();
                                             while (runHTTPServer && HTTPListener.IsListening)
                                             {
