@@ -20,10 +20,6 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> replytoscriptpermissionrequest =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
-                    {
-                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID itemUUID;
                     if (
                         !UUID.TryParse(
@@ -44,6 +40,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_TASK_SPECIFIED);
                     }
+                    bool succeeded = true;
                     int permissionMask = 0;
                     Parallel.ForEach(wasCSVToEnumerable(
                         wasInput(
@@ -53,7 +50,65 @@ namespace Corrade
                             Parallel.ForEach(
                                 typeof (ScriptPermission).GetFields(BindingFlags.Public | BindingFlags.Static)
                                     .AsParallel().Where(p => p.Name.Equals(o, StringComparison.Ordinal)),
-                                q => { permissionMask |= ((int) q.GetValue(null)); }));
+                                q =>
+                                {
+                                    ScriptPermission permission = (ScriptPermission) q.GetValue(null);
+                                    switch (permission)
+                                    {
+                                        case ScriptPermission.Debit:
+                                            if (!HasCorradePermission(corradeCommandParameters.Group.Name,
+                                                (int) Permissions.Economy))
+                                            {
+                                                succeeded = false;
+                                                return;
+                                            }
+                                            break;
+                                        case ScriptPermission.Teleport:
+                                            if (!HasCorradePermission(corradeCommandParameters.Group.Name,
+                                                (int) Permissions.Movement))
+                                            {
+                                                succeeded = false;
+                                                return;
+                                            }
+                                            break;
+                                        case ScriptPermission.ChangeJoints:
+                                        case ScriptPermission.ChangeLinks:
+                                            if (!HasCorradePermission(corradeCommandParameters.Group.Name,
+                                                (int) Permissions.Interact))
+                                            {
+                                                succeeded = false;
+                                                return;
+                                            }
+                                            break;
+                                        case ScriptPermission.TriggerAnimation:
+                                        case ScriptPermission.TrackCamera:
+                                        case ScriptPermission.TakeControls:
+                                        case ScriptPermission.RemapControls:
+                                        case ScriptPermission.ControlCamera:
+                                        case ScriptPermission.Attach:
+                                            if (!HasCorradePermission(corradeCommandParameters.Group.Name,
+                                                (int) Permissions.Grooming))
+                                            {
+                                                succeeded = false;
+                                                return;
+                                            }
+                                            break;
+                                        case ScriptPermission.ReleaseOwnership:
+                                        case ScriptPermission.ChangePermissions:
+                                            if (!HasCorradePermission(corradeCommandParameters.Group.Name,
+                                                (int) Permissions.Inventory))
+                                            {
+                                                succeeded = false;
+                                                return;
+                                            }
+                                            break;
+                                    }
+                                    permissionMask |= ((int) q.GetValue(null));
+                                }));
+                    if (!succeeded)
+                    {
+                        throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
+                    }
                     string region = wasInput(
                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
                             corradeCommandParameters.Message));
