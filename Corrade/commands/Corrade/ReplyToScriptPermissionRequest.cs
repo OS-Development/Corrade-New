@@ -56,7 +56,7 @@ namespace Corrade
                                     switch (permission)
                                     {
                                         case ScriptPermission.Debit:
-                                            if (!HasCorradePermission(corradeCommandParameters.Group.Name,
+                                            if (HasCorradePermission(corradeCommandParameters.Group.Name,
                                                 (int) Permissions.Economy))
                                             {
                                                 succeeded = false;
@@ -102,8 +102,13 @@ namespace Corrade
                                                 return;
                                             }
                                             break;
+                                        case ScriptPermission.None:
+                                            return;
+                                        default: // ignore any unimplemented permissions
+                                            succeeded = false;
+                                            return;
                                     }
-                                    permissionMask |= ((int) q.GetValue(null));
+                                    permissionMask |= (int) permission;
                                 }));
                     if (!succeeded)
                     {
