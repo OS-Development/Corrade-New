@@ -141,6 +141,7 @@ namespace Configurator
                                              corradeConfiguration.ExitCodeAbnormal > 100
                 ? -2
                 : corradeConfiguration.ExitCodeAbnormal;
+            mainForm.ClientIdentificationTag.Text = corradeConfiguration.ClientIdentificationTag.ToString();
 
             // logs
             mainForm.ClientLogFile.Text = corradeConfiguration.ClientLogFile;
@@ -265,7 +266,7 @@ namespace Configurator
             {
                 mainForm.Masters.Items.Add(new ListViewItem
                 {
-                    Text = master.FirstName + " " + master.LastName,
+                    Text = master.FirstName + @" " + master.LastName,
                     Tag = master
                 });
             }
@@ -302,6 +303,11 @@ namespace Configurator
             corradeConfiguration.LoginURL = mainForm.LoginURL.Text;
             corradeConfiguration.StartLocation = mainForm.StartLocation.Text;
             corradeConfiguration.TOSAccepted = mainForm.TOS.Checked;
+            UUID outUUID;
+            if (UUID.TryParse(mainForm.ClientIdentificationTag.Text, out outUUID))
+            {
+                corradeConfiguration.ClientIdentificationTag = outUUID;
+            }
             corradeConfiguration.AutoActivateGroup = mainForm.AutoActivateGroup.Checked;
             uint outUint;
             if (uint.TryParse(mainForm.GroupCreateFee.Text, out outUint))
@@ -825,7 +831,7 @@ namespace Configurator
                 corradeConfiguration.Masters.Add(master);
                 Masters.Items[Masters.SelectedIndex] = new ListViewItem
                 {
-                    Text = MasterFirstName.Text + " " + MasterLastName.Text,
+                    Text = MasterFirstName.Text + @" " + MasterLastName.Text,
                     Tag = master
                 };
             }));
@@ -1248,7 +1254,7 @@ namespace Configurator
                 MasterLastName.BackColor = Color.Empty;
                 Masters.Items.Add(new ListViewItem
                 {
-                    Text = MasterFirstName.Text + " " + MasterLastName.Text,
+                    Text = MasterFirstName.Text + @" " + MasterLastName.Text,
                     Tag = new Master {FirstName = MasterFirstName.Text, LastName = MasterLastName.Text}
                 });
                 corradeConfiguration.Masters.Add(new Master
@@ -1278,10 +1284,6 @@ namespace Configurator
         private void ClearPasswordRequested(object sender, EventArgs e)
         {
             mainForm.BeginInvoke((MethodInvoker) (() => { mainForm.Password.Text = string.Empty; }));
-        }
-
-        private void LoadRemoteRequested(object sender, EventArgs e)
-        {
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -1333,6 +1335,11 @@ namespace Configurator
             return field != null ? (T) field.Field.GetRawConstantValue() : default(T);
         }
 
+        private void CorradeConfiguratorShown(object sender, EventArgs e)
+        {
+            mainForm.Version.Text = @"v" + CORRADE_CONSTANTS.CONFIGURATOR_VERSION;
+        }
+
         /// <summary>
         ///     Constants used by Corrade.
         /// </summary>
@@ -1379,6 +1386,7 @@ namespace Configurator
             private uint _callbackQueueLength = 100;
             private uint _callbackThrottle = 1000;
             private uint _callbackTimeout = 5000;
+            private UUID _clientIdentificationTag = new UUID("0705230f-cbd0-99bd-040b-28eb348b5255");
             private bool _clientLogEnabled = true;
             private string _clientLogFile = "logs/Corrade.log";
             private uint _connectionIdleTime = 900000;
@@ -1438,6 +1446,7 @@ namespace Configurator
             private string _regionMessageLogDirectory = @"logs/region";
             private bool _regionMessageLogEnabled;
             private uint _schedulerExpiration = 60000;
+            private uint _schedulesResolution = 1000;
             private uint _servicesTimeout = 60000;
             private string _startLocation = "last";
             private uint _throttleAsset = 100000;
@@ -1452,7 +1461,6 @@ namespace Configurator
             private bool _useExpect100Continue;
             private bool _useNaggle;
             private string _vigenereSecret = string.Empty;
-            private uint _schedulesResolution = 1000;
 
             public string FirstName
             {
@@ -2422,6 +2430,24 @@ namespace Configurator
                     lock (ClientInstanceConfigurationLock)
                     {
                         _TOSAccepted = value;
+                    }
+                }
+            }
+
+            public UUID ClientIdentificationTag
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _clientIdentificationTag;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _clientIdentificationTag = value;
                     }
                 }
             }

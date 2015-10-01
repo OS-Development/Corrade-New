@@ -4658,11 +4658,6 @@ namespace Corrade
                     ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
-            // Network Settings
-            ServicePointManager.DefaultConnectionLimit = (int) corradeConfiguration.ConnectionLimit;
-            ServicePointManager.UseNagleAlgorithm = corradeConfiguration.UseNaggle;
-            ServicePointManager.Expect100Continue = corradeConfiguration.UseExpect100Continue;
-            ServicePointManager.MaxServicePointIdleTime = (int) corradeConfiguration.ConnectionIdleTime;
             // Suppress standard OpenMetaverse logs, we have better ones.
             Settings.LOG_LEVEL = Helpers.LogLevel.None;
             Client.Settings.ALWAYS_REQUEST_PARCEL_ACL = true;
@@ -4687,22 +4682,18 @@ namespace Corrade
             Client.Settings.USE_INTERPOLATION_TIMER = true;
             Client.Settings.FETCH_MISSING_INVENTORY = true;
             Client.Settings.HTTP_INVENTORY = true;
+            Settings.SORT_INVENTORY = true;
             // Transfer textures over HTTP if possible.
             Client.Settings.USE_HTTP_TEXTURES = true;
             // Needed for commands dealing with terrain height.
             Client.Settings.STORE_LAND_PATCHES = true;
             // Decode simulator statistics.
             Client.Settings.ENABLE_SIMSTATS = true;
+            // Send pings for lag measurement.
+            Client.Settings.SEND_PINGS = true;
             // Throttling.
             Client.Settings.THROTTLE_OUTGOING_PACKETS = false;
-            Client.Throttle.Total = corradeConfiguration.ThrottleTotal;
-            Client.Throttle.Land = corradeConfiguration.ThrottleLand;
-            Client.Throttle.Task = corradeConfiguration.ThrottleTask;
-            Client.Throttle.Texture = corradeConfiguration.ThrottleTexture;
-            Client.Throttle.Wind = corradeConfiguration.ThrottleWind;
-            Client.Throttle.Resend = corradeConfiguration.ThrottleResend;
-            Client.Throttle.Asset = corradeConfiguration.ThrottleAsset;
-            Client.Throttle.Cloud = corradeConfiguration.ThrottleCloud;
+            Client.Settings.SEND_AGENT_THROTTLE = true;
             // Enable multiple simulators
             Client.Settings.MULTIPLE_SIMS = true;
             // Check TOS
@@ -8983,6 +8974,7 @@ namespace Corrade
             private uint _callbackQueueLength = 100;
             private uint _callbackThrottle = 1000;
             private uint _callbackTimeout = 5000;
+            private UUID _clientIdentificationTag = new UUID("0705230f-cbd0-99bd-040b-28eb348b5255");
             private bool _clientLogEnabled = true;
             private string _clientLogFile = "logs/Corrade.log";
             private uint _connectionIdleTime = 900000;
@@ -10030,6 +10022,24 @@ namespace Corrade
                 }
             }
 
+            public UUID ClientIdentificationTag
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _clientIdentificationTag;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _clientIdentificationTag = value;
+                    }
+                }
+            }
+
             public string StartLocation
             {
                 get
@@ -10911,6 +10921,30 @@ namespace Corrade
                 Client.Settings.LOGIN_TIMEOUT = (int) configuration.ServicesTimeout;
                 Client.Settings.LOGOUT_TIMEOUT = (int) configuration.ServicesTimeout;
                 Client.Settings.SIMULATOR_TIMEOUT = (int) configuration.ServicesTimeout;
+                Client.Settings.CAPS_TIMEOUT = (int) configuration.ServicesTimeout;
+                Client.Settings.MAP_REQUEST_TIMEOUT = (int) configuration.ServicesTimeout;
+                Client.Settings.TRANSFER_TIMEOUT = (int) configuration.ServicesTimeout;
+                Client.Settings.TELEPORT_TIMEOUT = (int) configuration.ServicesTimeout;
+                Settings.MAX_HTTP_CONNECTIONS = (int) configuration.ConnectionLimit;
+
+                // Network Settings
+                ServicePointManager.DefaultConnectionLimit = (int) corradeConfiguration.ConnectionLimit;
+                ServicePointManager.UseNagleAlgorithm = corradeConfiguration.UseNaggle;
+                ServicePointManager.Expect100Continue = corradeConfiguration.UseExpect100Continue;
+                ServicePointManager.MaxServicePointIdleTime = (int) corradeConfiguration.ConnectionIdleTime;
+
+                // Throttles.
+                Client.Throttle.Total = corradeConfiguration.ThrottleTotal;
+                Client.Throttle.Land = corradeConfiguration.ThrottleLand;
+                Client.Throttle.Task = corradeConfiguration.ThrottleTask;
+                Client.Throttle.Texture = corradeConfiguration.ThrottleTexture;
+                Client.Throttle.Wind = corradeConfiguration.ThrottleWind;
+                Client.Throttle.Resend = corradeConfiguration.ThrottleResend;
+                Client.Throttle.Asset = corradeConfiguration.ThrottleAsset;
+                Client.Throttle.Cloud = corradeConfiguration.ThrottleCloud;
+
+                // Client Identification Tag.
+                Client.Settings.CLIENT_IDENTIFICATION_TAG = corradeConfiguration.ClientIdentificationTag;
             }
         }
 
