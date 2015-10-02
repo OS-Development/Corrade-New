@@ -69,13 +69,13 @@ namespace Corrade
                             lock (ClientInstanceEstateLock)
                             {
                                 Client.Estate.TopCollidersReply += TopCollidersReplyEventHandler;
-                                Client.Estate.RequestTopScripts();
+                                Client.Estate.RequestTopColliders();
                                 if (
                                     !TopCollidersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout,
                                         false))
                                 {
                                     Client.Estate.TopCollidersReply -= TopCollidersReplyEventHandler;
-                                    throw new ScriptException(ScriptError.TIMEOUT_GETTING_TOP_SCRIPTS);
+                                    throw new ScriptException(ScriptError.TIMEOUT_GETTING_TOP_COLLIDERS);
                                 }
                                 Client.Estate.TopCollidersReply -= TopCollidersReplyEventHandler;
                             }

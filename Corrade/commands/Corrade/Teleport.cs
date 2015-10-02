@@ -122,11 +122,25 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.TELEPORT_FAILED);
                     }
+                    bool fly;
+                    // perform the post-action
+                    switch (bool.TryParse(wasInput(
+                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FLY)),
+                            corradeCommandParameters.Message)), out fly))
+                    {
+                        case true: // if fly was specified, set the fly state
+                            lock (ClientInstanceSelfLock)
+                            {
+                                Client.Self.Fly(fly);
+                            }
+                            break;
+                    }
                     // Set the camera on the avatar.
                     Client.Self.Movement.Camera.LookAt(
                         Client.Self.SimPosition,
                         Client.Self.SimPosition
                         );
+                    SaveMovementState.Invoke();
                 };
         }
     }

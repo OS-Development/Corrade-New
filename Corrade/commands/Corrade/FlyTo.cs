@@ -156,6 +156,8 @@ namespace Corrade
                             }
                             break;
                     }
+
+                    SaveMovementState.Invoke();
                 };
         }
     }

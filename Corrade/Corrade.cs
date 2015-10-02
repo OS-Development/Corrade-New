@@ -222,6 +222,8 @@ namespace Corrade
             [Status(14337)] [Description("unknown restart action")] UNKNOWN_RESTART_ACTION,
             [Status(28429)] [Description("unknown move action")] UNKNOWN_MOVE_ACTION,
             [Status(20541)] [Description("timeout getting top scripts")] TIMEOUT_GETTING_TOP_SCRIPTS,
+            [Status(47172)] [Description("timeout getting top colliders")]
+            TIMEOUT_GETTING_TOP_COLLIDERS,
             [Status(57429)] [Description("timeout waiting for estate list")] TIMEOUT_WAITING_FOR_ESTATE_LIST,
             [Status(41676)] [Description("unknown top type")] UNKNOWN_TOP_TYPE,
             [Status(25897)] [Description("unknown estate list action")] UNKNOWN_ESTATE_LIST_ACTION,
@@ -7978,6 +7980,7 @@ namespace Corrade
                 request.AllowAutoRedirect = true;
                 request.AllowWriteStreamBuffering = true;
                 request.Method = WebRequestMethods.Http.Post;
+                request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
                 // set the content type based on chosen output filers
                 switch (corradeConfiguration.OutputFilters.Last())
                 {
@@ -8003,11 +8006,7 @@ namespace Corrade
                     {
                         if (responseStream != null)
                         {
-                            using (
-                                StreamReader streamReader = new StreamReader(responseStream,
-                                    response.CharacterSet != null
-                                        ? Encoding.GetEncoding(response.CharacterSet)
-                                        : Encoding.UTF8))
+                            using (StreamReader streamReader = new StreamReader(responseStream))
                             {
                                 streamReader.ReadToEnd();
                             }

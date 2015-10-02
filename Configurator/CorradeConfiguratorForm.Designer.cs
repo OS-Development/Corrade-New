@@ -3943,6 +3943,7 @@
             // 
             // button1
             // 
+            this.button1.Font = new System.Drawing.Font("Palatino Linotype", 8.25F);
             this.button1.Location = new System.Drawing.Point(590, 589);
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(98, 23);
@@ -3954,6 +3955,7 @@
             // 
             // button2
             // 
+            this.button2.Font = new System.Drawing.Font("Palatino Linotype", 8.25F);
             this.button2.Location = new System.Drawing.Point(130, 589);
             this.button2.Name = "button2";
             this.button2.Size = new System.Drawing.Size(108, 23);
@@ -3986,6 +3988,7 @@
             // 
             // button9
             // 
+            this.button9.Font = new System.Drawing.Font("Palatino Linotype", 8.25F);
             this.button9.Location = new System.Drawing.Point(16, 589);
             this.button9.Name = "button9";
             this.button9.Size = new System.Drawing.Size(108, 23);
