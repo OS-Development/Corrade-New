@@ -27,8 +27,17 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+                    Vector3 position;
+                    if (
+                        !Vector3.TryParse(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                    corradeCommandParameters.Message)),
+                            out position))
+                    {
+                        position = Client.Self.SimPosition;
+                    }
                     // We override the default teleport since region names are unique and case insensitive.
-                    ulong regionHandle = 0;
                     string region =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
                             corradeCommandParameters.Message));
@@ -36,7 +45,15 @@ namespace Corrade
                     {
                         region = Client.Network.CurrentSim.Name;
                     }
+                    // Check if the teleport destination is not too close.
+                    if (region.Equals(Client.Network.CurrentSim.Name) &&
+                        Vector3.Distance(Client.Self.SimPosition, position) <
+                        LINDEN_CONSTANTS.REGION.TELEPORT_MINIMUM_DISTANCE)
+                    {
+                        throw new ScriptException(ScriptError.DESTINATION_TOO_CLOSE);
+                    }
                     ManualResetEvent GridRegionEvent = new ManualResetEvent(false);
+                    ulong regionHandle = 0;
                     EventHandler<GridRegionEventArgs> GridRegionEventHandler =
                         (sender, args) =>
                         {
@@ -59,22 +76,6 @@ namespace Corrade
                     if (regionHandle.Equals(0))
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
-                    }
-                    Vector3 position;
-                    if (
-                        !Vector3.TryParse(
-                            wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
-                                    corradeCommandParameters.Message)),
-                            out position))
-                    {
-                        position = Client.Self.SimPosition;
-                    }
-                    if (regionHandle.Equals(Client.Network.CurrentSim.Handle) &&
-                        Vector3.Distance(Client.Self.SimPosition, position) <
-                        LINDEN_CONSTANTS.REGION.TELEPORT_MINIMUM_DISTANCE)
-                    {
-                        throw new ScriptException(ScriptError.DESTINATION_TOO_CLOSE);
                     }
                     ManualResetEvent TeleportEvent = new ManualResetEvent(false);
                     bool succeeded = false;

@@ -1435,7 +1435,7 @@
             this.pictureBox20.TabIndex = 2;
             this.pictureBox20.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox20, "The VIGENERE secret is shared between a script and\r\nCorrade. This setting represe" +
-        "nts the key which can be\r\nof any length.\r\n");
+        "nts the key which can be\r\nof any length.");
             // 
             // VIGENERESecret
             // 
@@ -4012,7 +4012,9 @@
             // 
             // toolTip1
             // 
-            this.toolTip1.IsBalloon = true;
+            this.toolTip1.AutoPopDelay = 32767;
+            this.toolTip1.InitialDelay = 500;
+            this.toolTip1.ReshowDelay = 100;
             // 
             // Version
             // 
@@ -4038,6 +4040,8 @@
             this.Controls.Add(this.pictureBox1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.MaximizeBox = false;
+            this.MaximumSize = new System.Drawing.Size(720, 680);
             this.Name = "CorradeConfiguratorForm";
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
             this.Text = "Corrade Configurator";
