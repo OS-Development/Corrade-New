@@ -29,12 +29,13 @@ namespace Corrade
                     List<UUID> estateList = new List<UUID>();
                     wasAdaptiveAlarm EstateListReceivedAlarm =
                         new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
-                    switch (
+                    Type type =
                         wasGetEnumValueFromDescription<Type>(
                             wasInput(wasKeyValueGet(
                                 wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
-                                .ToLowerInvariant()))
+                                .ToLowerInvariant());
+                    switch (type)
                     {
                         case Type.BAN:
                             EventHandler<EstateBansReplyEventArgs> EstateBansReplyEventHandler = (sender, args) =>
@@ -158,11 +159,45 @@ namespace Corrade
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ESTATE_LIST);
                     }
-                    List<string> data = new List<string>(estateList.ConvertAll(o => o.ToString()));
-                    if (data.Any())
+                    // resolve UUIDs to names
+                    object LockObject = new object();
+                    List<string> csv = new List<string>();
+                    switch (type)
+                    {
+                        case Type.BAN:
+                        case Type.MANAGER:
+                        case Type.USER:
+                            
+                            Parallel.ForEach(estateList, o =>
+                            {
+                                string agentName = string.Empty;
+                                if (!AgentUUIDToName(o, corradeConfiguration.ServicesTimeout, ref agentName))
+                                    return;
+                                lock (LockObject)
+                                {
+                                    csv.Add(agentName);
+                                    csv.Add(o.ToString());
+                                }
+                            });
+                            break;
+                        case Type.GROUP:
+                            Parallel.ForEach(estateList, o =>
+                            {
+                                string groupName = string.Empty;
+                                if (!GroupUUIDToName(o, corradeConfiguration.ServicesTimeout, ref groupName))
+                                    return;
+                                lock (LockObject)
+                                {
+                                    csv.Add(groupName);
+                                    csv.Add(o.ToString());
+                                }
+                            });
+                            break;
+                    }
+                    if (csv.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            wasEnumerableToCSV(data));
+                            wasEnumerableToCSV(csv));
                     }
                 };
         }
