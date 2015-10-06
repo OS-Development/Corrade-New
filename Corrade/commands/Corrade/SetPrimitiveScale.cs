@@ -74,7 +74,8 @@ namespace Corrade
                         throw new ScriptException(ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS);
                     }
                     Client.Objects.SetScale(
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         primitive.LocalID, scale, true, uniform);
                 };
         }

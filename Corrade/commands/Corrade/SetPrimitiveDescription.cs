@@ -59,7 +59,8 @@ namespace Corrade
                         throw new ScriptException(ScriptError.DESCRIPTION_TOO_LARGE);
                     }
                     Client.Objects.SetDescription(
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         primitive.LocalID, description);
                 };
         }

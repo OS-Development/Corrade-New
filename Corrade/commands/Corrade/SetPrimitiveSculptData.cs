@@ -48,7 +48,8 @@ namespace Corrade
                             corradeCommandParameters.Message)),
                         ref primitive.Sculpt);
                     Client.Objects.SetSculpt(
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         primitive.LocalID, primitive.Sculpt);
                 };
         }

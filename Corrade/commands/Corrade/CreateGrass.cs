@@ -33,13 +33,6 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVALID_POSITION);
                     }
-                    if (IsSecondLife() &&
-                        position.Z > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
-                    {
-                        throw new Exception(
-                            wasGetDescriptionFromEnumValue(
-                                ScriptError.POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE));
-                    }
                     Quaternion rotation;
                     if (
                         !Quaternion.TryParse(
@@ -70,7 +63,17 @@ namespace Corrade
                     }
                     if (!parcel.OwnerID.Equals(Client.Self.AgentID))
                     {
-                        throw new ScriptException(ScriptError.PARCEL_MUST_BE_OWNED);
+                        if (!parcel.IsGroupOwned && !parcel.GroupID.Equals(corradeCommandParameters.Group.UUID))
+                        {
+                            throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                        }
+                        if (
+                            !HasGroupPowers(Client.Self.AgentID, corradeCommandParameters.Group.UUID,
+                                GroupPowers.LandGardening,
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
+                        {
+                            throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                        }
                     }
                     Vector3 scale;
                     if (

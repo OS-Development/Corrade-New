@@ -51,7 +51,8 @@ namespace Corrade
                         throw new ScriptException(ScriptError.ITEM_IS_NOT_AN_OBJECT);
                     }
                     Client.Objects.SetObjectsGroup(
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         new List<uint> {primitive.LocalID},
                         corradeCommandParameters.Group.UUID);
                 };

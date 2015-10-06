@@ -72,7 +72,8 @@ namespace Corrade
                             corradeCommandParameters.Message)),
                         ref constructionData);
                     Client.Objects.SetShape(
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         primitive.LocalID, constructionData);
                 };
         }

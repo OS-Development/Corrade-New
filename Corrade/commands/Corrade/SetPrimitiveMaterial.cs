@@ -55,7 +55,8 @@ namespace Corrade
                     if (materialFieldInfo == null)
                         throw new ScriptException(ScriptError.UNKNOWN_MATERIAL_TYPE);
                     Client.Objects.SetMaterial(
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         primitive.LocalID, (Material) materialFieldInfo.GetValue(null));
                 };
         }

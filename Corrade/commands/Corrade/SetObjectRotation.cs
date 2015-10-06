@@ -60,7 +60,8 @@ namespace Corrade
                         throw new ScriptException(ScriptError.INVALID_ROTATION);
                     }
                     Client.Objects.SetRotation(
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         primitive.LocalID, rotation);
                 };
         }

@@ -61,7 +61,8 @@ namespace Corrade
                     {
                         Client.Objects.PayPriceReply += PayPriceReplyEventHandler;
                         Client.Objects.RequestPayPrice(
-                            Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                            Client.Network.Simulators.AsParallel()
+                                .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                             primitive.ID);
                         if (!PayPrceReceivedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {

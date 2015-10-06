@@ -706,6 +706,9 @@
     <Compile Include="commands\Corrade\TerminateFriendship.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\Terraform.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\Terrain.cs">
       <SubType>Component</SubType>
     </Compile>

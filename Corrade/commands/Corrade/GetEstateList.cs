@@ -167,7 +167,7 @@ namespace Corrade
                         case Type.BAN:
                         case Type.MANAGER:
                         case Type.USER:
-                            
+
                             Parallel.ForEach(estateList, o =>
                             {
                                 string agentName = string.Empty;

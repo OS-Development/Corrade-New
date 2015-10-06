@@ -62,7 +62,8 @@ namespace Corrade
                         folderUUID = Client.Inventory.Store.RootFolder.UUID;
                     }
                     Client.Objects.BuyObject(
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         primitive.LocalID, primitive.Properties.SaleType,
                         primitive.Properties.SalePrice,
                         corradeCommandParameters.Group.UUID, folderUUID);

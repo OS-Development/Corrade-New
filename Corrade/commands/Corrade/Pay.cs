@@ -30,11 +30,11 @@ namespace Corrade
                                     corradeCommandParameters.Message)),
                             out amount))
                     {
-                        throw new ScriptException(ScriptError.INVALID_PAY_AMOUNT);
+                        throw new ScriptException(ScriptError.INVALID_AMOUNT);
                     }
                     if (amount.Equals(0))
                     {
-                        throw new ScriptException(ScriptError.INVALID_PAY_AMOUNT);
+                        throw new ScriptException(ScriptError.INVALID_AMOUNT);
                     }
                     if (!UpdateBalance(corradeConfiguration.ServicesTimeout))
                     {

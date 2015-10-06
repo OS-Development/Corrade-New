@@ -150,7 +150,8 @@ namespace Corrade
                         gravity = primitive.PhysicsProps.GravityMultiplier;
                     }
                     Client.Objects.SetFlags(
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         primitive.LocalID,
                         physics,
                         temporary,

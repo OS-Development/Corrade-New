@@ -90,7 +90,8 @@ namespace Corrade
                         throw new ScriptException(ScriptError.INVALID_BINORMAL_VECTOR);
                     }
                     Client.Objects.ClickObject(
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         primitive.LocalID, uvCoord, stCoord, faceIndex, position,
                         normal, binormal);
                 };

@@ -73,7 +73,8 @@ namespace Corrade
                                         corradeCommandParameters.Message)),
                                 StringComparison.Ordinal));
                     Client.Objects.SetSaleInfo(
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         primitive.LocalID, saleTypeInfo != null
                             ? (SaleType)
                                 saleTypeInfo.GetValue(null)

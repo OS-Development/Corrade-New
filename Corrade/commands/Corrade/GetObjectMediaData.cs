@@ -53,7 +53,8 @@ namespace Corrade
                     }
                     List<string> data = new List<string>();
                     Client.Objects.RequestObjectMedia(primitive.ID,
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         (succeeded, version, faceMedia) =>
                         {
                             switch (succeeded)

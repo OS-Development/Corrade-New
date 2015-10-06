@@ -47,7 +47,7 @@ namespace Corrade
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
                             corradeCommandParameters.Message));
                     Simulator simulator =
-                        Client.Network.Simulators.FirstOrDefault(
+                        Client.Network.Simulators.AsParallel().FirstOrDefault(
                             o =>
                                 o.Name.Equals(
                                     string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,

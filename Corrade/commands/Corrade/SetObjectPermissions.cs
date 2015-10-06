@@ -62,23 +62,28 @@ namespace Corrade
                     }
                     OpenMetaverse.Permissions permissions = wasStringToPermissions(itemPermissions);
                     Client.Objects.SetPermissions(
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         new List<uint> {primitive.LocalID},
                         PermissionWho.Base, permissions.BaseMask, true);
                     Client.Objects.SetPermissions(
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         new List<uint> {primitive.LocalID},
                         PermissionWho.Owner, permissions.OwnerMask, true);
                     Client.Objects.SetPermissions(
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         new List<uint> {primitive.LocalID},
                         PermissionWho.Group, permissions.GroupMask, true);
                     Client.Objects.SetPermissions(
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         new List<uint> {primitive.LocalID},
                         PermissionWho.Everyone, permissions.EveryoneMask, true);
                     Client.Objects.SetPermissions(
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         new List<uint> {primitive.LocalID},
                         PermissionWho.NextOwner, permissions.NextOwnerMask, true);
                 };

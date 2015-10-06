@@ -59,7 +59,8 @@ namespace Corrade
                         throw new ScriptException(ScriptError.INVALID_FACE_SPECIFIED);
                     MediaEntry[] faceMediaEntries = null;
                     Client.Objects.RequestObjectMedia(primitive.ID,
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)),
                         (succeeded, version, faceMedia) =>
                         {
                             switch (succeeded)
@@ -78,7 +79,8 @@ namespace Corrade
                             corradeCommandParameters.Message)),
                         ref faceMediaEntries[face]);
                     Client.Objects.UpdateObjectMedia(primitive.ID, faceMediaEntries,
-                        Client.Network.Simulators.FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)));
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle)));
                 };
         }
     }

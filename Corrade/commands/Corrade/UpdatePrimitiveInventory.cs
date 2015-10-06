@@ -89,7 +89,7 @@ namespace Corrade
                                 entityUUID = inventoryBaseItem.UUID;
                             }
                             Client.Inventory.RemoveTaskInventory(primitive.LocalID, entityUUID,
-                                Client.Network.Simulators.FirstOrDefault(
+                                Client.Network.Simulators.AsParallel().FirstOrDefault(
                                     o => o.Handle.Equals(primitive.RegionHandle)));
                             break;
                         case Action.TAKE:
@@ -120,7 +120,7 @@ namespace Corrade
                                         .UUID;
                             }
                             Client.Inventory.MoveTaskInventory(primitive.LocalID, inventoryItem.UUID, folderUUID,
-                                Client.Network.Simulators.FirstOrDefault(
+                                Client.Network.Simulators.AsParallel().FirstOrDefault(
                                     o => o.Handle.Equals(primitive.RegionHandle)));
                             break;
                         default:

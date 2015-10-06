@@ -108,13 +108,13 @@ namespace Corrade
                         {
                             case Action.LINK:
                                 Client.Objects.LinkPrims(
-                                    Client.Network.Simulators.FirstOrDefault(
+                                    Client.Network.Simulators.AsParallel().FirstOrDefault(
                                         o => o.Handle.Equals(rootPrimitive.RegionHandle)),
                                     primitives.Select(o => o.LocalID).ToList());
                                 break;
                             case Action.DELINK:
                                 Client.Objects.DelinkPrims(
-                                    Client.Network.Simulators.FirstOrDefault(
+                                    Client.Network.Simulators.AsParallel().FirstOrDefault(
                                         o => o.Handle.Equals(rootPrimitive.RegionHandle)),
                                     primitives.Select(o => o.LocalID).ToList());
                                 break;

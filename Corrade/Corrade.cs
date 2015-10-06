@@ -171,7 +171,7 @@ namespace Corrade
             [Status(30473)] [Description("no group power for command")] NO_GROUP_POWER_FOR_COMMAND,
             [Status(27605)] [Description("cannot eject owners")] CANNOT_EJECT_OWNERS,
             [Status(25984)] [Description("inventory item not found")] INVENTORY_ITEM_NOT_FOUND,
-            [Status(43982)] [Description("invalid pay amount")] INVALID_PAY_AMOUNT,
+            [Status(43982)] [Description("invalid amount")] INVALID_AMOUNT,
             [Status(02169)] [Description("insufficient funds")] INSUFFICIENT_FUNDS,
             [Status(47624)] [Description("invalid pay target")] INVALID_PAY_TARGET,
             [Status(32164)] [Description("teleport failed")] TELEPORT_FAILED,
@@ -399,7 +399,14 @@ namespace Corrade
             [Status(56094)] [Description("no schedule found")] NO_SCHEDULE_FOUND,
             [Status(41612)] [Description("unknown date time stamp")] UNKNOWN_DATE_TIME_STAMP,
             [Status(07457)] [Description("no permissions for item")] NO_PERMISSIONS_FOR_ITEM,
-            [Status(10374)] [Description("timeout retrieving estate covenant")] TIMEOUT_RETRIEVING_ESTATE_COVENANT
+            [Status(10374)] [Description("timeout retrieving estate covenant")] TIMEOUT_RETRIEVING_ESTATE_COVENANT,
+            [Status(56901)] [Description("no terraform action specified")] NO_TERRAFORM_ACTION_SPECIFIED,
+            [Status(41211)] [Description("no terraform brush specified")] NO_TERRAFORM_BRUSH_SPECIFIED,
+            [Status(63486)] [Description("invalid height")] INVALID_HEIGHT,
+            [Status(20547)] [Description("invalid width")] INVALID_WIDTH,
+            [Status(28891)] [Description("invalid terraform action")] INVALID_TERRAFORM_ACTION,
+            [Status(41190)] [Description("invalid terraform brush")] INVALID_TERRAFORM_BRUSH,
+            [Status(58619)] [Description("could not terraform")] COULD_NOT_TERRAFORM
         }
 
         /// <summary>
@@ -3864,7 +3871,8 @@ namespace Corrade
                     }
                     Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
                     Client.Objects.SelectObject(
-                        Client.Network.Simulators.FirstOrDefault(p => p.Handle.Equals(queryPrimitive.RegionHandle)),
+                        Client.Network.Simulators.AsParallel()
+                            .FirstOrDefault(p => p.Handle.Equals(queryPrimitive.RegionHandle)),
                         queryPrimitive.LocalID,
                         true);
                     ManualResetEvent primitiveEvent;
@@ -7977,8 +7985,8 @@ namespace Corrade
                 request.Proxy = WebRequest.DefaultWebProxy;
                 request.Pipelined = true;
                 request.KeepAlive = true;
-                request.Timeout = (int)millisecondsTimeout;
-                request.ReadWriteTimeout = (int)millisecondsTimeout;
+                request.Timeout = (int) millisecondsTimeout;
+                request.ReadWriteTimeout = (int) millisecondsTimeout;
                 request.AllowAutoRedirect = true;
                 request.AllowWriteStreamBuffering = true;
                 request.Method = WebRequestMethods.Http.Post;
@@ -11917,6 +11925,14 @@ namespace Corrade
             [Description("none")] NONE = 0,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
+                "<command=terraform>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR2>>&<height=<FLOAT>>&<width=<FLOAT>>&<amount=<FLOAT>>&<brush=<TerraformBrushSize>>&<action=<TerraformAction>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("terraform")] [Description("terraform")] TERRAFORM,
+
+            [Description("height")] HEIGHT,
+            [Description("width")] WIDTH,
+            [Description("brush")] BRUSH,
+
+            [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getestatecovenant>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("getestatecovenant")] [Description("getestatecovenant")] GETESTATECOVENANT,
 
@@ -11955,7 +11971,6 @@ namespace Corrade
                 "<command=setregioninfo>&<group=<UUID|STRING>>&<password=<STRING>>&[terraform=<BOOL>]&[fly=<BOOL>]&[damage=<BOOL>]&[resell=<BOOL>]&[push=<BOOL>]&[parcel=<BOOL>]&[limit=<FLOAT>]&[bonus=<FLOAT>]&[mature=<BOOL>]&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("setregioninfo")] [Description("setregioninfo")] SETREGIONINFO,
 
-            [Description("terraform")] TERRAFORM,
             [Description("bonus")] BONUS,
             [Description("damage")] DAMAGE,
             [Description("limit")] LIMIT,
