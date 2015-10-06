@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using OpenMetaverse;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -35,6 +36,25 @@ namespace Corrade
                     if (simulator == null)
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                    }
+                    // Get all sim parcels
+                    ManualResetEvent SimParcelsDownloadedEvent = new ManualResetEvent(false);
+                    EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
+                        (sender, args) => SimParcelsDownloadedEvent.Set();
+                    lock (ClientInstanceParcelsLock)
+                    {
+                        Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
+                        Client.Parcels.RequestAllSimParcels(simulator);
+                        if (simulator.IsParcelMapFull())
+                        {
+                            SimParcelsDownloadedEvent.Set();
+                        }
+                        if (!SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        {
+                            Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
+                            throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
+                        }
+                        Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                     }
                     Vector3 southwest;
                     if (
