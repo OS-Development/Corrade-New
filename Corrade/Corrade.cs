@@ -10990,9 +10990,10 @@ namespace Corrade
                                                     commandGroup = GetCorradeGroupFromMessage(receiveLine);
                                                     switch (!commandGroup.Equals(default(Group)) &&
                                                             Authenticate(commandGroup.Name,
-                                                                wasKeyValueGet(
-                                                                    wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD),
-                                                                    receiveLine)))
+                                                                wasInput(
+                                                            wasKeyValueGet(
+                                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD)),
+                                                                receiveLine))))
                                                     {
                                                         case false:
                                                             streamWriter.WriteLine(
