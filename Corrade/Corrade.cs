@@ -18,6 +18,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Management;
 using System.Net;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
@@ -425,6 +426,8 @@ namespace Corrade
         private static CorradeConfiguration corradeConfiguration = new CorradeConfiguration();
         private static Thread programThread;
         private static Thread HTTPListenerThread;
+        private static Thread TCPNotificationsThread;
+        private static TcpListener TCPListener;
         private static HttpListener HTTPListener;
         private static Thread EffectsExpirationThread;
         private static Thread GroupSchedulesThread;
@@ -484,6 +487,9 @@ namespace Corrade
 
         private static readonly BlockingQueue<NotificationQueueElement> NotificationQueue =
             new BlockingQueue<NotificationQueueElement>();
+
+        private static readonly BlockingQueue<NotificationTCPQueueElement> NotificationTCPQueue =
+            new BlockingQueue<NotificationTCPQueueElement>();
 
         private static readonly HashSet<GroupInvite> GroupInvites = new HashSet<GroupInvite>();
         private static readonly object GroupInviteLock = new object();
@@ -620,7 +626,7 @@ namespace Corrade
                             LoadChatBotFiles.Invoke();
                         }
                     })
-                {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                {IsBackground = true}.Start();
             });
 
         /// <summary>
@@ -759,7 +765,7 @@ namespace Corrade
             Dictionary<string, string> data = wasKeyValueDecode(o);
             return data.Any() && data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND)) &&
                    data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)) &&
-                   data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.Password));
+                   data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD));
         };
 
         /// <summary>
@@ -904,7 +910,7 @@ namespace Corrade
                     Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
                 }
             })
-            {IsBackground = true, Priority = ThreadPriority.Lowest};
+            {IsBackground = true};
 
             updateInventoryRecursiveThread.Start();
             updateInventoryRecursiveThread.Join(Timeout.Infinite);
@@ -1320,6 +1326,7 @@ namespace Corrade
         };
 
         private static volatile bool runHTTPServer;
+        private static volatile bool runTCPNotificationsServer;
         private static volatile bool runCallbackThread = true;
         private static volatile bool runNotificationThread = true;
         private static volatile bool runGroupSchedulesThread;
@@ -4766,10 +4773,8 @@ namespace Corrade
                 {
                     try
                     {
-                        Thread.Sleep((int) corradeConfiguration.CallbackThrottle);
-                        if (!CallbackQueue.Any()) continue;
-                        CallbackQueueElement callbackQueueElement = CallbackQueue.Dequeue();
-                        if (!callbackQueueElement.Equals(default(CallbackQueueElement)))
+                        CallbackQueueElement callbackQueueElement = new CallbackQueueElement();
+                        if (CallbackQueue.Dequeue((int) corradeConfiguration.CallbackThrottle, ref callbackQueueElement))
                         {
                             CorradeThreadPool[CorradeThreadType.POST].Spawn(
                                 () => wasPOST(callbackQueueElement.URL, callbackQueueElement.message,
@@ -4783,7 +4788,7 @@ namespace Corrade
                     }
                 } while (runCallbackThread);
             })
-            {IsBackground = true, Priority = ThreadPriority.Lowest};
+            {IsBackground = true};
             CallbackThread.Start();
             // Start the notification thread for notifications.
             Thread NotificationThread = new Thread(() =>
@@ -4792,10 +4797,9 @@ namespace Corrade
                 {
                     try
                     {
-                        Thread.Sleep((int) corradeConfiguration.NotificationThrottle);
-                        if (!NotificationQueue.Any()) continue;
-                        NotificationQueueElement notificationQueueElement = NotificationQueue.Dequeue();
-                        if (!notificationQueueElement.Equals(default(NotificationQueueElement)))
+                        NotificationQueueElement notificationQueueElement = new NotificationQueueElement();
+                        if (NotificationQueue.Dequeue((int) corradeConfiguration.NotificationThrottle,
+                            ref notificationQueueElement))
                         {
                             CorradeThreadPool[CorradeThreadType.POST].Spawn(
                                 () => wasPOST(notificationQueueElement.URL, notificationQueueElement.message,
@@ -4809,7 +4813,7 @@ namespace Corrade
                     }
                 } while (runNotificationThread);
             })
-            {IsBackground = true, Priority = ThreadPriority.Lowest};
+            {IsBackground = true};
             NotificationThread.Start();
             // Install non-dynamic global event handlers.
             Client.Inventory.InventoryObjectOffered += HandleInventoryObjectOffered;
@@ -5370,13 +5374,16 @@ namespace Corrade
             List<Notification> notifyGroups = new List<Notification>();
             lock (GroupNotificationsLock)
             {
-                notifyGroups.AddRange(GroupNotifications.AsParallel()
-                    .Where(
-                        o =>
-                            !(o.NotificationMask & (uint) notification).Equals(0) &&
-                            corradeConfiguration.Groups.AsParallel().Any(
-                                p => p.Name.Equals(o.GroupName, StringComparison.OrdinalIgnoreCase) &&
-                                     !(p.NotificationMask & (uint) notification).Equals(0))));
+                if (GroupNotifications.Any())
+                {
+                    notifyGroups.AddRange(GroupNotifications.AsParallel()
+                        .Where(
+                            o =>
+                                !(o.NotificationMask & (uint) notification).Equals(0) &&
+                                corradeConfiguration.Groups.AsParallel().Any(
+                                    p => p.Name.Equals(o.GroupName, StringComparison.OrdinalIgnoreCase) &&
+                                         !(p.NotificationMask & (uint) notification).Equals(0))));
+                }
             }
 
             // No groups to notify so bail directly.
@@ -6686,25 +6693,54 @@ namespace Corrade
                     });
                 }
 
-                // Check that the notification queue is not already full.
-                if (NotificationQueue.Count >= corradeConfiguration.NotificationQueueLength)
+                // Enqueue the notification for the group.
+                if (z.NotificationURLDestination.Any())
                 {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_THROTTLED));
-                    return;
+                    Parallel.ForEach(
+                        z.NotificationURLDestination.AsParallel()
+                            .Where(p => p.Key.Equals(notification))
+                            .SelectMany(p => p.Value), p =>
+                            {
+                                // Check that the notification queue is not already full.
+                                switch (NotificationQueue.Count <= corradeConfiguration.NotificationQueueLength)
+                                {
+                                    case true:
+                                        NotificationQueue.Enqueue(new NotificationQueueElement
+                                        {
+                                            URL = p,
+                                            message = wasKeyValueEscape(notificationData)
+                                        });
+                                        break;
+                                    default:
+                                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_THROTTLED));
+                                        break;
+                                }
+                            });
                 }
 
-                // Enqueue the notification for the group.
-                Parallel.ForEach(
-                    z.NotificationDestination.AsParallel()
-                        .Where(p => p.Key.Equals(notification))
-                        .SelectMany(p => p.Value), p =>
-                        {
-                            NotificationQueue.Enqueue(new NotificationQueueElement
+                // Enqueue the TCP notification for the group.
+                if (z.NotificationTCPDestination.Any())
+                {
+                    Parallel.ForEach(
+                        z.NotificationTCPDestination.AsParallel()
+                            .Where(p => p.Key.Equals(notification))
+                            .SelectMany(p => p.Value), p =>
                             {
-                                URL = p,
-                                message = wasKeyValueEscape(notificationData)
+                                switch (NotificationTCPQueue.Count <= corradeConfiguration.TCPNotificationQueueLength)
+                                {
+                                    case true:
+                                        NotificationTCPQueue.Enqueue(new NotificationTCPQueueElement
+                                        {
+                                            message = wasKeyValueEscape(notificationData),
+                                            IPEndPoint = p
+                                        });
+                                        break;
+                                    default:
+                                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TCP_NOTIFICATION_THROTTLED));
+                                        break;
+                                }
                             });
-                        });
+                }
             });
         }
 
@@ -7065,14 +7101,14 @@ namespace Corrade
                         // Now save the caches.
                         SaveInventoryCache.Invoke();
                     })
-                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                    {IsBackground = true}.Start();
                     // Set current group to land group.
                     new Thread(() =>
                     {
                         if (!corradeConfiguration.AutoActivateGroup) return;
                         ActivateCurrentLandGroupTimer.Change(corradeConfiguration.ActivateDelay, 0);
                     })
-                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                    {IsBackground = true}.Start();
                     // Retrieve instant messages.
                     new Thread(() =>
                     {
@@ -7081,7 +7117,7 @@ namespace Corrade
                             Client.Self.RetrieveInstantMessages();
                         }
                     })
-                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                    {IsBackground = true}.Start();
                     // Request the mute list.
                     new Thread(() =>
                     {
@@ -7090,7 +7126,7 @@ namespace Corrade
                             return;
                         Cache.MutesCache.UnionWith(mutes);
                     })
-                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                    {IsBackground = true}.Start();
                     // Set the camera on the avatar.
                     Client.Self.Movement.Camera.LookAt(
                         Client.Self.SimPosition,
@@ -7145,7 +7181,7 @@ namespace Corrade
                         if (!corradeConfiguration.AutoActivateGroup) return;
                         ActivateCurrentLandGroupTimer.Change(corradeConfiguration.ActivateDelay, 0);
                     })
-                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                    {IsBackground = true}.Start();
                     // Set the camera on the avatar.
                     Client.Self.Movement.Camera.LookAt(
                         Client.Self.SimPosition,
@@ -7659,7 +7695,7 @@ namespace Corrade
         {
             // Get password.
             string password =
-                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.Password)), message));
+                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD)), message));
             // Bail if no password set.
             if (string.IsNullOrEmpty(password)) return null;
             // Authenticate the request against the group password.
@@ -7669,7 +7705,7 @@ namespace Corrade
                 return null;
             }
             // Censor password.
-            message = wasKeyValueSet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.Password)),
+            message = wasKeyValueSet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD)),
                 CORRADE_CONSTANTS.PASSWORD_CENSOR, message);
             /*
              * OpenSim sends the primitive UUID through args.IM.FromAgentID while Second Life properly sends
@@ -8994,6 +9030,7 @@ namespace Corrade
             private bool _enableAIML;
             private bool _enableHTTPServer;
             private bool _enableRLV;
+            private bool _enableTCPNotificationsServer;
 
             private ENIGMA _enigma = new ENIGMA
             {
@@ -9046,6 +9083,10 @@ namespace Corrade
             private uint _schedulesResolution = 1000;
             private uint _servicesTimeout = 60000;
             private string _startLocation = "last";
+            private uint _TCPnotificationQueueLength = 100;
+            private string _TCPNotificationsServerAddress = @"0.0.0.0";
+            private uint _TCPNotificationsServerPort = 8095;
+            private uint _TCPnotificationThrottle = 1000;
             private uint _throttleAsset = 100000;
             private uint _throttleCloud = 10000;
             private uint _throttleLand = 80000;
@@ -9257,6 +9298,24 @@ namespace Corrade
                 }
             }
 
+            public bool EnableTCPNotificationsServer
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _enableTCPNotificationsServer;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _enableTCPNotificationsServer = value;
+                    }
+                }
+            }
+
             public bool EnableAIML
             {
                 get
@@ -9307,6 +9366,42 @@ namespace Corrade
                     lock (ClientInstanceConfigurationLock)
                     {
                         _HTTPServerPrefix = value;
+                    }
+                }
+            }
+
+            public uint TCPNotificationsServerPort
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _TCPNotificationsServerPort;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _TCPNotificationsServerPort = value;
+                    }
+                }
+            }
+
+            public string TCPNotificationsServerAddress
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _TCPNotificationsServerAddress;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _TCPNotificationsServerAddress = value;
                     }
                 }
             }
@@ -9689,6 +9784,24 @@ namespace Corrade
                 }
             }
 
+            public uint TCPNotificationThrottle
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _TCPnotificationThrottle;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _TCPnotificationThrottle = value;
+                    }
+                }
+            }
+
             public uint NotificationQueueLength
             {
                 get
@@ -9703,6 +9816,24 @@ namespace Corrade
                     lock (ClientInstanceConfigurationLock)
                     {
                         _notificationQueueLength = value;
+                    }
+                }
+            }
+
+            public uint TCPNotificationQueueLength
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _TCPnotificationQueueLength;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _TCPnotificationQueueLength = value;
                     }
                 }
             }
@@ -10496,7 +10627,7 @@ namespace Corrade
                                 }
                             } while (runGroupSchedulesThread);
                         })
-                        {IsBackground = true, Priority = ThreadPriority.Lowest};
+                        {IsBackground = true};
                         GroupSchedulesThread.Start();
                         break;
                     default:
@@ -10545,7 +10676,7 @@ namespace Corrade
                                                 AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
                                             }
                                         })
-                                    {IsBackground = true, Priority = ThreadPriority.Lowest}.Start();
+                                    {IsBackground = true}.Start();
                                     break;
                                 default:
                                     AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
@@ -10762,7 +10893,7 @@ namespace Corrade
                                 }
                             } while (runEffectsExpirationThread);
                         })
-                        {IsBackground = true, Priority = ThreadPriority.Lowest};
+                        {IsBackground = true};
                         EffectsExpirationThread.Start();
                         break;
                     default:
@@ -10816,7 +10947,310 @@ namespace Corrade
                         break;
                 }
 
-                // Enable the HTTP server in case it is supported and it was enabled in the configuration file.
+                // Enable the TCP notifications server in case it was enabled in the configuration.
+                switch (configuration.EnableTCPNotificationsServer)
+                {
+                    case true:
+                        // Don't start if the TCP notifications server is already started.
+                        if (TCPNotificationsThread != null) return;
+                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.STARTING_TCP_NOTIFICATIONS_SERVER));
+                        runTCPNotificationsServer = true;
+                        // Start the TCP notifications server.
+                        TCPNotificationsThread = new Thread(() =>
+                        {
+                            TCPListener =
+                                new TcpListener(
+                                    new IPEndPoint(IPAddress.Parse(configuration.TCPNotificationsServerAddress),
+                                        (int) configuration.TCPNotificationsServerPort));
+                            TCPListener.Start();
+
+                            do
+                            {
+                                TcpClient TCPClient = TCPListener.AcceptTcpClient();
+
+                                new Thread(() =>
+                                {
+                                    IPEndPoint remoteEndPoint = null;
+                                    Group commandGroup = new Group();
+                                    try
+                                    {
+                                        remoteEndPoint = TCPClient.Client.RemoteEndPoint as IPEndPoint;
+                                        using (NetworkStream networkStream = TCPClient.GetStream())
+                                        {
+                                            using (
+                                                StreamReader streamReader = new StreamReader(networkStream,
+                                                    Encoding.UTF8))
+                                            {
+                                                string receiveLine = streamReader.ReadLine();
+
+                                                using (
+                                                    StreamWriter streamWriter = new StreamWriter(networkStream,
+                                                        Encoding.UTF8))
+                                                {
+                                                    commandGroup = GetCorradeGroupFromMessage(receiveLine);
+                                                    switch (!commandGroup.Equals(default(Group)) &&
+                                                            Authenticate(commandGroup.Name,
+                                                                wasKeyValueGet(
+                                                                    wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD),
+                                                                    receiveLine)))
+                                                    {
+                                                        case false:
+                                                            streamWriter.WriteLine(
+                                                                wasKeyValueEncode(new Dictionary<string, string>
+                                                                {
+                                                                    {
+                                                                        wasGetDescriptionFromEnumValue(
+                                                                            ScriptKeys.SUCCESS),
+                                                                        false.ToString()
+                                                                    }
+                                                                }));
+                                                            streamWriter.Flush();
+                                                            TCPClient.Close();
+                                                            return;
+                                                    }
+
+                                                    string notificationTypes =
+                                                        wasInput(
+                                                            wasKeyValueGet(
+                                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                                                receiveLine));
+                                                    Notification notification;
+                                                    lock (GroupNotificationsLock)
+                                                    {
+                                                        notification =
+                                                            GroupNotifications.AsParallel().FirstOrDefault(
+                                                                o =>
+                                                                    o.GroupName.Equals(commandGroup.Name,
+                                                                        StringComparison.OrdinalIgnoreCase));
+                                                    }
+
+                                                    switch (!notification.Equals(default(Notification)))
+                                                    {
+                                                        case false:
+                                                            notification = new Notification
+                                                            {
+                                                                GroupName = commandGroup.Name,
+                                                                GroupUUID = commandGroup.UUID,
+                                                                NotificationURLDestination =
+                                                                    new SerializableDictionary
+                                                                        <Notifications, HashSet<string>>(),
+                                                                NotificationTCPDestination =
+                                                                    new Dictionary<Notifications, HashSet<IPEndPoint>>()
+                                                            };
+                                                            break;
+                                                        case true:
+                                                            if (notification.NotificationTCPDestination == null)
+                                                            {
+                                                                notification.NotificationTCPDestination =
+                                                                    new Dictionary<Notifications, HashSet<IPEndPoint>>();
+                                                            }
+                                                            if (notification.NotificationURLDestination == null)
+                                                            {
+                                                                notification.NotificationURLDestination =
+                                                                    new SerializableDictionary
+                                                                        <Notifications, HashSet<string>>();
+                                                            }
+                                                            break;
+                                                    }
+
+                                                    bool succeeded = true;
+                                                    object LockObject = new object();
+                                                    Parallel.ForEach(wasCSVToEnumerable(
+                                                        notificationTypes)
+                                                        .AsParallel()
+                                                        .Where(o => !string.IsNullOrEmpty(o)),
+                                                        (o, state) =>
+                                                        {
+                                                            uint notificationValue =
+                                                                (uint) wasGetEnumValueFromDescription<Notifications>(o);
+                                                            if (
+                                                                !GroupHasNotification(commandGroup.Name,
+                                                                    notificationValue))
+                                                            {
+                                                                // one of the notification was not allowed, so abort
+                                                                succeeded = false;
+                                                                state.Break();
+                                                            }
+                                                            switch (
+                                                                !notification.NotificationTCPDestination.ContainsKey(
+                                                                    (Notifications) notificationValue))
+                                                            {
+                                                                case true:
+                                                                    lock (LockObject)
+                                                                    {
+                                                                        notification.NotificationTCPDestination.Add(
+                                                                            (Notifications) notificationValue,
+                                                                            new HashSet<IPEndPoint> {remoteEndPoint});
+                                                                    }
+                                                                    break;
+                                                                default:
+                                                                    lock (LockObject)
+                                                                    {
+                                                                        notification.NotificationTCPDestination[
+                                                                            (Notifications) notificationValue].Add(
+                                                                                remoteEndPoint);
+                                                                    }
+                                                                    break;
+                                                            }
+                                                        });
+
+                                                    switch (succeeded)
+                                                    {
+                                                        case true:
+                                                            lock (GroupNotificationsLock)
+                                                            {
+                                                                // Replace notification.
+                                                                GroupNotifications.RemoveWhere(
+                                                                    o =>
+                                                                        o.GroupName.Equals(commandGroup.Name,
+                                                                            StringComparison.OrdinalIgnoreCase));
+                                                                GroupNotifications.Add(notification);
+                                                            }
+                                                            // Save the notifications state.
+                                                            SaveNotificationState.Invoke();
+                                                            streamWriter.WriteLine(
+                                                                wasKeyValueEncode(new Dictionary<string, string>
+                                                                {
+                                                                    {
+                                                                        wasGetDescriptionFromEnumValue(
+                                                                            ScriptKeys.SUCCESS),
+                                                                        true.ToString()
+                                                                    }
+                                                                }));
+                                                            streamWriter.Flush();
+                                                            break;
+                                                        default:
+                                                            streamWriter.WriteLine(
+                                                                wasKeyValueEncode(new Dictionary<string, string>
+                                                                {
+                                                                    {
+                                                                        wasGetDescriptionFromEnumValue(
+                                                                            ScriptKeys.SUCCESS),
+                                                                        false.ToString()
+                                                                    }
+                                                                }));
+                                                            streamWriter.Flush();
+                                                            TCPClient.Close();
+                                                            return;
+                                                    }
+                                                    do
+                                                    {
+                                                        NotificationTCPQueueElement notificationTCPQueueElement =
+                                                            new NotificationTCPQueueElement();
+                                                        if (
+                                                            NotificationTCPQueue.Dequeue(
+                                                                (int) configuration.TCPNotificationThrottle,
+                                                                ref notificationTCPQueueElement))
+                                                        {
+                                                            if (
+                                                                !notificationTCPQueueElement.Equals(
+                                                                    default(NotificationTCPQueueElement)) &&
+                                                                notificationTCPQueueElement.IPEndPoint.Equals(
+                                                                    remoteEndPoint))
+                                                            {
+                                                                streamWriter.WriteLine(
+                                                                    wasKeyValueEncode(
+                                                                        notificationTCPQueueElement.message));
+                                                                streamWriter.Flush();
+                                                            }
+                                                        }
+                                                    } while (runTCPNotificationsServer && TCPClient.Connected);
+                                                }
+                                            }
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Feedback(
+                                            wasGetDescriptionFromEnumValue(ConsoleError.TCP_NOTIFICATIONS_SERVER_ERROR),
+                                            ex.Message);
+                                    }
+                                    finally
+                                    {
+                                        if (remoteEndPoint != null && !commandGroup.Equals(default(Group)))
+                                        {
+                                            lock (GroupNotificationsLock)
+                                            {
+                                                Notification notification =
+                                                    GroupNotifications.FirstOrDefault(
+                                                        o =>
+                                                            o.GroupName.Equals(commandGroup.Name,
+                                                                StringComparison.OrdinalIgnoreCase));
+                                                if (!notification.Equals(default(Notification)))
+                                                {
+                                                    Dictionary<Notifications, HashSet<IPEndPoint>>
+                                                        notificationTCPDestination =
+                                                            new Dictionary<Notifications, HashSet<IPEndPoint>>();
+                                                    Parallel.ForEach(notification.NotificationTCPDestination, o =>
+                                                    {
+                                                        switch (o.Value.Contains(remoteEndPoint))
+                                                        {
+                                                            case true:
+                                                                HashSet<IPEndPoint> destinations =
+                                                                    new HashSet<IPEndPoint>(
+                                                                        o.Value.Where(p => !p.Equals(remoteEndPoint)));
+                                                                notificationTCPDestination.Add(o.Key, destinations);
+                                                                break;
+                                                            default:
+                                                                notificationTCPDestination.Add(o.Key, o.Value);
+                                                                break;
+                                                        }
+                                                    });
+
+                                                    GroupNotifications.Remove(notification);
+                                                    GroupNotifications.Add(new Notification
+                                                    {
+                                                        GroupName = notification.GroupName,
+                                                        GroupUUID = notification.GroupUUID,
+                                                        NotificationURLDestination =
+                                                            notification.NotificationURLDestination,
+                                                        NotificationTCPDestination = notificationTCPDestination,
+                                                        Afterburn = notification.Afterburn,
+                                                        Data = notification.Data
+                                                    });
+                                                }
+                                            }
+                                        }
+                                    }
+                                })
+                                {IsBackground = true}.Start();
+                            } while (runTCPNotificationsServer);
+                        })
+                        {IsBackground = true};
+                        TCPNotificationsThread.Start();
+                        break;
+                    default:
+                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.STOPPING_TCP_NOTIFICATIONS_SERVER));
+                        runTCPNotificationsServer = false;
+                        try
+                        {
+                            if (TCPNotificationsThread != null)
+                            {
+                                TCPListener.Stop();
+                                if (
+                                    (TCPNotificationsThread.ThreadState.Equals(ThreadState.Running) ||
+                                     TCPNotificationsThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                                {
+                                    if (!TCPNotificationsThread.Join(1000))
+                                    {
+                                        TCPNotificationsThread.Abort();
+                                        TCPNotificationsThread.Join();
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            /* We are going down and we do not care. */
+                        }
+                        finally
+                        {
+                            TCPNotificationsThread = null;
+                        }
+                        break;
+                }
+
+                // Enable the HTTP server in case it is supported and it was enabled in the configuration.
                 switch (HttpListener.IsSupported)
                 {
                     case true:
@@ -10885,7 +11319,7 @@ namespace Corrade
                                             ex.Message);
                                     }
                                 })
-                                {IsBackground = true, Priority = ThreadPriority.Lowest};
+                                {IsBackground = true};
                                 HTTPListenerThread.Start();
                                 break;
                             default:
@@ -11035,7 +11469,11 @@ namespace Corrade
             [Description("error setting up notifications watcher")] ERROR_SETTING_UP_NOTIFICATIONS_WATCHER,
             [Description("error setting up schedules watcher")] ERROR_SETTING_UP_SCHEDULES_WATCHER,
             [Description("unable to load Corrade movement state")] UNABLE_TO_LOAD_CORRADE_MOVEMENT_STATE,
-            [Description("unable to save Corrade movement state")] UNABLE_TO_SAVE_CORRADE_MOVEMENT_STATE
+            [Description("unable to save Corrade movement state")] UNABLE_TO_SAVE_CORRADE_MOVEMENT_STATE,
+            [Description("TCP notifications server error")] TCP_NOTIFICATIONS_SERVER_ERROR,
+            [Description("stopping TCP notifications server")] STOPPING_TCP_NOTIFICATIONS_SERVER,
+            [Description("starting TCP notifications server")] STARTING_TCP_NOTIFICATIONS_SERVER,
+            [Description("TCP notification throttled")] TCP_NOTIFICATION_THROTTLED
         }
 
         /// <summary>
@@ -11111,7 +11549,7 @@ namespace Corrade
                     // Thread has completed.
                     ThreadCompletedEvent.Set();
                 })
-                {IsBackground = true, Priority = ThreadPriority.Lowest};
+                {IsBackground = true};
                 lock (WorkSetLock)
                 {
                     WorkSet.Add(t);
@@ -11150,7 +11588,7 @@ namespace Corrade
                             wasGetDescriptionFromEnumValue(corradeThreadType), ex.Message);
                     }
                 })
-                {IsBackground = true, Priority = ThreadPriority.Lowest};
+                {IsBackground = true};
                 lock (WorkSetLock)
                 {
                     WorkSet.Add(t);
@@ -11265,7 +11703,7 @@ namespace Corrade
                             wasGetDescriptionFromEnumValue(corradeThreadType), ex.Message);
                     }
                 })
-                {IsBackground = true, Priority = ThreadPriority.Lowest};
+                {IsBackground = true};
                 lock (WorkSetLock)
                 {
                     WorkSet.Add(t);
@@ -11799,17 +12237,24 @@ namespace Corrade
             public HashSet<string> Data;
             public string GroupName;
             public UUID GroupUUID;
-            public SerializableDictionary<Notifications, HashSet<string>> NotificationDestination;
+
+            /// <summary>
+            ///     Holds TCP notification destinations.
+            /// </summary>
+            /// <remarks>These are state dependant so they do not have to be serialized.</remarks>
+            [XmlIgnore] public Dictionary<Notifications, HashSet<IPEndPoint>> NotificationTCPDestination;
+
+            public SerializableDictionary<Notifications, HashSet<string>> NotificationURLDestination;
 
             public uint NotificationMask
             {
                 get
                 {
-                    /* Build the notification mask and send it. */
-                    return NotificationDestination != null && NotificationDestination.Any()
-                        ? NotificationDestination.Keys.Cast<uint>()
-                            .Aggregate((p, q) => p |= q)
-                        : 0;
+                    return (NotificationURLDestination != null && NotificationURLDestination.Any()
+                        ? NotificationURLDestination.Keys.Cast<uint>().Aggregate((p, q) => p |= q)
+                        : 0) | (NotificationTCPDestination != null && NotificationTCPDestination.Any()
+                            ? NotificationTCPDestination.Keys.Cast<uint>().Aggregate((p, q) => p |= q)
+                            : 0);
                 }
             }
         }
@@ -11821,6 +12266,12 @@ namespace Corrade
         {
             public Dictionary<string, string> message;
             public string URL;
+        }
+
+        private struct NotificationTCPQueueElement
+        {
+            public IPEndPoint IPEndPoint;
+            public Dictionary<string, string> message;
         }
 
         /// <summary>
@@ -12677,7 +13128,7 @@ namespace Corrade
             [IsCorradeCommand(true)] [CommandInputSyntax("<command=join>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Group | (uint) Permissions.Economy)] [CorradeCommand("join")] [Description("join")] JOIN,
             [Description("callback")] CALLBACK,
             [Description("group")] GROUP,
-            [Description("password")] Password,
+            [Description("password")] PASSWORD,
             [Description("firstname")] FIRSTNAME,
             [Description("lastname")] LASTNAME,
             [Description("command")] COMMAND,

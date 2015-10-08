@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace Corrade
@@ -119,11 +120,25 @@ namespace Corrade
                                     {
                                         GroupName = corradeCommandParameters.Group.Name,
                                         GroupUUID = corradeCommandParameters.Group.UUID,
-                                        NotificationDestination =
+                                        NotificationURLDestination =
                                             new SerializableDictionary<Notifications, HashSet<string>>(),
+                                        NotificationTCPDestination =
+                                            new Dictionary<Notifications, HashSet<IPEndPoint>>(),
                                         Data = data,
                                         Afterburn = afterburn
                                     };
+                                    break;
+                                case true:
+                                    if (notification.NotificationTCPDestination == null)
+                                    {
+                                        notification.NotificationTCPDestination =
+                                            new Dictionary<Notifications, HashSet<IPEndPoint>>();
+                                    }
+                                    if (notification.NotificationURLDestination == null)
+                                    {
+                                        notification.NotificationURLDestination =
+                                            new SerializableDictionary<Notifications, HashSet<string>>();
+                                    }
                                     break;
                             }
                             bool succeeded = true;
@@ -141,19 +156,19 @@ namespace Corrade
                                     notification.Data = data;
                                     notification.Afterburn = afterburn;
                                     switch (
-                                        !notification.NotificationDestination.ContainsKey(
+                                        !notification.NotificationURLDestination.ContainsKey(
                                             (Notifications) notificationValue))
                                     {
                                         case true:
                                             lock (LockObject)
                                             {
-                                                notification.NotificationDestination.Add(
+                                                notification.NotificationURLDestination.Add(
                                                     (Notifications) notificationValue, new HashSet<string> {url});
                                             }
                                             break;
                                         default:
                                             // notification destination is already there
-                                            if (notification.NotificationDestination[
+                                            if (notification.NotificationURLDestination[
                                                 (Notifications) notificationValue].Contains(url))
                                                 break;
                                             switch (action)
@@ -161,7 +176,7 @@ namespace Corrade
                                                 case Action.ADD:
                                                     lock (LockObject)
                                                     {
-                                                        notification.NotificationDestination[
+                                                        notification.NotificationURLDestination[
                                                             (Notifications) notificationValue]
                                                             .Add(url);
                                                     }
@@ -169,7 +184,7 @@ namespace Corrade
                                                 case Action.SET:
                                                     lock (LockObject)
                                                     {
-                                                        notification.NotificationDestination[
+                                                        notification.NotificationURLDestination[
                                                             (Notifications) notificationValue] = new HashSet<string>
                                                             {
                                                                 url
@@ -209,7 +224,7 @@ namespace Corrade
                                         .Any(p => !(o.NotificationMask &
                                                     (uint) wasGetEnumValueFromDescription<Notifications>(p))
                                             .Equals(0)) &&
-                                         !o.NotificationDestination.Values.Any(p => p.Contains(url))) ||
+                                         !o.NotificationURLDestination.Values.Any(p => p.Contains(url))) ||
                                         !o.GroupName.Equals(corradeCommandParameters.Group.Name,
                                             StringComparison.OrdinalIgnoreCase))
                                     {
@@ -223,7 +238,7 @@ namespace Corrade
                                         notificationDestination =
                                             new SerializableDictionary<Notifications, HashSet<string>>();
                                     object NotficatinDestinationLock = new object();
-                                    Parallel.ForEach(o.NotificationDestination, p =>
+                                    Parallel.ForEach(o.NotificationURLDestination, p =>
                                     {
                                         switch (!wasCSVToEnumerable(notificationTypes)
                                             .AsParallel()
@@ -258,7 +273,7 @@ namespace Corrade
                                         {
                                             GroupName = o.GroupName,
                                             GroupUUID = o.GroupUUID,
-                                            NotificationDestination = notificationDestination,
+                                            NotificationURLDestination = notificationDestination,
                                             Data = o.Data,
                                             Afterburn = o.Afterburn
                                         });
@@ -293,7 +308,7 @@ namespace Corrade
                                         lock (LockObject)
                                         {
                                             csv.Add(o);
-                                            csv.AddRange(groupNotification.NotificationDestination[
+                                            csv.AddRange(groupNotification.NotificationURLDestination[
                                                 wasGetEnumValueFromDescription<Notifications>(o)]);
                                         }
                                     });
@@ -316,7 +331,7 @@ namespace Corrade
                                             SerializableDictionary<Notifications, HashSet<string>>
                                                 notificationDestination =
                                                     new SerializableDictionary<Notifications, HashSet<string>>();
-                                            Parallel.ForEach(o.NotificationDestination, p =>
+                                            Parallel.ForEach(o.NotificationURLDestination, p =>
                                             {
                                                 switch (!wasCSVToEnumerable(notificationTypes)
                                                     .AsParallel()
@@ -335,7 +350,7 @@ namespace Corrade
                                             {
                                                 GroupName = o.GroupName,
                                                 GroupUUID = o.GroupUUID,
-                                                NotificationDestination = notificationDestination,
+                                                NotificationURLDestination = notificationDestination,
                                                 Data = o.Data,
                                                 Afterburn = o.Afterburn
                                             });

@@ -228,6 +228,11 @@ namespace Configurator
                 wasGetDescriptionFromEnumValue(corradeConfiguration.HTTPServerCompression);
             mainForm.HTTPServerKeepAliveEnabled.Checked = corradeConfiguration.HTTPServerKeepAlive;
 
+            // TCP
+            mainForm.TCPNotificationsServerEnabled.Checked = corradeConfiguration.EnableTCPNotificationsServer;
+            mainForm.TCPNotificationsServerAddress.Text = corradeConfiguration.TCPNotificationsServerAddress;
+            mainForm.TCPNotificationsServerPort.Text = corradeConfiguration.TCPNotificationsServerPort.ToString();
+
             // limits
             mainForm.LimitsRange.Text = corradeConfiguration.Range.ToString(CultureInfo.DefaultThreadCurrentCulture);
             mainForm.LimitsPOSTThreads.Text = corradeConfiguration.MaximumPOSTThreads.ToString();
@@ -246,6 +251,8 @@ namespace Configurator
             mainForm.LimitsNotificationsThrottle.Text = corradeConfiguration.NotificationThrottle.ToString();
             mainForm.LimitsNotificationsQueue.Text = corradeConfiguration.NotificationQueueLength.ToString();
             mainForm.LimitsNotificationsThreads.Text = corradeConfiguration.MaximumNotificationThreads.ToString();
+            mainForm.LimitsTCPNotificationsThrottle.Text = corradeConfiguration.TCPNotificationThrottle.ToString();
+            mainForm.LimitsTCPNotificationsQueue.Text = corradeConfiguration.TCPNotificationQueueLength.ToString();
             mainForm.LimitsHTTPServerDrain.Text = corradeConfiguration.HTTPServerDrainTimeout.ToString();
             mainForm.LimitsHTTPServerBody.Text = corradeConfiguration.HTTPServerBodyTimeout.ToString();
             mainForm.LimitsHTTPServerHeader.Text = corradeConfiguration.HTTPServerHeaderTimeout.ToString();
@@ -396,6 +403,14 @@ namespace Configurator
                 wasGetEnumValueFromDescription<HTTPCompressionMethod>(mainForm.HTTPServerCompression.Text);
             corradeConfiguration.HTTPServerKeepAlive = mainForm.HTTPServerKeepAliveEnabled.Checked;
 
+            // TCP
+            corradeConfiguration.EnableTCPNotificationsServer = mainForm.TCPNotificationsServerEnabled.Checked;
+            corradeConfiguration.TCPNotificationsServerAddress = mainForm.TCPNotificationsServerAddress.Text;
+            if (uint.TryParse(mainForm.TCPNotificationsServerPort.Text, out outUint))
+            {
+                corradeConfiguration.TCPNotificationsServerPort = outUint;
+            }
+
             // limits
             if (uint.TryParse(mainForm.LimitsRange.Text, out outUint))
             {
@@ -464,6 +479,14 @@ namespace Configurator
             if (uint.TryParse(mainForm.LimitsNotificationsThreads.Text, out outUint))
             {
                 corradeConfiguration.MaximumNotificationThreads = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsTCPNotificationsQueue.Text, out outUint))
+            {
+                corradeConfiguration.TCPNotificationQueueLength = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsTCPNotificationsThrottle.Text, out outUint))
+            {
+                corradeConfiguration.TCPNotificationThrottle = outUint;
             }
             if (uint.TryParse(mainForm.LimitsHTTPServerDrain.Text, out outUint))
             {
@@ -1396,12 +1419,13 @@ namespace Configurator
             private string _driveIdentifierHash = string.Empty;
             private bool _enableAIML;
             private bool _enableHTTPServer;
+            private bool _enableTCPNotificationsServer;
             private bool _enableRLV;
 
             private ENIGMA _enigma = new ENIGMA
             {
-                rotors = new[] {'3', 'g', '1'},
-                plugs = new[] {'z', 'p', 'q'},
+                rotors = new[] { '3', 'g', '1' },
+                plugs = new[] { 'z', 'p', 'q' },
                 reflector = 'b'
             };
 
@@ -1417,6 +1441,8 @@ namespace Configurator
             private uint _HTTPServerIdleTimeout = 2500;
             private bool _HTTPServerKeepAlive = true;
             private string _HTTPServerPrefix = @"http://+:8080/";
+            private uint _TCPNotificationsServerPort = 8095;
+            private string _TCPNotificationsServerAddress = @"0.0.0.0";
             private uint _HTTPServerQueueTimeout = 10000;
             private uint _HTTPServerTimeout = 5000;
             private List<Filter> _inputFilters = new List<Filter>();
@@ -1437,7 +1463,9 @@ namespace Configurator
             private uint _membershipSweepInterval = 60000;
             private string _networkCardMAC = string.Empty;
             private uint _notificationQueueLength = 100;
+            private uint _TCPnotificationQueueLength = 100;
             private uint _notificationThrottle = 1000;
+            private uint _TCPnotificationThrottle = 1000;
             private uint _notificationTimeout = 5000;
             private List<Filter> _outputFilters = new List<Filter>();
             private string _password = string.Empty;
@@ -1660,6 +1688,24 @@ namespace Configurator
                 }
             }
 
+            public bool EnableTCPNotificationsServer
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _enableTCPNotificationsServer;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _enableTCPNotificationsServer = value;
+                    }
+                }
+            }
+
             public bool EnableAIML
             {
                 get
@@ -1710,6 +1756,42 @@ namespace Configurator
                     lock (ClientInstanceConfigurationLock)
                     {
                         _HTTPServerPrefix = value;
+                    }
+                }
+            }
+
+            public uint TCPNotificationsServerPort
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _TCPNotificationsServerPort;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _TCPNotificationsServerPort = value;
+                    }
+                }
+            }
+
+            public string TCPNotificationsServerAddress
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _TCPNotificationsServerAddress;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _TCPNotificationsServerAddress = value;
                     }
                 }
             }
@@ -2092,6 +2174,24 @@ namespace Configurator
                 }
             }
 
+            public uint TCPNotificationThrottle
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _TCPnotificationThrottle;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _TCPnotificationThrottle = value;
+                    }
+                }
+            }
+
             public uint NotificationQueueLength
             {
                 get
@@ -2106,6 +2206,24 @@ namespace Configurator
                     lock (ClientInstanceConfigurationLock)
                     {
                         _notificationQueueLength = value;
+                    }
+                }
+            }
+
+            public uint TCPNotificationQueueLength
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _TCPnotificationQueueLength;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _TCPnotificationQueueLength = value;
                     }
                 }
             }
@@ -2692,7 +2810,7 @@ namespace Configurator
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
-                        return !_inputFilters.Any() ? new List<Filter> {Filter.RFC1738} : _inputFilters;
+                        return !_inputFilters.Any() ? new List<Filter> { Filter.RFC1738 } : _inputFilters;
                     }
                 }
                 set
@@ -2710,7 +2828,7 @@ namespace Configurator
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
-                        return !_outputFilters.Any() ? new List<Filter> {Filter.RFC1738} : _outputFilters;
+                        return !_outputFilters.Any() ? new List<Filter> { Filter.RFC1738 } : _outputFilters;
                     }
                 }
                 set

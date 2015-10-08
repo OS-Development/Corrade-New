@@ -49,7 +49,7 @@ namespace Corrade
                         {
                             SimParcelsDownloadedEvent.Set();
                         }
-                        if (!SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                        if (!SimParcelsDownloadedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                             throw new ScriptException(ScriptError.TIMEOUT_GETTING_PARCELS);
