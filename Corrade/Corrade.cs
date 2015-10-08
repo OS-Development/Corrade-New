@@ -9064,7 +9064,7 @@ namespace Corrade
             private HashSet<Master> _masters = new HashSet<Master>();
             private uint _maximumCommandThreads = 10;
             private uint _maximumInstantMessageThreads = 10;
-            private uint _maximumLogThreads = 20;
+            private uint _maximumLogThreads = 40;
             private uint _maximumNotificationThreads = 10;
             private uint _maximumPOSTThreads = 25;
             private uint _maximumRLVThreads = 10;
