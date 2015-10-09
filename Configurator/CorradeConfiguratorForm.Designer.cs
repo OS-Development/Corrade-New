@@ -560,9 +560,9 @@
             // 
             this.pictureBox1.BackgroundImage = ((System.Drawing.Image)(resources.GetObject("pictureBox1.BackgroundImage")));
             this.pictureBox1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-            this.pictureBox1.Location = new System.Drawing.Point(26, 12);
+            this.pictureBox1.Location = new System.Drawing.Point(51, 12);
             this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(636, 177);
+            this.pictureBox1.Size = new System.Drawing.Size(603, 177);
             this.pictureBox1.TabIndex = 0;
             this.pictureBox1.TabStop = false;
             // 
@@ -2130,7 +2130,7 @@
             // 
             this.pictureBox84.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox84.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox84.Image")));
-            this.pictureBox84.Location = new System.Drawing.Point(640, 21);
+            this.pictureBox84.Location = new System.Drawing.Point(634, 22);
             this.pictureBox84.Name = "pictureBox84";
             this.pictureBox84.Size = new System.Drawing.Size(20, 20);
             this.pictureBox84.TabIndex = 6;
