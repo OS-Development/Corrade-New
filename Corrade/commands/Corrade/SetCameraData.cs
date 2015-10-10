@@ -33,7 +33,11 @@ namespace Corrade
                         Client.Self.Movement.Camera.LeftAxis = camera.LeftAxis;
                         Client.Self.Movement.Camera.Position = camera.Position;
                         Client.Self.Movement.Camera.UpAxis = camera.UpAxis;
+                        // Send update.
+                        Client.Self.Movement.SendUpdate(true);
                     }
+                    // Save movement state.
+                    SaveMovementState.Invoke();
                 };
         }
     }

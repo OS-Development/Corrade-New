@@ -39,7 +39,8 @@ namespace Configurator
             [XmlEnum(Name = "ENIGMA")] [Description("ENIGMA")] ENIGMA,
             [XmlEnum(Name = "VIGENERE")] [Description("VIGENERE")] VIGENERE,
             [XmlEnum(Name = "ATBASH")] [Description("ATBASH")] ATBASH,
-            [XmlEnum(Name = "BASE64")] [Description("BASE64")] BASE64
+            [XmlEnum(Name = "BASE64")] [Description("BASE64")] BASE64,
+            [XmlEnum(Name = "AES")] [Description("AES")] AES
         }
 
         /// <summary>
@@ -198,6 +199,14 @@ namespace Configurator
             mainForm.ENIGMAPlugSequence.DisplayMember = "Text";
             mainForm.ENIGMAReflector.Text = corradeConfiguration.ENIGMA.reflector.ToString();
             mainForm.VIGENERESecret.Text = corradeConfiguration.VIGENERESecret;
+            if (corradeConfiguration.AESKey != null && !corradeConfiguration.AESKey.Length.Equals(0))
+            {
+                mainForm.AESKey.Text = Encoding.UTF8.GetString(corradeConfiguration.AESKey);
+            }
+            if (corradeConfiguration.AESIV != null && !corradeConfiguration.AESIV.Length.Equals(0))
+            {
+                mainForm.AESIV.Text = Encoding.UTF8.GetString(corradeConfiguration.AESIV);
+            }
 
             // AIML
             mainForm.AIMLEnabled.Checked = corradeConfiguration.EnableAIML;
@@ -349,6 +358,24 @@ namespace Configurator
             };
 
             corradeConfiguration.VIGENERESecret = mainForm.VIGENERESecret.Text;
+
+            byte[] AESKeyBytes = Encoding.UTF8.GetBytes(mainForm.AESKey.Text);
+            // Only accept FIPS-197 key-lengths
+            switch (AESKeyBytes.Length)
+            {
+                case 16:
+                case 24:
+                case 32:
+                    corradeConfiguration.AESKey = AESKeyBytes;
+                    break;
+            }
+            byte[] AESIVBytes = Encoding.UTF8.GetBytes(mainForm.AESIV.Text);
+            switch (AESIVBytes.Length)
+            {
+                case 16:
+                    corradeConfiguration.AESIV = AESIVBytes;
+                    break;
+            }
 
             // AIML
             corradeConfiguration.EnableAIML = mainForm.AIMLEnabled.Checked;
@@ -1419,8 +1446,8 @@ namespace Configurator
             private string _driveIdentifierHash = string.Empty;
             private bool _enableAIML;
             private bool _enableHTTPServer;
-            private bool _enableTCPNotificationsServer;
             private bool _enableRLV;
+            private bool _enableTCPNotificationsServer;
 
             private ENIGMA _enigma = new ENIGMA
             {
@@ -1441,8 +1468,6 @@ namespace Configurator
             private uint _HTTPServerIdleTimeout = 2500;
             private bool _HTTPServerKeepAlive = true;
             private string _HTTPServerPrefix = @"http://+:8080/";
-            private uint _TCPNotificationsServerPort = 8095;
-            private string _TCPNotificationsServerAddress = @"0.0.0.0";
             private uint _HTTPServerQueueTimeout = 10000;
             private uint _HTTPServerTimeout = 5000;
             private List<Filter> _inputFilters = new List<Filter>();
@@ -1463,9 +1488,7 @@ namespace Configurator
             private uint _membershipSweepInterval = 60000;
             private string _networkCardMAC = string.Empty;
             private uint _notificationQueueLength = 100;
-            private uint _TCPnotificationQueueLength = 100;
             private uint _notificationThrottle = 1000;
-            private uint _TCPnotificationThrottle = 1000;
             private uint _notificationTimeout = 5000;
             private List<Filter> _outputFilters = new List<Filter>();
             private string _password = string.Empty;
@@ -1477,6 +1500,10 @@ namespace Configurator
             private uint _schedulesResolution = 1000;
             private uint _servicesTimeout = 60000;
             private string _startLocation = "last";
+            private uint _TCPnotificationQueueLength = 100;
+            private string _TCPNotificationsServerAddress = @"0.0.0.0";
+            private uint _TCPNotificationsServerPort = 8095;
+            private uint _TCPnotificationThrottle = 1000;
             private uint _throttleAsset = 100000;
             private uint _throttleCloud = 10000;
             private uint _throttleLand = 80000;
@@ -1489,6 +1516,8 @@ namespace Configurator
             private bool _useExpect100Continue;
             private bool _useNaggle;
             private string _vigenereSecret = string.Empty;
+            private byte[] _AESKey;
+            private byte[] _AESIV;
 
             public string FirstName
             {
@@ -2810,7 +2839,7 @@ namespace Configurator
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
-                        return !_inputFilters.Any() ? new List<Filter> { Filter.RFC1738 } : _inputFilters;
+                        return _inputFilters;
                     }
                 }
                 set
@@ -2828,7 +2857,7 @@ namespace Configurator
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
-                        return !_outputFilters.Any() ? new List<Filter> { Filter.RFC1738 } : _outputFilters;
+                        return _outputFilters;
                     }
                 }
                 set
@@ -2836,6 +2865,42 @@ namespace Configurator
                     lock (ClientInstanceConfigurationLock)
                     {
                         _outputFilters = value;
+                    }
+                }
+            }
+
+            public byte[] AESKey
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _AESKey;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _AESKey = value;
+                    }
+                }
+            }
+
+            public byte[] AESIV
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _AESIV;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _AESIV = value;
                     }
                 }
             }
@@ -2933,7 +2998,8 @@ namespace Configurator
                     {
                         XmlSerializer serializer =
                             new XmlSerializer(typeof (CorradeConfiguration));
-                        configuration = (CorradeConfiguration) serializer.Deserialize(stream);
+                        CorradeConfiguration loadedConfiguration = (CorradeConfiguration) serializer.Deserialize(stream);
+                        configuration = loadedConfiguration;
                     }
                 }
             }
@@ -4386,6 +4452,68 @@ namespace Configurator
         {
             public string FirstName;
             public string LastName;
+        }
+
+        private void GenerateAESKeyIVRequested(object sender, EventArgs e)
+        {
+            string readableCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!\"#$%&'()*+,-./:;<=>?@[\\]^_`{}~0123456789";
+            Random random = new Random();
+            mainForm.BeginInvoke(
+                (Action) (() =>
+                {
+                    mainForm.AESKey.Text = new string(Enumerable.Repeat(readableCharacters, 32)
+                        .Select(s => s[random.Next(s.Length)]).ToArray());
+                    mainForm.AESIV.Text = new string(Enumerable.Repeat(readableCharacters, 16)
+                        .Select(s => s[random.Next(s.Length)]).ToArray());
+                }));
+        }
+
+        private void AESKeyChanged(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke(
+                (Action)(() =>
+                {
+                    if (string.IsNullOrEmpty(mainForm.AESKey.Text))
+                    {
+                        mainForm.AESKey.BackColor = Color.MistyRose;
+                        return;
+                    }
+                    byte[] AESKeyBytes = Encoding.UTF8.GetBytes(mainForm.AESKey.Text);
+                    switch (AESKeyBytes.Length)
+                    {
+                        case 16:
+                        case 24:
+                        case 32:
+                            mainForm.AESKey.BackColor = Color.Empty;
+                            break;
+                        default:
+                            mainForm.AESKey.BackColor = Color.MistyRose;
+                            break;
+                    }
+                }));
+        }
+
+        private void AESIVChanged(object sender, EventArgs e)
+        {
+            mainForm.BeginInvoke(
+                (Action)(() =>
+                {
+                    if (string.IsNullOrEmpty(mainForm.AESIV.Text))
+                    {
+                        mainForm.AESIV.BackColor = Color.MistyRose;
+                        return;
+                    }
+                    byte[] AESIVBytes = Encoding.UTF8.GetBytes(mainForm.AESIV.Text);
+                    switch (AESIVBytes.Length)
+                    {
+                        case 16:
+                            mainForm.AESIV.BackColor = Color.Empty;
+                            break;
+                        default:
+                            mainForm.AESIV.BackColor = Color.MistyRose;
+                            break;
+                    }
+                }));
         }
     }
 

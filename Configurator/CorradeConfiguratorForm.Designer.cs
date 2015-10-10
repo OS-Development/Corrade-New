@@ -107,6 +107,15 @@
             this.InputDecode = new System.Windows.Forms.ComboBox();
             this.AddInputDecoder = new System.Windows.Forms.Button();
             this.tabPage4 = new System.Windows.Forms.TabPage();
+            this.groupBox83 = new System.Windows.Forms.GroupBox();
+            this.pictureBox90 = new System.Windows.Forms.PictureBox();
+            this.button10 = new System.Windows.Forms.Button();
+            this.groupBox85 = new System.Windows.Forms.GroupBox();
+            this.pictureBox89 = new System.Windows.Forms.PictureBox();
+            this.AESIV = new System.Windows.Forms.TextBox();
+            this.groupBox84 = new System.Windows.Forms.GroupBox();
+            this.pictureBox88 = new System.Windows.Forms.PictureBox();
+            this.AESKey = new System.Windows.Forms.TextBox();
             this.groupBox33 = new System.Windows.Forms.GroupBox();
             this.groupBox37 = new System.Windows.Forms.GroupBox();
             this.pictureBox20 = new System.Windows.Forms.PictureBox();
@@ -416,6 +425,12 @@
             this.groupBox18.SuspendLayout();
             this.groupBox17.SuspendLayout();
             this.tabPage4.SuspendLayout();
+            this.groupBox83.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox90)).BeginInit();
+            this.groupBox85.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox89)).BeginInit();
+            this.groupBox84.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox88)).BeginInit();
             this.groupBox33.SuspendLayout();
             this.groupBox37.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox20)).BeginInit();
@@ -1177,9 +1192,9 @@
             this.groupBox16.Controls.Add(this.groupBox31);
             this.groupBox16.Controls.Add(this.groupBox20);
             this.groupBox16.Controls.Add(this.groupBox19);
-            this.groupBox16.Location = new System.Drawing.Point(7, 168);
+            this.groupBox16.Location = new System.Drawing.Point(3, 184);
             this.groupBox16.Name = "groupBox16";
-            this.groupBox16.Size = new System.Drawing.Size(659, 154);
+            this.groupBox16.Size = new System.Drawing.Size(659, 176);
             this.groupBox16.TabIndex = 1;
             this.groupBox16.TabStop = false;
             this.groupBox16.Text = "Output";
@@ -1198,7 +1213,7 @@
             // 
             // DeleteSelectedOutputFilter
             // 
-            this.DeleteSelectedOutputFilter.Location = new System.Drawing.Point(527, 77);
+            this.DeleteSelectedOutputFilter.Location = new System.Drawing.Point(551, 77);
             this.DeleteSelectedOutputFilter.Name = "DeleteSelectedOutputFilter";
             this.DeleteSelectedOutputFilter.Size = new System.Drawing.Size(102, 23);
             this.DeleteSelectedOutputFilter.TabIndex = 4;
@@ -1255,7 +1270,8 @@
             this.OutputEncrypt.Items.AddRange(new object[] {
             "ENIGMA",
             "VIGENERE",
-            "ATBASH"});
+            "ATBASH",
+            "AES"});
             this.OutputEncrypt.Location = new System.Drawing.Point(7, 20);
             this.OutputEncrypt.Name = "OutputEncrypt";
             this.OutputEncrypt.Size = new System.Drawing.Size(118, 21);
@@ -1307,7 +1323,7 @@
             this.groupBox15.Controls.Add(this.groupBox17);
             this.groupBox15.Location = new System.Drawing.Point(7, 5);
             this.groupBox15.Name = "groupBox15";
-            this.groupBox15.Size = new System.Drawing.Size(659, 157);
+            this.groupBox15.Size = new System.Drawing.Size(659, 173);
             this.groupBox15.TabIndex = 0;
             this.groupBox15.TabStop = false;
             this.groupBox15.Text = "Input";
@@ -1325,7 +1341,7 @@
             // 
             // DeleteSelectedInputFilter
             // 
-            this.DeleteSelectedInputFilter.Location = new System.Drawing.Point(526, 75);
+            this.DeleteSelectedInputFilter.Location = new System.Drawing.Point(547, 74);
             this.DeleteSelectedInputFilter.Name = "DeleteSelectedInputFilter";
             this.DeleteSelectedInputFilter.Size = new System.Drawing.Size(103, 23);
             this.DeleteSelectedInputFilter.TabIndex = 3;
@@ -1382,7 +1398,8 @@
             this.InputDecryption.Items.AddRange(new object[] {
             "ENIGMA",
             "VIGENERE",
-            "ATBASH"});
+            "ATBASH",
+            "AES"});
             this.InputDecryption.Location = new System.Drawing.Point(7, 20);
             this.InputDecryption.Name = "InputDecryption";
             this.InputDecryption.Size = new System.Drawing.Size(118, 21);
@@ -1427,6 +1444,7 @@
             // 
             // tabPage4
             // 
+            this.tabPage4.Controls.Add(this.groupBox83);
             this.tabPage4.Controls.Add(this.groupBox33);
             this.tabPage4.Controls.Add(this.groupBox32);
             this.tabPage4.Location = new System.Drawing.Point(4, 25);
@@ -1436,12 +1454,112 @@
             this.tabPage4.Text = "Cyptography";
             this.tabPage4.UseVisualStyleBackColor = true;
             // 
+            // groupBox83
+            // 
+            this.groupBox83.Controls.Add(this.pictureBox90);
+            this.groupBox83.Controls.Add(this.button10);
+            this.groupBox83.Controls.Add(this.groupBox85);
+            this.groupBox83.Controls.Add(this.groupBox84);
+            this.groupBox83.Location = new System.Drawing.Point(4, 267);
+            this.groupBox83.Name = "groupBox83";
+            this.groupBox83.Size = new System.Drawing.Size(665, 93);
+            this.groupBox83.TabIndex = 2;
+            this.groupBox83.TabStop = false;
+            this.groupBox83.Text = "AES";
+            // 
+            // pictureBox90
+            // 
+            this.pictureBox90.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox90.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox90.Image")));
+            this.pictureBox90.Location = new System.Drawing.Point(633, 40);
+            this.pictureBox90.Name = "pictureBox90";
+            this.pictureBox90.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox90.TabIndex = 5;
+            this.pictureBox90.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox90, "The \"Generate\" button will generate a random key and\r\ninitialisation vector for y" +
+        "ou out of a pool of readable\r\nlatin characters characters.");
+            // 
+            // button10
+            // 
+            this.button10.Location = new System.Drawing.Point(552, 39);
+            this.button10.Name = "button10";
+            this.button10.Size = new System.Drawing.Size(75, 23);
+            this.button10.TabIndex = 4;
+            this.button10.Text = "Generate";
+            this.button10.UseVisualStyleBackColor = true;
+            this.button10.Click += new System.EventHandler(this.GenerateAESKeyIVRequested);
+            // 
+            // groupBox85
+            // 
+            this.groupBox85.Controls.Add(this.pictureBox89);
+            this.groupBox85.Controls.Add(this.AESIV);
+            this.groupBox85.Location = new System.Drawing.Point(403, 22);
+            this.groupBox85.Name = "groupBox85";
+            this.groupBox85.Size = new System.Drawing.Size(143, 54);
+            this.groupBox85.TabIndex = 1;
+            this.groupBox85.TabStop = false;
+            this.groupBox85.Text = "Initialization Vector";
+            // 
+            // pictureBox89
+            // 
+            this.pictureBox89.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox89.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox89.Image")));
+            this.pictureBox89.Location = new System.Drawing.Point(117, 20);
+            this.pictureBox89.Name = "pictureBox89";
+            this.pictureBox89.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox89.TabIndex = 4;
+            this.pictureBox89.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox89, "The initialisation vector to use which would be 16B\r\nlong, which is 128b which re" +
+        "presents the equivalent of\r\n16 characters.");
+            // 
+            // AESIV
+            // 
+            this.AESIV.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.AESIV.Location = new System.Drawing.Point(6, 21);
+            this.AESIV.MaxLength = 16;
+            this.AESIV.Name = "AESIV";
+            this.AESIV.Size = new System.Drawing.Size(105, 20);
+            this.AESIV.TabIndex = 0;
+            this.AESIV.TextChanged += new System.EventHandler(this.AESIVChanged);
+            // 
+            // groupBox84
+            // 
+            this.groupBox84.Controls.Add(this.pictureBox88);
+            this.groupBox84.Controls.Add(this.AESKey);
+            this.groupBox84.Location = new System.Drawing.Point(147, 22);
+            this.groupBox84.Name = "groupBox84";
+            this.groupBox84.Size = new System.Drawing.Size(247, 54);
+            this.groupBox84.TabIndex = 0;
+            this.groupBox84.TabStop = false;
+            this.groupBox84.Text = "Key";
+            // 
+            // pictureBox88
+            // 
+            this.pictureBox88.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox88.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox88.Image")));
+            this.pictureBox88.Location = new System.Drawing.Point(220, 21);
+            this.pictureBox88.Name = "pictureBox88";
+            this.pictureBox88.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox88.TabIndex = 3;
+            this.pictureBox88.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox88, resources.GetString("pictureBox88.ToolTip"));
+            // 
+            // AESKey
+            // 
+            this.AESKey.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.AESKey.Location = new System.Drawing.Point(6, 21);
+            this.AESKey.MaxLength = 32;
+            this.AESKey.Name = "AESKey";
+            this.AESKey.Size = new System.Drawing.Size(208, 20);
+            this.AESKey.TabIndex = 0;
+            this.AESKey.TextChanged += new System.EventHandler(this.AESKeyChanged);
+            // 
             // groupBox33
             // 
             this.groupBox33.Controls.Add(this.groupBox37);
-            this.groupBox33.Location = new System.Drawing.Point(3, 175);
+            this.groupBox33.Location = new System.Drawing.Point(4, 175);
             this.groupBox33.Name = "groupBox33";
-            this.groupBox33.Size = new System.Drawing.Size(665, 151);
+            this.groupBox33.Size = new System.Drawing.Size(665, 86);
             this.groupBox33.TabIndex = 1;
             this.groupBox33.TabStop = false;
             this.groupBox33.Text = "VIGENERE";
@@ -1450,9 +1568,9 @@
             // 
             this.groupBox37.Controls.Add(this.pictureBox20);
             this.groupBox37.Controls.Add(this.VIGENERESecret);
-            this.groupBox37.Location = new System.Drawing.Point(9, 26);
+            this.groupBox37.Location = new System.Drawing.Point(8, 21);
             this.groupBox37.Name = "groupBox37";
-            this.groupBox37.Size = new System.Drawing.Size(645, 100);
+            this.groupBox37.Size = new System.Drawing.Size(657, 54);
             this.groupBox37.TabIndex = 0;
             this.groupBox37.TabStop = false;
             this.groupBox37.Text = "Shared Secret";
@@ -1461,7 +1579,7 @@
             // 
             this.pictureBox20.Cursor = System.Windows.Forms.Cursors.Help;
             this.pictureBox20.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox20.Image")));
-            this.pictureBox20.Location = new System.Drawing.Point(612, 44);
+            this.pictureBox20.Location = new System.Drawing.Point(625, 21);
             this.pictureBox20.Name = "pictureBox20";
             this.pictureBox20.Size = new System.Drawing.Size(20, 20);
             this.pictureBox20.TabIndex = 2;
@@ -1472,9 +1590,9 @@
             // VIGENERESecret
             // 
             this.VIGENERESecret.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.VIGENERESecret.Location = new System.Drawing.Point(16, 44);
+            this.VIGENERESecret.Location = new System.Drawing.Point(7, 21);
             this.VIGENERESecret.Name = "VIGENERESecret";
-            this.VIGENERESecret.Size = new System.Drawing.Size(590, 20);
+            this.VIGENERESecret.Size = new System.Drawing.Size(612, 20);
             this.VIGENERESecret.TabIndex = 0;
             // 
             // groupBox32
@@ -4342,6 +4460,14 @@
             this.groupBox18.ResumeLayout(false);
             this.groupBox17.ResumeLayout(false);
             this.tabPage4.ResumeLayout(false);
+            this.groupBox83.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox90)).EndInit();
+            this.groupBox85.ResumeLayout(false);
+            this.groupBox85.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox89)).EndInit();
+            this.groupBox84.ResumeLayout(false);
+            this.groupBox84.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox88)).EndInit();
             this.groupBox33.ResumeLayout(false);
             this.groupBox37.ResumeLayout(false);
             this.groupBox37.PerformLayout();
@@ -4874,6 +5000,15 @@
         private System.Windows.Forms.PictureBox pictureBox87;
         private System.Windows.Forms.PictureBox pictureBox86;
         private System.Windows.Forms.PictureBox pictureBox85;
+        private System.Windows.Forms.GroupBox groupBox83;
+        private System.Windows.Forms.GroupBox groupBox85;
+        private System.Windows.Forms.GroupBox groupBox84;
+        private System.Windows.Forms.PictureBox pictureBox89;
+        private System.Windows.Forms.TextBox AESIV;
+        private System.Windows.Forms.PictureBox pictureBox88;
+        private System.Windows.Forms.TextBox AESKey;
+        private System.Windows.Forms.Button button10;
+        private System.Windows.Forms.PictureBox pictureBox90;
     }
 }
 

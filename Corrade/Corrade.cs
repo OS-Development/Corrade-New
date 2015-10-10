@@ -22,6 +22,7 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
+using System.Security.Cryptography;
 using System.ServiceProcess;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -70,7 +71,8 @@ namespace Corrade
             [XmlEnum(Name = "ENIGMA")] [Description("ENIGMA")] ENIGMA,
             [XmlEnum(Name = "VIGENERE")] [Description("VIGENERE")] VIGENERE,
             [XmlEnum(Name = "ATBASH")] [Description("ATBASH")] ATBASH,
-            [XmlEnum(Name = "BASE64")] [Description("BASE64")] BASE64
+            [XmlEnum(Name = "BASE64")] [Description("BASE64")] BASE64,
+            [XmlEnum(Name = "AES")] [Description("AES")] AES
         }
 
         /// <summary>
@@ -707,6 +709,9 @@ namespace Corrade
                     case Filter.ATBASH:
                         o = wasATBASH(o);
                         break;
+                    case Filter.AES:
+                        o = wasAESDecrypt(o, corradeConfiguration.AESKey, corradeConfiguration.AESIV);
+                        break;
                     case Filter.BASE64:
                         o = Encoding.UTF8.GetString(Convert.FromBase64String(o));
                         break;
@@ -747,6 +752,9 @@ namespace Corrade
                         break;
                     case Filter.ATBASH:
                         o = wasATBASH(o);
+                        break;
+                    case Filter.AES:
+                        o = wasAESEncrypt(o, corradeConfiguration.AESKey, corradeConfiguration.AESIV);
                         break;
                     case Filter.BASE64:
                         o = Convert.ToBase64String(Encoding.UTF8.GetBytes(o));
@@ -3167,29 +3175,63 @@ namespace Corrade
                         // parent avatar not found, this should not happen
                         if (avatarParent != null)
                         {
-                            // check if the avatar is in range
-                            if (Vector3.Distance(avatarParent.Position, Client.Self.SimPosition) <= range)
+                            // check whether the avatar is sitting
+                            Primitive avatarParentPrimitive =
+                                objectsPrimitives.FirstOrDefault(p => p.LocalID.Equals(avatarParent.ParentID));
+                            switch (avatarParentPrimitive != null)
                             {
-                                if (item is UUID)
-                                {
-                                    switch (!o.ID.Equals(item))
+                                case true: // the avatar is sitting, if the sit root is in range, add the primitive
+                                    if (Vector3.Distance(avatarParentPrimitive.Position, Client.Self.SimPosition) <=
+                                        range)
                                     {
-                                        case false:
+                                        if (item is UUID)
+                                        {
+                                            switch (!o.ID.Equals(item))
+                                            {
+                                                case false:
+                                                    lock (LockObject)
+                                                    {
+                                                        selectedPrimitives.Add(o);
+                                                    }
+                                                    break;
+                                            }
+                                            break;
+                                        }
+                                        if (item is string)
+                                        {
                                             lock (LockObject)
                                             {
                                                 selectedPrimitives.Add(o);
                                             }
-                                            break;
+                                        }
                                     }
                                     break;
-                                }
-                                if (item is string)
-                                {
-                                    lock (LockObject)
+                                default: // the avatar is not sitting
+                                    // check if the avatar is in range
+                                    if (Vector3.Distance(avatarParent.Position, Client.Self.SimPosition) <= range)
                                     {
-                                        selectedPrimitives.Add(o);
+                                        if (item is UUID)
+                                        {
+                                            switch (!o.ID.Equals(item))
+                                            {
+                                                case false:
+                                                    lock (LockObject)
+                                                    {
+                                                        selectedPrimitives.Add(o);
+                                                    }
+                                                    break;
+                                            }
+                                            break;
+                                        }
+                                        if (item is string)
+                                        {
+                                            lock (LockObject)
+                                            {
+                                                selectedPrimitives.Add(o);
+                                            }
+                                        }
                                     }
-                                }
+                                    break;
                             }
                         }
                         break;
@@ -9014,6 +9056,8 @@ namespace Corrade
         public class CorradeConfiguration
         {
             private uint _activateDelay = 5000;
+            private byte[] _AESIV;
+            private byte[] _AESKey;
             private bool _autoActivateGroup;
             private string _bindIPAddress = string.Empty;
             private uint _callbackQueueLength = 100;
@@ -10420,7 +10464,7 @@ namespace Corrade
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
-                        return !_inputFilters.Any() ? new List<Filter> {Filter.RFC1738} : _inputFilters;
+                        return _inputFilters;
                     }
                 }
                 set
@@ -10438,7 +10482,7 @@ namespace Corrade
                 {
                     lock (ClientInstanceConfigurationLock)
                     {
-                        return !_outputFilters.Any() ? new List<Filter> {Filter.RFC1738} : _outputFilters;
+                        return _outputFilters;
                     }
                 }
                 set
@@ -10446,6 +10490,42 @@ namespace Corrade
                     lock (ClientInstanceConfigurationLock)
                     {
                         _outputFilters = value;
+                    }
+                }
+            }
+
+            public byte[] AESKey
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _AESKey;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _AESKey = value;
+                    }
+                }
+            }
+
+            public byte[] AESIV
+            {
+                get
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        return _AESIV;
+                    }
+                }
+                set
+                {
+                    lock (ClientInstanceConfigurationLock)
+                    {
+                        _AESIV = value;
                     }
                 }
             }
@@ -10568,7 +10648,8 @@ namespace Corrade
                     {
                         XmlSerializer serializer =
                             new XmlSerializer(typeof (CorradeConfiguration));
-                        configuration = (CorradeConfiguration) serializer.Deserialize(stream);
+                        CorradeConfiguration loadedConfiguration = (CorradeConfiguration) serializer.Deserialize(stream);
+                        configuration = loadedConfiguration;
                     }
                 }
                 catch (Exception ex)
@@ -10991,9 +11072,11 @@ namespace Corrade
                                                     switch (!commandGroup.Equals(default(Group)) &&
                                                             Authenticate(commandGroup.Name,
                                                                 wasInput(
-                                                            wasKeyValueGet(
-                                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD)),
-                                                                receiveLine))))
+                                                                    wasKeyValueGet(
+                                                                        wasOutput(
+                                                                            wasGetDescriptionFromEnumValue(
+                                                                                ScriptKeys.PASSWORD)),
+                                                                        receiveLine))))
                                                     {
                                                         case false:
                                                             streamWriter.WriteLine(
@@ -11024,7 +11107,28 @@ namespace Corrade
                                                                     o.GroupName.Equals(commandGroup.Name,
                                                                         StringComparison.OrdinalIgnoreCase));
                                                     }
-
+                                                    // Build any requested data for raw notifications.
+                                                    string fields =
+                                                        wasInput(
+                                                            wasKeyValueGet(
+                                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                                                receiveLine));
+                                                    HashSet<string> data = new HashSet<string>();
+                                                    object LockObject = new object();
+                                                    if (!string.IsNullOrEmpty(fields))
+                                                    {
+                                                        Parallel.ForEach(
+                                                            wasCSVToEnumerable(fields)
+                                                                .AsParallel()
+                                                                .Where(o => !string.IsNullOrEmpty(o)),
+                                                            o =>
+                                                            {
+                                                                lock (LockObject)
+                                                                {
+                                                                    data.Add(o);
+                                                                }
+                                                            });
+                                                    }
                                                     switch (!notification.Equals(default(Notification)))
                                                     {
                                                         case false:
@@ -11036,7 +11140,8 @@ namespace Corrade
                                                                     new SerializableDictionary
                                                                         <Notifications, HashSet<string>>(),
                                                                 NotificationTCPDestination =
-                                                                    new Dictionary<Notifications, HashSet<IPEndPoint>>()
+                                                                    new Dictionary<Notifications, HashSet<IPEndPoint>>(),
+                                                                Data = data
                                                             };
                                                             break;
                                                         case true:
@@ -11055,7 +11160,6 @@ namespace Corrade
                                                     }
 
                                                     bool succeeded = true;
-                                                    object LockObject = new object();
                                                     Parallel.ForEach(wasCSVToEnumerable(
                                                         notificationTypes)
                                                         .AsParallel()
@@ -14412,6 +14516,79 @@ namespace Corrade
             });
 
             return new string(input);
+        }
+
+        /// <summary>
+        ///     Encrypts a string given a key and initialization vector.
+        /// </summary>
+        /// <param name="data">the string to encrypt</param>
+        /// <param name="Key">the key</param>
+        /// <param name="IV">the initialization bector</param>
+        /// <returns>Base64 encoded encrypted data</returns>
+        private static string wasAESEncrypt(string data, byte[] Key, byte[] IV)
+        {
+            byte[] encryptedData;
+            using (RijndaelManaged rijdanelManaged = new RijndaelManaged())
+            {
+                //  FIPS-197 / CBC
+                rijdanelManaged.BlockSize = 128;
+                rijdanelManaged.Mode = CipherMode.CBC;
+
+                rijdanelManaged.Key = Key;
+                rijdanelManaged.IV = IV;
+
+                ICryptoTransform encryptor = rijdanelManaged.CreateEncryptor(rijdanelManaged.Key, rijdanelManaged.IV);
+
+                using (MemoryStream memoryStream = new MemoryStream())
+                {
+                    using (CryptoStream cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write)
+                        )
+                    {
+                        using (StreamWriter streamWriter = new StreamWriter(cryptoStream))
+                        {
+                            streamWriter.Write(data);
+                            streamWriter.Flush();
+                        }
+                        encryptedData = memoryStream.ToArray();
+                    }
+                }
+            }
+            return Convert.ToBase64String(encryptedData);
+        }
+
+        /// <summary>
+        ///     Decrypts a Base64 encoded string using AES with a given key and initialization vector.
+        /// </summary>
+        /// <param name="data">a Base64 encoded string of the data to decrypt</param>
+        /// <param name="Key">the key</param>
+        /// <param name="IV">the initialization vector</param>
+        /// <returns>the decrypted data</returns>
+        private static string wasAESDecrypt(string data, byte[] Key, byte[] IV)
+        {
+            string plaintext;
+            using (RijndaelManaged rijdanelManaged = new RijndaelManaged())
+            {
+                //  FIPS-197 / CBC
+                rijdanelManaged.BlockSize = 128;
+                rijdanelManaged.Mode = CipherMode.CBC;
+
+                rijdanelManaged.Key = Key;
+                rijdanelManaged.IV = IV;
+
+                ICryptoTransform decryptor = rijdanelManaged.CreateDecryptor(rijdanelManaged.Key, rijdanelManaged.IV);
+
+                using (MemoryStream memoryStream = new MemoryStream(Convert.FromBase64String(data)))
+                {
+                    using (CryptoStream cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read))
+                    {
+                        using (StreamReader streamReader = new StreamReader(cryptoStream))
+                        {
+                            plaintext = streamReader.ReadToEnd();
+                        }
+                    }
+                }
+            }
+            return plaintext;
         }
 
         #endregion

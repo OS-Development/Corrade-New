@@ -62,6 +62,8 @@ namespace Corrade
                         Client.Self.Movement.UpPos = movement.UpPos;
                         Client.Self.Movement.YawNeg = movement.YawNeg;
                         Client.Self.Movement.YawPos = movement.YawPos;
+                        // Send update.
+                        Client.Self.Movement.SendUpdate(true);
                     }
                     // Save movement state.
                     SaveMovementState.Invoke();

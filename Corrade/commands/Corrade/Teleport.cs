@@ -37,6 +37,16 @@ namespace Corrade
                     {
                         position = Client.Self.SimPosition;
                     }
+                    Vector3 lookAt;
+                    if (
+                        !Vector3.TryParse(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TURNTO)),
+                                    corradeCommandParameters.Message)),
+                            out lookAt))
+                    {
+                        lookAt = Client.Self.LookAt;
+                    }
                     // We override the default teleport since region names are unique and case insensitive.
                     string region =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
@@ -111,7 +121,7 @@ namespace Corrade
                     lock (ClientInstanceSelfLock)
                     {
                         Client.Self.TeleportProgress += TeleportEventHandler;
-                        Client.Self.Teleport(regionHandle, position);
+                        Client.Self.Teleport(regionHandle, position, lookAt);
                         if (!TeleportEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Self.TeleportProgress -= TeleportEventHandler;

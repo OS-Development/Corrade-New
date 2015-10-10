@@ -27,6 +27,16 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+                    Vector3 offset;
+                    if (
+                        !Vector3.TryParse(
+                            wasInput(
+                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.OFFSET)),
+                                    corradeCommandParameters.Message)),
+                            out offset))
+                    {
+                        offset = Vector3.Zero;
+                    }
                     float range;
                     if (
                         !float.TryParse(
@@ -80,7 +90,7 @@ namespace Corrade
                     {
                         Client.Self.AvatarSitResponse += AvatarSitEventHandler;
                         Client.Self.AlertMessage += AlertMessageEventHandler;
-                        Client.Self.RequestSit(primitive.ID, Vector3.Zero);
+                        Client.Self.RequestSit(primitive.ID, offset);
                         if (!SitEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                         {
                             Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
