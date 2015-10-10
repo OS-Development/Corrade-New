@@ -3108,133 +3108,22 @@ namespace Corrade
             object LockObject = new object();
             Parallel.ForEach(objectsPrimitives, o =>
             {
-                switch (o.ParentID)
+                // find the parent of the primitive
+                Primitive parent = o;
+                do
                 {
-                    // primitive is a parent and it is in range
-                    case 0:
-                        if (Vector3.Distance(o.Position, Client.Self.SimPosition) <= range)
-                        {
-                            if (item is UUID)
-                            {
-                                switch (!o.ID.Equals(item))
-                                {
-                                    case false:
-                                        lock (LockObject)
-                                        {
-                                            selectedPrimitives.Add(o);
-                                        }
-                                        break;
-                                }
-                                break;
-                            }
-                            if (item is string)
-                            {
-                                lock (LockObject)
-                                {
-                                    selectedPrimitives.Add(o);
-                                }
-                            }
-                        }
-                        break;
-                    // primitive is a child
-                    default:
-                        // find the parent of the primitive
-                        Primitive primitiveParent = objectsPrimitives.FirstOrDefault(p => p.LocalID.Equals(o.ParentID));
-                        // if the primitive has a parent
-                        if (primitiveParent != null)
-                        {
-                            // if the parent is in range, add the child
-                            if (Vector3.Distance(primitiveParent.Position, Client.Self.SimPosition) <= range)
-                            {
-                                if (item is UUID)
-                                {
-                                    switch (!o.ID.Equals(item))
-                                    {
-                                        case false:
-                                            lock (LockObject)
-                                            {
-                                                selectedPrimitives.Add(o);
-                                            }
-                                            break;
-                                    }
-                                    break;
-                                }
-                                if (item is string)
-                                {
-                                    lock (LockObject)
-                                    {
-                                        selectedPrimitives.Add(o);
-                                    }
-                                }
-                                break;
-                            }
-                        }
-                        // check if an avatar is the parent of the parent primitive
-                        Avatar avatarParent =
-                            objectsAvatars.FirstOrDefault(p => p.LocalID.Equals(o.ParentID));
-                        // parent avatar not found, this should not happen
-                        if (avatarParent != null)
-                        {
-                            // check whether the avatar is sitting
-                            Primitive avatarParentPrimitive =
-                                objectsPrimitives.FirstOrDefault(p => p.LocalID.Equals(avatarParent.ParentID));
-                            switch (avatarParentPrimitive != null)
-                            {
-                                case true: // the avatar is sitting, if the sit root is in range, add the primitive
-                                    if (Vector3.Distance(avatarParentPrimitive.Position, Client.Self.SimPosition) <=
-                                        range)
-                                    {
-                                        if (item is UUID)
-                                        {
-                                            switch (!o.ID.Equals(item))
-                                            {
-                                                case false:
-                                                    lock (LockObject)
-                                                    {
-                                                        selectedPrimitives.Add(o);
-                                                    }
-                                                    break;
-                                            }
-                                            break;
-                                        }
-                                        if (item is string)
-                                        {
-                                            lock (LockObject)
-                                            {
-                                                selectedPrimitives.Add(o);
-                                            }
-                                        }
-                                    }
-                                    break;
-                                default: // the avatar is not sitting
-                                    // check if the avatar is in range
-                                    if (Vector3.Distance(avatarParent.Position, Client.Self.SimPosition) <= range)
-                                    {
-                                        if (item is UUID)
-                                        {
-                                            switch (!o.ID.Equals(item))
-                                            {
-                                                case false:
-                                                    lock (LockObject)
-                                                    {
-                                                        selectedPrimitives.Add(o);
-                                                    }
-                                                    break;
-                                            }
-                                            break;
-                                        }
-                                        if (item is string)
-                                        {
-                                            lock (LockObject)
-                                            {
-                                                selectedPrimitives.Add(o);
-                                            }
-                                        }
-                                    }
-                                    break;
-                            }
-                        }
-                        break;
+                    Primitive ancestor =
+                        objectsPrimitives.AsParallel().FirstOrDefault(p => p.LocalID.Equals(parent.ParentID)) ??
+                        objectsAvatars.AsParallel().FirstOrDefault(p => p.LocalID.Equals(parent.ParentID));
+                    if (ancestor == null) break;
+                    parent = ancestor;
+                } while (!parent.ParentID.Equals(0));
+                if (Vector3.Distance(parent.Position, Client.Self.SimPosition) <= range)
+                {
+                    lock (LockObject)
+                    {
+                        selectedPrimitives.Add(o);
+                    }
                 }
             });
             if (!selectedPrimitives.Any()) return false;
