@@ -3102,19 +3102,28 @@ namespace Corrade
             uint dataTimeout)
         {
             HashSet<Primitive> selectedPrimitives = new HashSet<Primitive>();
-            HashSet<Primitive> objectsPrimitives =
-                new HashSet<Primitive>(GetPrimitives(range, millisecondsTimeout, dataTimeout));
-            HashSet<Avatar> objectsAvatars = new HashSet<Avatar>(GetAvatars(range, millisecondsTimeout, dataTimeout));
+            Dictionary<uint, Primitive> objectsPrimitives =
+                new Dictionary<uint, Primitive>(
+                    GetPrimitives(range, millisecondsTimeout, dataTimeout).ToDictionary(o => o.LocalID, p => p));
+            Dictionary<uint, Avatar> objectsAvatars =
+                new Dictionary<uint, Avatar>(
+                    GetAvatars(range, millisecondsTimeout, dataTimeout).ToDictionary(o => o.LocalID, p => p));
             object LockObject = new object();
-            Parallel.ForEach(objectsPrimitives, o =>
+            Parallel.ForEach(objectsPrimitives.Values, o =>
             {
                 // find the parent of the primitive
                 Primitive parent = o;
                 do
                 {
-                    Primitive ancestor =
-                        objectsPrimitives.AsParallel().FirstOrDefault(p => p.LocalID.Equals(parent.ParentID)) ??
-                        objectsAvatars.AsParallel().FirstOrDefault(p => p.LocalID.Equals(parent.ParentID));
+                    Primitive ancestor = null;
+                    if (objectsPrimitives.ContainsKey(parent.ParentID))
+                    {
+                        ancestor = objectsPrimitives[parent.ParentID];
+                    }
+                    if (objectsAvatars.ContainsKey(parent.ParentID))
+                    {
+                        ancestor = objectsAvatars[parent.ParentID];
+                    }
                     if (ancestor == null) break;
                     parent = ancestor;
                 } while (!parent.ParentID.Equals(0));
