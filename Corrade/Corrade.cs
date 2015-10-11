@@ -3129,9 +3129,20 @@ namespace Corrade
                 } while (!parent.ParentID.Equals(0));
                 if (Vector3.Distance(parent.Position, Client.Self.SimPosition) <= range)
                 {
-                    lock (LockObject)
+                    if (item is UUID && o.ID.Equals(item))
                     {
-                        selectedPrimitives.Add(o);
+                        lock (LockObject)
+                        {
+                            selectedPrimitives.Add(o);
+                        }
+                        return;
+                    }
+                    if (item is string)
+                    {
+                        lock (LockObject)
+                        {
+                            selectedPrimitives.Add(o);
+                        }
                     }
                 }
             });
