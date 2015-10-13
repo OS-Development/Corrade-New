@@ -202,10 +202,10 @@ namespace Corrade
                     List<string> data = new List<string>();
                     Parallel.ForEach(updatePrimitives, o =>
                     {
-                        IEnumerable<string> primitiveData = GetStructuredData(o,
+                        List<string> primitiveData = GetStructuredData(o,
                             wasInput(
                                 wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message)));
+                                    corradeCommandParameters.Message))).ToList();
                         if (primitiveData.Any())
                         {
                             lock (LockObject)

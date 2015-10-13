@@ -21,7 +21,6 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-
                     OpenMetaverse.Group dataGroup = new OpenMetaverse.Group();
                     if (
                         !RequestGroup(corradeCommandParameters.Group.UUID, corradeConfiguration.ServicesTimeout,
@@ -29,9 +28,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                     }
-                    List<string> data = new List<string>(GetStructuredData(dataGroup,
+                    List<string> data = GetStructuredData(dataGroup,
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                            corradeCommandParameters.Message))));
+                            corradeCommandParameters.Message))).ToList();
                     if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

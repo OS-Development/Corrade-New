@@ -264,7 +264,7 @@ namespace Corrade
             [Status(53829)] [Description("timeout getting group account summary")] TIMEOUT_GETTING_GROUP_ACCOUNT_SUMMARY,
             [Status(30207)] [Description("friend not found")] FRIEND_NOT_FOUND,
             [Status(32366)] [Description("the agent already is a friend")] AGENT_ALREADY_FRIEND,
-            [Status(04797)] [Description("no friendship offer found")] NO_FRIENDSHIP_OFFER_FOUND,
+            [Status(04797)] [Description("friendship offer not found")] FRIENDSHIP_OFFER_NOT_FOUND,
             [Status(65003)] [Description("friend does not allow mapping")] FRIEND_DOES_NOT_ALLOW_MAPPING,
             [Status(10691)] [Description("timeout mapping friend")] TIMEOUT_MAPPING_FRIEND,
             [Status(23309)] [Description("friend offline")] FRIEND_OFFLINE,
@@ -305,7 +305,7 @@ namespace Corrade
             [Status(18680)] [Description("no pattern provided")] NO_PATTERN_PROVIDED,
             [Status(11910)] [Description("no executable file provided")] NO_EXECUTABLE_FILE_PROVIDED,
             [Status(31381)] [Description("timeout waiting for execution")] TIMEOUT_WAITING_FOR_EXECUTION,
-            [Status(04541)] [Description("unknown group invite session")] UNKNOWN_GROUP_INVITE_SESSION,
+            [Status(04541)] [Description("group invite not found")] GROUP_INVITE_NOT_FOUND,
             [Status(38125)] [Description("unable to obtain money balance")] UNABLE_TO_OBTAIN_MONEY_BALANCE,
             [Status(20048)] [Description("timeout getting avatar data")] TIMEOUT_GETTING_AVATAR_DATA,
             [Status(13712)] [Description("timeout retrieving estate list")] TIMEOUT_RETRIEVING_ESTATE_LIST,
@@ -409,7 +409,10 @@ namespace Corrade
             [Status(20547)] [Description("invalid width")] INVALID_WIDTH,
             [Status(28891)] [Description("invalid terraform action")] INVALID_TERRAFORM_ACTION,
             [Status(41190)] [Description("invalid terraform brush")] INVALID_TERRAFORM_BRUSH,
-            [Status(58619)] [Description("could not terraform")] COULD_NOT_TERRAFORM
+            [Status(58619)] [Description("could not terraform")] COULD_NOT_TERRAFORM,
+            [Status(38289)] [Description("timeout waiting for display name")] TIMEOUT_WAITING_FOR_DISPLAY_NAME,
+            [Status(51050)] [Description("script permission request not found")] SCRIPT_PERMISSION_REQUEST_NOT_FOUND,
+            [Status(60073)] [Description("teleport lure not found")] TELEPORT_LURE_NOT_FOUND
         }
 
         /// <summary>
@@ -1030,12 +1033,14 @@ namespace Corrade
                         Parallel.ForEach((SerializableDictionary<UUID, HashSet<UUID>>) serializer.Deserialize(stream),
                             o =>
                             {
-                                if (!corradeConfiguration.Groups.AsParallel().Any(p => p.UUID.Equals(o.Key)) ||
-                                    GroupMembers.Contains(o))
+                                if (!corradeConfiguration.Groups.AsParallel().Any(p => p.UUID.Equals(o.Key)))
                                     return;
                                 lock (GroupMembersLock)
                                 {
-                                    GroupMembers.Add(o.Key, o.Value);
+                                    if (!GroupMembers.Contains(o))
+                                    {
+                                        GroupMembers.Add(o.Key, o.Value);
+                                    }
                                 }
                             });
                     }
@@ -1105,7 +1110,10 @@ namespace Corrade
                                     return;
                                 lock (GroupSchedulesLock)
                                 {
-                                    GroupSchedules.Add(o);
+                                    if (!GroupSchedules.Contains(o))
+                                    {
+                                        GroupSchedules.Add(o);
+                                    }
                                 }
                             });
                     }
@@ -1165,12 +1173,14 @@ namespace Corrade
                         Parallel.ForEach((HashSet<Notification>) serializer.Deserialize(stream),
                             o =>
                             {
-                                if (!corradeConfiguration.Groups.AsParallel().Any(p => p.Name.Equals(o.GroupName)) ||
-                                    GroupNotifications.Contains(o))
+                                if (!corradeConfiguration.Groups.AsParallel().Any(p => p.Name.Equals(o.GroupName)))
                                     return;
                                 lock (GroupNotificationsLock)
                                 {
-                                    GroupNotifications.Add(o);
+                                    if (!GroupNotifications.Contains(o))
+                                    {
+                                        GroupNotifications.Add(o);
+                                    }
                                 }
                             });
                     }
@@ -1241,17 +1251,21 @@ namespace Corrade
                     {
                         XmlSerializer serializer = new XmlSerializer(typeof (AgentMovement));
                         AgentMovement movement = (AgentMovement) serializer.Deserialize(stream);
-                        Client.Self.Movement.AlwaysRun = movement.AlwaysRun;
-                        Client.Self.Movement.AutoResetControls = movement.AutoResetControls;
-                        Client.Self.Movement.Away = movement.Away;
-                        Client.Self.Movement.BodyRotation = movement.BodyRotation;
-                        Client.Self.Movement.Flags = movement.Flags;
-                        Client.Self.Movement.Fly = movement.Fly;
-                        Client.Self.Movement.HeadRotation = movement.HeadRotation;
-                        Client.Self.Movement.Mouselook = movement.Mouselook;
-                        Client.Self.Movement.SitOnGround = movement.SitOnGround;
-                        Client.Self.Movement.StandUp = movement.StandUp;
-                        Client.Self.Movement.State = movement.State;
+                        lock (ClientInstanceSelfLock)
+                        {
+                            Client.Self.Movement.AlwaysRun = movement.AlwaysRun;
+                            Client.Self.Movement.AutoResetControls = movement.AutoResetControls;
+                            Client.Self.Movement.Away = movement.Away;
+                            Client.Self.Movement.BodyRotation = movement.BodyRotation;
+                            Client.Self.Movement.Flags = movement.Flags;
+                            Client.Self.Movement.Fly = movement.Fly;
+                            Client.Self.Movement.HeadRotation = movement.HeadRotation;
+                            Client.Self.Movement.Mouselook = movement.Mouselook;
+                            Client.Self.Movement.SitOnGround = movement.SitOnGround;
+                            Client.Self.Movement.StandUp = movement.StandUp;
+                            Client.Self.Movement.State = movement.State;
+                            Client.Self.Movement.SendUpdate(true);
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -1492,13 +1506,13 @@ namespace Corrade
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                     }
 
-                    if (!GroupMembers.ContainsKey(groupUUID))
+                    lock (GroupMembersLock)
                     {
-                        lock (GroupMembersLock)
+                        if (!GroupMembers.ContainsKey(groupUUID))
                         {
                             GroupMembers.Add(groupUUID, new HashSet<UUID>(groupMembers));
+                            continue;
                         }
-                        continue;
                     }
 
                     if (memberCount.Any())
@@ -5343,7 +5357,7 @@ namespace Corrade
             // For each group build the notification.
             Parallel.ForEach(notifyGroups, z =>
             {
-                // Set the notification type
+                // Create the notification data storage for this notification.
                 Dictionary<string, string> notificationData = new Dictionary<string, string>();
 
                 // Create the executable delegate.
@@ -7257,11 +7271,11 @@ namespace Corrade
                         HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetProperties(
                             BindingFlags.Public |
                             BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
-                        Parallel.ForEach(Client.Self.SignaledAnimations.Copy().Keys, o =>
-                        {
-                            if (!lindenAnimations.Contains(o))
-                                Client.Self.AnimationStop(o, true);
-                        });
+                        Parallel.ForEach(
+                            Client.Self.SignaledAnimations.Copy()
+                                .Keys.AsParallel()
+                                .Where(o => !lindenAnimations.Contains(o)),
+                            o => { Client.Self.AnimationStop(o, true); });
                         Client.Self.TeleportLureRespond(args.IM.FromAgentID, args.IM.IMSessionID, true);
                     }
                     return;

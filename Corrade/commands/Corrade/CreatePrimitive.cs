@@ -49,7 +49,7 @@ namespace Corrade
                                     corradeCommandParameters.Message)),
                             out rotation))
                     {
-                        rotation = Quaternion.CreateFromEulers(0, 0, 0);
+                        rotation = Quaternion.Identity;
                     }
                     string region =
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),

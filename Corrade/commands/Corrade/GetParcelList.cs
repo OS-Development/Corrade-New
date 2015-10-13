@@ -25,7 +25,6 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-
                     Vector3 position;
                     if (
                         !Vector3.TryParse(

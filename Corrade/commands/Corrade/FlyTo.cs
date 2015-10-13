@@ -32,7 +32,6 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVALID_POSITION);
                     }
-
                     uint duration;
                     if (!uint.TryParse(wasInput(
                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION)),
@@ -41,7 +40,6 @@ namespace Corrade
                     {
                         duration = corradeConfiguration.ServicesTimeout;
                     }
-
                     float vicinity;
                     if (!float.TryParse(wasInput(
                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.VICINITY)),
@@ -50,7 +48,6 @@ namespace Corrade
                     {
                         vicinity = 2;
                     }
-
                     int affinity;
                     if (!int.TryParse(wasInput(
                         wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AFFINITY)),

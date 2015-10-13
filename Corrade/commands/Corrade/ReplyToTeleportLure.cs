@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using OpenMetaverse;
 
 namespace Corrade
@@ -48,6 +49,20 @@ namespace Corrade
                             out sessionUUID))
                     {
                         throw new ScriptException(ScriptError.NO_SESSION_SPECIFIED);
+                    }
+                    TeleportLure teleportLure;
+                    lock (TeleportLureLock)
+                    {
+                        teleportLure = TeleportLures.AsParallel().FirstOrDefault(o => o.Session.Equals(sessionUUID));
+                    }
+                    if (teleportLure.Equals(default(TeleportLure)))
+                    {
+                        throw new ScriptException(ScriptError.TELEPORT_LURE_NOT_FOUND);
+                    }
+                    // remove teleport lure
+                    lock (TeleportLureLock)
+                    {
+                        TeleportLures.Remove(teleportLure);
                     }
                     Client.Self.TeleportLureRespond(agentUUID, sessionUUID, wasGetEnumValueFromDescription<Action>(
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),

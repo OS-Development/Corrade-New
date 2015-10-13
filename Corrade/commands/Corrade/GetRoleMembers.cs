@@ -55,7 +55,7 @@ namespace Corrade
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler =
                         (sender, args) =>
                         {
-                            groupRolesMembers = new HashSet<KeyValuePair<UUID, UUID>>(args.RolesMembers);
+                            groupRolesMembers.UnionWith(args.RolesMembers);
                             GroupRoleMembersReplyEvent.Set();
                         };
                     lock (ClientInstanceGroupsLock)

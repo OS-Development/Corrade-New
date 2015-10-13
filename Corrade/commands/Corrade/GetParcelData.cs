@@ -50,9 +50,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                     }
-                    List<string> data = new List<string>(GetStructuredData(parcel,
+                    List<string> data = GetStructuredData(parcel,
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                            corradeCommandParameters.Message))));
+                            corradeCommandParameters.Message))).ToList();
                     if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

@@ -62,7 +62,7 @@ namespace Corrade
                     lock (ScriptDialogLock)
                     {
                         ScriptDialog scriptDialog =
-                            ScriptDialogs.FirstOrDefault(
+                            ScriptDialogs.AsParallel().FirstOrDefault(
                                 o =>
                                     o.Item.Equals(itemUUID) && o.Channel.Equals(channel) &&
                                     !o.Button.IndexOf(label).Equals(-1));

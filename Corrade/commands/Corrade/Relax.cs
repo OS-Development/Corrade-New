@@ -29,14 +29,14 @@ namespace Corrade
                         Client.Self.Stand();
                     }
                     // stop all non-built-in animations
-                    List<UUID> lindenAnimations = new List<UUID>(typeof (Animations).GetProperties(
+                    HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetProperties(
                         BindingFlags.Public |
-                        BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)).ToList());
-                    Parallel.ForEach(Client.Self.SignaledAnimations.Copy().Keys, o =>
-                    {
-                        if (!lindenAnimations.Contains(o))
-                            Client.Self.AnimationStop(o, true);
-                    });
+                        BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
+                    Parallel.ForEach(
+                        Client.Self.SignaledAnimations.Copy()
+                            .Keys.AsParallel()
+                            .Where(o => !lindenAnimations.Contains(o)),
+                        o => { Client.Self.AnimationStop(o, true); });
                     Client.Self.SitOnGround();
                     // Set the camera on the avatar.
                     Client.Self.Movement.Camera.LookAt(

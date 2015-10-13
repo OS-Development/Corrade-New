@@ -54,7 +54,7 @@ namespace Corrade
                         case Entity.GROUP:
                             Client.Self.GiveGroupMoney(corradeCommandParameters.Group.UUID, amount,
                                 wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REASON)),
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
                                         corradeCommandParameters.Message)));
                             break;
                         case Entity.AVATAR:
@@ -80,7 +80,7 @@ namespace Corrade
                             }
                             Client.Self.GiveAvatarMoney(targetUUID, amount,
                                 wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REASON)),
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
                                         corradeCommandParameters.Message)));
                             break;
                         case Entity.OBJECT:
@@ -95,7 +95,7 @@ namespace Corrade
                             }
                             Client.Self.GiveObjectMoney(targetUUID, amount,
                                 wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REASON)),
+                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
                                         corradeCommandParameters.Message)));
                             break;
                         default:

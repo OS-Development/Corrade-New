@@ -62,13 +62,13 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_MAP_ITEMS_FOUND);
                     }
                     List<string> data =
-                        new List<string>(mapItems.AsParallel()
+                        mapItems.AsParallel()
                             .Where(o => (o as MapAgentLocation) != null)
                             .Select(o => new[]
                             {
                                 ((MapAgentLocation) o).AvatarCount.ToString(Utils.EnUsCulture),
                                 new Vector3(o.LocalX, o.LocalY, 0).ToString()
-                            }).SelectMany(o => o));
+                            }).SelectMany(o => o).ToList();
                     if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

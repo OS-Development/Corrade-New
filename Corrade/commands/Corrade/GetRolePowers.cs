@@ -52,13 +52,13 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
                     }
-                    HashSet<string> csv = new HashSet<string>();
+                    HashSet<string> data = new HashSet<string>();
                     ManualResetEvent GroupRoleDataReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataEventHandler = (sender, args) =>
                     {
                         GroupRole queryRole =
                             args.Roles.Values.AsParallel().FirstOrDefault(o => o.ID.Equals(roleUUID));
-                        csv.UnionWith(typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
+                        data.UnionWith(typeof (GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                             .AsParallel().Where(
                                 o =>
                                     !(((ulong) o.GetValue(null) &
@@ -77,10 +77,10 @@ namespace Corrade
                         }
                         Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
                     }
-                    if (csv.Any())
+                    if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            wasEnumerableToCSV(csv));
+                            wasEnumerableToCSV(data));
                     }
                 };
         }

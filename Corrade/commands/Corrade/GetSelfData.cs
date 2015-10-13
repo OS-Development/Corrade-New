@@ -21,9 +21,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<string> data = new List<string>(GetStructuredData(Client.Self,
+                    List<string> data = GetStructuredData(Client.Self,
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                            corradeCommandParameters.Message))));
+                            corradeCommandParameters.Message))).ToList();
                     if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

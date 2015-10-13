@@ -40,6 +40,17 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_TASK_SPECIFIED);
                     }
+                    ScriptPermissionRequest scriptPermissionRequest;
+                    lock (ScriptPermissionRequestLock)
+                    {
+                        scriptPermissionRequest =
+                            ScriptPermissionRequests.FirstOrDefault(
+                                o => o.Task.Equals(taskUUID) && o.Item.Equals(itemUUID));
+                    }
+                    if (scriptPermissionRequest.Equals(default(ScriptPermissionRequest)))
+                    {
+                        throw new ScriptException(ScriptError.SCRIPT_PERMISSION_REQUEST_NOT_FOUND);
+                    }
                     bool succeeded = true;
                     int permissionMask = 0;
                     Parallel.ForEach(wasCSVToEnumerable(
@@ -122,6 +133,11 @@ namespace Corrade
                     if (simulator == null)
                     {
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
+                    }
+                    // remove the script permission request
+                    lock (ScriptPermissionRequestLock)
+                    {
+                        ScriptPermissionRequests.Remove(scriptPermissionRequest);
                     }
                     Client.Self.ScriptQuestionReply(simulator, itemUUID, taskUUID,
                         (ScriptPermission) permissionMask);

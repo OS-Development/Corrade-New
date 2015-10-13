@@ -53,20 +53,27 @@ namespace Corrade
                         }
                         Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
                     }
-                    foreach (KeyValuePair<UUID, GroupTitle> title in groupTitles)
+                    object LockObject = new object();
+                    Parallel.ForEach(groupTitles, o =>
                     {
                         string roleName = string.Empty;
-                        if (
-                            !RoleUUIDToName(title.Value.RoleID, corradeCommandParameters.Group.UUID,
-                                corradeConfiguration.ServicesTimeout,
-                                corradeConfiguration.DataTimeout,
-                                ref roleName))
-                            continue;
-                        csv.Add(title.Value.Title);
-                        csv.Add(title.Key.ToString());
-                        csv.Add(roleName);
-                        csv.Add(title.Value.RoleID.ToString());
-                    }
+                        if (RoleUUIDToName(o.Value.RoleID, corradeCommandParameters.Group.UUID,
+                            corradeConfiguration.ServicesTimeout,
+                            corradeConfiguration.DataTimeout,
+                            ref roleName))
+                        {
+                            lock (LockObject)
+                            {
+                                csv.AddRange(new[]
+                                {
+                                    o.Value.Title,
+                                    o.Key.ToString(),
+                                    roleName,
+                                    o.Value.RoleID.ToString()
+                                });
+                            }
+                        }
+                    });
                     if (csv.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

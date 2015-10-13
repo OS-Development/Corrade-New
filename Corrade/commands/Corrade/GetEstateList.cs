@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenMetaverse;
+using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -167,7 +168,6 @@ namespace Corrade
                         case Type.BAN:
                         case Type.MANAGER:
                         case Type.USER:
-
                             Parallel.ForEach(estateList, o =>
                             {
                                 string agentName = string.Empty;

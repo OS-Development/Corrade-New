@@ -26,11 +26,11 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     CORRADE_CONSTANTS.PRIMTIVE_BODIES primitiveBodies = new CORRADE_CONSTANTS.PRIMTIVE_BODIES();
-                    List<string> data = new List<string>(typeof (AssetType).GetFields(BindingFlags.Public |
-                                                                                      BindingFlags.Static)
+                    List<string> data = typeof (AssetType).GetFields(BindingFlags.Public |
+                                                                     BindingFlags.Static)
                         .AsParallel().Select(
                             o =>
-                                wasGetStructureMemberDescription(primitiveBodies, o)));
+                                wasGetStructureMemberDescription(primitiveBodies, o)).ToList();
                     if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

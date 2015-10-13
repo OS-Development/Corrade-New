@@ -22,7 +22,10 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    Client.Inventory.EmptyTrash();
+                    lock (ClientInstanceInventoryLock)
+                    {
+                        Client.Inventory.EmptyTrash();
+                    }
                 };
         }
     }

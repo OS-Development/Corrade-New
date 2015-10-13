@@ -44,12 +44,12 @@ namespace Corrade
                         throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                     }
                     List<string> data =
-                        new List<string>(Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
+                        Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
                             (int) corradeConfiguration.ServicesTimeout).AsParallel().Select(o => new[]
                             {
                                 o.Name,
                                 o.UUID.ToString()
-                            }).SelectMany(o => o));
+                            }).SelectMany(o => o).ToList();
                     if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

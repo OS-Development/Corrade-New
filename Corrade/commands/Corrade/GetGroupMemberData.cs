@@ -46,8 +46,14 @@ namespace Corrade
                     EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
                     {
                         AvatarGroupsReceivedEvent.Alarm(corradeConfiguration.DataTimeout);
-                        avatarGroup =
-                            args.Groups.FirstOrDefault(o => o.GroupID.Equals(corradeCommandParameters.Group.UUID));
+                        AvatarGroup receivedAvatarGroup =
+                            args.Groups.AsParallel()
+                                .FirstOrDefault(o => o.GroupID.Equals(corradeCommandParameters.Group.UUID));
+                        if (!receivedAvatarGroup.Equals(default(AvatarGroup)))
+                        {
+                            avatarGroup = receivedAvatarGroup;
+                            AvatarGroupsReceivedEvent.Signal.Set();
+                        }
                     };
                     lock (ClientInstanceAvatarsLock)
                     {
@@ -62,9 +68,9 @@ namespace Corrade
                         }
                         Client.Avatars.AvatarGroupsReply -= AvatarGroupsReplyEventHandler;
                     }
-                    List<string> data = new List<string>(GetStructuredData(avatarGroup,
+                    List<string> data = GetStructuredData(avatarGroup,
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                            corradeCommandParameters.Message))));
+                            corradeCommandParameters.Message))).ToList();
                     if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

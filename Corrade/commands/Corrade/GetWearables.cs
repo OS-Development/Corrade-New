@@ -21,13 +21,12 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<string> csv =
-                        new List<string>(GetWearables(Client.Inventory.Store.RootNode)
-                            .Select(o => new[]
-                            {
-                                o.Value.ToString(),
-                                Client.Inventory.Store[o.Key.ItemID].Name
-                            }).SelectMany(o => o));
+                    List<string> csv = GetWearables(Client.Inventory.Store.RootNode)
+                        .Select(o => new[]
+                        {
+                            o.Value.ToString(),
+                            Client.Inventory.Store[o.Key.ItemID].Name
+                        }).SelectMany(o => o).ToList();
                     if (csv.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

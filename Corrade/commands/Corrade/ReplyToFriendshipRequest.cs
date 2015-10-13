@@ -49,7 +49,7 @@ namespace Corrade
                     });
                     if (session.Equals(UUID.Zero))
                     {
-                        throw new ScriptException(ScriptError.NO_FRIENDSHIP_OFFER_FOUND);
+                        throw new ScriptException(ScriptError.FRIENDSHIP_OFFER_NOT_FOUND);
                     }
                     switch (
                         wasGetEnumValueFromDescription<Action>(

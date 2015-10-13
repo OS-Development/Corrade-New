@@ -57,30 +57,28 @@ namespace Corrade
                     }
                     // First resolve the all the role names to role UUIDs
                     Hashtable roleUUIDNames = new Hashtable(groupRolesMembers.Count);
-                    foreach (
-                        UUID roleUUID in
-                            groupRolesMembers.AsParallel().GroupBy(o => o.Key).Select(o => o.First().Key))
-                    {
-                        string roleName = string.Empty;
-                        switch (
-                            !RoleUUIDToName(roleUUID, corradeCommandParameters.Group.UUID,
+                    object LockObject = new object();
+                    Parallel.ForEach(groupRolesMembers.AsParallel().GroupBy(o => o.Key).Select(o => o.First().Key),
+                        o =>
+                        {
+                            string roleName = string.Empty;
+                            switch (RoleUUIDToName(o, corradeCommandParameters.Group.UUID,
                                 corradeConfiguration.ServicesTimeout,
                                 corradeConfiguration.DataTimeout,
                                 ref roleName))
-                        {
-                            case true:
-                                continue;
-                            default:
-                                roleUUIDNames.Add(roleUUID, roleName);
-                                break;
-                        }
-                    }
+                            {
+                                case true:
+                                    lock (LockObject)
+                                    {
+                                        roleUUIDNames.Add(o, roleName);
+                                    }
+                                    break;
+                            }
+                        });
                     // Next, associate role names with agent names and UUIDs.
                     List<string> csv = new List<string>();
-                    object LockObject = new object();
-                    Parallel.ForEach(groupRolesMembers, o =>
+                    Parallel.ForEach(groupRolesMembers.AsParallel().Where(o => roleUUIDNames.ContainsKey(o.Key)), o =>
                     {
-                        if (!roleUUIDNames.ContainsKey(o.Key)) return;
                         string agentName = string.Empty;
                         if (AgentUUIDToName(o.Value, corradeConfiguration.ServicesTimeout, ref agentName))
                         {

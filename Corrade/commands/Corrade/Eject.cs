@@ -65,19 +65,10 @@ namespace Corrade
                         throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                     }
                     ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                    List<KeyValuePair<UUID, UUID>> rolesMembers = new List<KeyValuePair<UUID, UUID>>();
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler = (sender, args) =>
                     {
-                        switch (
-                            !args.RolesMembers.AsParallel()
-                                .Any(o => o.Key.Equals(targetGroup.OwnerRole) && o.Value.Equals(agentUUID)))
-                        {
-                            case false:
-                                throw new ScriptException(ScriptError.CANNOT_EJECT_OWNERS);
-                        }
-                        Parallel.ForEach(
-                            args.RolesMembers.AsParallel().Where(
-                                o => o.Value.Equals(agentUUID)),
-                            o => Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, o.Key, agentUUID));
+                        rolesMembers = args.RolesMembers;
                         GroupRoleMembersReplyEvent.Set();
                     };
                     lock (ClientInstanceGroupsLock)
@@ -90,6 +81,22 @@ namespace Corrade
                             throw new ScriptException(ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
                         }
                         Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
+                    }
+                    lock (ClientInstanceGroupsLock)
+                    {
+                        switch (
+                            !rolesMembers.AsParallel()
+                                .Any(o => o.Key.Equals(targetGroup.OwnerRole) && o.Value.Equals(agentUUID)))
+                        {
+                            case true:
+                                Parallel.ForEach(rolesMembers.AsParallel().Where(
+                                    o => o.Value.Equals(agentUUID)),
+                                    o => Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, o.Key,
+                                        agentUUID));
+                                break;
+                            default:
+                                throw new ScriptException(ScriptError.CANNOT_EJECT_OWNERS);
+                        }
                     }
                     ManualResetEvent GroupEjectEvent = new ManualResetEvent(false);
                     bool succeeded = false;

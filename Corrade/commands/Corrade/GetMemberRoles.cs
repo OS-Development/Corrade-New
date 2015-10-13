@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using OpenMetaverse;
+using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -64,7 +65,7 @@ namespace Corrade
                     ManualResetEvent GroupRoleMembersReplyEvent = new ManualResetEvent(false);
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                     {
-                        groupRolesMembers = new HashSet<KeyValuePair<UUID, UUID>>(args.RolesMembers);
+                        groupRolesMembers.UnionWith(args.RolesMembers);
                         GroupRoleMembersReplyEvent.Set();
                     };
                     lock (ClientInstanceGroupsLock)
@@ -79,24 +80,23 @@ namespace Corrade
                         Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                     }
                     // now resolve the roles
-                    foreach (
-                        KeyValuePair<UUID, UUID> pair in
-                            groupRolesMembers.AsParallel().Where(o => o.Value.Equals(agentUUID)))
+                    object LockObject = new object();
+                    Parallel.ForEach(groupRolesMembers.AsParallel().Where(o => o.Value.Equals(agentUUID)), o =>
                     {
                         string roleName = string.Empty;
-                        switch (
-                            !RoleUUIDToName(pair.Key, corradeCommandParameters.Group.UUID,
-                                corradeConfiguration.ServicesTimeout,
-                                corradeConfiguration.DataTimeout,
-                                ref roleName))
+                        switch (RoleUUIDToName(o.Key, corradeCommandParameters.Group.UUID,
+                            corradeConfiguration.ServicesTimeout,
+                            corradeConfiguration.DataTimeout,
+                            ref roleName))
                         {
                             case true:
-                                continue;
-                            default:
-                                csv.Add(roleName);
+                                lock (LockObject)
+                                {
+                                    csv.Add(roleName);
+                                }
                                 break;
                         }
-                    }
+                    });
                     if (csv.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

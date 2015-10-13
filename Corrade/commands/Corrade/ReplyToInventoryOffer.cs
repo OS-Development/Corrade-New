@@ -33,19 +33,16 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_SESSION_SPECIFIED);
                     }
-                    lock (InventoryOffersLock)
-                    {
-                        if (!InventoryOffers.AsParallel().Any(o => o.Key.Offer.IMSessionID.Equals(session)))
-                        {
-                            throw new ScriptException(ScriptError.INVENTORY_OFFER_NOT_FOUND);
-                        }
-                    }
                     KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent> offer;
                     lock (InventoryOffersLock)
                     {
                         offer =
                             InventoryOffers.AsParallel()
                                 .FirstOrDefault(o => o.Key.Offer.IMSessionID.Equals(session));
+                    }
+                    if (offer.Equals(default(KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>)))
+                    {
+                        throw new ScriptException(ScriptError.INVENTORY_OFFER_NOT_FOUND);
                     }
                     object folder =
                         StringOrUUID(
@@ -101,6 +98,11 @@ namespace Corrade
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ACTION);
+                    }
+                    // remove inventory offer
+                    lock (InventoryOffersLock)
+                    {
+                        InventoryOffers.Remove(offer.Key);
                     }
                 };
         }

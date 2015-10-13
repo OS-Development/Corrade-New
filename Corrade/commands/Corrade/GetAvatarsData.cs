@@ -141,7 +141,7 @@ namespace Corrade
                                 });
                             break;
                         case Entity.AVATAR:
-                            UUID agentUUID = UUID.Zero;
+                            UUID agentUUID;
                             if (
                                 !UUID.TryParse(
                                     wasInput(
@@ -182,12 +182,12 @@ namespace Corrade
 
                     Parallel.ForEach(avatars, o =>
                     {
-                        IEnumerable<string> avatarData = GetStructuredData(o,
+                        List<string> avatarData = GetStructuredData(o,
                             wasInput(
                                 wasKeyValueGet(
                                     wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message)));
-                        if (avatarData.ToList().Any())
+                                    corradeCommandParameters.Message))).ToList();
+                        if (avatarData.Any())
                         {
                             lock (LockObject)
                             {

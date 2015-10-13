@@ -62,7 +62,7 @@ namespace Corrade
                                     corradeCommandParameters.Message)),
                             out physics))
                     {
-                        physics = !(primitive.Flags & PrimFlags.Physics).Equals(0);
+                        physics = !(primitive.Flags & PrimFlags.Physics).Equals(PrimFlags.None);
                     }
                     bool temporary;
                     if (
@@ -72,7 +72,7 @@ namespace Corrade
                                     corradeCommandParameters.Message)),
                             out temporary))
                     {
-                        temporary = !(primitive.Flags & PrimFlags.Temporary).Equals(0);
+                        temporary = !(primitive.Flags & PrimFlags.Temporary).Equals(PrimFlags.None);
                     }
                     bool phantom;
                     if (
@@ -82,7 +82,7 @@ namespace Corrade
                                     corradeCommandParameters.Message)),
                             out phantom))
                     {
-                        phantom = !(primitive.Flags & PrimFlags.Phantom).Equals(0);
+                        phantom = !(primitive.Flags & PrimFlags.Phantom).Equals(PrimFlags.None);
                     }
                     bool shadows;
                     if (
@@ -92,7 +92,7 @@ namespace Corrade
                                     corradeCommandParameters.Message)),
                             out shadows))
                     {
-                        shadows = !(primitive.Flags & PrimFlags.CastShadows).Equals(0);
+                        shadows = !(primitive.Flags & PrimFlags.CastShadows).Equals(PrimFlags.None);
                     }
                     FieldInfo physicsShapeFieldInfo = typeof (PhysicsShapeType).GetFields(BindingFlags.Public |
                                                                                           BindingFlags.Static)

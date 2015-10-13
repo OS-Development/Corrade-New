@@ -49,17 +49,11 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_SESSION_SPECIFIED);
                     }
-                    lock (GroupInviteLock)
-                    {
-                        if (!GroupInvites.AsParallel().Any(o => o.Session.Equals(sessionUUID)))
-                        {
-                            throw new ScriptException(ScriptError.UNKNOWN_GROUP_INVITE_SESSION);
-                        }
-                    }
+                    GroupInvite groupInvite;
                     int amount;
                     lock (GroupInviteLock)
                     {
-                        GroupInvite groupInvite =
+                        groupInvite =
                             GroupInvites.AsParallel().FirstOrDefault(o => o.Session.Equals(sessionUUID));
                         switch (!groupInvite.Equals(default(GroupInvite)))
                         {
@@ -67,7 +61,7 @@ namespace Corrade
                                 amount = groupInvite.Fee;
                                 break;
                             default:
-                                throw new ScriptException(ScriptError.UNKNOWN_GROUP_INVITE_SESSION);
+                                throw new ScriptException(ScriptError.GROUP_INVITE_NOT_FOUND);
                         }
                     }
                     if (!amount.Equals(0) && action.Equals((uint) Action.ACCEPT))
@@ -84,6 +78,11 @@ namespace Corrade
                         {
                             throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
                         }
+                    }
+                    // remove the group invite
+                    lock (GroupInviteLock)
+                    {
+                        GroupInvites.Remove(groupInvite);
                     }
                     Client.Self.GroupInviteRespond(corradeCommandParameters.Group.UUID, sessionUUID,
                         action.Equals((uint) Action.ACCEPT));

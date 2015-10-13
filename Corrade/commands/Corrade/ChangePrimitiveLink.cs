@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using OpenMetaverse;
+using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -61,21 +62,25 @@ namespace Corrade
                             throw new ScriptException(ScriptError.LINK_WOULD_EXCEED_MAXIMUM_LINK_LIMIT);
                         }
                     }
-                    List<Primitive> primitives = new List<Primitive>();
-                    foreach (string item in items)
+                    Primitive[] searchPrimitives = new Primitive[items.Count];
+                    bool succeeded = true;
+                    Parallel.ForEach(Enumerable.Range(0, items.Count), (o, state) =>
                     {
                         Primitive primitive = null;
                         if (
                             !FindPrimitive(
-                                StringOrUUID(item),
+                                StringOrUUID(items[o]),
                                 range,
                                 ref primitive, corradeConfiguration.ServicesTimeout,
                                 corradeConfiguration.DataTimeout))
                         {
-                            throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                            succeeded = false;
+                            state.Break();
                         }
-                        primitives.Add(primitive);
-                    }
+                        searchPrimitives[o] = primitive;
+                    });
+                    if (!succeeded) throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
+                    List<Primitive> primitives = searchPrimitives.ToList();
                     Primitive rootPrimitive = primitives.First();
                     if (!primitives.AsParallel().All(o => o.RegionHandle.Equals(rootPrimitive.RegionHandle)))
                     {

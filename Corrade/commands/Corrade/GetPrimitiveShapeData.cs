@@ -45,9 +45,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                     }
-                    List<string> data = new List<string>(GetStructuredData(primitive.PrimData,
+                    List<string> data = GetStructuredData(primitive.PrimData,
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                            corradeCommandParameters.Message))));
+                            corradeCommandParameters.Message))).ToList();
                     if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

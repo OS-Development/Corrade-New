@@ -32,9 +32,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
-                    List<string> data = new List<string>(GetStructuredData(inventoryBaseItem as InventoryItem,
+                    List<string> data = GetStructuredData(inventoryBaseItem as InventoryItem,
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                            corradeCommandParameters.Message))));
+                            corradeCommandParameters.Message))).ToList();
                     if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

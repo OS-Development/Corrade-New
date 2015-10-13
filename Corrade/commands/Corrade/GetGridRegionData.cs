@@ -55,9 +55,9 @@ namespace Corrade
                         case false:
                             throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
-                    List<string> data = new List<string>(GetStructuredData(gridRegion,
+                    List<string> data = GetStructuredData(gridRegion,
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                            corradeCommandParameters.Message))));
+                            corradeCommandParameters.Message))).ToList();
                     if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

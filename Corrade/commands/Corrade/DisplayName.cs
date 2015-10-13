@@ -63,7 +63,8 @@ namespace Corrade
                             EventHandler<SetDisplayNameReplyEventArgs> SetDisplayNameEventHandler =
                                 (sender, args) =>
                                 {
-                                    succeeded = args.Status.Equals(LINDEN_CONSTANTS.AVATARS.SET_DISPLAY_NAME_SUCCESS);
+                                    succeeded =
+                                        args.Status.Equals((int) LINDEN_CONSTANTS.AVATARS.SET_DISPLAY_NAME_SUCCESS);
                                     SetDisplayNameEvent.Set();
                                 };
                             lock (ClientInstanceSelfLock)
@@ -73,7 +74,7 @@ namespace Corrade
                                 if (!SetDisplayNameEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false))
                                 {
                                     Client.Self.SetDisplayNameReply -= SetDisplayNameEventHandler;
-                                    throw new ScriptException(ScriptError.TIMEOUT_WAITING_FOR_ESTATE_LIST);
+                                    throw new ScriptException(ScriptError.TIMEOUT_WAITING_FOR_DISPLAY_NAME);
                                 }
                                 Client.Self.SetDisplayNameReply -= SetDisplayNameEventHandler;
                             }

@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenMetaverse;
+using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -52,25 +53,27 @@ namespace Corrade
                         throw new ScriptException(ScriptError.ALREADY_IN_GROUP);
                     }
                     HashSet<UUID> roleUUIDs = new HashSet<UUID>();
-                    foreach (
-                        string role in
-                            wasCSVToEnumerable(
-                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
-                                    corradeCommandParameters.Message)))
-                                .AsParallel().Where(o => !string.IsNullOrEmpty(o)))
-                    {
-                        UUID roleUUID;
-                        if (!UUID.TryParse(role, out roleUUID) &&
-                            !RoleNameToUUID(role, corradeCommandParameters.Group.UUID,
-                                corradeConfiguration.ServicesTimeout, ref roleUUID))
+                    object LockObject = new object();
+                    Parallel.ForEach(wasCSVToEnumerable(
+                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
+                            corradeCommandParameters.Message)))
+                        .AsParallel().Where(o => !string.IsNullOrEmpty(o)), o =>
                         {
-                            throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
-                        }
-                        if (!roleUUIDs.Contains(roleUUID))
-                        {
-                            roleUUIDs.Add(roleUUID);
-                        }
-                    }
+                            UUID roleUUID;
+                            if (!UUID.TryParse(o, out roleUUID) &&
+                                !RoleNameToUUID(o, corradeCommandParameters.Group.UUID,
+                                    corradeConfiguration.ServicesTimeout, ref roleUUID))
+                            {
+                                throw new ScriptException(ScriptError.ROLE_NOT_FOUND);
+                            }
+                            lock (LockObject)
+                            {
+                                if (!roleUUIDs.Contains(roleUUID))
+                                {
+                                    roleUUIDs.Add(roleUUID);
+                                }
+                            }
+                        });
                     // No roles specified, so assume everyone role.
                     if (!roleUUIDs.Any())
                     {

@@ -23,7 +23,6 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-
                     int days;
                     if (
                         !int.TryParse(
@@ -65,10 +64,9 @@ namespace Corrade
                         }
                         Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
                     }
-                    List<string> data = new List<string>(GetStructuredData(summary,
+                    List<string> data = GetStructuredData(summary,
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                            corradeCommandParameters.Message)))
-                        );
+                            corradeCommandParameters.Message))).ToList();
                     if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

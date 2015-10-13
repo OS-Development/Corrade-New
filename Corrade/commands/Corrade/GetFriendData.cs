@@ -45,9 +45,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.FRIEND_NOT_FOUND);
                     }
-                    List<string> data = new List<string>(GetStructuredData(friend,
+                    List<string> data = GetStructuredData(friend,
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                            corradeCommandParameters.Message))));
+                            corradeCommandParameters.Message))).ToList();
                     if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

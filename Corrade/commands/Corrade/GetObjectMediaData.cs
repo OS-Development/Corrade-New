@@ -70,8 +70,11 @@ namespace Corrade
                                     throw new ScriptException(ScriptError.COULD_NOT_RETRIEVE_OBJECT_MEDIA);
                             }
                         });
-                    result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                        wasEnumerableToCSV(data));
+                    if (data.Any())
+                    {
+                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                            wasEnumerableToCSV(data));
+                    }
                 };
         }
     }

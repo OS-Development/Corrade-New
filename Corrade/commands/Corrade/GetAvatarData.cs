@@ -52,6 +52,7 @@ namespace Corrade
                     }
                     Avatar avatar =
                         GetAvatars(range, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout)
+                            .AsParallel()
                             .FirstOrDefault(o => o.ID.Equals(agentUUID));
                     if (avatar == null)
                         throw new ScriptException(ScriptError.AVATAR_NOT_IN_RANGE);
@@ -108,9 +109,9 @@ namespace Corrade
                         Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
                         Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
                     }
-                    List<string> data = new List<string>(GetStructuredData(avatar,
+                    List<string> data = GetStructuredData(avatar,
                         wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                            corradeCommandParameters.Message))));
+                            corradeCommandParameters.Message))).ToList();
                     if (data.Any())
                     {
                         result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),

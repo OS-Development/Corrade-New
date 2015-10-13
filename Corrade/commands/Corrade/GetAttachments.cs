@@ -29,7 +29,8 @@ namespace Corrade
                         .Select(o => new[]
                         {
                             o.Value.ToString(),
-                            o.Key.Properties.Name
+                            o.Key.Properties.Name,
+                            o.Key.ID.ToString()
                         }).SelectMany(o => o).ToList();
                     if (attachments.Any())
                     {

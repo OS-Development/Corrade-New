@@ -78,12 +78,14 @@ namespace Corrade
                             simulator.Parcels.ForEach(o => parcels.Add(o));
                             break;
                     }
+                    bool succeeded = true;
                     Parallel.ForEach(parcels.AsParallel().Where(o => !o.OwnerID.Equals(Client.Self.AgentID)),
-                        o =>
+                        (o, state) =>
                         {
                             if (!o.IsGroupOwned || !o.GroupID.Equals(corradeCommandParameters.Group.UUID))
                             {
-                                throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                                succeeded = false;
+                                state.Break();
                             }
                             bool permissions = false;
                             Parallel.ForEach(
@@ -102,10 +104,13 @@ namespace Corrade
                                 });
                             if (!permissions)
                             {
-                                throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                                succeeded = false;
+                                state.Break();
                             }
                         });
-                    Dictionary<string, int> primitives = new Dictionary<string, int>();
+                    if (!succeeded) throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
+                    Dictionary<UUID, int> primitives = new Dictionary<UUID, int>();
+                    object LockObject = new object();
                     foreach (Parcel parcel in parcels)
                     {
                         ManualResetEvent ParcelObjectOwnersReplyEvent = new ManualResetEvent(false);
@@ -128,36 +133,42 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.TIMEOUT_GETTING_LAND_USERS);
                             }
                             Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
-                            object LockObject = new object();
                             Parallel.ForEach(parcelPrimOwners, o =>
                             {
-                                string owner = string.Empty;
-                                if (
-                                    !AgentUUIDToName(o.OwnerID, corradeConfiguration.ServicesTimeout,
-                                        ref owner))
-                                    return;
                                 lock (LockObject)
                                 {
-                                    if (!primitives.ContainsKey(owner))
+                                    switch (primitives.ContainsKey(o.OwnerID))
                                     {
-                                        primitives.Add(owner, o.Count);
-                                        return;
+                                        case true:
+                                            primitives[o.OwnerID] += o.Count;
+                                            break;
+                                        default:
+                                            primitives.Add(o.OwnerID, o.Count);
+                                            break;
                                     }
-                                }
-                                lock (LockObject)
-                                {
-                                    primitives[owner] += o.Count;
                                 }
                             });
                         }
                     }
-                    if (primitives.Any())
+                    List<string> csv = new List<string>();
+                    Parallel.ForEach(primitives, o =>
                     {
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            wasEnumerableToCSV(primitives.AsParallel().Select(
-                                p =>
-                                    wasEnumerableToCSV(new[]
-                                    {p.Key, p.Value.ToString(Utils.EnUsCulture)}))));
+                        string owner = string.Empty;
+                        if (!AgentUUIDToName(o.Key, corradeConfiguration.ServicesTimeout, ref owner))
+                            return;
+                        lock (LockObject)
+                        {
+                            csv.AddRange(new[]
+                            {
+                                owner,
+                                o.Key.ToString(),
+                                o.Value.ToString(Utils.EnUsCulture)
+                            });
+                        }
+                    });
+                    if (csv.Any())
+                    {
+                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), wasEnumerableToCSV(csv));
                     }
                 };
         }

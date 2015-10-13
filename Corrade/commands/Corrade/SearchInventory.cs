@@ -67,9 +67,12 @@ namespace Corrade
                                 return;
                             lock (LockObject)
                             {
-                                csv.Add(Enum.GetName(typeof (AssetType), inventoryItem.AssetType));
-                                csv.Add(inventoryItem.Name);
-                                csv.Add(inventoryItem.AssetUUID.ToString());
+                                csv.AddRange(new[]
+                                {
+                                    Enum.GetName(typeof (AssetType), inventoryItem.AssetType),
+                                    inventoryItem.Name,
+                                    inventoryItem.AssetUUID.ToString()
+                                });
                             }
                         });
                     if (csv.Any())
