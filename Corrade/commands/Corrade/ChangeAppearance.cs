@@ -35,6 +35,7 @@ namespace Corrade
                         GetInventoryFolderContents<InventoryBase>(Client.Inventory.Store.RootNode, folder)
                             .AsParallel().Where(CanBeWorn)
                             .ToList();
+                    // Check if any items are left over.
                     if (!items.Any())
                     {
                         throw new ScriptException(ScriptError.NO_EQUIPABLE_ITEMS);
@@ -62,11 +63,17 @@ namespace Corrade
                                     UnWear(item);
                                 return;
                             }
-                            if (item is InventoryAttachment || item is InventoryObject)
+                            if (item is InventoryAttachment)
+                            {
+                                Detach(item);
+                                return;
+                            }
+                            if (item is InventoryObject)
                             {
                                 Detach(item);
                             }
                         });
+
                     // And equip the specified folder.
                     Parallel.ForEach(items, o =>
                     {
@@ -76,12 +83,18 @@ namespace Corrade
                             Wear(item, true);
                             return;
                         }
-                        if (item is InventoryAttachment || item is InventoryObject)
+                        if (item is InventoryAttachment)
+                        {
+                            Attach(item, AttachmentPoint.Default, true);
+                            return;
+                        }
+                        if (item is InventoryObject)
                         {
                             Attach(item, AttachmentPoint.Default, true);
                         }
                     });
-                    // And rebake.
+
+                    // Schedule a rebake.
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                 };
         }

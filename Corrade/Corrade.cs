@@ -4318,7 +4318,7 @@ namespace Corrade
                                 Utils.EnUsCulture.DateTimeFormat))
                     };
 
-                    output.AddRange(messages.Select(message => message));
+                    output.AddRange(messages.Select(o => o));
 
                     // Attempt to write to log file,
                     if (corradeConfiguration.ClientLogEnabled)
@@ -11524,7 +11524,7 @@ namespace Corrade
             /// <summary>
             ///     Holds a map of groups to execution time in milliseconds.
             /// </summary>
-            private static readonly Dictionary<UUID, GroupExecution> GroupExecutionTime =
+            private static Dictionary<UUID, GroupExecution> GroupExecutionTime =
                 new Dictionary<UUID, GroupExecution>();
 
             private static readonly object GroupExecutionTimeLock = new object();
@@ -11551,13 +11551,13 @@ namespace Corrade
             {
                 lock (WorkSetLock)
                 {
-                    WorkSet.RemoveWhere(o => !o.IsAlive);
                     if (WorkSet.Count > m)
                     {
                         return;
                     }
                 }
-                Thread t = new Thread(() =>
+                Thread t = null;
+                t = new Thread(() =>
                 {
                     // Wait for previous sequential thread to complete.
                     ThreadCompletedEvent.WaitOne(Timeout.Infinite);
@@ -11576,6 +11576,10 @@ namespace Corrade
                     }
                     // Thread has completed.
                     ThreadCompletedEvent.Set();
+                    lock (WorkSetLock)
+                    {
+                        WorkSet.Remove(t);
+                    }
                 })
                 {IsBackground = true};
                 lock (WorkSetLock)
@@ -11595,13 +11599,13 @@ namespace Corrade
             {
                 lock (WorkSetLock)
                 {
-                    WorkSet.RemoveWhere(o => !o.IsAlive);
                     if (WorkSet.Count > m)
                     {
                         return;
                     }
                 }
-                Thread t = new Thread(() =>
+                Thread t = null;
+                t = new Thread(() =>
                 {
                     // protect inner thread
                     try
@@ -11614,6 +11618,10 @@ namespace Corrade
                             wasGetDescriptionFromEnumValue(
                                 ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
                             wasGetDescriptionFromEnumValue(corradeThreadType), ex.Message);
+                    }
+                    lock (WorkSetLock)
+                    {
+                        WorkSet.Remove(t);
                     }
                 })
                 {IsBackground = true};
@@ -11641,13 +11649,13 @@ namespace Corrade
                     return;
                 lock (WorkSetLock)
                 {
-                    WorkSet.RemoveWhere(o => !o.IsAlive);
                     if (WorkSet.Count > m)
                     {
                         return;
                     }
                 }
-                Thread t = new Thread(() =>
+                Thread t = null;
+                t = new Thread(() =>
                 {
                     // protect inner thread
                     try
@@ -11655,45 +11663,36 @@ namespace Corrade
                         // First remove any groups that have expired.
                         lock (GroupExecutionTimeLock)
                         {
-                            List<UUID> RemoveGroups = new List<UUID>();
-                            object LockObject = new object();
-                            Parallel.ForEach(GroupExecutionTime, o =>
-                            {
-                                if ((DateTime.Now - o.Value.TimeStamp).Milliseconds > expiration)
-                                {
-                                    lock (LockObject)
-                                    {
-                                        RemoveGroups.Add(o.Key);
-                                    }
-                                }
-                            });
-                            Parallel.ForEach(RemoveGroups, o =>
-                            {
-                                lock (LockObject)
-                                {
-                                    GroupExecutionTime.Remove(o);
-                                }
-                            });
+                            GroupExecutionTime =
+                                GroupExecutionTime.AsParallel().Where(
+                                    o => (DateTime.Now - o.Value.TimeStamp).Milliseconds < expiration)
+                                    .ToDictionary(o => o.Key, o => o.Value);
                         }
                         int sleepTime = 0;
-                        List<KeyValuePair<UUID, GroupExecution>> sortedTimeGroups;
+                        List<int> sortedTimeGroups = new List<int>();
                         lock (GroupExecutionTimeLock)
                         {
-                            sortedTimeGroups = GroupExecutionTime.ToList();
-                        }
-                        // In case only one group is involved, then do not schedule the group.
-                        if (sortedTimeGroups.Count > 1 && sortedTimeGroups.Any(o => o.Key.Equals(groupUUID)))
-                        {
-                            sortedTimeGroups.Sort((o, p) => o.Value.ExecutionTime.CompareTo(p.Value.ExecutionTime));
-                            int draw = CorradeRandom.Next(sortedTimeGroups.Sum(o => o.Value.ExecutionTime));
-                            int accu = 0;
-                            foreach (KeyValuePair<UUID, GroupExecution> group in sortedTimeGroups)
+                            // In case only one group is involved, then do not schedule the group.
+                            if (GroupExecutionTime.Count > 1 && GroupExecutionTime.ContainsKey(groupUUID))
                             {
-                                accu += group.Value.ExecutionTime;
-                                if (accu < draw) continue;
-                                sleepTime = group.Value.ExecutionTime;
-                                break;
+                                sortedTimeGroups.AddRange(
+                                    GroupExecutionTime.OrderBy(o => o.Value.ExecutionTime)
+                                        .Select(o => o.Value.ExecutionTime));
                             }
+                        }
+                        switch (sortedTimeGroups.Any())
+                        {
+                            case true:
+                                int draw = CorradeRandom.Next(sortedTimeGroups.Sum(o => o));
+                                int accu = 0;
+                                foreach (int time in sortedTimeGroups)
+                                {
+                                    accu += time;
+                                    if (accu < draw) continue;
+                                    sleepTime = time;
+                                    break;
+                                }
+                                break;
                         }
                         Thread.Sleep(sleepTime);
                         ThreadExecutuionStopwatch.Restart();
@@ -11729,6 +11728,10 @@ namespace Corrade
                             wasGetDescriptionFromEnumValue(
                                 ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
                             wasGetDescriptionFromEnumValue(corradeThreadType), ex.Message);
+                    }
+                    lock (WorkSetLock)
+                    {
+                        WorkSet.Remove(t);
                     }
                 })
                 {IsBackground = true};
