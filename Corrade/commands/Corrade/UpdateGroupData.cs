@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -18,7 +20,8 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> updategroupdata =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -40,7 +43,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
-                    OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
+                    Group targetGroup = new Group();
                     if (
                         !RequestGroup(corradeCommandParameters.Group.UUID, corradeConfiguration.ServicesTimeout,
                             ref targetGroup))
@@ -48,7 +51,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                     }
                     wasCSVToStructure(
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message)),
                         ref targetGroup);
                     Client.Groups.UpdateGroup(corradeCommandParameters.Group.UUID, targetGroup);

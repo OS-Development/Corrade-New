@@ -13,9 +13,11 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using CorradeConfiguration;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using OpenMetaverse.Imaging;
+using wasSharp;
 using Encoder = System.Drawing.Imaging.Encoder;
 
 namespace Corrade
@@ -27,14 +29,17 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> download =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     object item =
                         StringOrUUID(
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
-                                corradeCommandParameters.Message)));
+                            wasInput(
+                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                                    corradeCommandParameters.Message)));
                     if (item == null)
                         throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
                     FieldInfo assetTypeInfo = typeof (AssetType).GetFields(BindingFlags.Public |
@@ -43,8 +48,8 @@ namespace Corrade
                             o =>
                                 o.Name.Equals(
                                     wasInput(
-                                        wasKeyValueGet(
-                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                        KeyValue.wasKeyValueGet(
+                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
                                             corradeCommandParameters.Message)),
                                     StringComparison.Ordinal));
                     switch (assetTypeInfo != null)
@@ -110,7 +115,7 @@ namespace Corrade
                                 case AssetType.Notecard:
                                     if (
                                         !HasCorradePermission(corradeCommandParameters.Group.Name,
-                                            (int) Permissions.Inventory))
+                                            (int) Configuration.Permissions.Inventory))
                                     {
                                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                                     }
@@ -189,8 +194,8 @@ namespace Corrade
                     {
                         case true:
                             string format =
-                                wasInput(wasKeyValueGet(
-                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FORMAT)),
+                                wasInput(KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FORMAT)),
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(format))
                             {
@@ -203,14 +208,14 @@ namespace Corrade
                                 if (formatProperty == null)
                                 {
                                     throw new Exception(
-                                        wasGetDescriptionFromEnumValue(
+                                        Reflection.wasGetNameFromEnumValue(
                                             ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED));
                                 }
                                 ManagedImage managedImage;
                                 if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
                                 {
                                     throw new Exception(
-                                        wasGetDescriptionFromEnumValue(
+                                        Reflection.wasGetNameFromEnumValue(
                                             ScriptError.UNABLE_TO_DECODE_ASSET_DATA));
                                 }
                                 using (MemoryStream imageStream = new MemoryStream())
@@ -237,7 +242,7 @@ namespace Corrade
                                     catch (Exception)
                                     {
                                         throw new Exception(
-                                            wasGetDescriptionFromEnumValue(
+                                            Reflection.wasGetNameFromEnumValue(
                                                 ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT));
                                     }
                                     assetData = imageStream.ToArray();
@@ -247,17 +252,18 @@ namespace Corrade
                     }
                     // If no path was specificed, then send the data.
                     string path =
-                        wasInput(wasKeyValueGet(
-                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATH)),
+                        wasInput(KeyValue.wasKeyValueGet(
+                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PATH)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(path))
                     {
-                        result.Add(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                        result.Add(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
                             Convert.ToBase64String(assetData));
                         return;
                     }
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.System))
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.System))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }

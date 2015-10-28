@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -19,26 +21,28 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> directorysearch =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Directory))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Directory))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    wasAdaptiveAlarm DirectorySearchResultsAlarm =
-                        new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+                    Time.wasAdaptiveAlarm DirectorySearchResultsAlarm =
+                        new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
                     string name =
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
+                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     string fields =
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
                     object LockObject = new object();
                     List<string> csv = new List<string>();
                     int handledEvents = 0;
                     int counter = 1;
                     switch (
-                        wasGetEnumValueFromDescription<Type>(
-                            wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                        Reflection.wasGetEnumValueFromName<Type>(
+                            wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
                                 .ToLowerInvariant()))
                     {
@@ -46,7 +50,8 @@ namespace Corrade
                             DirectoryManager.Classified searchClassified = new DirectoryManager.Classified();
                             wasCSVToStructure(
                                 wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                    KeyValue.wasKeyValueGet(
+                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
                                 ref searchClassified);
                             Dictionary<DirectoryManager.Classified, int> classifieds =
@@ -107,7 +112,8 @@ namespace Corrade
                             DirectoryManager.EventsSearchData searchEvent = new DirectoryManager.EventsSearchData();
                             wasCSVToStructure(
                                 wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                    KeyValue.wasKeyValueGet(
+                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
                                 ref searchEvent);
                             Dictionary<DirectoryManager.EventsSearchData, int> events =
@@ -182,7 +188,8 @@ namespace Corrade
                             DirectoryManager.GroupSearchData searchGroup = new DirectoryManager.GroupSearchData();
                             wasCSVToStructure(
                                 wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                    KeyValue.wasKeyValueGet(
+                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
                                 ref searchGroup);
                             Dictionary<DirectoryManager.GroupSearchData, int> groups =
@@ -252,7 +259,8 @@ namespace Corrade
                             DirectoryManager.DirectoryParcel searchLand = new DirectoryManager.DirectoryParcel();
                             wasCSVToStructure(
                                 wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                    KeyValue.wasKeyValueGet(
+                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
                                 ref searchLand);
                             Dictionary<DirectoryManager.DirectoryParcel, int> lands =
@@ -398,7 +406,8 @@ namespace Corrade
                             DirectoryManager.PlacesSearchData searchPlaces = new DirectoryManager.PlacesSearchData();
                             wasCSVToStructure(
                                 wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                    KeyValue.wasKeyValueGet(
+                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
                                 ref searchPlaces);
                             Dictionary<DirectoryManager.PlacesSearchData, int> places =
@@ -458,8 +467,8 @@ namespace Corrade
                     }
                     if (csv.Any())
                     {
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            wasEnumerableToCSV(csv));
+                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.wasEnumerableToCSV(csv));
                     }
                 };
         }

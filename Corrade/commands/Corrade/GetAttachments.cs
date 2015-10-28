@@ -7,6 +7,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
+using wasSharp;
 
 namespace Corrade
 {
@@ -19,7 +21,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.Name,
-                            (int) Permissions.Grooming))
+                            (int) Configuration.Permissions.Grooming))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -34,8 +36,8 @@ namespace Corrade
                         }).SelectMany(o => o).ToList();
                     if (attachments.Any())
                     {
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            wasEnumerableToCSV(attachments));
+                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.wasEnumerableToCSV(attachments));
                     }
                 };
         }

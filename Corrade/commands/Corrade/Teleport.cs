@@ -9,7 +9,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -23,7 +25,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.Name,
-                            (int) Permissions.Movement))
+                            (int) Configuration.Permissions.Movement))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -31,7 +33,8 @@ namespace Corrade
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
                     {
@@ -41,7 +44,8 @@ namespace Corrade
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TURNTO)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TURNTO)),
                                     corradeCommandParameters.Message)),
                             out lookAt))
                     {
@@ -49,8 +53,9 @@ namespace Corrade
                     }
                     // We override the default teleport since region names are unique and case insensitive.
                     string region =
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                            corradeCommandParameters.Message));
+                        wasInput(
+                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.REGION)),
+                                corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(region))
                     {
                         region = Client.Network.CurrentSim.Name;
@@ -136,7 +141,7 @@ namespace Corrade
                     bool fly;
                     // perform the post-action
                     switch (bool.TryParse(wasInput(
-                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FLY)),
+                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FLY)),
                             corradeCommandParameters.Message)), out fly))
                     {
                         case true: // if fly was specified, set the fly state

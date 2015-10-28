@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -18,15 +20,17 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> primitivebuy =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     float range;
                     if (
                         !float.TryParse(
-                            wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)),
+                            wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
@@ -35,8 +39,8 @@ namespace Corrade
                     Primitive primitive = null;
                     if (
                         !FindPrimitive(
-                            StringOrUUID(wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                            StringOrUUID(wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
                             range,
                             ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
@@ -48,14 +52,15 @@ namespace Corrade
                         throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOR_SALE);
                     }
                     if (!primitive.Properties.SalePrice.Equals(0) &&
-                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Economy))
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Economy))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID folderUUID;
                     string folder =
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FOLDER)),
+                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FOLDER)),
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(folder) || !UUID.TryParse(folder, out folderUUID))
                     {

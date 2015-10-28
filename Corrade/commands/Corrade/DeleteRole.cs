@@ -8,7 +8,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -20,7 +22,8 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> deleterole =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -45,7 +48,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
                     string role =
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ROLE)),
+                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ROLE)),
                             corradeCommandParameters.Message));
                     UUID roleUUID;
                     if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, corradeCommandParameters.Group.UUID,
@@ -58,7 +61,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.CANNOT_DELETE_THE_EVERYONE_ROLE);
                     }
-                    OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
+                    Group targetGroup = new Group();
                     if (
                         !RequestGroup(corradeCommandParameters.Group.UUID, corradeConfiguration.ServicesTimeout,
                             ref targetGroup))

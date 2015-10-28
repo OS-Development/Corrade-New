@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -19,7 +21,8 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> getgroupinvites =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -32,17 +35,17 @@ namespace Corrade
                             lock (LockObject)
                             {
                                 csv.AddRange(new[]
-                                {wasGetStructureMemberDescription(o.Agent, o.Agent.FirstName), o.Agent.FirstName});
+                                {Reflection.wasGetStructureMemberName(o.Agent, o.Agent.FirstName), o.Agent.FirstName});
                                 csv.AddRange(new[]
-                                {wasGetStructureMemberDescription(o.Agent, o.Agent.LastName), o.Agent.LastName});
+                                {Reflection.wasGetStructureMemberName(o.Agent, o.Agent.LastName), o.Agent.LastName});
                                 csv.AddRange(new[]
-                                {wasGetStructureMemberDescription(o.Agent, o.Agent.UUID), o.Agent.UUID.ToString()});
-                                csv.AddRange(new[] {wasGetStructureMemberDescription(o, o.Group), o.Group});
+                                {Reflection.wasGetStructureMemberName(o.Agent, o.Agent.UUID), o.Agent.UUID.ToString()});
+                                csv.AddRange(new[] {Reflection.wasGetStructureMemberName(o, o.Group), o.Group});
                                 csv.AddRange(new[]
-                                {wasGetStructureMemberDescription(o, o.Session), o.Session.ToString()});
+                                {Reflection.wasGetStructureMemberName(o, o.Session), o.Session.ToString()});
                                 csv.AddRange(new[]
                                 {
-                                    wasGetStructureMemberDescription(o, o.Fee),
+                                    Reflection.wasGetStructureMemberName(o, o.Fee),
                                     o.Fee.ToString(Utils.EnUsCulture)
                                 });
                             }
@@ -50,8 +53,8 @@ namespace Corrade
                     }
                     if (csv.Any())
                     {
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            wasEnumerableToCSV(csv));
+                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.wasEnumerableToCSV(csv));
                     }
                 };
         }

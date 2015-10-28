@@ -8,7 +8,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -21,7 +23,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.Name,
-                            (int) Permissions.Grooming))
+                            (int) Configuration.Permissions.Grooming))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -36,9 +38,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
-                    switch (wasGetEnumValueFromDescription<Action>(
+                    switch (Reflection.wasGetEnumValueFromName<Action>(
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
@@ -67,8 +69,8 @@ namespace Corrade
                                 o =>
                                     o.Key.Equals(
                                         wasInput(
-                                            wasKeyValueGet(
-                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TITLE)),
+                                            KeyValue.wasKeyValueGet(
+                                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TITLE)),
                                                 corradeCommandParameters.Message)),
                                         StringComparison.Ordinal));
                             switch (!role.Equals(default(KeyValuePair<string, UUID>)))
@@ -105,7 +107,7 @@ namespace Corrade
                             }
                             if (!title.Equals(string.Empty))
                             {
-                                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), title);
+                                result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), title);
                             }
                             break;
                         default:

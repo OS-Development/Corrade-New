@@ -9,6 +9,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using AIMLbot;
+using CorradeConfiguration;
+using wasSharp;
 
 namespace Corrade
 {
@@ -19,20 +21,21 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> ai =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Talk))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Talk))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    switch (wasGetEnumValueFromDescription<Action>(
+                    switch (Reflection.wasGetEnumValueFromName<Action>(
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
                         case Action.PROCESS:
                             string request =
                                 wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
+                                    KeyValue.wasKeyValueGet(
+                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(request))
                             {
@@ -42,7 +45,7 @@ namespace Corrade
                             {
                                 lock (AIMLBotLock)
                                 {
-                                    result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                                    result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
                                         AIMLBot.Chat(new Request(request, AIMLBotUser, AIMLBot)).Output);
                                 }
                             }

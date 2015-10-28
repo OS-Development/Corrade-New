@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -18,7 +20,8 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> creategroup =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -37,16 +40,17 @@ namespace Corrade
                         throw new ScriptException(ScriptError.INSUFFICIENT_FUNDS);
                     }
                     if (!corradeConfiguration.GroupCreateFee.Equals(0) &&
-                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Economy))
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Economy))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    OpenMetaverse.Group targetGroup = new OpenMetaverse.Group
+                    Group targetGroup = new Group
                     {
                         Name = corradeCommandParameters.Group.Name
                     };
                     wasCSVToStructure(
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message)),
                         ref targetGroup);
                     bool succeeded = false;

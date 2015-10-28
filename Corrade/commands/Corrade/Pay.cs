@@ -6,7 +6,9 @@
 
 using System;
 using System.Collections.Generic;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -18,7 +20,8 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Economy))
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Economy))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -26,7 +29,8 @@ namespace Corrade
                     if (
                         !int.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AMOUNT)),
                                     corradeCommandParameters.Message)),
                             out amount))
                     {
@@ -46,31 +50,34 @@ namespace Corrade
                     }
                     UUID targetUUID;
                     switch (
-                        wasGetEnumValueFromDescription<Entity>(
+                        Reflection.wasGetEnumValueFromName<Entity>(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Entity.GROUP:
                             Client.Self.GiveGroupMoney(corradeCommandParameters.Group.UUID, amount,
                                 wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                    KeyValue.wasKeyValueGet(
+                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                                         corradeCommandParameters.Message)));
                             break;
                         case Entity.AVATAR:
                             if (
                                 !UUID.TryParse(
                                     wasInput(
-                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
+                                        KeyValue.wasKeyValueGet(
+                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT)),
                                             corradeCommandParameters.Message)), out targetUUID) && !AgentNameToUUID(
                                                 wasInput(
-                                                    wasKeyValueGet(
+                                                    KeyValue.wasKeyValueGet(
                                                         wasOutput(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                                            Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 wasInput(
-                                                    wasKeyValueGet(
-                                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
+                                                    KeyValue.wasKeyValueGet(
+                                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
@@ -80,14 +87,16 @@ namespace Corrade
                             }
                             Client.Self.GiveAvatarMoney(targetUUID, amount,
                                 wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                    KeyValue.wasKeyValueGet(
+                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                                         corradeCommandParameters.Message)));
                             break;
                         case Entity.OBJECT:
                             if (
                                 !UUID.TryParse(
                                     wasInput(
-                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)),
+                                        KeyValue.wasKeyValueGet(
+                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET)),
                                             corradeCommandParameters.Message)),
                                     out targetUUID))
                             {
@@ -95,7 +104,8 @@ namespace Corrade
                             }
                             Client.Self.GiveObjectMoney(targetUUID, amount,
                                 wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
+                                    KeyValue.wasKeyValueGet(
+                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME)),
                                         corradeCommandParameters.Message)));
                             break;
                         default:

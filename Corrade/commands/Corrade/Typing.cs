@@ -6,7 +6,9 @@
 
 using System;
 using System.Collections.Generic;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -17,13 +19,15 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> typing =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Grooming))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Grooming))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    switch (wasGetEnumValueFromDescription<Action>(
+                    switch (Reflection.wasGetEnumValueFromName<Action>(
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
@@ -34,7 +38,7 @@ namespace Corrade
                             Client.Self.AnimationStop(Animations.TYPE, true);
                             break;
                         case Action.GET:
-                            result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
+                            result.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
                                 Client.Self.SignaledAnimations.ContainsKey(Animations.TYPE).ToString());
                             break;
                         default:

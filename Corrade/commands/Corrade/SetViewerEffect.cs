@@ -8,7 +8,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -21,13 +23,13 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.Name,
-                            (int) Permissions.Interact))
+                            (int) Configuration.Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID effectUUID;
-                    if (!UUID.TryParse(wasInput(wasKeyValueGet(
-                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ID)), corradeCommandParameters.Message)),
+                    if (!UUID.TryParse(wasInput(KeyValue.wasKeyValueGet(
+                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID)), corradeCommandParameters.Message)),
                         out effectUUID))
                     {
                         effectUUID = UUID.Random();
@@ -36,17 +38,17 @@ namespace Corrade
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                wasKeyValueGet(
+                                KeyValue.wasKeyValueGet(
                                     wasOutput(
-                                        wasGetDescriptionFromEnumValue(ScriptKeys.OFFSET)),
+                                        Reflection.wasGetNameFromEnumValue(ScriptKeys.OFFSET)),
                                     corradeCommandParameters.Message)),
                             out offset))
                     {
                         offset = Client.Self.SimPosition;
                     }
-                    ViewerEffectType viewerEffectType = wasGetEnumValueFromDescription<ViewerEffectType>(
+                    ViewerEffectType viewerEffectType = Reflection.wasGetEnumValueFromName<ViewerEffectType>(
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.EFFECT)),
+                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.EFFECT)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     switch (viewerEffectType)
@@ -54,8 +56,8 @@ namespace Corrade
                         case ViewerEffectType.BEAM:
                         case ViewerEffectType.POINT:
                         case ViewerEffectType.LOOK:
-                            string item = wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                            string item = wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message));
                             UUID targetUUID;
                             switch (!string.IsNullOrEmpty(item))
@@ -64,8 +66,8 @@ namespace Corrade
                                     float range;
                                     if (
                                         !float.TryParse(
-                                            wasInput(wasKeyValueGet(
-                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)),
+                                            wasInput(KeyValue.wasKeyValueGet(
+                                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RANGE)),
                                                 corradeCommandParameters.Message)),
                                             out range))
                                     {
@@ -86,18 +88,18 @@ namespace Corrade
                                 default:
                                     if (
                                         !UUID.TryParse(
-                                            wasInput(wasKeyValueGet(
-                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
+                                            wasInput(KeyValue.wasKeyValueGet(
+                                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT)),
                                                 corradeCommandParameters.Message)),
                                             out targetUUID) && !AgentNameToUUID(
                                                 wasInput(
-                                                    wasKeyValueGet(
+                                                    KeyValue.wasKeyValueGet(
                                                         wasOutput(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                                            Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 wasInput(
-                                                    wasKeyValueGet(
-                                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
+                                                    KeyValue.wasKeyValueGet(
+                                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
@@ -116,8 +118,8 @@ namespace Corrade
                                             o =>
                                                 o.Name.Equals(
                                                     wasInput(
-                                                        wasKeyValueGet(
-                                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                                        KeyValue.wasKeyValueGet(
+                                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
                                                             corradeCommandParameters.Message)),
                                                     StringComparison.Ordinal));
                                     LookAtType lookAtType = lookAtTypeInfo != null
@@ -150,8 +152,8 @@ namespace Corrade
                                             o =>
                                                 o.Name.Equals(
                                                     wasInput(
-                                                        wasKeyValueGet(
-                                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                                        KeyValue.wasKeyValueGet(
+                                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
                                                             corradeCommandParameters.Message)),
                                                     StringComparison.Ordinal));
                                     PointAtType pointAtType = pointAtTypeInfo != null
@@ -183,8 +185,8 @@ namespace Corrade
                                     if (
                                         !Vector3.TryParse(
                                             wasInput(
-                                                wasKeyValueGet(
-                                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.COLOR)),
+                                                KeyValue.wasKeyValueGet(
+                                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.COLOR)),
                                                     corradeCommandParameters.Message)),
                                             out RGB))
                                     {
@@ -195,8 +197,8 @@ namespace Corrade
                                     float alpha;
                                     if (!float.TryParse(
                                         wasInput(
-                                            wasKeyValueGet(
-                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ALPHA)),
+                                            KeyValue.wasKeyValueGet(
+                                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ALPHA)),
                                                 corradeCommandParameters.Message)), out alpha))
                                     {
                                         alpha = Client.Settings.DEFAULT_EFFECT_COLOR.A;
@@ -205,8 +207,8 @@ namespace Corrade
                                     if (
                                         !float.TryParse(
                                             wasInput(
-                                                wasKeyValueGet(
-                                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION)),
+                                                KeyValue.wasKeyValueGet(
+                                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DURATION)),
                                                     corradeCommandParameters.Message)),
                                             out duration))
                                     {
@@ -264,7 +266,7 @@ namespace Corrade
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_EFFECT);
                     }
-                    result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), effectUUID.ToString());
+                    result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), effectUUID.ToString());
                 };
         }
     }

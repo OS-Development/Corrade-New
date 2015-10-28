@@ -6,7 +6,9 @@
 
 using System;
 using System.Collections.Generic;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -17,7 +19,7 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> restartregion =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -28,17 +30,18 @@ namespace Corrade
                     uint delay;
                     if (
                         !uint.TryParse(
-                            wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DELAY)),
+                            wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DELAY)),
                                 corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out delay))
                     {
                         delay = LINDEN_CONSTANTS.ESTATE.REGION_RESTART_DELAY;
                     }
                     switch (
-                        wasGetEnumValueFromDescription<Action>(
+                        Reflection.wasGetEnumValueFromName<Action>(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.RESTART:

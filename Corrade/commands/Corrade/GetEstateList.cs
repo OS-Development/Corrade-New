@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -19,7 +21,7 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> getestatelist =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -28,12 +30,12 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_LAND_RIGHTS);
                     }
                     List<UUID> estateList = new List<UUID>();
-                    wasAdaptiveAlarm EstateListReceivedAlarm =
-                        new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+                    Time.wasAdaptiveAlarm EstateListReceivedAlarm =
+                        new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
                     Type type =
-                        wasGetEnumValueFromDescription<Type>(
-                            wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                        Reflection.wasGetEnumValueFromName<Type>(
+                            wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
                                 .ToLowerInvariant());
                     switch (type)
@@ -196,8 +198,8 @@ namespace Corrade
                     }
                     if (csv.Any())
                     {
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            wasEnumerableToCSV(csv));
+                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.wasEnumerableToCSV(csv));
                     }
                 };
         }

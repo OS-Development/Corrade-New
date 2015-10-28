@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -18,14 +20,17 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> animation =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Grooming))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Grooming))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     object item =
                         StringOrUUID(
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
-                                corradeCommandParameters.Message)));
+                            wasInput(
+                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                                    corradeCommandParameters.Message)));
                     InventoryItem inventoryItem;
                     switch (item != null)
                     {
@@ -47,9 +52,10 @@ namespace Corrade
                             throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
                     }
                     switch (
-                        wasGetEnumValueFromDescription<Action>(
+                        Reflection.wasGetEnumValueFromName<Action>(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.START:

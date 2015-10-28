@@ -6,6 +6,8 @@
 
 using System;
 using System.Collections.Generic;
+using CorradeConfiguration;
+using wasSharp;
 
 namespace Corrade
 {
@@ -16,18 +18,29 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> setconfigurationdata =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.System))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.System))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     lock (ConfigurationFileLock)
                     {
                         wasCSVToStructure(
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                corradeCommandParameters.Message)), ref corradeConfiguration);
-                        corradeConfiguration.UpdateDynamicConfiguration(corradeConfiguration);
+                            wasInput(
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                    corradeCommandParameters.Message)), ref corradeConfiguration);
+                        UpdateDynamicConfiguration(corradeConfiguration);
                         ConfigurationWatcher.EnableRaisingEvents = false;
-                        corradeConfiguration.Save(CORRADE_CONSTANTS.CONFIGURATION_FILE, ref corradeConfiguration);
+                        try
+                        {
+                            corradeConfiguration.Save(CORRADE_CONSTANTS.CONFIGURATION_FILE, ref corradeConfiguration);
+                        }
+                        catch (Exception)
+                        {
+                            throw new ScriptException(ScriptError.UNABLE_TO_SAVE_CORRADE_CONFIGURATION);
+                        }
                         ConfigurationWatcher.EnableRaisingEvents = true;
                     }
                 };

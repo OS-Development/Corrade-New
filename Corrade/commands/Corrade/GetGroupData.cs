@@ -7,6 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
+using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -17,11 +20,12 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> getgroupdata =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    OpenMetaverse.Group dataGroup = new OpenMetaverse.Group();
+                    Group dataGroup = new Group();
                     if (
                         !RequestGroup(corradeCommandParameters.Group.UUID, corradeConfiguration.ServicesTimeout,
                             ref dataGroup))
@@ -29,12 +33,12 @@ namespace Corrade
                         throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                     }
                     List<string> data = GetStructuredData(dataGroup,
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
                     if (data.Any())
                     {
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            wasEnumerableToCSV(data));
+                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.wasEnumerableToCSV(data));
                     }
                 };
         }

@@ -9,6 +9,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using System.Threading;
+using CorradeConfiguration;
+using wasSharp;
 
 namespace Corrade
 {
@@ -19,20 +21,22 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> execute =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Execute))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Execute))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string file =
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FILE)),
+                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FILE)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(file))
                     {
                         throw new ScriptException(ScriptError.NO_EXECUTABLE_FILE_PROVIDED);
                     }
                     ProcessStartInfo p = new ProcessStartInfo(file,
-                        wasInput(wasKeyValueGet(
-                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PARAMETER)),
+                        wasInput(KeyValue.wasKeyValueGet(
+                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PARAMETER)),
                             corradeCommandParameters.Message)))
                     {
                         RedirectStandardOutput = true,
@@ -82,11 +86,11 @@ namespace Corrade
                     }
                     if (StdEvent[0].WaitOne((int) corradeConfiguration.ServicesTimeout) && !stdout.Length.Equals(0))
                     {
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), stdout.ToString());
+                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), stdout.ToString());
                     }
                     if (StdEvent[1].WaitOne((int) corradeConfiguration.ServicesTimeout) && !stderr.Length.Equals(0))
                     {
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), stderr.ToString());
+                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), stderr.ToString());
                     }
                 };
         }

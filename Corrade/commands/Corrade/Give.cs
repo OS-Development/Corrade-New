@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -20,14 +22,15 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.Name,
-                            (int) Permissions.Inventory))
+                            (int) Configuration.Permissions.Inventory))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     object item =
                         StringOrUUID(
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
-                                corradeCommandParameters.Message)));
+                            wasInput(
+                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                                    corradeCommandParameters.Message)));
                     InventoryItem inventoryItem;
                     switch (item != null)
                     {
@@ -51,7 +54,8 @@ namespace Corrade
                             }
                             // Set requested permissions if any on the item.
                             string permissions = wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(permissions))
                             {
@@ -65,9 +69,10 @@ namespace Corrade
                             throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
                     }
                     switch (
-                        wasGetEnumValueFromDescription<Entity>(
+                        Reflection.wasGetEnumValueFromName<Entity>(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Entity.AVATAR:
@@ -75,16 +80,17 @@ namespace Corrade
                             if (
                                 !UUID.TryParse(
                                     wasInput(
-                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
+                                        KeyValue.wasKeyValueGet(
+                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT)),
                                             corradeCommandParameters.Message)), out agentUUID) && !AgentNameToUUID(
                                                 wasInput(
-                                                    wasKeyValueGet(
+                                                    KeyValue.wasKeyValueGet(
                                                         wasOutput(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                                            Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 wasInput(
-                                                    wasKeyValueGet(
-                                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
+                                                    KeyValue.wasKeyValueGet(
+                                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
@@ -100,7 +106,8 @@ namespace Corrade
                             if (
                                 !float.TryParse(
                                     wasInput(
-                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)),
+                                        KeyValue.wasKeyValueGet(
+                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RANGE)),
                                             corradeCommandParameters.Message)),
                                     out range))
                             {
@@ -110,7 +117,8 @@ namespace Corrade
                             if (
                                 !FindPrimitive(
                                     StringOrUUID(wasInput(
-                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)),
+                                        KeyValue.wasKeyValueGet(
+                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET)),
                                             corradeCommandParameters.Message))),
                                     range,
                                     ref primitive, corradeConfiguration.ServicesTimeout,

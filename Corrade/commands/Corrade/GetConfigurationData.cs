@@ -7,6 +7,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
+using wasSharp;
 
 namespace Corrade
 {
@@ -17,7 +19,9 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> getconfigurationdata =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.System))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.System))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -25,14 +29,15 @@ namespace Corrade
                     lock (ConfigurationFileLock)
                     {
                         data.AddRange(GetStructuredData(corradeConfiguration,
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                corradeCommandParameters.Message)))
+                            wasInput(
+                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                    corradeCommandParameters.Message)))
                             );
                     }
                     if (data.Any())
                     {
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            wasEnumerableToCSV(data));
+                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.wasEnumerableToCSV(data));
                     }
                 };
         }

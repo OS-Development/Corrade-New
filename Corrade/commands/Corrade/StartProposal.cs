@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -18,7 +20,8 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> startproposal =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -44,7 +47,8 @@ namespace Corrade
                     if (
                         !int.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DURATION)),
                                     corradeCommandParameters.Message)),
                             out duration))
                     {
@@ -54,7 +58,8 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MAJORITY)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.MAJORITY)),
                                     corradeCommandParameters.Message)),
                             out majority))
                     {
@@ -64,14 +69,15 @@ namespace Corrade
                     if (
                         !int.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.QUORUM)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.QUORUM)),
                                     corradeCommandParameters.Message)),
                             out quorum))
                     {
                         throw new ScriptException(ScriptError.INVALID_PROPOSAL_QUORUM);
                     }
                     string text =
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TEXT)),
+                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TEXT)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(text))
                     {

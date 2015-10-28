@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -18,15 +20,17 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> setprimitivetexturedata =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     float range;
                     if (
                         !float.TryParse(
-                            wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)),
+                            wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
@@ -35,8 +39,8 @@ namespace Corrade
                     Primitive primitive = null;
                     if (
                         !FindPrimitive(
-                            StringOrUUID(wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                            StringOrUUID(wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
                             range,
                             ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
@@ -44,7 +48,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                     }
                     string face =
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FACE)),
+                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FACE)),
                             corradeCommandParameters.Message));
                     int i;
                     switch (!int.TryParse(face, out i))
@@ -63,8 +67,8 @@ namespace Corrade
                                         }
                                         wasCSVToStructure(
                                             wasInput(
-                                                wasKeyValueGet(
-                                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                                KeyValue.wasKeyValueGet(
+                                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
                                                     corradeCommandParameters.Message)),
                                             ref primitive.Textures.FaceTextures[i]);
                                     } while (--i > -1);
@@ -72,8 +76,8 @@ namespace Corrade
                                 case "default":
                                     wasCSVToStructure(
                                         wasInput(
-                                            wasKeyValueGet(
-                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                            KeyValue.wasKeyValueGet(
+                                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
                                                 corradeCommandParameters.Message)),
                                         ref primitive.Textures.DefaultTexture);
                                     break;
@@ -89,8 +93,10 @@ namespace Corrade
                                 primitive.Textures.FaceTextures[i] = primitive.Textures.CreateFace((uint) i);
                             }
                             wasCSVToStructure(
-                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message)),
+                                wasInput(
+                                    KeyValue.wasKeyValueGet(
+                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                        corradeCommandParameters.Message)),
                                 ref primitive.Textures.FaceTextures[i]);
                             break;
                     }

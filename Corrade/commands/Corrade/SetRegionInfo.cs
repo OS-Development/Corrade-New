@@ -6,7 +6,9 @@
 
 using System;
 using System.Collections.Generic;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -17,7 +19,7 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> setregioninfo =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -29,7 +31,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TERRAFORM)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TERRAFORM)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out terraform))
                     {
@@ -39,7 +42,7 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FLY)),
+                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FLY)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out fly))
                     {
@@ -49,7 +52,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DAMAGE)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DAMAGE)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out damage))
                     {
@@ -59,7 +63,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RESELL)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RESELL)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out resell))
                     {
@@ -69,7 +74,7 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PUSH)),
+                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PUSH)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out push))
                     {
@@ -79,7 +84,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PARCEL)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PARCEL)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out parcel))
                     {
@@ -89,7 +95,7 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LIMIT)),
+                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.LIMIT)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out limit))
                     {
@@ -99,7 +105,7 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.BONUS)),
+                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.BONUS)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out bonus))
                     {
@@ -109,7 +115,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MATURE)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.MATURE)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out mature))
                     {

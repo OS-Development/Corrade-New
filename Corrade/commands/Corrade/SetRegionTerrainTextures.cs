@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -19,7 +21,7 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> setregionterraintextures =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -35,8 +37,8 @@ namespace Corrade
                         Client.Network.CurrentSim.TerrainDetail3
                     };
                     UUID[] setTextures = new UUID[4];
-                    List<string> data = wasCSVToEnumerable(
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                    List<string> data = CSV.wasCSVToEnumerable(
+                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
                     Parallel.ForEach(Enumerable.Range(0, 4),
                         o =>

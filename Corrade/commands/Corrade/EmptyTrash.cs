@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using CorradeConfiguration;
 
 namespace Corrade
 {
@@ -18,7 +19,7 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.Name,
-                            (int) Permissions.Inventory))
+                            (int) Configuration.Permissions.Inventory))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }

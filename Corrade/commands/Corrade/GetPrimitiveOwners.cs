@@ -8,7 +8,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -20,13 +22,14 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> getprimitiveowners =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string region =
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                            corradeCommandParameters.Message));
+                        wasInput(
+                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.REGION)),
+                                corradeCommandParameters.Message));
                     Simulator simulator =
                         Client.Network.Simulators.AsParallel().FirstOrDefault(
                             o =>
@@ -40,8 +43,8 @@ namespace Corrade
                     Vector3 position;
                     HashSet<Parcel> parcels = new HashSet<Parcel>();
                     switch (Vector3.TryParse(
-                        wasInput(wasKeyValueGet(
-                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                        wasInput(KeyValue.wasKeyValueGet(
+                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION)),
                             corradeCommandParameters.Message)),
                         out position))
                     {
@@ -168,7 +171,7 @@ namespace Corrade
                     });
                     if (csv.Any())
                     {
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), wasEnumerableToCSV(csv));
+                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), CSV.wasEnumerableToCSV(csv));
                     }
                 };
         }

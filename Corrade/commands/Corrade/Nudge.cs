@@ -6,7 +6,9 @@
 
 using System;
 using System.Collections.Generic;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -19,13 +21,13 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.Name,
-                            (int) Permissions.Movement))
+                            (int) Configuration.Permissions.Movement))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    switch (wasGetEnumValueFromDescription<Direction>(
-                        wasInput(wasKeyValueGet(
-                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DIRECTION)),
+                    switch (Reflection.wasGetEnumValueFromName<Direction>(
+                        wasInput(KeyValue.wasKeyValueGet(
+                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DIRECTION)),
                             corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {

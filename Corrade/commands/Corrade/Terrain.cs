@@ -8,7 +8,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -19,13 +21,14 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> terrain =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string region =
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
-                            corradeCommandParameters.Message));
+                        wasInput(
+                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.REGION)),
+                                corradeCommandParameters.Message));
                     Simulator simulator =
                         Client.Network.Simulators.AsParallel().FirstOrDefault(
                             o =>
@@ -37,9 +40,10 @@ namespace Corrade
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
                     byte[] data = null;
-                    switch (wasGetEnumValueFromDescription<Action>(
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
-                            corradeCommandParameters.Message))
+                    switch (Reflection.wasGetEnumValueFromName<Action>(
+                        wasInput(
+                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                                corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
                         case Action.GET:
@@ -83,14 +87,15 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.EMPTY_ASSET_DATA);
                             }
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), Convert.ToBase64String(data));
+                            result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), Convert.ToBase64String(data));
                             break;
                         case Action.SET:
                             try
                             {
                                 data = Convert.FromBase64String(
                                     wasInput(
-                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                        KeyValue.wasKeyValueGet(
+                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
                                             corradeCommandParameters.Message)));
                             }
                             catch (Exception)

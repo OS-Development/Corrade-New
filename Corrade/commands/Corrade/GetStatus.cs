@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using wasSharp;
 
 namespace Corrade
 {
@@ -19,15 +20,15 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     uint status;
-                    if (!uint.TryParse(wasInput(wasKeyValueGet(
-                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.STATUS)),
+                    if (!uint.TryParse(wasInput(KeyValue.wasKeyValueGet(
+                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.STATUS)),
                         corradeCommandParameters.Message)), out status))
                     {
                         throw new ScriptException(ScriptError.INVALID_STATUS_SUPPLIED);
                     }
-                    switch (wasGetEnumValueFromDescription<Entity>(
+                    switch (Reflection.wasGetEnumValueFromName<Entity>(
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
+                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY)),
                                 corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Entity.DESCRIPTION:
@@ -36,15 +37,16 @@ namespace Corrade
                                 .AsParallel()
                                 .FirstOrDefault(
                                     o =>
-                                        wasGetAttributeFromEnumValue<StatusAttribute>((ScriptError) o.GetValue(null))
+                                        Reflection.wasGetAttributeFromEnumValue<StatusAttribute>(
+                                            (ScriptError) o.GetValue(null))
                                             .Status.Equals(status));
                             if (scriptErrorFieldInfo == null)
                                 throw new ScriptException(ScriptError.STATUS_NOT_FOUND);
                             string description =
-                                wasGetDescriptionFromEnumValue((ScriptError) scriptErrorFieldInfo.GetValue(null));
+                                Reflection.wasGetNameFromEnumValue((ScriptError) scriptErrorFieldInfo.GetValue(null));
                             if (string.IsNullOrEmpty(description))
                                 throw new ScriptException(ScriptError.NO_DESCRIPTION_FOR_STATUS);
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), description);
+                            result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), description);
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ENTITY);

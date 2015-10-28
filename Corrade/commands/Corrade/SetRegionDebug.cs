@@ -6,7 +6,9 @@
 
 using System;
 using System.Collections.Generic;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -17,7 +19,7 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> setregiondebug =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -29,7 +31,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SCRIPTS)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.SCRIPTS)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out scripts))
                     {
@@ -39,7 +42,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.COLLISIONS)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.COLLISIONS)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out collisions))
                     {
@@ -49,7 +53,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PHYSICS)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PHYSICS)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out physics))
                     {

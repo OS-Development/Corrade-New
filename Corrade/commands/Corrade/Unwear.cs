@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -19,19 +21,21 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> unwear =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Grooming))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Grooming))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string wearables =
-                        wasInput(wasKeyValueGet(
-                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.WEARABLES)),
+                        wasInput(KeyValue.wasKeyValueGet(
+                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.WEARABLES)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(wearables))
                     {
                         throw new ScriptException(ScriptError.EMPTY_WEARABLES);
                     }
-                    Parallel.ForEach(wasCSVToEnumerable(
+                    Parallel.ForEach(CSV.wasCSVToEnumerable(
                         wearables).AsParallel().Where(o => !string.IsNullOrEmpty(o)), o =>
                         {
                             InventoryBase inventoryBaseItem =

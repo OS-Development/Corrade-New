@@ -8,7 +8,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -22,13 +24,14 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.Name,
-                            (int) Permissions.Grooming))
+                            (int) Configuration.Permissions.Grooming))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string attachments =
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ATTACHMENTS)),
+                            KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ATTACHMENTS)),
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(attachments))
                     {
@@ -38,14 +41,15 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REPLACE)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.REPLACE)),
                                     corradeCommandParameters.Message)),
                             out replace))
                     {
                         replace = true;
                     }
                     Dictionary<string, string> items =
-                        new Dictionary<string, string>(wasCSVToEnumerable(attachments)
+                        new Dictionary<string, string>(CSV.wasCSVToEnumerable(attachments)
                             .AsParallel()
                             .Select((o, p) => new {o, p})
                             .GroupBy(q => q.p/2, q => q.o)
@@ -69,7 +73,7 @@ namespace Corrade
                                     LINDEN_CONSTANTS.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
                                 {
                                     throw new Exception(
-                                        wasGetDescriptionFromEnumValue(
+                                        Reflection.wasGetNameFromEnumValue(
                                             ScriptError.ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT));
                                 }
                                 break;
@@ -81,7 +85,7 @@ namespace Corrade
                                     LINDEN_CONSTANTS.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
                                 {
                                     throw new Exception(
-                                        wasGetDescriptionFromEnumValue(
+                                        Reflection.wasGetNameFromEnumValue(
                                             ScriptError.ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT));
                                 }
                                 break;

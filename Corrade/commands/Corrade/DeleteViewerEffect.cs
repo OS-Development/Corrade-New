@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -20,20 +22,20 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.Name,
-                            (int) Permissions.Interact))
+                            (int) Configuration.Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID effectUUID;
-                    if (!UUID.TryParse(wasInput(wasKeyValueGet(
-                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ID)), corradeCommandParameters.Message)),
+                    if (!UUID.TryParse(wasInput(KeyValue.wasKeyValueGet(
+                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID)), corradeCommandParameters.Message)),
                         out effectUUID))
                     {
                         throw new ScriptException(ScriptError.NO_EFFECT_UUID_PROVIDED);
                     }
-                    ViewerEffectType viewerEffectType = wasGetEnumValueFromDescription<ViewerEffectType>(
+                    ViewerEffectType viewerEffectType = Reflection.wasGetEnumValueFromName<ViewerEffectType>(
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.EFFECT)),
+                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.EFFECT)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     switch (viewerEffectType)

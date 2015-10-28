@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -18,7 +20,7 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> getregionterrainheights =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -33,8 +35,8 @@ namespace Corrade
                         Client.Network.CurrentSim.TerrainStartHeight11, // Low NE
                         Client.Network.CurrentSim.TerrainHeightRange11 // High NE
                     };
-                    result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                        wasEnumerableToCSV(data.Select(o => o.ToString(Utils.EnUsCulture))));
+                    result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                        CSV.wasEnumerableToCSV(data.Select(o => o.ToString(Utils.EnUsCulture))));
                 };
         }
     }

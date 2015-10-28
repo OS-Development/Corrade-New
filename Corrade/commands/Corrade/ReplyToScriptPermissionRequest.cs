@@ -8,7 +8,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -23,8 +25,8 @@ namespace Corrade
                     UUID itemUUID;
                     if (
                         !UUID.TryParse(
-                            wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                            wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message)),
                             out itemUUID))
                     {
@@ -33,8 +35,8 @@ namespace Corrade
                     UUID taskUUID;
                     if (
                         !UUID.TryParse(
-                            wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TASK)),
+                            wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TASK)),
                                 corradeCommandParameters.Message)),
                             out taskUUID))
                     {
@@ -53,9 +55,10 @@ namespace Corrade
                     }
                     bool succeeded = true;
                     int permissionMask = 0;
-                    Parallel.ForEach(wasCSVToEnumerable(
+                    Parallel.ForEach(CSV.wasCSVToEnumerable(
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS)),
+                            KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
                                 corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                         o =>
                             Parallel.ForEach(
@@ -68,7 +71,7 @@ namespace Corrade
                                     {
                                         case ScriptPermission.Debit:
                                             if (!HasCorradePermission(corradeCommandParameters.Group.Name,
-                                                (int) Permissions.Economy))
+                                                (int) Configuration.Permissions.Economy))
                                             {
                                                 succeeded = false;
                                                 return;
@@ -76,7 +79,7 @@ namespace Corrade
                                             break;
                                         case ScriptPermission.Teleport:
                                             if (!HasCorradePermission(corradeCommandParameters.Group.Name,
-                                                (int) Permissions.Movement))
+                                                (int) Configuration.Permissions.Movement))
                                             {
                                                 succeeded = false;
                                                 return;
@@ -85,7 +88,7 @@ namespace Corrade
                                         case ScriptPermission.ChangeJoints:
                                         case ScriptPermission.ChangeLinks:
                                             if (!HasCorradePermission(corradeCommandParameters.Group.Name,
-                                                (int) Permissions.Interact))
+                                                (int) Configuration.Permissions.Interact))
                                             {
                                                 succeeded = false;
                                                 return;
@@ -98,7 +101,7 @@ namespace Corrade
                                         case ScriptPermission.ControlCamera:
                                         case ScriptPermission.Attach:
                                             if (!HasCorradePermission(corradeCommandParameters.Group.Name,
-                                                (int) Permissions.Grooming))
+                                                (int) Configuration.Permissions.Grooming))
                                             {
                                                 succeeded = false;
                                                 return;
@@ -107,7 +110,7 @@ namespace Corrade
                                         case ScriptPermission.ReleaseOwnership:
                                         case ScriptPermission.ChangePermissions:
                                             if (!HasCorradePermission(corradeCommandParameters.Group.Name,
-                                                (int) Permissions.Inventory))
+                                                (int) Configuration.Permissions.Inventory))
                                             {
                                                 succeeded = false;
                                                 return;
@@ -126,7 +129,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string region = wasInput(
-                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.REGION)),
+                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.REGION)),
                             corradeCommandParameters.Message));
                     Simulator simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
                         o => o.Name.Equals(region, StringComparison.OrdinalIgnoreCase));

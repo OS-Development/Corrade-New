@@ -9,7 +9,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -21,14 +23,16 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> getinventorypath =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Inventory))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Inventory))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     HashSet<AssetType> assetTypes = new HashSet<AssetType>();
                     object LockObject = new object();
-                    Parallel.ForEach(wasCSVToEnumerable(
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                    Parallel.ForEach(CSV.wasCSVToEnumerable(
+                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
                             corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                         o => Parallel.ForEach(
                             typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -41,8 +45,9 @@ namespace Corrade
                                 }
                             }));
                     string pattern =
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATTERN)),
-                            corradeCommandParameters.Message));
+                        wasInput(
+                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PATTERN)),
+                                corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(pattern))
                     {
                         throw new ScriptException(ScriptError.NO_PATTERN_PROVIDED);
@@ -68,8 +73,8 @@ namespace Corrade
                         });
                     if (csv.Any())
                     {
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            wasEnumerableToCSV(csv));
+                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.wasEnumerableToCSV(csv));
                     }
                 };
         }

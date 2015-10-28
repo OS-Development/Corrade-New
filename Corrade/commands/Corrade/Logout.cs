@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using CorradeConfiguration;
 
 namespace Corrade
 {
@@ -16,7 +17,9 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> logout =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.System))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.System))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }

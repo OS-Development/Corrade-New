@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -19,15 +21,16 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     float range;
                     if (
                         !float.TryParse(
-                            wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)),
+                            wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
@@ -36,8 +39,8 @@ namespace Corrade
                     Primitive primitive = null;
                     if (
                         !FindPrimitive(
-                            StringOrUUID(wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                            StringOrUUID(wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
                             range,
                             ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
@@ -45,22 +48,24 @@ namespace Corrade
                         throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                     }
                     Vector3 uvCoord;
-                    if (!Vector3.TryParse(wasInput(wasKeyValueGet(
-                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TEXTURE)), corradeCommandParameters.Message)),
+                    if (!Vector3.TryParse(wasInput(KeyValue.wasKeyValueGet(
+                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TEXTURE)),
+                        corradeCommandParameters.Message)),
                         out uvCoord))
                     {
                         throw new ScriptException(ScriptError.INVALID_TEXTURE_COORDINATES);
                     }
                     Vector3 stCoord;
-                    if (!Vector3.TryParse(wasInput(wasKeyValueGet(
-                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SURFACE)), corradeCommandParameters.Message)),
+                    if (!Vector3.TryParse(wasInput(KeyValue.wasKeyValueGet(
+                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.SURFACE)),
+                        corradeCommandParameters.Message)),
                         out stCoord))
                     {
                         throw new ScriptException(ScriptError.INVALID_SURFACE_COORDINATES);
                     }
                     int faceIndex;
-                    if (!int.TryParse(wasInput(wasKeyValueGet(
-                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FACE)), corradeCommandParameters.Message)),
+                    if (!int.TryParse(wasInput(KeyValue.wasKeyValueGet(
+                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FACE)), corradeCommandParameters.Message)),
                         out faceIndex))
                     {
                         throw new ScriptException(ScriptError.INVALID_FACE_SPECIFIED);
@@ -68,24 +73,30 @@ namespace Corrade
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
-                                corradeCommandParameters.Message)), out position))
+                            wasInput(
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION)),
+                                    corradeCommandParameters.Message)), out position))
                     {
                         throw new ScriptException(ScriptError.INVALID_POSITION);
                     }
                     Vector3 normal;
                     if (
                         !Vector3.TryParse(
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NORMAL)),
-                                corradeCommandParameters.Message)), out normal))
+                            wasInput(
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NORMAL)),
+                                    corradeCommandParameters.Message)), out normal))
                     {
                         throw new ScriptException(ScriptError.INVALID_NORMAL_VECTOR);
                     }
                     Vector3 binormal;
                     if (
                         !Vector3.TryParse(
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.BINORMAL)),
-                                corradeCommandParameters.Message)), out binormal))
+                            wasInput(
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.BINORMAL)),
+                                    corradeCommandParameters.Message)), out binormal))
                     {
                         throw new ScriptException(ScriptError.INVALID_BINORMAL_VECTOR);
                     }

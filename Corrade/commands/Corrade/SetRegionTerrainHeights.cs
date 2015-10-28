@@ -8,6 +8,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using CorradeConfiguration;
+using wasSharp;
 
 namespace Corrade
 {
@@ -18,7 +20,7 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> setregionterrainheights =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -38,8 +40,8 @@ namespace Corrade
                         Client.Network.CurrentSim.TerrainHeightRange11 // High NE
                     };
                     float[] setHeights = new float[8];
-                    List<string> data = wasCSVToEnumerable(
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                    List<string> data = CSV.wasCSVToEnumerable(
+                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
                     Parallel.ForEach(Enumerable.Range(0, 8),
                         o =>

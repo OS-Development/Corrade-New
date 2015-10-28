@@ -7,6 +7,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
+using wasSharp;
 
 namespace Corrade
 {
@@ -17,15 +19,17 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> at =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Schedule))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Schedule))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     List<GroupSchedule> groupSchedules = new List<GroupSchedule>();
                     uint index;
-                    switch (wasGetEnumValueFromDescription<Action>(
+                    switch (Reflection.wasGetEnumValueFromName<Action>(
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
@@ -37,13 +41,13 @@ namespace Corrade
                             }
                             DateTime at;
                             if (!DateTime.TryParse(wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TIME)),
+                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TIME)),
                                     corradeCommandParameters.Message)), out at))
                             {
                                 throw new ScriptException(ScriptError.UNKNOWN_DATE_TIME_STAMP);
                             }
                             string data = wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
+                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
                                     corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(data))
                             {
@@ -65,7 +69,7 @@ namespace Corrade
                             break;
                         case Action.GET:
                             if (!uint.TryParse(wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.INDEX)),
+                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.INDEX)),
                                     corradeCommandParameters.Message)), out index))
                             {
                                 index = 0;
@@ -79,7 +83,7 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.NO_SCHEDULE_FOUND);
                             }
                             GroupSchedule groupSchedule = groupSchedules[(int) index];
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), wasEnumerableToCSV(new[]
+                            result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), CSV.wasEnumerableToCSV(new[]
                             {
                                 groupSchedule.Sender,
                                 groupSchedule.Identifier,
@@ -89,7 +93,7 @@ namespace Corrade
                             break;
                         case Action.REMOVE:
                             if (!uint.TryParse(wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.INDEX)),
+                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.INDEX)),
                                     corradeCommandParameters.Message)), out index))
                             {
                                 throw new ScriptException(ScriptError.NO_INDEX_PROVIDED);
@@ -125,8 +129,8 @@ namespace Corrade
                             }
                             if (csv.Any())
                             {
-                                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                                    wasEnumerableToCSV(csv));
+                                result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                                    CSV.wasEnumerableToCSV(csv));
                             }
                             break;
                         default:

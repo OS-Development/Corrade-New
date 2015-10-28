@@ -8,7 +8,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -20,7 +22,8 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> batcheject =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -63,7 +66,7 @@ namespace Corrade
                         }
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                     }
-                    OpenMetaverse.Group targetGroup = new OpenMetaverse.Group();
+                    Group targetGroup = new Group();
                     if (
                         !RequestGroup(corradeCommandParameters.Group.UUID, corradeConfiguration.ServicesTimeout,
                             ref targetGroup))
@@ -92,9 +95,13 @@ namespace Corrade
                     HashSet<string> data = new HashSet<string>();
                     object LockObject = new object();
                     Parallel.ForEach(
-                        wasCSVToEnumerable(
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AVATARS)),
-                                corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
+                        CSV.wasCSVToEnumerable(
+                            wasInput(
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AVATARS)),
+                                    corradeCommandParameters.Message)))
+                            .AsParallel()
+                            .Where(o => !string.IsNullOrEmpty(o)),
                         o =>
                         {
                             UUID agentUUID;
@@ -174,8 +181,8 @@ namespace Corrade
                         });
                     if (data.Any())
                     {
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            wasEnumerableToCSV(data));
+                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.wasEnumerableToCSV(data));
                     }
                 };
         }

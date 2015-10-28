@@ -8,7 +8,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -20,23 +22,25 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> changeprimitivelink =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     float range;
                     if (
                         !float.TryParse(
-                            wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)),
+                            wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
                         range = corradeConfiguration.Range;
                     }
-                    Action action = wasGetEnumValueFromDescription<Action>(
+                    Action action = Reflection.wasGetEnumValueFromName<Action>(
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     switch (action)
@@ -47,8 +51,8 @@ namespace Corrade
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ACTION);
                     }
-                    List<string> items = new List<string>(wasCSVToEnumerable(wasInput(wasKeyValueGet(
-                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)), corradeCommandParameters.Message)))
+                    List<string> items = new List<string>(CSV.wasCSVToEnumerable(wasInput(KeyValue.wasKeyValueGet(
+                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)), corradeCommandParameters.Message)))
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o)));
                     if (!items.Any() || (action.Equals(Action.LINK) && items.Count < 2))

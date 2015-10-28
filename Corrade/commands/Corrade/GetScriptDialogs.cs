@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -19,7 +21,9 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> getscriptdialogs =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Interact))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -31,29 +35,29 @@ namespace Corrade
                         {
                             lock (LockObject)
                             {
-                                csv.AddRange(new[] {wasGetStructureMemberDescription(o, o.Message), o.Message});
+                                csv.AddRange(new[] {Reflection.wasGetStructureMemberName(o, o.Message), o.Message});
                                 csv.AddRange(new[]
-                                {wasGetStructureMemberDescription(o.Agent, o.Agent.FirstName), o.Agent.FirstName});
+                                {Reflection.wasGetStructureMemberName(o.Agent, o.Agent.FirstName), o.Agent.FirstName});
                                 csv.AddRange(new[]
-                                {wasGetStructureMemberDescription(o.Agent, o.Agent.LastName), o.Agent.LastName});
+                                {Reflection.wasGetStructureMemberName(o.Agent, o.Agent.LastName), o.Agent.LastName});
                                 csv.AddRange(new[]
-                                {wasGetStructureMemberDescription(o.Agent, o.Agent.UUID), o.Agent.UUID.ToString()});
+                                {Reflection.wasGetStructureMemberName(o.Agent, o.Agent.UUID), o.Agent.UUID.ToString()});
                                 csv.AddRange(new[]
                                 {
-                                    wasGetStructureMemberDescription(o, o.Channel),
+                                    Reflection.wasGetStructureMemberName(o, o.Channel),
                                     o.Channel.ToString(Utils.EnUsCulture)
                                 });
-                                csv.AddRange(new[] {wasGetStructureMemberDescription(o, o.Name), o.Name});
-                                csv.AddRange(new[] {wasGetStructureMemberDescription(o, o.Item), o.Item.ToString()});
-                                csv.Add(wasGetStructureMemberDescription(o, o.Button));
+                                csv.AddRange(new[] {Reflection.wasGetStructureMemberName(o, o.Name), o.Name});
+                                csv.AddRange(new[] {Reflection.wasGetStructureMemberName(o, o.Item), o.Item.ToString()});
+                                csv.Add(Reflection.wasGetStructureMemberName(o, o.Button));
                                 csv.AddRange(o.Button.ToArray());
                             }
                         });
                     }
                     if (csv.Any())
                     {
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            wasEnumerableToCSV(csv));
+                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.wasEnumerableToCSV(csv));
                     }
                 };
         }

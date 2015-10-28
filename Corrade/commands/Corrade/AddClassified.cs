@@ -9,7 +9,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -20,15 +22,19 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> addclassified =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Grooming) ||
-                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Economy))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Grooming) ||
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Economy))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     object item =
                         StringOrUUID(
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
-                                corradeCommandParameters.Message)));
+                            wasInput(
+                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                                    corradeCommandParameters.Message)));
                     UUID textureUUID = UUID.Zero;
                     if (item != null)
                     {
@@ -42,7 +48,7 @@ namespace Corrade
                         textureUUID = inventoryBaseItem.UUID;
                     }
                     string name =
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
+                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
@@ -50,7 +56,8 @@ namespace Corrade
                     }
                     string classifiedDescription =
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
+                            KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                                 corradeCommandParameters.Message));
                     ManualResetEvent AvatarClassifiedReplyEvent = new ManualResetEvent(false);
                     UUID classifiedUUID = UUID.Zero;
@@ -89,8 +96,8 @@ namespace Corrade
                     int price;
                     if (
                         !int.TryParse(
-                            wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PRICE)),
+                            wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PRICE)),
                                 corradeCommandParameters.Message)),
                             out price))
                     {
@@ -103,8 +110,8 @@ namespace Corrade
                     bool renew;
                     if (
                         !bool.TryParse(
-                            wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RENEW)),
+                            wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RENEW)),
                                 corradeCommandParameters.Message)),
                             out renew))
                     {
@@ -116,7 +123,8 @@ namespace Corrade
                         .AsParallel().FirstOrDefault(o =>
                             o.Name.Equals(
                                 wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                    KeyValue.wasKeyValueGet(
+                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
                                         corradeCommandParameters.Message)),
                                 StringComparison.Ordinal));
                     Client.Self.UpdateClassifiedInfo(classifiedUUID, classifiedCategoriesField != null

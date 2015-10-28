@@ -6,7 +6,9 @@
 
 using System;
 using System.Collections.Generic;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -18,7 +20,8 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Economy))
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Economy))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -26,7 +29,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                     }
-                    result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                    result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
                         Client.Self.Balance.ToString(Utils.EnUsCulture));
                 };
         }

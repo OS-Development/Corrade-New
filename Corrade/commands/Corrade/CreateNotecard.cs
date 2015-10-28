@@ -8,8 +8,10 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using CorradeConfiguration;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
+using wasSharp;
 
 namespace Corrade
 {
@@ -20,12 +22,14 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> createnotecard =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Inventory))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Inventory))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string text =
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TEXT)),
+                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TEXT)),
                             corradeCommandParameters.Message));
                     if (IsSecondLife() &&
                         Encoding.UTF8.GetByteCount(text) >
@@ -34,7 +38,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NOTECARD_MESSAGE_BODY_TOO_LARGE);
                     }
                     string name =
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
+                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
@@ -46,7 +50,8 @@ namespace Corrade
                     Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(AssetType.Notecard),
                         name,
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION)),
+                            KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                                 corradeCommandParameters.Message)),
                         AssetType.Notecard,
                         UUID.Random(), InventoryType.Notecard, PermissionMask.All,

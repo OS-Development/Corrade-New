@@ -6,6 +6,8 @@
 
 using System;
 using System.Collections.Generic;
+using CorradeConfiguration;
+using wasSharp;
 
 namespace Corrade
 {
@@ -16,7 +18,7 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> setregionterrainvariables =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -27,8 +29,10 @@ namespace Corrade
                     float waterHeight;
                     if (
                         !float.TryParse(
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.WATERHEIGHT)),
-                                corradeCommandParameters.Message)), out waterHeight))
+                            wasInput(
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.WATERHEIGHT)),
+                                    corradeCommandParameters.Message)), out waterHeight))
                     {
                         waterHeight = LINDEN_CONSTANTS.REGION.DEFAULT_WATER_HEIGHT;
                     }
@@ -36,7 +40,8 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TERRAINRAISELIMIT)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TERRAINRAISELIMIT)),
                                     corradeCommandParameters.Message)), out terrainRaiseLimit))
                     {
                         terrainRaiseLimit = LINDEN_CONSTANTS.REGION.DEFAULT_TERRAIN_RAISE_LIMIT;
@@ -45,7 +50,8 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TERRAINLOWERLIMIT)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TERRAINLOWERLIMIT)),
                                     corradeCommandParameters.Message)), out terrainLowerLimit))
                     {
                         terrainLowerLimit = LINDEN_CONSTANTS.REGION.DEFAULT_TERRAIN_LOWER_LIMIT;
@@ -53,24 +59,30 @@ namespace Corrade
                     bool useEstateSun;
                     if (
                         !bool.TryParse(
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.USEESTATESUN)),
-                                corradeCommandParameters.Message)), out useEstateSun))
+                            wasInput(
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.USEESTATESUN)),
+                                    corradeCommandParameters.Message)), out useEstateSun))
                     {
                         useEstateSun = LINDEN_CONSTANTS.REGION.DEFAULT_USE_ESTATE_SUN;
                     }
                     bool fixedSun;
                     if (
                         !bool.TryParse(
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FIXEDSUN)),
-                                corradeCommandParameters.Message)), out fixedSun))
+                            wasInput(
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIXEDSUN)),
+                                    corradeCommandParameters.Message)), out fixedSun))
                     {
                         fixedSun = LINDEN_CONSTANTS.REGION.DEFAULT_FIXED_SUN;
                     }
                     float sunPosition;
                     if (
                         !float.TryParse(
-                            wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SUNPOSITION)),
-                                corradeCommandParameters.Message)), out sunPosition))
+                            wasInput(
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.SUNPOSITION)),
+                                    corradeCommandParameters.Message)), out sunPosition))
                     {
                         sunPosition = LINDEN_CONSTANTS.REGION.SUNRISE;
                     }

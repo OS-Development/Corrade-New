@@ -6,6 +6,8 @@
 
 using System;
 using System.Collections.Generic;
+using CorradeConfiguration;
+using wasSharp;
 
 namespace Corrade
 {
@@ -16,13 +18,15 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> rlv =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.System))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.System))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    switch (wasGetEnumValueFromDescription<Action>(
+                    switch (Reflection.wasGetEnumValueFromName<Action>(
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.ENABLE:

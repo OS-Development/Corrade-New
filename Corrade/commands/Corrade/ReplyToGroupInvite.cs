@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -18,14 +20,16 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> replytogroupinvite =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Group))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Group))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     uint action =
-                        (uint) wasGetEnumValueFromDescription<Action>(
+                        (uint) Reflection.wasGetEnumValueFromName<Action>(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant());
                     IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
@@ -43,7 +47,8 @@ namespace Corrade
                     if (
                         !UUID.TryParse(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.SESSION)),
                                     corradeCommandParameters.Message)),
                             out sessionUUID))
                     {
@@ -66,7 +71,9 @@ namespace Corrade
                     }
                     if (!amount.Equals(0) && action.Equals((uint) Action.ACCEPT))
                     {
-                        if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Economy))
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.Name,
+                                (int) Configuration.Permissions.Economy))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }

@@ -8,6 +8,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using CorradeConfiguration;
+using wasSharp;
 
 namespace Corrade
 {
@@ -18,7 +20,9 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> getinventoryoffers =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Inventory))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Inventory))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -34,19 +38,19 @@ namespace Corrade
                             lock (LockObject)
                             {
                                 csv.AddRange(new[]
-                                {wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME), name.First()});
+                                {Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME), name.First()});
                                 csv.AddRange(new[]
-                                {wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME), name.Last()});
+                                {Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME), name.Last()});
                                 csv.AddRange(new[]
                                 {
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
+                                    Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE),
                                     o.Key.AssetType.ToString()
                                 });
                                 csv.AddRange(new[]
-                                {wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE), o.Key.Offer.Message});
+                                {Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE), o.Key.Offer.Message});
                                 csv.AddRange(new[]
                                 {
-                                    wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
+                                    Reflection.wasGetNameFromEnumValue(ScriptKeys.SESSION),
                                     o.Key.Offer.IMSessionID.ToString()
                                 });
                             }
@@ -54,8 +58,8 @@ namespace Corrade
                     }
                     if (csv.Any())
                     {
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            wasEnumerableToCSV(csv));
+                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.wasEnumerableToCSV(csv));
                     }
                 };
         }

@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -18,7 +20,9 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> displayname =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Grooming))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Grooming))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -33,18 +37,20 @@ namespace Corrade
                             previous = names[0].DisplayName;
                         });
                     switch (
-                        wasGetEnumValueFromDescription<Action>(
+                        Reflection.wasGetEnumValueFromName<Action>(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.GET:
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), previous);
+                            result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), previous);
                             break;
                         case Action.SET:
                             string name =
                                 wasInput(
-                                    wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
+                                    KeyValue.wasKeyValueGet(
+                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(name))
                             {
@@ -55,7 +61,7 @@ namespace Corrade
                                  name.Length < LINDEN_CONSTANTS.AVATARS.MINIMUM_DISPLAY_NAME_CHARACTERS))
                             {
                                 throw new Exception(
-                                    wasGetDescriptionFromEnumValue(
+                                    Reflection.wasGetNameFromEnumValue(
                                         ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_FOR_DISPLAY_NAME));
                             }
                             bool succeeded = true;

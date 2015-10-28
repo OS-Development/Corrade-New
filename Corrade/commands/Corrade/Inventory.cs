@@ -7,7 +7,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -18,7 +20,9 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> inventory =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Inventory))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Inventory))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -32,7 +36,7 @@ namespace Corrade
                         }
                     }
                     string path =
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATH)),
+                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PATH)),
                             corradeCommandParameters.Message));
                     Func<string, InventoryBase, InventoryBase> findPath = null;
                     findPath = (o, p) =>
@@ -88,9 +92,9 @@ namespace Corrade
                     };
                     InventoryBase item;
                     List<string> csv = new List<string>();
-                    Action action = wasGetEnumValueFromDescription<Action>(
+                    Action action = Reflection.wasGetEnumValueFromName<Action>(
                         wasInput(
-                            wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     switch (action)
@@ -122,40 +126,40 @@ namespace Corrade
                                             o => DirItem.FromInventoryBase(o)))
                                     {
                                         csv.AddRange(new[]
-                                        {wasGetStructureMemberDescription(dirItem, dirItem.Name), dirItem.Name});
+                                        {Reflection.wasGetStructureMemberName(dirItem, dirItem.Name), dirItem.Name});
                                         csv.AddRange(new[]
                                         {
-                                            wasGetStructureMemberDescription(dirItem, dirItem.Item),
+                                            Reflection.wasGetStructureMemberName(dirItem, dirItem.Item),
                                             dirItem.Item.ToString()
                                         });
                                         csv.AddRange(new[]
                                         {
-                                            wasGetStructureMemberDescription(dirItem, dirItem.Type),
-                                            wasGetDescriptionFromEnumValue(dirItem.Type)
+                                            Reflection.wasGetStructureMemberName(dirItem, dirItem.Type),
+                                            Reflection.wasGetNameFromEnumValue(dirItem.Type)
                                         });
                                         csv.AddRange(new[]
                                         {
-                                            wasGetStructureMemberDescription(dirItem, dirItem.Permissions),
+                                            Reflection.wasGetStructureMemberName(dirItem, dirItem.Permissions),
                                             dirItem.Permissions
                                         });
                                     }
                                     break;
                                 case false:
                                     DirItem dir = DirItem.FromInventoryBase(item);
-                                    csv.AddRange(new[] {wasGetStructureMemberDescription(dir, dir.Name), dir.Name});
+                                    csv.AddRange(new[] {Reflection.wasGetStructureMemberName(dir, dir.Name), dir.Name});
                                     csv.AddRange(new[]
                                     {
-                                        wasGetStructureMemberDescription(dir, dir.Item),
+                                        Reflection.wasGetStructureMemberName(dir, dir.Item),
                                         dir.Item.ToString()
                                     });
                                     csv.AddRange(new[]
                                     {
-                                        wasGetStructureMemberDescription(dir, dir.Type),
-                                        wasGetDescriptionFromEnumValue(dir.Type)
+                                        Reflection.wasGetStructureMemberName(dir, dir.Type),
+                                        Reflection.wasGetNameFromEnumValue(dir.Type)
                                     });
                                     csv.AddRange(new[]
                                     {
-                                        wasGetStructureMemberDescription(dir, dir.Permissions),
+                                        Reflection.wasGetStructureMemberName(dir, dir.Permissions),
                                         dir.Permissions
                                     });
                                     break;
@@ -168,17 +172,17 @@ namespace Corrade
                                     DirItem.FromInventoryBase(
                                         GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase);
                                 csv.AddRange(new[]
-                                {wasGetStructureMemberDescription(dirItem, dirItem.Name), dirItem.Name});
+                                {Reflection.wasGetStructureMemberName(dirItem, dirItem.Name), dirItem.Name});
                                 csv.AddRange(new[]
-                                {wasGetStructureMemberDescription(dirItem, dirItem.Item), dirItem.Item.ToString()});
+                                {Reflection.wasGetStructureMemberName(dirItem, dirItem.Item), dirItem.Item.ToString()});
                                 csv.AddRange(new[]
                                 {
-                                    wasGetStructureMemberDescription(dirItem, dirItem.Type),
-                                    wasGetDescriptionFromEnumValue(dirItem.Type)
+                                    Reflection.wasGetStructureMemberName(dirItem, dirItem.Type),
+                                    Reflection.wasGetNameFromEnumValue(dirItem.Type)
                                 });
                                 csv.AddRange(new[]
                                 {
-                                    wasGetStructureMemberDescription(dirItem, dirItem.Permissions),
+                                    Reflection.wasGetStructureMemberName(dirItem, dirItem.Permissions),
                                     dirItem.Permissions
                                 });
                             }
@@ -213,8 +217,10 @@ namespace Corrade
                             break;
                         case Action.MKDIR:
                             string mkdirName =
-                                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.NAME)),
-                                    corradeCommandParameters.Message));
+                                wasInput(
+                                    KeyValue.wasKeyValueGet(
+                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME)),
+                                        corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(mkdirName))
                             {
                                 throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
@@ -250,8 +256,8 @@ namespace Corrade
                         case Action.CHMOD:
                             string itemPermissions =
                                 wasInput(
-                                    wasKeyValueGet(
-                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS)),
+                                    KeyValue.wasKeyValueGet(
+                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(itemPermissions))
                             {
@@ -333,8 +339,8 @@ namespace Corrade
                         case Action.MV:
                         case Action.LN:
                             string lnSourcePath =
-                                wasInput(wasKeyValueGet(
-                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE)),
+                                wasInput(KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.SOURCE)),
                                     corradeCommandParameters.Message));
                             InventoryBase sourceItem;
                             switch (!string.IsNullOrEmpty(lnSourcePath))
@@ -366,8 +372,8 @@ namespace Corrade
                                     break;
                             }
                             string lnTargetPath =
-                                wasInput(wasKeyValueGet(
-                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET)),
+                                wasInput(KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET)),
                                     corradeCommandParameters.Message));
                             InventoryBase targetItem;
                             switch (!string.IsNullOrEmpty(lnTargetPath))
@@ -434,8 +440,8 @@ namespace Corrade
                     }
                     if (csv.Any())
                     {
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            wasEnumerableToCSV(csv));
+                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.wasEnumerableToCSV(csv));
                     }
                 };
         }

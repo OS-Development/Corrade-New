@@ -10,7 +10,9 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -22,20 +24,21 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> tell =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Talk))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Talk))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string data = wasInput(
-                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE)),
+                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE)),
                             corradeCommandParameters.Message));
                     List<string> myName =
                         new List<string>(
                             GetAvatarNames(string.Join(" ", Client.Self.FirstName, Client.Self.LastName)));
                     switch (
-                        wasGetEnumValueFromDescription<Entity>(
+                        Reflection.wasGetEnumValueFromName<Entity>(
                             wasInput(
-                                wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY)),
+                                KeyValue.wasKeyValueGet(
+                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Entity.AVATAR:
@@ -43,16 +46,17 @@ namespace Corrade
                             if (
                                 !UUID.TryParse(
                                     wasInput(
-                                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT)),
+                                        KeyValue.wasKeyValueGet(
+                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT)),
                                             corradeCommandParameters.Message)), out agentUUID) && !AgentNameToUUID(
                                                 wasInput(
-                                                    wasKeyValueGet(
+                                                    KeyValue.wasKeyValueGet(
                                                         wasOutput(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                                            Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 wasInput(
-                                                    wasKeyValueGet(
-                                                        wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME)),
+                                                    KeyValue.wasKeyValueGet(
+                                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
@@ -112,7 +116,7 @@ namespace Corrade
                                     {
                                         // or fail and append the fail message.
                                         Feedback(
-                                            wasGetDescriptionFromEnumValue(
+                                            Reflection.wasGetNameFromEnumValue(
                                                 ConsoleError.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
                                             ex.Message);
                                     }
@@ -186,7 +190,7 @@ namespace Corrade
                                         {
                                             // or fail and append the fail message.
                                             Feedback(
-                                                wasGetDescriptionFromEnumValue(
+                                                Reflection.wasGetNameFromEnumValue(
                                                     ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
                                                 ex.Message);
                                         }
@@ -204,8 +208,8 @@ namespace Corrade
                             if (
                                 !int.TryParse(
                                     wasInput(
-                                        wasKeyValueGet(
-                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.CHANNEL)),
+                                        KeyValue.wasKeyValueGet(
+                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.CHANNEL)),
                                             corradeCommandParameters.Message)),
                                     out chatChannel))
                             {
@@ -217,8 +221,8 @@ namespace Corrade
                                     o =>
                                         o.Name.Equals(
                                             wasInput(
-                                                wasKeyValueGet(
-                                                    wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                                KeyValue.wasKeyValueGet(
+                                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
                                                     corradeCommandParameters.Message)),
                                             StringComparison.Ordinal));
                             ChatType chatType = chatTypeInfo != null
@@ -265,7 +269,7 @@ namespace Corrade
                                     {
                                         // or fail and append the fail message.
                                         Feedback(
-                                            wasGetDescriptionFromEnumValue(
+                                            Reflection.wasGetNameFromEnumValue(
                                                 ConsoleError.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
                                             ex.Message);
                                     }

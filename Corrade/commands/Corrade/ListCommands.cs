@@ -8,6 +8,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using CorradeConfiguration;
+using wasSharp;
 
 namespace Corrade
 {
@@ -20,17 +22,17 @@ namespace Corrade
                 {
                     HashSet<string> data = new HashSet<string>();
                     object LockObject = new object();
-                    Parallel.ForEach(wasGetEnumDescriptions<ScriptKeys>(), o =>
+                    Parallel.ForEach(Reflection.wasGetEnumNames<ScriptKeys>(), o =>
                     {
-                        ScriptKeys scriptKey = wasGetEnumValueFromDescription<ScriptKeys>(o);
+                        ScriptKeys scriptKey = Reflection.wasGetEnumValueFromName<ScriptKeys>(o);
                         IsCorradeCommandAttribute isCommandAttribute =
-                            wasGetAttributeFromEnumValue<IsCorradeCommandAttribute>(scriptKey);
+                            Reflection.wasGetAttributeFromEnumValue<IsCorradeCommandAttribute>(scriptKey);
                         if (isCommandAttribute == null || !isCommandAttribute.IsCorradeCorradeCommand)
                             return;
                         CommandPermissionMaskAttribute commandPermissionMaskAttribute =
-                            wasGetAttributeFromEnumValue<CommandPermissionMaskAttribute>(scriptKey);
+                            Reflection.wasGetAttributeFromEnumValue<CommandPermissionMaskAttribute>(scriptKey);
                         if (commandPermissionMaskAttribute == null) return;
-                        if (!corradeCommandParameters.Group.Equals(default(Group)) &&
+                        if (!corradeCommandParameters.Group.Equals(default(Configuration.Group)) &&
                             !(corradeCommandParameters.Group.PermissionMask &
                               commandPermissionMaskAttribute.PermissionMask).Equals(0))
                         {
@@ -42,7 +44,7 @@ namespace Corrade
                     });
                     if (data.Any())
                     {
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA), wasEnumerableToCSV(data));
+                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), CSV.wasEnumerableToCSV(data));
                     }
                 };
         }

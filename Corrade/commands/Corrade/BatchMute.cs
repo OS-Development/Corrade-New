@@ -9,7 +9,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -22,7 +24,7 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Mute))
+                        !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Mute))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
@@ -33,8 +35,9 @@ namespace Corrade
                     EventHandler<EventArgs> MuteListUpdatedEventHandler =
                         (sender, args) => MuteListUpdatedEvent.Set();
 
-                    Parallel.ForEach(wasCSVToEnumerable(
-                        wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.MUTES)),
+                    Parallel.ForEach(CSV.wasCSVToEnumerable(
+                        wasInput(KeyValue.wasKeyValueGet(
+                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.MUTES)),
                             corradeCommandParameters.Message)))
                         .AsParallel()
                         .Select((o, p) => new {o, p})
@@ -48,10 +51,10 @@ namespace Corrade
                             UUID targetUUID;
                             bool succeeded;
                             switch (
-                                wasGetEnumValueFromDescription<Action>(
+                                Reflection.wasGetEnumValueFromName<Action>(
                                     wasInput(
-                                        wasKeyValueGet(
-                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION)),
+                                        KeyValue.wasKeyValueGet(
+                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
                                             corradeCommandParameters.Message)).ToLowerInvariant()))
                             {
                                 case Action.MUTE:
@@ -87,8 +90,8 @@ namespace Corrade
                                             p =>
                                                 p.Name.Equals(
                                                     wasInput(
-                                                        wasKeyValueGet(
-                                                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
+                                                        KeyValue.wasKeyValueGet(
+                                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
                                                             corradeCommandParameters.Message)),
                                                     StringComparison.Ordinal));
                                     // ...or assume "Default" mute type from MuteType
@@ -99,10 +102,10 @@ namespace Corrade
                                         : MuteType.ByName;
                                     // Get the mute flags - default is "Default" equivalent to 0
                                     int muteFlags = 0;
-                                    Parallel.ForEach(wasCSVToEnumerable(
+                                    Parallel.ForEach(CSV.wasCSVToEnumerable(
                                         wasInput(
-                                            wasKeyValueGet(
-                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FLAGS)),
+                                            KeyValue.wasKeyValueGet(
+                                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FLAGS)),
                                                 corradeCommandParameters.Message)))
                                         .AsParallel()
                                         .Where(p => !string.IsNullOrEmpty(p)),
@@ -214,8 +217,8 @@ namespace Corrade
                         });
                     if (data.Any())
                     {
-                        result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                            wasEnumerableToCSV(data));
+                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.wasEnumerableToCSV(data));
                     }
                 };
         }

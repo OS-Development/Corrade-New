@@ -4,8 +4,23 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Corrade", "Corrade\Corrade.csproj", "{DBF5CAB0-CCF6-4D8F-A257-100CE4CA4F32}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A971E1C9-776C-4CD2-88AC-71197C7B955E} = {A971E1C9-776C-4CD2-88AC-71197C7B955E}
+		{9AF3A0CC-6E94-45FB-AB70-1BA04F49E340} = {9AF3A0CC-6E94-45FB-AB70-1BA04F49E340}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Configurator", "Configurator\Configurator.csproj", "{695D4BED-5254-4092-B5DC-BFA13228A151}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A971E1C9-776C-4CD2-88AC-71197C7B955E} = {A971E1C9-776C-4CD2-88AC-71197C7B955E}
+		{9AF3A0CC-6E94-45FB-AB70-1BA04F49E340} = {9AF3A0CC-6E94-45FB-AB70-1BA04F49E340}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CorradeConfiguration", "CorradeConfiguration\CorradeConfiguration.csproj", "{9AF3A0CC-6E94-45FB-AB70-1BA04F49E340}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A971E1C9-776C-4CD2-88AC-71197C7B955E} = {A971E1C9-776C-4CD2-88AC-71197C7B955E}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wasSharp", "wasSharp\wasSharp.csproj", "{A971E1C9-776C-4CD2-88AC-71197C7B955E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +36,14 @@ Global
 		{695D4BED-5254-4092-B5DC-BFA13228A151}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{695D4BED-5254-4092-B5DC-BFA13228A151}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{695D4BED-5254-4092-B5DC-BFA13228A151}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9AF3A0CC-6E94-45FB-AB70-1BA04F49E340}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9AF3A0CC-6E94-45FB-AB70-1BA04F49E340}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9AF3A0CC-6E94-45FB-AB70-1BA04F49E340}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9AF3A0CC-6E94-45FB-AB70-1BA04F49E340}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A971E1C9-776C-4CD2-88AC-71197C7B955E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A971E1C9-776C-4CD2-88AC-71197C7B955E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A971E1C9-776C-4CD2-88AC-71197C7B955E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A971E1C9-776C-4CD2-88AC-71197C7B955E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

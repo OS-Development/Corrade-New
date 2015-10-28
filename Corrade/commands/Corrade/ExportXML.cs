@@ -14,10 +14,12 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using CorradeConfiguration;
 using OpenMetaverse;
 using OpenMetaverse.Assets;
 using OpenMetaverse.Imaging;
 using OpenMetaverse.StructuredData;
+using wasSharp;
 using Encoder = System.Drawing.Imaging.Encoder;
 using Parallel = System.Threading.Tasks.Parallel;
 
@@ -32,15 +34,15 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.Name,
-                            (int) Permissions.Interact))
+                            (int) Configuration.Permissions.Interact))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     float range;
                     if (
                         !float.TryParse(
-                            wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.RANGE)),
+                            wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
@@ -49,8 +51,8 @@ namespace Corrade
                     Primitive primitive = null;
                     if (
                         !FindPrimitive(
-                            StringOrUUID(wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM)),
+                            StringOrUUID(wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
                             range,
                             ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
@@ -125,8 +127,8 @@ namespace Corrade
 
                     // Get the destination format to convert the downloaded textures to.
                     string format =
-                        wasInput(wasKeyValueGet(
-                            wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FORMAT)),
+                        wasInput(KeyValue.wasKeyValueGet(
+                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FORMAT)),
                             corradeCommandParameters.Message));
                     PropertyInfo formatProperty = null;
                     if (!string.IsNullOrEmpty(format))
@@ -181,7 +183,7 @@ namespace Corrade
                                 if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
                                 {
                                     throw new Exception(
-                                        wasGetDescriptionFromEnumValue(
+                                        Reflection.wasGetNameFromEnumValue(
                                             ScriptError.UNABLE_TO_DECODE_ASSET_DATA));
                                 }
                                 using (MemoryStream imageStream = new MemoryStream())
@@ -210,7 +212,7 @@ namespace Corrade
                                     catch (Exception)
                                     {
                                         throw new Exception(
-                                            wasGetDescriptionFromEnumValue(
+                                            Reflection.wasGetNameFromEnumValue(
                                                 ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT));
                                     }
                                     lock (LockObject)
@@ -289,17 +291,18 @@ namespace Corrade
 
                         // If no path was specificed, then send the data.
                         string path =
-                            wasInput(wasKeyValueGet(
-                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PATH)),
+                            wasInput(KeyValue.wasKeyValueGet(
+                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PATH)),
                                 corradeCommandParameters.Message));
                         if (string.IsNullOrEmpty(path))
                         {
-                            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
+                            result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
                                 Convert.ToBase64String(zipMemoryStream.ToArray()));
                             return;
                         }
                         if (
-                            !HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.System))
+                            !HasCorradePermission(corradeCommandParameters.Group.Name,
+                                (int) Configuration.Permissions.System))
                         {
                             throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                         }

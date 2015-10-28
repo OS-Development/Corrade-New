@@ -7,6 +7,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfiguration;
+using wasSharp;
 
 namespace Corrade
 {
@@ -17,12 +19,12 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> getconnectedregions =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Land))
+                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Configuration.Permissions.Land))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                        wasEnumerableToCSV(Client.Network.Simulators.Select(o => o.Name)));
+                    result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                        CSV.wasEnumerableToCSV(Client.Network.Simulators.Select(o => o.Name)));
                 };
         }
     }

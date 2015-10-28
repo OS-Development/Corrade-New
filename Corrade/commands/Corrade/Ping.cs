@@ -6,6 +6,7 @@
 
 using System;
 using System.Collections.Generic;
+using wasSharp;
 
 namespace Corrade
 {
@@ -16,8 +17,8 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> ping =
                 (corradeCommandParameters, result) =>
                 {
-                    result.Add(wasGetDescriptionFromEnumValue(ResultKeys.DATA),
-                        wasGetDescriptionFromEnumValue(ScriptKeys.PONG));
+                    result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                        Reflection.wasGetNameFromEnumValue(ScriptKeys.PONG));
                 };
         }
     }

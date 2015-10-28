@@ -8,7 +8,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 
 namespace Corrade
 {
@@ -19,14 +21,16 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> flyto =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.Name, (int) Permissions.Movement))
+                    if (
+                        !HasCorradePermission(corradeCommandParameters.Group.Name,
+                            (int) Configuration.Permissions.Movement))
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
                     Vector3 position;
                     if (!Vector3.TryParse(wasInput(
-                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION)),
+                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION)),
                             corradeCommandParameters.Message)),
                         out position))
                     {
@@ -34,7 +38,7 @@ namespace Corrade
                     }
                     uint duration;
                     if (!uint.TryParse(wasInput(
-                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION)),
+                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DURATION)),
                             corradeCommandParameters.Message)),
                         out duration))
                     {
@@ -42,7 +46,7 @@ namespace Corrade
                     }
                     float vicinity;
                     if (!float.TryParse(wasInput(
-                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.VICINITY)),
+                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.VICINITY)),
                             corradeCommandParameters.Message)),
                         out vicinity))
                     {
@@ -50,7 +54,7 @@ namespace Corrade
                     }
                     int affinity;
                     if (!int.TryParse(wasInput(
-                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.AFFINITY)),
+                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AFFINITY)),
                             corradeCommandParameters.Message)),
                         out affinity))
                     {
@@ -143,7 +147,7 @@ namespace Corrade
                     // perform the post-action
                     bool fly;
                     switch (bool.TryParse(wasInput(
-                        wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.FLY)),
+                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FLY)),
                             corradeCommandParameters.Message)), out fly))
                     {
                         case true:

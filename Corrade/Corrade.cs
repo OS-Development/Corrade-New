@@ -27,14 +27,16 @@ using System.ServiceProcess;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Web;
 using System.Xml;
 using System.Xml.Schema;
 using System.Xml.Serialization;
 using AIMLbot;
+using CorradeConfiguration;
 using OpenMetaverse;
 using OpenMetaverse.Imaging;
 using OpenMetaverse.Rendering;
+using wasSharp;
+using Group = OpenMetaverse.Group;
 using Parallel = System.Threading.Tasks.Parallel;
 using Path = System.IO.Path;
 using ThreadState = System.Threading.ThreadState;
@@ -52,103 +54,13 @@ namespace Corrade
         /// </summary>
         public enum CorradeThreadType : uint
         {
-            [Description("command")] COMMAND = 1,
-            [Description("rlv")] RLV = 2,
-            [Description("notification")] NOTIFICATION = 3,
-            [Description("instant message")] INSTANT_MESSAGE = 4,
-            [Description("log")] LOG = 5,
-            [Description("post")] POST = 6
+            [Reflection.NameAttribute("command")] COMMAND = 1,
+            [Reflection.NameAttribute("rlv")] RLV = 2,
+            [Reflection.NameAttribute("notification")] NOTIFICATION = 3,
+            [Reflection.NameAttribute("instant message")] INSTANT_MESSAGE = 4,
+            [Reflection.NameAttribute("log")] LOG = 5,
+            [Reflection.NameAttribute("post")] POST = 6
         };
-
-        /// <summary>
-        ///     Possible input and output filters.
-        /// </summary>
-        public enum Filter : uint
-        {
-            [XmlEnum(Name = "none")] [Description("none")] NONE = 0,
-            [XmlEnum(Name = "RFC1738")] [Description("RFC1738")] RFC1738,
-            [XmlEnum(Name = "RFC3986")] [Description("RFC3986")] RFC3986,
-            [XmlEnum(Name = "ENIGMA")] [Description("ENIGMA")] ENIGMA,
-            [XmlEnum(Name = "VIGENERE")] [Description("VIGENERE")] VIGENERE,
-            [XmlEnum(Name = "ATBASH")] [Description("ATBASH")] ATBASH,
-            [XmlEnum(Name = "BASE64")] [Description("BASE64")] BASE64,
-            [XmlEnum(Name = "AES")] [Description("AES")] AES
-        }
-
-        /// <summary>
-        ///     An enumeration of various compression methods
-        ///     supproted by Corrade's internal HTTP server.
-        /// </summary>
-        public enum HTTPCompressionMethod : uint
-        {
-            [XmlEnum(Name = "none")] [Description("none")] NONE,
-            [XmlEnum(Name = "deflate")] [Description("deflate")] DEFLATE,
-            [XmlEnum(Name = "gzip")] [Description("gzip")] GZIP
-        }
-
-        /// <summary>
-        ///     Corrade notification types.
-        /// </summary>
-        [Flags]
-        public enum Notifications : uint
-        {
-            [XmlEnum(Name = "none")] [Description("none")] NONE = 0,
-            [XmlEnum(Name = "alert")] [Description("alert")] AlertMessage = 1,
-            [XmlEnum(Name = "region")] [Description("region")] RegionMessage = 2,
-            [XmlEnum(Name = "group")] [Description("group")] GroupMessage = 4,
-            [XmlEnum(Name = "balance")] [Description("balance")] Balance = 8,
-            [XmlEnum(Name = "message")] [Description("message")] InstantMessage = 16,
-            [XmlEnum(Name = "notice")] [Description("notice")] GroupNotice = 32,
-            [XmlEnum(Name = "local")] [Description("local")] LocalChat = 64,
-            [XmlEnum(Name = "dialog")] [Description("dialog")] ScriptDialog = 128,
-            [XmlEnum(Name = "friendship")] [Description("friendship")] Friendship = 256,
-            [XmlEnum(Name = "inventory")] [Description("inventory")] Inventory = 512,
-            [XmlEnum(Name = "permission")] [Description("permission")] ScriptPermission = 1024,
-            [XmlEnum(Name = "lure")] [Description("lure")] TeleportLure = 2048,
-            [XmlEnum(Name = "effect")] [Description("effect")] ViewerEffect = 4096,
-            [XmlEnum(Name = "collision")] [Description("collision")] MeanCollision = 8192,
-            [XmlEnum(Name = "crossing")] [Description("crossing")] RegionCrossed = 16384,
-            [XmlEnum(Name = "terse")] [Description("terse")] TerseUpdates = 32768,
-            [XmlEnum(Name = "typing")] [Description("typing")] Typing = 65536,
-            [XmlEnum(Name = "invite")] [Description("invite")] GroupInvite = 131072,
-            [XmlEnum(Name = "economy")] [Description("economy")] Economy = 262144,
-            [XmlEnum(Name = "membership")] [Description("membership")] GroupMembership = 524288,
-            [XmlEnum(Name = "url")] [Description("url")] LoadURL = 1048576,
-            [XmlEnum(Name = "ownersay")] [Description("ownersay")] OwnerSay = 2097152,
-            [XmlEnum(Name = "regionsayto")] [Description("regionsayto")] RegionSayTo = 4194304,
-            [XmlEnum(Name = "objectim")] [Description("objectim")] ObjectInstantMessage = 8388608,
-            [XmlEnum(Name = "rlv")] [Description("rlv")] RLVMessage = 16777216,
-            [XmlEnum(Name = "debug")] [Description("debug")] DebugMessage = 33554432,
-            [XmlEnum(Name = "avatars")] [Description("avatars")] RadarAvatars = 67108864,
-            [XmlEnum(Name = "primitives")] [Description("primitives")] RadarPrimitives = 134217728,
-            [XmlEnum(Name = "control")] [Description("control")] ScriptControl = 268435456
-        }
-
-        /// <summary>
-        ///     Corrade permissions.
-        /// </summary>
-        [Flags]
-        public enum Permissions : uint
-        {
-            [XmlEnum(Name = "none")] [Description("none")] None = 0,
-            [XmlEnum(Name = "movement")] [Description("movement")] Movement = 1,
-            [XmlEnum(Name = "economy")] [Description("economy")] Economy = 2,
-            [XmlEnum(Name = "land")] [Description("land")] Land = 4,
-            [XmlEnum(Name = "grooming")] [Description("grooming")] Grooming = 8,
-            [XmlEnum(Name = "inventory")] [Description("inventory")] Inventory = 16,
-            [XmlEnum(Name = "interact")] [Description("interact")] Interact = 32,
-            [XmlEnum(Name = "mute")] [Description("mute")] Mute = 64,
-            [XmlEnum(Name = "database")] [Description("database")] Database = 128,
-            [XmlEnum(Name = "notifications")] [Description("notifications")] Notifications = 256,
-            [XmlEnum(Name = "talk")] [Description("talk")] Talk = 512,
-            [XmlEnum(Name = "directory")] [Description("directory")] Directory = 1024,
-            [XmlEnum(Name = "system")] [Description("system")] System = 2048,
-            [XmlEnum(Name = "friendship")] [Description("friendship")] Friendship = 4096,
-            [XmlEnum(Name = "execute")] [Description("execute")] Execute = 8192,
-            [XmlEnum(Name = "group")] [Description("group")] Group = 16384,
-            [XmlEnum(Name = "filter")] [Description("filter")] Filter = 32768,
-            [XmlEnum(Name = "schedule")] [Description("schedule")] Schedule = 65536
-        }
 
         /// <summary>
         ///     Structure containing errors returned to scripts.
@@ -161,258 +73,259 @@ namespace Corrade
         /// </remarks>
         public enum ScriptError : uint
         {
-            [Status(0)] [Description("none")] NONE = 0,
-            [Status(35392)] [Description("could not join group")] COULD_NOT_JOIN_GROUP,
-            [Status(20900)] [Description("could not leave group")] COULD_NOT_LEAVE_GROUP,
-            [Status(57961)] [Description("agent not found")] AGENT_NOT_FOUND,
-            [Status(28002)] [Description("group not found")] GROUP_NOT_FOUND,
-            [Status(15345)] [Description("already in group")] ALREADY_IN_GROUP,
-            [Status(11502)] [Description("not in group")] NOT_IN_GROUP,
-            [Status(32472)] [Description("role not found")] ROLE_NOT_FOUND,
-            [Status(08653)] [Description("command not found")] COMMAND_NOT_FOUND,
-            [Status(14634)] [Description("could not eject agent")] COULD_NOT_EJECT_AGENT,
-            [Status(30473)] [Description("no group power for command")] NO_GROUP_POWER_FOR_COMMAND,
-            [Status(27605)] [Description("cannot eject owners")] CANNOT_EJECT_OWNERS,
-            [Status(25984)] [Description("inventory item not found")] INVENTORY_ITEM_NOT_FOUND,
-            [Status(43982)] [Description("invalid amount")] INVALID_AMOUNT,
-            [Status(02169)] [Description("insufficient funds")] INSUFFICIENT_FUNDS,
-            [Status(47624)] [Description("invalid pay target")] INVALID_PAY_TARGET,
-            [Status(32164)] [Description("teleport failed")] TELEPORT_FAILED,
-            [Status(22693)] [Description("primitive not found")] PRIMITIVE_NOT_FOUND,
-            [Status(28613)] [Description("could not sit")] COULD_NOT_SIT,
-            [Status(48467)] [Description("no Corrade permissions")] NO_CORRADE_PERMISSIONS,
-            [Status(54214)] [Description("could not create group")] COULD_NOT_CREATE_GROUP,
-            [Status(11287)] [Description("could not create role")] COULD_NOT_CREATE_ROLE,
-            [Status(12758)] [Description("no role name specified")] NO_ROLE_NAME_SPECIFIED,
-            [Status(34084)] [Description("timeout getting group roles members")] TIMEOUT_GETING_GROUP_ROLES_MEMBERS,
-            [Status(11050)] [Description("timeout getting group roles")] TIMEOUT_GETTING_GROUP_ROLES,
-            [Status(39016)] [Description("timeout getting role powers")] TIMEOUT_GETTING_ROLE_POWERS,
-            [Status(64390)] [Description("could not find parcel")] COULD_NOT_FIND_PARCEL,
-            [Status(17019)] [Description("unable to set home")] UNABLE_TO_SET_HOME,
-            [Status(31493)] [Description("unable to go home")] UNABLE_TO_GO_HOME,
-            [Status(32923)] [Description("timeout getting profile")] TIMEOUT_GETTING_PROFILE,
-            [Status(56462)] [Description("texture not found")] TEXTURE_NOT_FOUND,
-            [Status(36068)] [Description("type can only be voice or text")] TYPE_CAN_BE_VOICE_OR_TEXT,
-            [Status(19862)] [Description("agent not in group")] AGENT_NOT_IN_GROUP,
-            [Status(29345)] [Description("empty attachments")] EMPTY_ATTACHMENTS,
-            [Status(48899)] [Description("empty pick name")] EMPTY_PICK_NAME,
-            [Status(22733)] [Description("unable to join group chat")] UNABLE_TO_JOIN_GROUP_CHAT,
-            [Status(59524)] [Description("invalid position")] INVALID_POSITION,
-            [Status(02707)] [Description("could not find title")] COULD_NOT_FIND_TITLE,
-            [Status(43713)] [Description("fly action can only be start or stop")] FLY_ACTION_START_OR_STOP,
-            [Status(64868)] [Description("invalid proposal text")] INVALID_PROPOSAL_TEXT,
-            [Status(03098)] [Description("invalid proposal quorum")] INVALID_PROPOSAL_QUORUM,
-            [Status(41810)] [Description("invalid proposal majority")] INVALID_PROPOSAL_MAJORITY,
-            [Status(07628)] [Description("invalid proposal duration")] INVALID_PROPOSAL_DURATION,
-            [Status(64123)] [Description("invalid mute target")] INVALID_MUTE_TARGET,
-            [Status(59526)] [Description("unknown action")] UNKNOWN_ACTION,
-            [Status(28087)] [Description("no database file configured")] NO_DATABASE_FILE_CONFIGURED,
-            [Status(12181)] [Description("no database key specified")] NO_DATABASE_KEY_SPECIFIED,
-            [Status(44994)] [Description("no database value specified")] NO_DATABASE_VALUE_SPECIFIED,
-            [Status(19142)] [Description("unknown database action")] UNKNOWN_DATABASE_ACTION,
-            [Status(01253)] [Description("cannot remove owner role")] CANNOT_REMOVE_OWNER_ROLE,
-            [Status(47808)] [Description("cannot remove user from owner role")] CANNOT_REMOVE_USER_FROM_OWNER_ROLE,
-            [Status(47469)] [Description("timeout getting picks")] TIMEOUT_GETTING_PICKS,
-            [Status(41256)] [Description("maximum number of roles exceeded")] MAXIMUM_NUMBER_OF_ROLES_EXCEEDED,
-            [Status(40908)] [Description("cannot delete a group member from the everyone role")] CANNOT_DELETE_A_GROUP_MEMBER_FROM_THE_EVERYONE_ROLE,
-            [Status(00458)] [Description("group members are by default in the everyone role")] GROUP_MEMBERS_ARE_BY_DEFAULT_IN_THE_EVERYONE_ROLE,
-            [Status(33413)] [Description("cannot delete the everyone role")] CANNOT_DELETE_THE_EVERYONE_ROLE,
-            [Status(65303)] [Description("invalid url provided")] INVALID_URL_PROVIDED,
-            [Status(65327)] [Description("invalid notification types")] INVALID_NOTIFICATION_TYPES,
-            [Status(49640)] [Description("notification not allowed")] NOTIFICATION_NOT_ALLOWED,
-            [Status(44447)] [Description("unknown directory search type")] UNKNOWN_DIRECTORY_SEARCH_TYPE,
-            [Status(65101)] [Description("no search text provided")] NO_SEARCH_TEXT_PROVIDED,
-            [Status(14337)] [Description("unknown restart action")] UNKNOWN_RESTART_ACTION,
-            [Status(28429)] [Description("unknown move action")] UNKNOWN_MOVE_ACTION,
-            [Status(20541)] [Description("timeout getting top scripts")] TIMEOUT_GETTING_TOP_SCRIPTS,
-            [Status(47172)] [Description("timeout getting top colliders")] TIMEOUT_GETTING_TOP_COLLIDERS,
-            [Status(57429)] [Description("timeout waiting for estate list")] TIMEOUT_WAITING_FOR_ESTATE_LIST,
-            [Status(41676)] [Description("unknown top type")] UNKNOWN_TOP_TYPE,
-            [Status(25897)] [Description("unknown estate list action")] UNKNOWN_ESTATE_LIST_ACTION,
-            [Status(46990)] [Description("unknown estate list")] UNKNOWN_ESTATE_LIST,
-            [Status(43156)] [Description("no item specified")] NO_ITEM_SPECIFIED,
-            [Status(09348)] [Description("unknown animation action")] UNKNOWN_ANIMATION_ACTION,
-            [Status(42216)] [Description("no channel specified")] NO_CHANNEL_SPECIFIED,
-            [Status(31049)] [Description("no button index specified")] NO_BUTTON_INDEX_SPECIFIED,
-            [Status(38931)] [Description("no button specified")] NO_BUTTON_SPECIFIED,
-            [Status(19059)] [Description("no land rights")] NO_LAND_RIGHTS,
-            [Status(61113)] [Description("unknown entity")] UNKNOWN_ENTITY,
-            [Status(58183)] [Description("invalid rotation")] INVALID_ROTATION,
-            [Status(45364)] [Description("could not set script state")] COULD_NOT_SET_SCRIPT_STATE,
-            [Status(50218)] [Description("item is not a script")] ITEM_IS_NOT_A_SCRIPT,
-            [Status(49722)] [Description("failed to get display name")] FAILED_TO_GET_DISPLAY_NAME,
-            [Status(40665)] [Description("no name provided")] NO_NAME_PROVIDED,
-            [Status(35198)] [Description("could not set display name")] COULD_NOT_SET_DISPLAY_NAME,
-            [Status(63713)] [Description("timeout joining group")] TIMEOUT_JOINING_GROUP,
-            [Status(32404)] [Description("timeout creating group")] TIMEOUT_CREATING_GROUP,
-            [Status(00616)] [Description("timeout ejecting agent")] TIMEOUT_EJECTING_AGENT,
-            [Status(25426)] [Description("timeout getting group role members")] TIMEOUT_GETTING_GROUP_ROLE_MEMBERS,
-            [Status(31237)] [Description("timeout leaving group")] TIMEOUT_LEAVING_GROUP,
-            [Status(14951)] [Description("timeout joining group chat")] TIMEOUT_JOINING_GROUP_CHAT,
-            [Status(43780)] [Description("timeout during teleport")] TIMEOUT_DURING_TELEPORT,
-            [Status(46316)] [Description("timeout requesting sit")] TIMEOUT_REQUESTING_SIT,
-            [Status(09111)] [Description("timeout getting land users")] TIMEOUT_GETTING_LAND_USERS,
-            [Status(23364)] [Description("timeout getting script state")] TIMEOUT_GETTING_SCRIPT_STATE,
-            [Status(26393)] [Description("timeout updating mute list")] TIMEOUT_UPDATING_MUTE_LIST,
-            [Status(32362)] [Description("timeout getting parcels")] TIMEOUT_GETTING_PARCELS,
-            [Status(46942)] [Description("empty classified name")] EMPTY_CLASSIFIED_NAME,
-            [Status(38184)] [Description("invalid price")] INVALID_PRICE,
-            [Status(59103)] [Description("timeout getting classifieds")] TIMEOUT_GETTING_CLASSIFIEDS,
-            [Status(08241)] [Description("could not find classified")] COULD_NOT_FIND_CLASSIFIED,
-            [Status(53947)] [Description("invalid days")] INVALID_DAYS,
-            [Status(18490)] [Description("invalid interval")] INVALID_INTERVAL,
-            [Status(53829)] [Description("timeout getting group account summary")] TIMEOUT_GETTING_GROUP_ACCOUNT_SUMMARY,
-            [Status(30207)] [Description("friend not found")] FRIEND_NOT_FOUND,
-            [Status(32366)] [Description("the agent already is a friend")] AGENT_ALREADY_FRIEND,
-            [Status(04797)] [Description("friendship offer not found")] FRIENDSHIP_OFFER_NOT_FOUND,
-            [Status(65003)] [Description("friend does not allow mapping")] FRIEND_DOES_NOT_ALLOW_MAPPING,
-            [Status(10691)] [Description("timeout mapping friend")] TIMEOUT_MAPPING_FRIEND,
-            [Status(23309)] [Description("friend offline")] FRIEND_OFFLINE,
-            [Status(34964)] [Description("timeout getting region")] TIMEOUT_GETTING_REGION,
-            [Status(35447)] [Description("region not found")] REGION_NOT_FOUND,
-            [Status(00337)] [Description("no map items found")] NO_MAP_ITEMS_FOUND,
-            [Status(53549)] [Description("no description provided")] NO_DESCRIPTION_PROVIDED,
-            [Status(43982)] [Description("no folder specified")] NO_FOLDER_SPECIFIED,
-            [Status(29512)] [Description("empty wearables")] EMPTY_WEARABLES,
-            [Status(35316)] [Description("parcel not for sale")] PARCEL_NOT_FOR_SALE,
-            [Status(42051)] [Description("unknown access list type")] UNKNOWN_ACCESS_LIST_TYPE,
-            [Status(29438)] [Description("no task specified")] NO_TASK_SPECIFIED,
-            [Status(37470)] [Description("timeout getting group members")] TIMEOUT_GETTING_GROUP_MEMBERS,
-            [Status(24939)] [Description("group not open")] GROUP_NOT_OPEN,
-            [Status(30384)] [Description("timeout downloading terrain")] TIMEOUT_DOWNLOADING_ASSET,
-            [Status(57005)] [Description("timeout uploading terrain")] TIMEOUT_UPLOADING_ASSET,
-            [Status(16667)] [Description("empty terrain data")] EMPTY_ASSET_DATA,
-            [Status(34749)] [Description("the specified folder contains no equipable items")] NO_EQUIPABLE_ITEMS,
-            [Status(42249)] [Description("inventory offer not found")] INVENTORY_OFFER_NOT_FOUND,
-            [Status(23805)] [Description("no session specified")] NO_SESSION_SPECIFIED,
-            [Status(61018)] [Description("folder not found")] FOLDER_NOT_FOUND,
-            [Status(37211)] [Description("timeout creating item")] TIMEOUT_CREATING_ITEM,
-            [Status(09541)] [Description("timeout uploading item")] TIMEOUT_UPLOADING_ITEM,
-            [Status(36684)] [Description("unable to upload item")] UNABLE_TO_UPLOAD_ITEM,
-            [Status(05034)] [Description("unable to create item")] UNABLE_TO_CREATE_ITEM,
-            [Status(44397)] [Description("timeout uploading item data")] TIMEOUT_UPLOADING_ITEM_DATA,
-            [Status(12320)] [Description("unable to upload item data")] UNABLE_TO_UPLOAD_ITEM_DATA,
-            [Status(55979)] [Description("unknown direction")] UNKNOWN_DIRECTION,
-            [Status(22576)] [Description("timeout requesting to set home")] TIMEOUT_REQUESTING_TO_SET_HOME,
-            [Status(07255)] [Description("timeout transferring asset")] TIMEOUT_TRANSFERRING_ASSET,
-            [Status(60269)] [Description("asset upload failed")] ASSET_UPLOAD_FAILED,
-            [Status(57085)] [Description("failed to download asset")] FAILED_TO_DOWNLOAD_ASSET,
-            [Status(60025)] [Description("unknown asset type")] UNKNOWN_ASSET_TYPE,
-            [Status(59048)] [Description("invalid asset data")] INVALID_ASSET_DATA,
-            [Status(32709)] [Description("unknown wearable type")] UNKNOWN_WEARABLE_TYPE,
-            [Status(06097)] [Description("unknown inventory type")] UNKNOWN_INVENTORY_TYPE,
-            [Status(64698)] [Description("could not compile regular expression")] COULD_NOT_COMPILE_REGULAR_EXPRESSION,
-            [Status(18680)] [Description("no pattern provided")] NO_PATTERN_PROVIDED,
-            [Status(11910)] [Description("no executable file provided")] NO_EXECUTABLE_FILE_PROVIDED,
-            [Status(31381)] [Description("timeout waiting for execution")] TIMEOUT_WAITING_FOR_EXECUTION,
-            [Status(04541)] [Description("group invite not found")] GROUP_INVITE_NOT_FOUND,
-            [Status(38125)] [Description("unable to obtain money balance")] UNABLE_TO_OBTAIN_MONEY_BALANCE,
-            [Status(20048)] [Description("timeout getting avatar data")] TIMEOUT_GETTING_AVATAR_DATA,
-            [Status(13712)] [Description("timeout retrieving estate list")] TIMEOUT_RETRIEVING_ESTATE_LIST,
-            [Status(37559)] [Description("destination too close")] DESTINATION_TOO_CLOSE,
-            [Status(11229)] [Description("timeout getting group titles")] TIMEOUT_GETTING_GROUP_TITLES,
-            [Status(47101)] [Description("no message provided")] NO_MESSAGE_PROVIDED,
-            [Status(04075)] [Description("could not remove brain file")] COULD_NOT_REMOVE_BRAIN_FILE,
-            [Status(54456)] [Description("unknown effect")] UNKNOWN_EFFECT,
-            [Status(48775)] [Description("no effect UUID provided")] NO_EFFECT_UUID_PROVIDED,
-            [Status(38858)] [Description("effect not found")] EFFECT_NOT_FOUND,
-            [Status(16572)] [Description("invalid viewer effect")] INVALID_VIEWER_EFFECT,
-            [Status(19011)] [Description("ambiguous path")] AMBIGUOUS_PATH,
-            [Status(53066)] [Description("path not found")] PATH_NOT_FOUND,
-            [Status(13857)] [Description("unexpected item in path")] UNEXPECTED_ITEM_IN_PATH,
-            [Status(59282)] [Description("no path provided")] NO_PATH_PROVIDED,
-            [Status(26623)] [Description("unable to create folder")] UNABLE_TO_CREATE_FOLDER,
-            [Status(28866)] [Description("no permissions provided")] NO_PERMISSIONS_PROVIDED,
-            [Status(43615)] [Description("setting permissions failed")] SETTING_PERMISSIONS_FAILED,
-            [Status(36716)] [Description("timeout retrieving item")] TIMEOUT_RETRIEVING_ITEM,
-            [Status(39391)] [Description("expected item as source")] EXPECTED_ITEM_AS_SOURCE,
-            [Status(22655)] [Description("expected folder as target")] EXPECTED_FOLDER_AS_TARGET,
-            [Status(63024)] [Description("unable to load configuration")] UNABLE_TO_LOAD_CONFIGURATION,
-            [Status(33564)] [Description("unable to save configuration")] UNABLE_TO_SAVE_CONFIGURATION,
-            [Status(20900)] [Description("invalid xml path")] INVALID_XML_PATH,
-            [Status(03638)] [Description("no data provided")] NO_DATA_PROVIDED,
-            [Status(42903)] [Description("unknown image format requested")] UNKNOWN_IMAGE_FORMAT_REQUESTED,
-            [Status(02380)] [Description("unknown image format provided")] UNKNOWN_IMAGE_FORMAT_PROVIDED,
-            [Status(04994)] [Description("unable to decode asset data")] UNABLE_TO_DECODE_ASSET_DATA,
-            [Status(61067)] [Description("unable to convert to requested format")] UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT,
-            [Status(08411)] [Description("could not start process")] COULD_NOT_START_PROCESS,
-            [Status(11869)] [Description("timeout getting primitive data")] TIMEOUT_GETTING_PRIMITIVE_DATA,
-            [Status(22737)] [Description("item is not an object")] ITEM_IS_NOT_AN_OBJECT,
-            [Status(19143)] [Description("timeout meshmerizing object")] COULD_NOT_MESHMERIZE_OBJECT,
-            [Status(37841)] [Description("could not get primitive properties")] COULD_NOT_GET_PRIMITIVE_PROPERTIES,
-            [Status(54854)] [Description("avatar not in range")] AVATAR_NOT_IN_RANGE,
-            [Status(03475)] [Description("invalid scale")] INVALID_SCALE,
-            [Status(30129)] [Description("could not get current groups")] COULD_NOT_GET_CURRENT_GROUPS,
-            [Status(39613)] [Description("maximum number of groups reached")] MAXIMUM_NUMBER_OF_GROUPS_REACHED,
-            [Status(43003)] [Description("unknown syntax type")] UNKNOWN_SYNTAX_TYPE,
-            [Status(13053)] [Description("too many characters for group name")] TOO_MANY_CHARACTERS_FOR_GROUP_NAME,
-            [Status(19325)] [Description("too many characters for group title")] TOO_MANY_CHARACTERS_FOR_GROUP_TITLE,
-            [Status(26178)] [Description("too many characters for notice message")] TOO_MANY_CHARACTERS_FOR_NOTICE_MESSAGE,
-            [Status(35277)] [Description("notecard message body too large")] NOTECARD_MESSAGE_BODY_TOO_LARGE,
-            [Status(47571)] [Description("too many or too few characters for display name")] TOO_MANY_OR_TOO_FEW_CHARACTERS_FOR_DISPLAY_NAME,
-            [Status(30293)] [Description("name too large")] NAME_TOO_LARGE,
-            [Status(60515)] [Description("position would exceed maximum rez altitude")] POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE,
-            [Status(43683)] [Description("description too large")] DESCRIPTION_TOO_LARGE,
-            [Status(54154)] [Description("scale would exceed building constraints")] SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS,
-            [Status(29745)] [Description("attachments would exceed maximum attachment limit")] ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT,
-            [Status(52299)] [Description("too many or too few characters in message")] TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE,
-            [Status(50593)] [Description("maximum ban list length reached")] MAXIMUM_BAN_LIST_LENGTH_REACHED,
-            [Status(09935)] [Description("maximum group list length reached")] MAXIMUM_GROUP_LIST_LENGTH_REACHED,
-            [Status(42536)] [Description("maximum user list length reached")] MAXIMUM_USER_LIST_LENGTH_REACHED,
-            [Status(28625)] [Description("maximum manager list length reached")] MAXIMUM_MANAGER_LIST_LENGTH_REACHED,
-            [Status(28126)] [Description("auto return time outside limit range")] AUTO_RETURN_TIME_OUTSIDE_LIMIT_RANGE,
-            [Status(56379)] [Description("second life text too large")] SECOND_LIFE_TEXT_TOO_LARGE,
-            [Status(09924)] [Description("first life text too large")] FIRST_LIFE_TEXT_TOO_LARGE,
-            [Status(50405)] [Description("maximum amount of picks reached")] MAXIMUM_AMOUNT_OF_PICKS_REACHED,
-            [Status(17894)] [Description("description would exceed maximum size")] DESCRIPTION_WOULD_EXCEED_MAXIMUM_SIZE,
-            [Status(28247)] [Description("maximum amount of classifieds reached")] MAXIMUM_AMOUNT_OF_CLASSIFIEDS_REACHED,
-            [Status(38609)] [Description("timeout changing links")] TIMEOUT_CHANGING_LINKS,
-            [Status(45074)] [Description("link would exceed maximum link limit")] LINK_WOULD_EXCEED_MAXIMUM_LINK_LIMIT,
-            [Status(40773)] [Description("invalid number of items specified")] INVALID_NUMBER_OF_ITEMS_SPECIFIED,
-            [Status(52751)] [Description("timeout requesting price")] TIMEOUT_REQUESTING_PRICE,
-            [Status(01536)] [Description("primitive not for sale")] PRIMITIVE_NOT_FOR_SALE,
-            [Status(36123)] [Description("teleport throttled")] TELEPORT_THROTTLED,
-            [Status(06617)] [Description("no matching dialog found")] NO_MATCHING_DIALOG_FOUND,
-            [Status(08842)] [Description("unknown tree type")] UNKNOWN_TREE_TYPE,
-            [Status(20238)] [Description("parcel must be owned")] PARCEL_MUST_BE_OWNED,
-            [Status(62130)] [Description("invalid texture coordinates")] INVALID_TEXTURE_COORDINATES,
-            [Status(10945)] [Description("invalid surface coordinates")] INVALID_SURFACE_COORDINATES,
-            [Status(28487)] [Description("invalid normal vector")] INVALID_NORMAL_VECTOR,
-            [Status(13296)] [Description("invalid binormal vector")] INVALID_BINORMAL_VECTOR,
-            [Status(44554)] [Description("primitives not in same region")] PRIMITIVES_NOT_IN_SAME_REGION,
-            [Status(38798)] [Description("invalid face specified")] INVALID_FACE_SPECIFIED,
-            [Status(61473)] [Description("invalid status supplied")] INVALID_STATUS_SUPPLIED,
-            [Status(13764)] [Description("status not found")] STATUS_NOT_FOUND,
-            [Status(30556)] [Description("no description for status")] NO_DESCRIPTION_FOR_STATUS,
-            [Status(64368)] [Description("unknown grass type")] UNKNOWN_GRASS_TYPE,
-            [Status(53274)] [Description("unknown material type")] UNKNOWN_MATERIAL_TYPE,
-            [Status(18463)] [Description("could not retrieve object media")] COULD_NOT_RETRIEVE_OBJECT_MEDIA,
-            [Status(02193)] [Description("no avatars to ban or unban")] NO_AVATARS_TO_BAN_OR_UNBAN,
-            [Status(45568)] [Description("could not retrieve broup ban list")] COULD_NOT_RETRIEVE_GROUP_BAN_LIST,
-            [Status(15719)] [Description("timeout retrieving group ban list")] TIMEOUT_RETRIEVING_GROUP_BAN_LIST,
-            [Status(26749)] [Description("timeout modifying group ban list")] TIMEOUT_MODIFYING_GROUP_BAN_LIST,
-            [Status(26715)] [Description("mute entry not found")] MUTE_ENTRY_NOT_FOUND,
-            [Status(51086)] [Description("no name or UUID provided")] NO_NAME_OR_UUID_PROVIDED,
-            [Status(16450)] [Description("could not retrieve mute list")] COULD_NOT_RETRIEVE_MUTE_LIST,
-            [Status(39647)] [Description("mute entry already exists")] MUTE_ENTRY_ALREADY_EXISTS,
-            [Status(22961)] [Description("could not add mute entry")] COULD_NOT_ADD_MUTE_ENTRY,
-            [Status(39787)] [Description("timeout reaching destination")] TIMEOUT_REACHING_DESTINATION,
-            [Status(10776)] [Description("group schedules exceeded")] GROUP_SCHEDULES_EXCEEDED,
-            [Status(36896)] [Description("no index provided")] NO_INDEX_PROVIDED,
-            [Status(56094)] [Description("no schedule found")] NO_SCHEDULE_FOUND,
-            [Status(41612)] [Description("unknown date time stamp")] UNKNOWN_DATE_TIME_STAMP,
-            [Status(07457)] [Description("no permissions for item")] NO_PERMISSIONS_FOR_ITEM,
-            [Status(10374)] [Description("timeout retrieving estate covenant")] TIMEOUT_RETRIEVING_ESTATE_COVENANT,
-            [Status(56901)] [Description("no terraform action specified")] NO_TERRAFORM_ACTION_SPECIFIED,
-            [Status(41211)] [Description("no terraform brush specified")] NO_TERRAFORM_BRUSH_SPECIFIED,
-            [Status(63486)] [Description("invalid height")] INVALID_HEIGHT,
-            [Status(20547)] [Description("invalid width")] INVALID_WIDTH,
-            [Status(28891)] [Description("invalid terraform action")] INVALID_TERRAFORM_ACTION,
-            [Status(41190)] [Description("invalid terraform brush")] INVALID_TERRAFORM_BRUSH,
-            [Status(58619)] [Description("could not terraform")] COULD_NOT_TERRAFORM,
-            [Status(38289)] [Description("timeout waiting for display name")] TIMEOUT_WAITING_FOR_DISPLAY_NAME,
-            [Status(51050)] [Description("script permission request not found")] SCRIPT_PERMISSION_REQUEST_NOT_FOUND,
-            [Status(60073)] [Description("teleport lure not found")] TELEPORT_LURE_NOT_FOUND
+            [Status(0)] [Reflection.DescriptionAttribute("none")] NONE = 0,
+            [Status(35392)] [Reflection.DescriptionAttribute("could not join group")] COULD_NOT_JOIN_GROUP,
+            [Status(20900)] [Reflection.DescriptionAttribute("could not leave group")] COULD_NOT_LEAVE_GROUP,
+            [Status(57961)] [Reflection.DescriptionAttribute("agent not found")] AGENT_NOT_FOUND,
+            [Status(28002)] [Reflection.DescriptionAttribute("group not found")] GROUP_NOT_FOUND,
+            [Status(15345)] [Reflection.DescriptionAttribute("already in group")] ALREADY_IN_GROUP,
+            [Status(11502)] [Reflection.DescriptionAttribute("not in group")] NOT_IN_GROUP,
+            [Status(32472)] [Reflection.DescriptionAttribute("role not found")] ROLE_NOT_FOUND,
+            [Status(08653)] [Reflection.DescriptionAttribute("command not found")] COMMAND_NOT_FOUND,
+            [Status(14634)] [Reflection.DescriptionAttribute("could not eject agent")] COULD_NOT_EJECT_AGENT,
+            [Status(30473)] [Reflection.DescriptionAttribute("no group power for command")] NO_GROUP_POWER_FOR_COMMAND,
+            [Status(27605)] [Reflection.DescriptionAttribute("cannot eject owners")] CANNOT_EJECT_OWNERS,
+            [Status(25984)] [Reflection.DescriptionAttribute("inventory item not found")] INVENTORY_ITEM_NOT_FOUND,
+            [Status(43982)] [Reflection.DescriptionAttribute("invalid amount")] INVALID_AMOUNT,
+            [Status(02169)] [Reflection.DescriptionAttribute("insufficient funds")] INSUFFICIENT_FUNDS,
+            [Status(47624)] [Reflection.DescriptionAttribute("invalid pay target")] INVALID_PAY_TARGET,
+            [Status(32164)] [Reflection.DescriptionAttribute("teleport failed")] TELEPORT_FAILED,
+            [Status(22693)] [Reflection.DescriptionAttribute("primitive not found")] PRIMITIVE_NOT_FOUND,
+            [Status(28613)] [Reflection.DescriptionAttribute("could not sit")] COULD_NOT_SIT,
+            [Status(48467)] [Reflection.DescriptionAttribute("no Corrade permissions")] NO_CORRADE_PERMISSIONS,
+            [Status(54214)] [Reflection.DescriptionAttribute("could not create group")] COULD_NOT_CREATE_GROUP,
+            [Status(11287)] [Reflection.DescriptionAttribute("could not create role")] COULD_NOT_CREATE_ROLE,
+            [Status(12758)] [Reflection.DescriptionAttribute("no role name specified")] NO_ROLE_NAME_SPECIFIED,
+            [Status(34084)] [Reflection.DescriptionAttribute("timeout getting group roles members")] TIMEOUT_GETING_GROUP_ROLES_MEMBERS,
+            [Status(11050)] [Reflection.DescriptionAttribute("timeout getting group roles")] TIMEOUT_GETTING_GROUP_ROLES,
+            [Status(39016)] [Reflection.DescriptionAttribute("timeout getting role powers")] TIMEOUT_GETTING_ROLE_POWERS,
+            [Status(64390)] [Reflection.DescriptionAttribute("could not find parcel")] COULD_NOT_FIND_PARCEL,
+            [Status(17019)] [Reflection.DescriptionAttribute("unable to set home")] UNABLE_TO_SET_HOME,
+            [Status(31493)] [Reflection.DescriptionAttribute("unable to go home")] UNABLE_TO_GO_HOME,
+            [Status(32923)] [Reflection.DescriptionAttribute("timeout getting profile")] TIMEOUT_GETTING_PROFILE,
+            [Status(56462)] [Reflection.DescriptionAttribute("texture not found")] TEXTURE_NOT_FOUND,
+            [Status(36068)] [Reflection.DescriptionAttribute("type can only be voice or text")] TYPE_CAN_BE_VOICE_OR_TEXT,
+            [Status(19862)] [Reflection.DescriptionAttribute("agent not in group")] AGENT_NOT_IN_GROUP,
+            [Status(29345)] [Reflection.DescriptionAttribute("empty attachments")] EMPTY_ATTACHMENTS,
+            [Status(48899)] [Reflection.DescriptionAttribute("empty pick name")] EMPTY_PICK_NAME,
+            [Status(22733)] [Reflection.DescriptionAttribute("unable to join group chat")] UNABLE_TO_JOIN_GROUP_CHAT,
+            [Status(59524)] [Reflection.DescriptionAttribute("invalid position")] INVALID_POSITION,
+            [Status(02707)] [Reflection.DescriptionAttribute("could not find title")] COULD_NOT_FIND_TITLE,
+            [Status(43713)] [Reflection.DescriptionAttribute("fly action can only be start or stop")] FLY_ACTION_START_OR_STOP,
+            [Status(64868)] [Reflection.DescriptionAttribute("invalid proposal text")] INVALID_PROPOSAL_TEXT,
+            [Status(03098)] [Reflection.DescriptionAttribute("invalid proposal quorum")] INVALID_PROPOSAL_QUORUM,
+            [Status(41810)] [Reflection.DescriptionAttribute("invalid proposal majority")] INVALID_PROPOSAL_MAJORITY,
+            [Status(07628)] [Reflection.DescriptionAttribute("invalid proposal duration")] INVALID_PROPOSAL_DURATION,
+            [Status(64123)] [Reflection.DescriptionAttribute("invalid mute target")] INVALID_MUTE_TARGET,
+            [Status(59526)] [Reflection.DescriptionAttribute("unknown action")] UNKNOWN_ACTION,
+            [Status(28087)] [Reflection.DescriptionAttribute("no database file configured")] NO_DATABASE_FILE_CONFIGURED,
+            [Status(12181)] [Reflection.DescriptionAttribute("no database key specified")] NO_DATABASE_KEY_SPECIFIED,
+            [Status(44994)] [Reflection.DescriptionAttribute("no database value specified")] NO_DATABASE_VALUE_SPECIFIED,
+            [Status(19142)] [Reflection.DescriptionAttribute("unknown database action")] UNKNOWN_DATABASE_ACTION,
+            [Status(01253)] [Reflection.DescriptionAttribute("cannot remove owner role")] CANNOT_REMOVE_OWNER_ROLE,
+            [Status(47808)] [Reflection.DescriptionAttribute("cannot remove user from owner role")] CANNOT_REMOVE_USER_FROM_OWNER_ROLE,
+            [Status(47469)] [Reflection.DescriptionAttribute("timeout getting picks")] TIMEOUT_GETTING_PICKS,
+            [Status(41256)] [Reflection.DescriptionAttribute("maximum number of roles exceeded")] MAXIMUM_NUMBER_OF_ROLES_EXCEEDED,
+            [Status(40908)] [Reflection.DescriptionAttribute("cannot delete a group member from the everyone role")] CANNOT_DELETE_A_GROUP_MEMBER_FROM_THE_EVERYONE_ROLE,
+            [Status(00458)] [Reflection.DescriptionAttribute("group members are by default in the everyone role")] GROUP_MEMBERS_ARE_BY_DEFAULT_IN_THE_EVERYONE_ROLE,
+            [Status(33413)] [Reflection.DescriptionAttribute("cannot delete the everyone role")] CANNOT_DELETE_THE_EVERYONE_ROLE,
+            [Status(65303)] [Reflection.DescriptionAttribute("invalid url provided")] INVALID_URL_PROVIDED,
+            [Status(65327)] [Reflection.DescriptionAttribute("invalid notification types")] INVALID_NOTIFICATION_TYPES,
+            [Status(49640)] [Reflection.DescriptionAttribute("notification not allowed")] NOTIFICATION_NOT_ALLOWED,
+            [Status(44447)] [Reflection.DescriptionAttribute("unknown directory search type")] UNKNOWN_DIRECTORY_SEARCH_TYPE,
+            [Status(65101)] [Reflection.DescriptionAttribute("no search text provided")] NO_SEARCH_TEXT_PROVIDED,
+            [Status(14337)] [Reflection.DescriptionAttribute("unknown restart action")] UNKNOWN_RESTART_ACTION,
+            [Status(28429)] [Reflection.DescriptionAttribute("unknown move action")] UNKNOWN_MOVE_ACTION,
+            [Status(20541)] [Reflection.DescriptionAttribute("timeout getting top scripts")] TIMEOUT_GETTING_TOP_SCRIPTS,
+            [Status(47172)] [Reflection.DescriptionAttribute("timeout getting top colliders")] TIMEOUT_GETTING_TOP_COLLIDERS,
+            [Status(57429)] [Reflection.DescriptionAttribute("timeout waiting for estate list")] TIMEOUT_WAITING_FOR_ESTATE_LIST,
+            [Status(41676)] [Reflection.DescriptionAttribute("unknown top type")] UNKNOWN_TOP_TYPE,
+            [Status(25897)] [Reflection.DescriptionAttribute("unknown estate list action")] UNKNOWN_ESTATE_LIST_ACTION,
+            [Status(46990)] [Reflection.DescriptionAttribute("unknown estate list")] UNKNOWN_ESTATE_LIST,
+            [Status(43156)] [Reflection.DescriptionAttribute("no item specified")] NO_ITEM_SPECIFIED,
+            [Status(09348)] [Reflection.DescriptionAttribute("unknown animation action")] UNKNOWN_ANIMATION_ACTION,
+            [Status(42216)] [Reflection.DescriptionAttribute("no channel specified")] NO_CHANNEL_SPECIFIED,
+            [Status(31049)] [Reflection.DescriptionAttribute("no button index specified")] NO_BUTTON_INDEX_SPECIFIED,
+            [Status(38931)] [Reflection.DescriptionAttribute("no button specified")] NO_BUTTON_SPECIFIED,
+            [Status(19059)] [Reflection.DescriptionAttribute("no land rights")] NO_LAND_RIGHTS,
+            [Status(61113)] [Reflection.DescriptionAttribute("unknown entity")] UNKNOWN_ENTITY,
+            [Status(58183)] [Reflection.DescriptionAttribute("invalid rotation")] INVALID_ROTATION,
+            [Status(45364)] [Reflection.DescriptionAttribute("could not set script state")] COULD_NOT_SET_SCRIPT_STATE,
+            [Status(50218)] [Reflection.DescriptionAttribute("item is not a script")] ITEM_IS_NOT_A_SCRIPT,
+            [Status(49722)] [Reflection.DescriptionAttribute("failed to get display name")] FAILED_TO_GET_DISPLAY_NAME,
+            [Status(40665)] [Reflection.DescriptionAttribute("no name provided")] NO_NAME_PROVIDED,
+            [Status(35198)] [Reflection.DescriptionAttribute("could not set display name")] COULD_NOT_SET_DISPLAY_NAME,
+            [Status(63713)] [Reflection.DescriptionAttribute("timeout joining group")] TIMEOUT_JOINING_GROUP,
+            [Status(32404)] [Reflection.DescriptionAttribute("timeout creating group")] TIMEOUT_CREATING_GROUP,
+            [Status(00616)] [Reflection.DescriptionAttribute("timeout ejecting agent")] TIMEOUT_EJECTING_AGENT,
+            [Status(25426)] [Reflection.DescriptionAttribute("timeout getting group role members")] TIMEOUT_GETTING_GROUP_ROLE_MEMBERS,
+            [Status(31237)] [Reflection.DescriptionAttribute("timeout leaving group")] TIMEOUT_LEAVING_GROUP,
+            [Status(14951)] [Reflection.DescriptionAttribute("timeout joining group chat")] TIMEOUT_JOINING_GROUP_CHAT,
+            [Status(43780)] [Reflection.DescriptionAttribute("timeout during teleport")] TIMEOUT_DURING_TELEPORT,
+            [Status(46316)] [Reflection.DescriptionAttribute("timeout requesting sit")] TIMEOUT_REQUESTING_SIT,
+            [Status(09111)] [Reflection.DescriptionAttribute("timeout getting land users")] TIMEOUT_GETTING_LAND_USERS,
+            [Status(23364)] [Reflection.DescriptionAttribute("timeout getting script state")] TIMEOUT_GETTING_SCRIPT_STATE,
+            [Status(26393)] [Reflection.DescriptionAttribute("timeout updating mute list")] TIMEOUT_UPDATING_MUTE_LIST,
+            [Status(32362)] [Reflection.DescriptionAttribute("timeout getting parcels")] TIMEOUT_GETTING_PARCELS,
+            [Status(46942)] [Reflection.DescriptionAttribute("empty classified name")] EMPTY_CLASSIFIED_NAME,
+            [Status(38184)] [Reflection.DescriptionAttribute("invalid price")] INVALID_PRICE,
+            [Status(59103)] [Reflection.DescriptionAttribute("timeout getting classifieds")] TIMEOUT_GETTING_CLASSIFIEDS,
+            [Status(08241)] [Reflection.DescriptionAttribute("could not find classified")] COULD_NOT_FIND_CLASSIFIED,
+            [Status(53947)] [Reflection.DescriptionAttribute("invalid days")] INVALID_DAYS,
+            [Status(18490)] [Reflection.DescriptionAttribute("invalid interval")] INVALID_INTERVAL,
+            [Status(53829)] [Reflection.DescriptionAttribute("timeout getting group account summary")] TIMEOUT_GETTING_GROUP_ACCOUNT_SUMMARY,
+            [Status(30207)] [Reflection.DescriptionAttribute("friend not found")] FRIEND_NOT_FOUND,
+            [Status(32366)] [Reflection.DescriptionAttribute("the agent already is a friend")] AGENT_ALREADY_FRIEND,
+            [Status(04797)] [Reflection.DescriptionAttribute("friendship offer not found")] FRIENDSHIP_OFFER_NOT_FOUND,
+            [Status(65003)] [Reflection.DescriptionAttribute("friend does not allow mapping")] FRIEND_DOES_NOT_ALLOW_MAPPING,
+            [Status(10691)] [Reflection.DescriptionAttribute("timeout mapping friend")] TIMEOUT_MAPPING_FRIEND,
+            [Status(23309)] [Reflection.DescriptionAttribute("friend offline")] FRIEND_OFFLINE,
+            [Status(34964)] [Reflection.DescriptionAttribute("timeout getting region")] TIMEOUT_GETTING_REGION,
+            [Status(35447)] [Reflection.DescriptionAttribute("region not found")] REGION_NOT_FOUND,
+            [Status(00337)] [Reflection.DescriptionAttribute("no map items found")] NO_MAP_ITEMS_FOUND,
+            [Status(53549)] [Reflection.DescriptionAttribute("no description provided")] NO_DESCRIPTION_PROVIDED,
+            [Status(43982)] [Reflection.DescriptionAttribute("no folder specified")] NO_FOLDER_SPECIFIED,
+            [Status(29512)] [Reflection.DescriptionAttribute("empty wearables")] EMPTY_WEARABLES,
+            [Status(35316)] [Reflection.DescriptionAttribute("parcel not for sale")] PARCEL_NOT_FOR_SALE,
+            [Status(42051)] [Reflection.DescriptionAttribute("unknown access list type")] UNKNOWN_ACCESS_LIST_TYPE,
+            [Status(29438)] [Reflection.DescriptionAttribute("no task specified")] NO_TASK_SPECIFIED,
+            [Status(37470)] [Reflection.DescriptionAttribute("timeout getting group members")] TIMEOUT_GETTING_GROUP_MEMBERS,
+            [Status(24939)] [Reflection.DescriptionAttribute("group not open")] GROUP_NOT_OPEN,
+            [Status(30384)] [Reflection.DescriptionAttribute("timeout downloading terrain")] TIMEOUT_DOWNLOADING_ASSET,
+            [Status(57005)] [Reflection.DescriptionAttribute("timeout uploading terrain")] TIMEOUT_UPLOADING_ASSET,
+            [Status(16667)] [Reflection.DescriptionAttribute("empty terrain data")] EMPTY_ASSET_DATA,
+            [Status(34749)] [Reflection.DescriptionAttribute("the specified folder contains no equipable items")] NO_EQUIPABLE_ITEMS,
+            [Status(42249)] [Reflection.DescriptionAttribute("inventory offer not found")] INVENTORY_OFFER_NOT_FOUND,
+            [Status(23805)] [Reflection.DescriptionAttribute("no session specified")] NO_SESSION_SPECIFIED,
+            [Status(61018)] [Reflection.DescriptionAttribute("folder not found")] FOLDER_NOT_FOUND,
+            [Status(37211)] [Reflection.DescriptionAttribute("timeout creating item")] TIMEOUT_CREATING_ITEM,
+            [Status(09541)] [Reflection.DescriptionAttribute("timeout uploading item")] TIMEOUT_UPLOADING_ITEM,
+            [Status(36684)] [Reflection.DescriptionAttribute("unable to upload item")] UNABLE_TO_UPLOAD_ITEM,
+            [Status(05034)] [Reflection.DescriptionAttribute("unable to create item")] UNABLE_TO_CREATE_ITEM,
+            [Status(44397)] [Reflection.DescriptionAttribute("timeout uploading item data")] TIMEOUT_UPLOADING_ITEM_DATA,
+            [Status(12320)] [Reflection.DescriptionAttribute("unable to upload item data")] UNABLE_TO_UPLOAD_ITEM_DATA,
+            [Status(55979)] [Reflection.DescriptionAttribute("unknown direction")] UNKNOWN_DIRECTION,
+            [Status(22576)] [Reflection.DescriptionAttribute("timeout requesting to set home")] TIMEOUT_REQUESTING_TO_SET_HOME,
+            [Status(07255)] [Reflection.DescriptionAttribute("timeout transferring asset")] TIMEOUT_TRANSFERRING_ASSET,
+            [Status(60269)] [Reflection.DescriptionAttribute("asset upload failed")] ASSET_UPLOAD_FAILED,
+            [Status(57085)] [Reflection.DescriptionAttribute("failed to download asset")] FAILED_TO_DOWNLOAD_ASSET,
+            [Status(60025)] [Reflection.DescriptionAttribute("unknown asset type")] UNKNOWN_ASSET_TYPE,
+            [Status(59048)] [Reflection.DescriptionAttribute("invalid asset data")] INVALID_ASSET_DATA,
+            [Status(32709)] [Reflection.DescriptionAttribute("unknown wearable type")] UNKNOWN_WEARABLE_TYPE,
+            [Status(06097)] [Reflection.DescriptionAttribute("unknown inventory type")] UNKNOWN_INVENTORY_TYPE,
+            [Status(64698)] [Reflection.DescriptionAttribute("could not compile regular expression")] COULD_NOT_COMPILE_REGULAR_EXPRESSION,
+            [Status(18680)] [Reflection.DescriptionAttribute("no pattern provided")] NO_PATTERN_PROVIDED,
+            [Status(11910)] [Reflection.DescriptionAttribute("no executable file provided")] NO_EXECUTABLE_FILE_PROVIDED,
+            [Status(31381)] [Reflection.DescriptionAttribute("timeout waiting for execution")] TIMEOUT_WAITING_FOR_EXECUTION,
+            [Status(04541)] [Reflection.DescriptionAttribute("group invite not found")] GROUP_INVITE_NOT_FOUND,
+            [Status(38125)] [Reflection.DescriptionAttribute("unable to obtain money balance")] UNABLE_TO_OBTAIN_MONEY_BALANCE,
+            [Status(20048)] [Reflection.DescriptionAttribute("timeout getting avatar data")] TIMEOUT_GETTING_AVATAR_DATA,
+            [Status(13712)] [Reflection.DescriptionAttribute("timeout retrieving estate list")] TIMEOUT_RETRIEVING_ESTATE_LIST,
+            [Status(37559)] [Reflection.DescriptionAttribute("destination too close")] DESTINATION_TOO_CLOSE,
+            [Status(11229)] [Reflection.DescriptionAttribute("timeout getting group titles")] TIMEOUT_GETTING_GROUP_TITLES,
+            [Status(47101)] [Reflection.DescriptionAttribute("no message provided")] NO_MESSAGE_PROVIDED,
+            [Status(04075)] [Reflection.DescriptionAttribute("could not remove brain file")] COULD_NOT_REMOVE_BRAIN_FILE,
+            [Status(54456)] [Reflection.DescriptionAttribute("unknown effect")] UNKNOWN_EFFECT,
+            [Status(48775)] [Reflection.DescriptionAttribute("no effect UUID provided")] NO_EFFECT_UUID_PROVIDED,
+            [Status(38858)] [Reflection.DescriptionAttribute("effect not found")] EFFECT_NOT_FOUND,
+            [Status(16572)] [Reflection.DescriptionAttribute("invalid viewer effect")] INVALID_VIEWER_EFFECT,
+            [Status(19011)] [Reflection.DescriptionAttribute("ambiguous path")] AMBIGUOUS_PATH,
+            [Status(53066)] [Reflection.DescriptionAttribute("path not found")] PATH_NOT_FOUND,
+            [Status(13857)] [Reflection.DescriptionAttribute("unexpected item in path")] UNEXPECTED_ITEM_IN_PATH,
+            [Status(59282)] [Reflection.DescriptionAttribute("no path provided")] NO_PATH_PROVIDED,
+            [Status(26623)] [Reflection.DescriptionAttribute("unable to create folder")] UNABLE_TO_CREATE_FOLDER,
+            [Status(28866)] [Reflection.DescriptionAttribute("no permissions provided")] NO_PERMISSIONS_PROVIDED,
+            [Status(43615)] [Reflection.DescriptionAttribute("setting permissions failed")] SETTING_PERMISSIONS_FAILED,
+            [Status(36716)] [Reflection.DescriptionAttribute("timeout retrieving item")] TIMEOUT_RETRIEVING_ITEM,
+            [Status(39391)] [Reflection.DescriptionAttribute("expected item as source")] EXPECTED_ITEM_AS_SOURCE,
+            [Status(22655)] [Reflection.DescriptionAttribute("expected folder as target")] EXPECTED_FOLDER_AS_TARGET,
+            [Status(63024)] [Reflection.DescriptionAttribute("unable to load configuration")] UNABLE_TO_LOAD_CONFIGURATION,
+            [Status(33564)] [Reflection.DescriptionAttribute("unable to save configuration")] UNABLE_TO_SAVE_CONFIGURATION,
+            [Status(20900)] [Reflection.DescriptionAttribute("invalid xml path")] INVALID_XML_PATH,
+            [Status(03638)] [Reflection.DescriptionAttribute("no data provided")] NO_DATA_PROVIDED,
+            [Status(42903)] [Reflection.DescriptionAttribute("unknown image format requested")] UNKNOWN_IMAGE_FORMAT_REQUESTED,
+            [Status(02380)] [Reflection.DescriptionAttribute("unknown image format provided")] UNKNOWN_IMAGE_FORMAT_PROVIDED,
+            [Status(04994)] [Reflection.DescriptionAttribute("unable to decode asset data")] UNABLE_TO_DECODE_ASSET_DATA,
+            [Status(61067)] [Reflection.DescriptionAttribute("unable to convert to requested format")] UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT,
+            [Status(08411)] [Reflection.DescriptionAttribute("could not start process")] COULD_NOT_START_PROCESS,
+            [Status(11869)] [Reflection.DescriptionAttribute("timeout getting primitive data")] TIMEOUT_GETTING_PRIMITIVE_DATA,
+            [Status(22737)] [Reflection.DescriptionAttribute("item is not an object")] ITEM_IS_NOT_AN_OBJECT,
+            [Status(19143)] [Reflection.DescriptionAttribute("timeout meshmerizing object")] COULD_NOT_MESHMERIZE_OBJECT,
+            [Status(37841)] [Reflection.DescriptionAttribute("could not get primitive properties")] COULD_NOT_GET_PRIMITIVE_PROPERTIES,
+            [Status(54854)] [Reflection.DescriptionAttribute("avatar not in range")] AVATAR_NOT_IN_RANGE,
+            [Status(03475)] [Reflection.DescriptionAttribute("invalid scale")] INVALID_SCALE,
+            [Status(30129)] [Reflection.DescriptionAttribute("could not get current groups")] COULD_NOT_GET_CURRENT_GROUPS,
+            [Status(39613)] [Reflection.DescriptionAttribute("maximum number of groups reached")] MAXIMUM_NUMBER_OF_GROUPS_REACHED,
+            [Status(43003)] [Reflection.DescriptionAttribute("unknown syntax type")] UNKNOWN_SYNTAX_TYPE,
+            [Status(13053)] [Reflection.DescriptionAttribute("too many characters for group name")] TOO_MANY_CHARACTERS_FOR_GROUP_NAME,
+            [Status(19325)] [Reflection.DescriptionAttribute("too many characters for group title")] TOO_MANY_CHARACTERS_FOR_GROUP_TITLE,
+            [Status(26178)] [Reflection.DescriptionAttribute("too many characters for notice message")] TOO_MANY_CHARACTERS_FOR_NOTICE_MESSAGE,
+            [Status(35277)] [Reflection.DescriptionAttribute("notecard message body too large")] NOTECARD_MESSAGE_BODY_TOO_LARGE,
+            [Status(47571)] [Reflection.DescriptionAttribute("too many or too few characters for display name")] TOO_MANY_OR_TOO_FEW_CHARACTERS_FOR_DISPLAY_NAME,
+            [Status(30293)] [Reflection.DescriptionAttribute("name too large")] NAME_TOO_LARGE,
+            [Status(60515)] [Reflection.DescriptionAttribute("position would exceed maximum rez altitude")] POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE,
+            [Status(43683)] [Reflection.DescriptionAttribute("description too large")] DESCRIPTION_TOO_LARGE,
+            [Status(54154)] [Reflection.DescriptionAttribute("scale would exceed building constraints")] SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS,
+            [Status(29745)] [Reflection.DescriptionAttribute("attachments would exceed maximum attachment limit")] ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT,
+            [Status(52299)] [Reflection.DescriptionAttribute("too many or too few characters in message")] TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE,
+            [Status(50593)] [Reflection.DescriptionAttribute("maximum ban list length reached")] MAXIMUM_BAN_LIST_LENGTH_REACHED,
+            [Status(09935)] [Reflection.DescriptionAttribute("maximum group list length reached")] MAXIMUM_GROUP_LIST_LENGTH_REACHED,
+            [Status(42536)] [Reflection.DescriptionAttribute("maximum user list length reached")] MAXIMUM_USER_LIST_LENGTH_REACHED,
+            [Status(28625)] [Reflection.DescriptionAttribute("maximum manager list length reached")] MAXIMUM_MANAGER_LIST_LENGTH_REACHED,
+            [Status(28126)] [Reflection.DescriptionAttribute("auto return time outside limit range")] AUTO_RETURN_TIME_OUTSIDE_LIMIT_RANGE,
+            [Status(56379)] [Reflection.DescriptionAttribute("second life text too large")] SECOND_LIFE_TEXT_TOO_LARGE,
+            [Status(09924)] [Reflection.DescriptionAttribute("first life text too large")] FIRST_LIFE_TEXT_TOO_LARGE,
+            [Status(50405)] [Reflection.DescriptionAttribute("maximum amount of picks reached")] MAXIMUM_AMOUNT_OF_PICKS_REACHED,
+            [Status(17894)] [Reflection.DescriptionAttribute("description would exceed maximum size")] DESCRIPTION_WOULD_EXCEED_MAXIMUM_SIZE,
+            [Status(28247)] [Reflection.DescriptionAttribute("maximum amount of classifieds reached")] MAXIMUM_AMOUNT_OF_CLASSIFIEDS_REACHED,
+            [Status(38609)] [Reflection.DescriptionAttribute("timeout changing links")] TIMEOUT_CHANGING_LINKS,
+            [Status(45074)] [Reflection.DescriptionAttribute("link would exceed maximum link limit")] LINK_WOULD_EXCEED_MAXIMUM_LINK_LIMIT,
+            [Status(40773)] [Reflection.DescriptionAttribute("invalid number of items specified")] INVALID_NUMBER_OF_ITEMS_SPECIFIED,
+            [Status(52751)] [Reflection.DescriptionAttribute("timeout requesting price")] TIMEOUT_REQUESTING_PRICE,
+            [Status(01536)] [Reflection.DescriptionAttribute("primitive not for sale")] PRIMITIVE_NOT_FOR_SALE,
+            [Status(36123)] [Reflection.DescriptionAttribute("teleport throttled")] TELEPORT_THROTTLED,
+            [Status(06617)] [Reflection.DescriptionAttribute("no matching dialog found")] NO_MATCHING_DIALOG_FOUND,
+            [Status(08842)] [Reflection.DescriptionAttribute("unknown tree type")] UNKNOWN_TREE_TYPE,
+            [Status(20238)] [Reflection.DescriptionAttribute("parcel must be owned")] PARCEL_MUST_BE_OWNED,
+            [Status(62130)] [Reflection.DescriptionAttribute("invalid texture coordinates")] INVALID_TEXTURE_COORDINATES,
+            [Status(10945)] [Reflection.DescriptionAttribute("invalid surface coordinates")] INVALID_SURFACE_COORDINATES,
+            [Status(28487)] [Reflection.DescriptionAttribute("invalid normal vector")] INVALID_NORMAL_VECTOR,
+            [Status(13296)] [Reflection.DescriptionAttribute("invalid binormal vector")] INVALID_BINORMAL_VECTOR,
+            [Status(44554)] [Reflection.DescriptionAttribute("primitives not in same region")] PRIMITIVES_NOT_IN_SAME_REGION,
+            [Status(38798)] [Reflection.DescriptionAttribute("invalid face specified")] INVALID_FACE_SPECIFIED,
+            [Status(61473)] [Reflection.DescriptionAttribute("invalid status supplied")] INVALID_STATUS_SUPPLIED,
+            [Status(13764)] [Reflection.DescriptionAttribute("status not found")] STATUS_NOT_FOUND,
+            [Status(30556)] [Reflection.DescriptionAttribute("no description for status")] NO_DESCRIPTION_FOR_STATUS,
+            [Status(64368)] [Reflection.DescriptionAttribute("unknown grass type")] UNKNOWN_GRASS_TYPE,
+            [Status(53274)] [Reflection.DescriptionAttribute("unknown material type")] UNKNOWN_MATERIAL_TYPE,
+            [Status(18463)] [Reflection.DescriptionAttribute("could not retrieve object media")] COULD_NOT_RETRIEVE_OBJECT_MEDIA,
+            [Status(02193)] [Reflection.DescriptionAttribute("no avatars to ban or unban")] NO_AVATARS_TO_BAN_OR_UNBAN,
+            [Status(45568)] [Reflection.DescriptionAttribute("could not retrieve broup ban list")] COULD_NOT_RETRIEVE_GROUP_BAN_LIST,
+            [Status(15719)] [Reflection.DescriptionAttribute("timeout retrieving group ban list")] TIMEOUT_RETRIEVING_GROUP_BAN_LIST,
+            [Status(26749)] [Reflection.DescriptionAttribute("timeout modifying group ban list")] TIMEOUT_MODIFYING_GROUP_BAN_LIST,
+            [Status(26715)] [Reflection.DescriptionAttribute("mute entry not found")] MUTE_ENTRY_NOT_FOUND,
+            [Status(51086)] [Reflection.DescriptionAttribute("no name or UUID provided")] NO_NAME_OR_UUID_PROVIDED,
+            [Status(16450)] [Reflection.DescriptionAttribute("could not retrieve mute list")] COULD_NOT_RETRIEVE_MUTE_LIST,
+            [Status(39647)] [Reflection.DescriptionAttribute("mute entry already exists")] MUTE_ENTRY_ALREADY_EXISTS,
+            [Status(22961)] [Reflection.DescriptionAttribute("could not add mute entry")] COULD_NOT_ADD_MUTE_ENTRY,
+            [Status(39787)] [Reflection.DescriptionAttribute("timeout reaching destination")] TIMEOUT_REACHING_DESTINATION,
+            [Status(10776)] [Reflection.DescriptionAttribute("group schedules exceeded")] GROUP_SCHEDULES_EXCEEDED,
+            [Status(36896)] [Reflection.DescriptionAttribute("no index provided")] NO_INDEX_PROVIDED,
+            [Status(56094)] [Reflection.DescriptionAttribute("no schedule found")] NO_SCHEDULE_FOUND,
+            [Status(41612)] [Reflection.DescriptionAttribute("unknown date time stamp")] UNKNOWN_DATE_TIME_STAMP,
+            [Status(07457)] [Reflection.DescriptionAttribute("no permissions for item")] NO_PERMISSIONS_FOR_ITEM,
+            [Status(10374)] [Reflection.DescriptionAttribute("timeout retrieving estate covenant")] TIMEOUT_RETRIEVING_ESTATE_COVENANT,
+            [Status(56901)] [Reflection.DescriptionAttribute("no terraform action specified")] NO_TERRAFORM_ACTION_SPECIFIED,
+            [Status(41211)] [Reflection.DescriptionAttribute("no terraform brush specified")] NO_TERRAFORM_BRUSH_SPECIFIED,
+            [Status(63486)] [Reflection.DescriptionAttribute("invalid height")] INVALID_HEIGHT,
+            [Status(20547)] [Reflection.DescriptionAttribute("invalid width")] INVALID_WIDTH,
+            [Status(28891)] [Reflection.DescriptionAttribute("invalid terraform action")] INVALID_TERRAFORM_ACTION,
+            [Status(41190)] [Reflection.DescriptionAttribute("invalid terraform brush")] INVALID_TERRAFORM_BRUSH,
+            [Status(58619)] [Reflection.DescriptionAttribute("could not terraform")] COULD_NOT_TERRAFORM,
+            [Status(38289)] [Reflection.DescriptionAttribute("timeout waiting for display name")] TIMEOUT_WAITING_FOR_DISPLAY_NAME,
+            [Status(51050)] [Reflection.DescriptionAttribute("script permission request not found")] SCRIPT_PERMISSION_REQUEST_NOT_FOUND,
+            [Status(60073)] [Reflection.DescriptionAttribute("teleport lure not found")] TELEPORT_LURE_NOT_FOUND,
+            [Status(42248)] [Reflection.DescriptionAttribute("unable to save Corrade configuration")] UNABLE_TO_SAVE_CORRADE_CONFIGURATION
         }
 
         /// <summary>
@@ -428,7 +341,7 @@ namespace Corrade
         };
 
         public static string InstalledServiceName;
-        private static CorradeConfiguration corradeConfiguration = new CorradeConfiguration();
+        private static Configuration corradeConfiguration = new Configuration();
         private static Thread programThread;
         private static Thread HTTPListenerThread;
         private static Thread TCPNotificationsThread;
@@ -473,8 +386,8 @@ namespace Corrade
         private static readonly object InstantMessageLogFileLock = new object();
         private static readonly object DatabaseFileLock = new object();
 
-        private static readonly wasTimedThrottle TimedTeleportThrottle =
-            new wasTimedThrottle(LINDEN_CONSTANTS.TELEPORTS.THROTTLE.MAX_TELEPORTS,
+        private static readonly Time.wasTimedThrottle TimedTeleportThrottle =
+            new Time.wasTimedThrottle(LINDEN_CONSTANTS.TELEPORTS.THROTTLE.MAX_TELEPORTS,
                 LINDEN_CONSTANTS.TELEPORTS.THROTTLE.GRACE_SECONDS);
 
         private static readonly Dictionary<string, object> DatabaseLocks = new Dictionary<string, object>();
@@ -596,10 +509,27 @@ namespace Corrade
         private static readonly Timer ConfigurationChangedTimer =
             new Timer(ConfigurationChanged =>
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
+                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
                 lock (ConfigurationFileLock)
                 {
-                    corradeConfiguration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE, ref corradeConfiguration);
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.READING_CORRADE_CONFIGURATION));
+                    try
+                    {
+                        corradeConfiguration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE, ref corradeConfiguration);
+                    }
+                    catch (Exception ex)
+                    {
+                        Feedback(
+                            Reflection.wasGetDescriptionFromEnumValue(
+                                ConsoleError.UNABLE_TO_LOAD_CORRADE_CONFIGURATION),
+                            ex.Message);
+                        return;
+                    }
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
+                }
+                if (!corradeConfiguration.Equals(default(Configuration)))
+                {
+                    UpdateDynamicConfiguration(corradeConfiguration);
                 }
             });
 
@@ -609,7 +539,7 @@ namespace Corrade
         private static readonly Timer NotificationsChangedTimer =
             new Timer(NotificationsChanged =>
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATIONS_FILE_MODIFIED));
+                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATIONS_FILE_MODIFIED));
                 lock (GroupNotificationsLock)
                 {
                     LoadNotificationState.Invoke();
@@ -622,7 +552,7 @@ namespace Corrade
         private static readonly Timer AIMLConfigurationChangedTimer =
             new Timer(AIMLConfigurationChanged =>
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AIML_CONFIGURATION_MODIFIED));
+                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.AIML_CONFIGURATION_MODIFIED));
                 new Thread(
                     () =>
                     {
@@ -640,7 +570,7 @@ namespace Corrade
         private static readonly Timer GroupSchedulesChangedTimer =
             new Timer(GroupSchedulesChanged =>
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.GROUP_SCHEDULES_FILE_MODIFIED));
+                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.GROUP_SCHEDULES_FILE_MODIFIED));
                 lock (GroupSchedulesLock)
                 {
                     LoadGroupSchedulesState.Invoke();
@@ -671,7 +601,7 @@ namespace Corrade
             {
                 Parcel parcel = null;
                 if (!GetParcelAtPosition(Client.Network.CurrentSim, Client.Self.SimPosition, ref parcel)) return;
-                Group landGroup =
+                Configuration.Group landGroup =
                     corradeConfiguration.Groups.AsParallel().FirstOrDefault(o => o.UUID.Equals(parcel.GroupID));
                 if (landGroup.UUID.Equals(UUID.Zero)) return;
                 Client.Groups.ActivateGroup(landGroup.UUID);
@@ -686,36 +616,36 @@ namespace Corrade
         {
             if (string.IsNullOrEmpty(o)) return string.Empty;
 
-            List<Filter> safeFilters;
+            List<Configuration.Filter> safeFilters;
             lock (InputFiltersLock)
             {
                 safeFilters = corradeConfiguration.InputFilters;
             }
-            foreach (Filter filter in safeFilters)
+            foreach (Configuration.Filter filter in safeFilters)
             {
                 switch (filter)
                 {
-                    case Filter.RFC1738:
-                        o = wasURLUnescapeDataString(o);
+                    case Configuration.Filter.RFC1738:
+                        o = Web.wasURLUnescapeDataString(o);
                         break;
-                    case Filter.RFC3986:
-                        o = wasURIUnescapeDataString(o);
+                    case Configuration.Filter.RFC3986:
+                        o = Web.wasURIUnescapeDataString(o);
                         break;
-                    case Filter.ENIGMA:
-                        o = wasEnigma(o, corradeConfiguration.ENIGMA.rotors.ToArray(),
-                            corradeConfiguration.ENIGMA.plugs.ToArray(),
-                            corradeConfiguration.ENIGMA.reflector);
+                    case Configuration.Filter.ENIGMA:
+                        o = Cryptography.wasEnigma(o, corradeConfiguration.ENIGMAConfiguration.rotors.ToArray(),
+                            corradeConfiguration.ENIGMAConfiguration.plugs.ToArray(),
+                            corradeConfiguration.ENIGMAConfiguration.reflector);
                         break;
-                    case Filter.VIGENERE:
-                        o = wasDecryptVIGENERE(o, corradeConfiguration.VIGENERESecret);
+                    case Configuration.Filter.VIGENERE:
+                        o = Cryptography.wasDecryptVIGENERE(o, corradeConfiguration.VIGENERESecret);
                         break;
-                    case Filter.ATBASH:
-                        o = wasATBASH(o);
+                    case Configuration.Filter.ATBASH:
+                        o = Cryptography.wasATBASH(o);
                         break;
-                    case Filter.AES:
+                    case Configuration.Filter.AES:
                         o = wasAESDecrypt(o, corradeConfiguration.AESKey, corradeConfiguration.AESIV);
                         break;
-                    case Filter.BASE64:
+                    case Configuration.Filter.BASE64:
                         o = Encoding.UTF8.GetString(Convert.FromBase64String(o));
                         break;
                 }
@@ -730,36 +660,36 @@ namespace Corrade
         {
             if (string.IsNullOrEmpty(o)) return string.Empty;
 
-            List<Filter> safeFilters;
+            List<Configuration.Filter> safeFilters;
             lock (OutputFiltersLock)
             {
                 safeFilters = corradeConfiguration.OutputFilters;
             }
-            foreach (Filter filter in safeFilters)
+            foreach (Configuration.Filter filter in safeFilters)
             {
                 switch (filter)
                 {
-                    case Filter.RFC1738:
-                        o = wasURLEscapeDataString(o);
+                    case Configuration.Filter.RFC1738:
+                        o = Web.wasURLEscapeDataString(o);
                         break;
-                    case Filter.RFC3986:
-                        o = wasURIEscapeDataString(o);
+                    case Configuration.Filter.RFC3986:
+                        o = Web.wasURIEscapeDataString(o);
                         break;
-                    case Filter.ENIGMA:
-                        o = wasEnigma(o, corradeConfiguration.ENIGMA.rotors.ToArray(),
-                            corradeConfiguration.ENIGMA.plugs.ToArray(),
-                            corradeConfiguration.ENIGMA.reflector);
+                    case Configuration.Filter.ENIGMA:
+                        o = Cryptography.wasEnigma(o, corradeConfiguration.ENIGMAConfiguration.rotors.ToArray(),
+                            corradeConfiguration.ENIGMAConfiguration.plugs.ToArray(),
+                            corradeConfiguration.ENIGMAConfiguration.reflector);
                         break;
-                    case Filter.VIGENERE:
-                        o = wasEncryptVIGENERE(o, corradeConfiguration.VIGENERESecret);
+                    case Configuration.Filter.VIGENERE:
+                        o = Cryptography.wasEncryptVIGENERE(o, corradeConfiguration.VIGENERESecret);
                         break;
-                    case Filter.ATBASH:
-                        o = wasATBASH(o);
+                    case Configuration.Filter.ATBASH:
+                        o = Cryptography.wasATBASH(o);
                         break;
-                    case Filter.AES:
+                    case Configuration.Filter.AES:
                         o = wasAESEncrypt(o, corradeConfiguration.AESKey, corradeConfiguration.AESIV);
                         break;
-                    case Filter.BASE64:
+                    case Configuration.Filter.BASE64:
                         o = Convert.ToBase64String(Encoding.UTF8.GetBytes(o));
                         break;
                 }
@@ -773,10 +703,10 @@ namespace Corrade
         /// <returns>true if the string is a Corrade command</returns>
         private static readonly Func<string, bool> IsCorradeCommand = o =>
         {
-            Dictionary<string, string> data = wasKeyValueDecode(o);
-            return data.Any() && data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND)) &&
-                   data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)) &&
-                   data.ContainsKey(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD));
+            Dictionary<string, string> data = KeyValue.wasKeyValueDecode(o);
+            return data.Any() && data.ContainsKey(Reflection.wasGetNameFromEnumValue(ScriptKeys.COMMAND)) &&
+                   data.ContainsKey(Reflection.wasGetNameFromEnumValue(ScriptKeys.GROUP)) &&
+                   data.ContainsKey(Reflection.wasGetNameFromEnumValue(ScriptKeys.PASSWORD));
         };
 
         /// <summary>
@@ -918,7 +848,7 @@ namespace Corrade
                 }
                 catch (Exception)
                 {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
                 }
             })
             {IsBackground = true};
@@ -939,7 +869,7 @@ namespace Corrade
                     CORRADE_CONSTANTS.INVENTORY_CACHE_FILE));
             }
 
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_LOADED),
+            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_LOADED),
                 itemsLoaded < 0 ? "0" : itemsLoaded.ToString(Utils.EnUsCulture));
         };
 
@@ -957,7 +887,7 @@ namespace Corrade
                 Client.Inventory.Store.SaveToDisk(path);
             }
 
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_SAVED),
+            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_SAVED),
                 itemsSaved.ToString(Utils.EnUsCulture));
         };
 
@@ -1010,7 +940,7 @@ namespace Corrade
             }
             catch (Exception e)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_GROUP_MEMBERS_STATE),
+                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_GROUP_MEMBERS_STATE),
                     e.Message);
             }
         };
@@ -1048,7 +978,7 @@ namespace Corrade
                 catch (Exception ex)
                 {
                     Feedback(
-                        wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_GROUP_MEMBERS_STATE),
+                        Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_GROUP_MEMBERS_STATE),
                         ex.Message);
                 }
             }
@@ -1077,7 +1007,8 @@ namespace Corrade
             }
             catch (Exception e)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_GROUP_SCHEDULES_STATE),
+                Feedback(
+                    Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_GROUP_SCHEDULES_STATE),
                     e.Message);
             }
             SchedulesWatcher.EnableRaisingEvents = true;
@@ -1105,7 +1036,7 @@ namespace Corrade
                                         .Any(
                                             p =>
                                                 p.UUID.Equals(o.Group.UUID) &&
-                                                !(p.PermissionMask & (uint) Permissions.Schedule).Equals(0) &&
+                                                !(p.PermissionMask & (uint) Configuration.Permissions.Schedule).Equals(0) &&
                                                 !p.Schedules.Equals(0)))
                                     return;
                                 lock (GroupSchedulesLock)
@@ -1121,7 +1052,8 @@ namespace Corrade
                 catch (Exception ex)
                 {
                     Feedback(
-                        wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_GROUP_SCHEDULES_STATE),
+                        Reflection.wasGetDescriptionFromEnumValue(
+                            ConsoleError.UNABLE_TO_LOAD_CORRADE_GROUP_SCHEDULES_STATE),
                         ex.Message);
                 }
             }
@@ -1150,7 +1082,8 @@ namespace Corrade
             }
             catch (Exception e)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE),
+                Feedback(
+                    Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE),
                     e.Message);
             }
             NotificationsWatcher.EnableRaisingEvents = true;
@@ -1188,7 +1121,8 @@ namespace Corrade
                 catch (Exception ex)
                 {
                     Feedback(
-                        wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE),
+                        Reflection.wasGetDescriptionFromEnumValue(
+                            ConsoleError.UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE),
                         ex.Message);
                 }
             }
@@ -1231,7 +1165,7 @@ namespace Corrade
             }
             catch (Exception e)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_MOVEMENT_STATE),
+                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_MOVEMENT_STATE),
                     e.Message);
             }
         };
@@ -1271,7 +1205,7 @@ namespace Corrade
                 catch (Exception ex)
                 {
                     Feedback(
-                        wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_MOVEMENT_STATE),
+                        Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_MOVEMENT_STATE),
                         ex.Message);
                 }
             }
@@ -1282,7 +1216,7 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action LoadChatBotFiles = () =>
         {
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READING_AIML_BOT_CONFIGURATION));
+            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.READING_AIML_BOT_CONFIGURATION));
             try
             {
                 AIMLBot.isAcceptingUserInput = false;
@@ -1315,14 +1249,15 @@ namespace Corrade
             }
             catch (Exception ex)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_LOADING_AIML_BOT_FILES), ex.Message);
+                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_LOADING_AIML_BOT_FILES),
+                    ex.Message);
                 return;
             }
             finally
             {
                 AIMLBotBrainCompiled = true;
             }
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_AIML_BOT_CONFIGURATION));
+            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.READ_AIML_BOT_CONFIGURATION));
         };
 
         /// <summary>
@@ -1330,7 +1265,7 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action SaveChatBotFiles = () =>
         {
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WRITING_AIML_BOT_CONFIGURATION));
+            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.WRITING_AIML_BOT_CONFIGURATION));
             try
             {
                 AIMLBot.isAcceptingUserInput = false;
@@ -1341,10 +1276,10 @@ namespace Corrade
             }
             catch (Exception ex)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SAVING_AIML_BOT_FILES), ex.Message);
+                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SAVING_AIML_BOT_FILES), ex.Message);
                 return;
             }
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WROTE_AIML_BOT_CONFIGURATION));
+            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.WROTE_AIML_BOT_CONFIGURATION));
         };
 
         private static volatile bool runHTTPServer;
@@ -1536,7 +1471,7 @@ namespace Corrade
                                         {
                                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                                                 () => SendNotification(
-                                                    Notifications.GroupMembership,
+                                                    Configuration.Notifications.GroupMembership,
                                                     new GroupMembershipEventArgs
                                                     {
                                                         AgentName = agentName,
@@ -1568,7 +1503,7 @@ namespace Corrade
                                         {
                                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                                                 () => SendNotification(
-                                                    Notifications.GroupMembership,
+                                                    Configuration.Notifications.GroupMembership,
                                                     new GroupMembershipEventArgs
                                                     {
                                                         AgentName = agentName,
@@ -1658,102 +1593,6 @@ namespace Corrade
                     ? paths[0]
                     : Path.Combine(Path.Combine(paths[0], paths[1]), wasPathCombine(paths.Skip(2).ToArray()))
                 : string.Empty;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Retrieves an attribute of type T from an enumeration.
-        /// </summary>
-        /// <returns>an attribute of type T</returns>
-        private static T wasGetAttributeFromEnumValue<T>(Enum value)
-        {
-            return (T) value.GetType()
-                .GetField(value.ToString())
-                .GetCustomAttributes(typeof (T), false)
-                .SingleOrDefault();
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Returns all the attributes of type T of an enumeration.
-        /// </summary>
-        /// <typeparam name="T">the attribute to retrieve</typeparam>
-        /// <returns>a list of attributes</returns>
-        private static IEnumerable<T> wasGetEnumAttributes<T>(Enum e)
-        {
-            return e.GetType().GetFields(BindingFlags.Static | BindingFlags.Public)
-                .AsParallel().Select(o => wasGetAttributeFromEnumValue<T>((Enum) o.GetValue(null)));
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Returns all the field descriptions of an enumeration.
-        /// </summary>
-        /// <returns>the field descriptions</returns>
-        private static IEnumerable<string> wasGetEnumDescriptions<T>()
-        {
-            return typeof (T).GetFields(BindingFlags.Static | BindingFlags.Public)
-                .AsParallel().Select(o => wasGetDescriptionFromEnumValue((Enum) o.GetValue(null)));
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Get the description from an enumeration value.
-        /// </summary>
-        /// <param name="value">an enumeration value</param>
-        /// <returns>the description or the empty string</returns>
-        private static string wasGetDescriptionFromEnumValue(Enum value)
-        {
-            DescriptionAttribute attribute = value.GetType()
-                .GetField(value.ToString())
-                .GetCustomAttributes(typeof (DescriptionAttribute), false)
-                .SingleOrDefault() as DescriptionAttribute;
-            return attribute != null ? attribute.Description : string.Empty;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Get enumeration value from its description.
-        /// </summary>
-        /// <typeparam name="T">the enumeration type</typeparam>
-        /// <param name="description">the description of a member</param>
-        /// <returns>the value or the default of T if case no description found</returns>
-        private static T wasGetEnumValueFromDescription<T>(string description)
-        {
-            var field = typeof (T).GetFields()
-                .AsParallel().SelectMany(f => f.GetCustomAttributes(
-                    typeof (DescriptionAttribute), false), (
-                        f, a) => new {Field = f, Att = a}).SingleOrDefault(a => ((DescriptionAttribute) a.Att)
-                            .Description.Equals(description));
-            return field != null ? (T) field.Field.GetRawConstantValue() : default(T);
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Get the description of structure member.
-        /// </summary>
-        /// <typeparam name="T">the type of the structure to search</typeparam>
-        /// <param name="structure">the structure to search</param>
-        /// <param name="item">the value of the item to search</param>
-        /// <returns>the description or the empty string</returns>
-        private static string wasGetStructureMemberDescription<T>(T structure, object item) where T : struct
-        {
-            var field = typeof (T).GetFields()
-                .AsParallel().SelectMany(f => f.GetCustomAttributes(typeof (DescriptionAttribute), false),
-                    (f, a) => new {Field = f, Att = a}).SingleOrDefault(f => f.Field.GetValue(structure).Equals(item));
-            return field != null ? ((DescriptionAttribute) field.Att).Description : string.Empty;
         }
 
         /// <summary>
@@ -2281,7 +2120,8 @@ namespace Corrade
                 switch (!uint.TryParse(setting, out parcelFlags))
                 {
                     case true:
-                        Parallel.ForEach(wasCSVToEnumerable(setting).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
+                        Parallel.ForEach(
+                            CSV.wasCSVToEnumerable(setting).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                             o =>
                             {
                                 Parallel.ForEach(
@@ -2300,7 +2140,8 @@ namespace Corrade
                 switch (!uint.TryParse(setting, out groupPowers))
                 {
                     case true:
-                        Parallel.ForEach(wasCSVToEnumerable(setting).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
+                        Parallel.ForEach(
+                            CSV.wasCSVToEnumerable(setting).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                             o =>
                             {
                                 Parallel.ForEach(
@@ -2619,7 +2460,7 @@ namespace Corrade
         private static bool wasSetInventoryItemPermissions(InventoryItem inventoryItem, string wasPermissions)
         {
             // Update the object.
-            OpenMetaverse.Permissions permissions = wasStringToPermissions(wasPermissions);
+            Permissions permissions = wasStringToPermissions(wasPermissions);
             inventoryItem.Permissions = permissions;
             lock (ClientInstanceInventoryLock)
             {
@@ -2660,7 +2501,7 @@ namespace Corrade
         /// </summary>
         /// <param name="permissions">the item permissions</param>
         /// <returns>the literal permissions for an item</returns>
-        private static string wasPermissionsToString(OpenMetaverse.Permissions permissions)
+        private static string wasPermissionsToString(Permissions permissions)
         {
             Func<PermissionMask, string> segment = o =>
             {
@@ -2748,7 +2589,7 @@ namespace Corrade
         /// </summary>
         /// <param name="permissions">the item permissions</param>
         /// <returns>the permissions for an item</returns>
-        private static OpenMetaverse.Permissions wasStringToPermissions(string permissions)
+        private static Permissions wasStringToPermissions(string permissions)
         {
             Func<string, uint> segment = o =>
             {
@@ -2798,7 +2639,7 @@ namespace Corrade
                 return r;
             };
 
-            return new OpenMetaverse.Permissions(segment(permissions.Substring(0, 6)),
+            return new Permissions(segment(permissions.Substring(0, 6)),
                 segment(permissions.Substring(6, 6)), segment(permissions.Substring(12, 6)),
                 segment(permissions.Substring(18, 6)), segment(permissions.Substring(24, 6)));
         }
@@ -2819,7 +2660,8 @@ namespace Corrade
             uint dataTimeout)
         {
             List<AvatarGroup> avatarGroups = new List<AvatarGroup>();
-            wasAdaptiveAlarm AvatarGroupsReceivedAlarm = new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+            Time.wasAdaptiveAlarm AvatarGroupsReceivedAlarm =
+                new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
             object LockObject = new object();
             EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
             {
@@ -2955,10 +2797,11 @@ namespace Corrade
         /// </summary>
         /// <param name="message">the message to inspect</param>
         /// <returns>the configured group</returns>
-        private static Group GetCorradeGroupFromMessage(string message)
+        private static Configuration.Group GetCorradeGroupFromMessage(string message)
         {
             string group =
-                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP)), message));
+                wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.GROUP)),
+                    message));
             UUID groupUUID;
             return UUID.TryParse(group, out groupUUID)
                 ? corradeConfiguration.Groups.AsParallel().FirstOrDefault(o => o.UUID.Equals(groupUUID))
@@ -3003,9 +2846,9 @@ namespace Corrade
         /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="group">a group object to store the group profile</param>
         /// <returns>true if the group was found and false otherwise</returns>
-        private static bool RequestGroup(UUID groupUUID, uint millisecondsTimeout, ref OpenMetaverse.Group group)
+        private static bool RequestGroup(UUID groupUUID, uint millisecondsTimeout, ref Group group)
         {
-            OpenMetaverse.Group localGroup = new OpenMetaverse.Group();
+            Group localGroup = new Group();
             ManualResetEvent GroupProfileEvent = new ManualResetEvent(false);
             EventHandler<GroupProfileEventArgs> GroupProfileDelegate = (sender, args) =>
             {
@@ -3303,7 +3146,7 @@ namespace Corrade
                 image.Attributes.Append(Doc.CreateAttribute("id")).InnerText = colladaName;
                 image.Attributes.Append(Doc.CreateAttribute("name")).InnerText = colladaName;
                 image.AppendChild(Doc.CreateElement("init_from")).InnerText =
-                    wasURIUnescapeDataString(name + "." + imageFormat.ToLower());
+                    Web.wasURIUnescapeDataString(name + "." + imageFormat.ToLower());
             }
 
             Func<XmlNode, string, string, List<float>, bool> addSource = (mesh, src_id, param, vals) =>
@@ -3701,7 +3544,8 @@ namespace Corrade
             {
                 case true:
                     IEnumerable<Avatar> avatars;
-                    wasAdaptiveAlarm RangeUpdateAlarm = new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+                    Time.wasAdaptiveAlarm RangeUpdateAlarm =
+                        new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
                     EventHandler<AvatarUpdateEventArgs> AvatarUpdateEventHandler =
                         (sender, args) =>
                         {
@@ -3752,7 +3596,8 @@ namespace Corrade
             {
                 case true:
                     IEnumerable<Primitive> primitives;
-                    wasAdaptiveAlarm RangeUpdateAlarm = new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+                    Time.wasAdaptiveAlarm RangeUpdateAlarm =
+                        new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
                     EventHandler<PrimEventArgs> ObjectUpdateEventHandler =
                         (sender, args) =>
                         {
@@ -3878,9 +3723,9 @@ namespace Corrade
             uint dataTimeout)
         {
             HashSet<Avatar> scansAvatars = new HashSet<Avatar>(avatars);
-            Dictionary<UUID, wasAdaptiveAlarm> avatarAlarms =
-                new Dictionary<UUID, wasAdaptiveAlarm>(scansAvatars.AsParallel()
-                    .ToDictionary(o => o.ID, p => new wasAdaptiveAlarm(corradeConfiguration.DataDecayType)));
+            Dictionary<UUID, Time.wasAdaptiveAlarm> avatarAlarms =
+                new Dictionary<UUID, Time.wasAdaptiveAlarm>(scansAvatars.AsParallel()
+                    .ToDictionary(o => o.ID, p => new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType)));
             Dictionary<UUID, Avatar> avatarUpdates = new Dictionary<UUID, Avatar>(scansAvatars.AsParallel()
                 .ToDictionary(o => o.ID, p => p));
             object LockObject = new object();
@@ -3937,7 +3782,7 @@ namespace Corrade
                     Client.Avatars.RequestAvatarProperties(o.ID);
                     Client.Avatars.RequestAvatarPicks(o.ID);
                     Client.Avatars.RequestAvatarClassified(o.ID);
-                    wasAdaptiveAlarm avatarAlarm;
+                    Time.wasAdaptiveAlarm avatarAlarm;
                     lock (LockObject)
                     {
                         avatarAlarm = avatarAlarms[o.ID];
@@ -3978,7 +3823,7 @@ namespace Corrade
         private static bool directGetCurrentGroups(uint millisecondsTimeout, ref IEnumerable<UUID> groups)
         {
             ManualResetEvent CurrentGroupsReceivedEvent = new ManualResetEvent(false);
-            Dictionary<UUID, OpenMetaverse.Group> currentGroups = null;
+            Dictionary<UUID, Group> currentGroups = null;
             EventHandler<CurrentGroupsEventArgs> CurrentGroupsEventHandler = (sender, args) =>
             {
                 currentGroups = args.Groups;
@@ -4106,7 +3951,7 @@ namespace Corrade
             }
             Dictionary<UUID, uint> primitiveQueue = primitives.ToDictionary(o => o.ID, o => o.LocalID);
             object LockObject = new object();
-            wasAdaptiveAlarm ObjectPropertiesAlarm = new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+            Time.wasAdaptiveAlarm ObjectPropertiesAlarm = new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
             EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler = (sender, args) =>
             {
                 ObjectPropertiesAlarm.Alarm(dataTimeout);
@@ -4340,7 +4185,7 @@ namespace Corrade
                         {
                             // or fail and append the fail message.
                             output.Add(string.Format(Utils.EnUsCulture, "{0} {1}",
-                                wasGetDescriptionFromEnumValue(
+                                Reflection.wasGetDescriptionFromEnumValue(
                                     ConsoleError.COULD_NOT_WRITE_TO_CLIENT_LOG_FILE),
                                 ex.Message));
                         }
@@ -4413,7 +4258,7 @@ namespace Corrade
                         {
                             // or fail and append the fail message.
                             output.Add(string.Format(Utils.EnUsCulture, "{0} {1}",
-                                wasGetDescriptionFromEnumValue(
+                                Reflection.wasGetDescriptionFromEnumValue(
                                     ConsoleError.COULD_NOT_WRITE_TO_CLIENT_LOG_FILE),
                                 ex.Message));
                         }
@@ -4552,7 +4397,24 @@ namespace Corrade
             // Load the configuration file.
             lock (ConfigurationFileLock)
             {
-                corradeConfiguration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE, ref corradeConfiguration);
+                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.READING_CORRADE_CONFIGURATION));
+                try
+                {
+                    corradeConfiguration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE, ref corradeConfiguration);
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        Reflection.wasGetDescriptionFromEnumValue(
+                            ConsoleError.UNABLE_TO_LOAD_CORRADE_CONFIGURATION),
+                        ex.Message);
+                    return;
+                }
+                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
+            }
+            if (!corradeConfiguration.Equals(default(Configuration)))
+            {
+                UpdateDynamicConfiguration(corradeConfiguration);
             }
             // Write the logo.
             Feedback(true, CORRADE_CONSTANTS.LOGO.ToArray());
@@ -4586,7 +4448,9 @@ namespace Corrade
             }
             catch (Exception ex)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_CONFIGURATION_WATCHER), ex.Message);
+                Feedback(
+                    Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_CONFIGURATION_WATCHER),
+                    ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
             // Set-up watcher for dynamically reading the notifications file.
@@ -4603,7 +4467,9 @@ namespace Corrade
             }
             catch (Exception ex)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_NOTIFICATIONS_WATCHER), ex.Message);
+                Feedback(
+                    Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_NOTIFICATIONS_WATCHER),
+                    ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
             // Set-up watcher for dynamically reading the group schedules file.
@@ -4620,7 +4486,8 @@ namespace Corrade
             }
             catch (Exception ex)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_SCHEDULES_WATCHER), ex.Message);
+                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_SCHEDULES_WATCHER),
+                    ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
             // Set-up the AIML bot in case it has been enabled.
@@ -4635,7 +4502,8 @@ namespace Corrade
             }
             catch (Exception ex)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER),
+                Feedback(
+                    Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER),
                     ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
@@ -4680,7 +4548,7 @@ namespace Corrade
             // Check TOS
             if (!corradeConfiguration.TOSAccepted)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TOS_NOT_ACCEPTED));
+                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.TOS_NOT_ACCEPTED));
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
             // Proceed to log-in.
@@ -4707,7 +4575,7 @@ namespace Corrade
                 }
                 catch (Exception ex)
                 {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNKNOWN_IP_ADDRESS), ex.Message);
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNKNOWN_IP_ADDRESS), ex.Message);
                     Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
                 }
             }
@@ -4748,7 +4616,7 @@ namespace Corrade
                     }
                     catch (Exception ex)
                     {
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CALLBACK_ERROR),
+                        Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.CALLBACK_ERROR),
                             ex.Message);
                     }
                 } while (runCallbackThread);
@@ -4773,7 +4641,7 @@ namespace Corrade
                     }
                     catch (Exception ex)
                     {
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_ERROR),
+                        Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_ERROR),
                             ex.Message);
                     }
                 } while (runNotificationThread);
@@ -4797,7 +4665,7 @@ namespace Corrade
                 () => HandleSelfIM(sender, args),
                 corradeConfiguration.MaximumInstantMessageThreads);
             // Log-in to the grid.
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGGING_IN));
+            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.LOGGING_IN));
             Client.Network.BeginLogin(login);
             /*
              * The main thread spins around waiting for the semaphores to become invalidated,
@@ -4807,7 +4675,7 @@ namespace Corrade
              */
             WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => (WaitHandle) o).ToArray());
             // Now log-out.
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGGING_OUT));
+            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.LOGGING_OUT));
             // Uninstall all installed handlers
             Client.Self.IM -= HandleSelfIM;
             Client.Network.SimChanged -= HandleRadarObjects;
@@ -4931,7 +4799,7 @@ namespace Corrade
             // Close HTTP server
             if (HttpListener.IsSupported && corradeConfiguration.EnableHTTPServer)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.STOPPING_HTTP_SERVER));
+                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.STOPPING_HTTP_SERVER));
                 runHTTPServer = false;
                 try
                 {
@@ -5027,7 +4895,7 @@ namespace Corrade
                 if (!LoggedOutEvent.WaitOne((int) corradeConfiguration.LogoutGrace, false))
                 {
                     Client.Network.LoggedOut -= LoggedOutEventHandler;
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TIMEOUT_LOGGING_OUT));
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.TIMEOUT_LOGGING_OUT));
                 }
                 Client.Network.LoggedOut -= LoggedOutEventHandler;
             }
@@ -5043,14 +4911,14 @@ namespace Corrade
         private static void HandleAvatarUpdate(object sender, AvatarUpdateEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.RadarAvatars, e),
+                () => SendNotification(Configuration.Notifications.RadarAvatars, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleObjectUpdate(object sender, PrimEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.RadarPrimitives, e),
+                () => SendNotification(Configuration.Notifications.RadarPrimitives, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
@@ -5069,12 +4937,12 @@ namespace Corrade
                     {
                         case true:
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                () => SendNotification(Notifications.RadarAvatars, e),
+                                () => SendNotification(Configuration.Notifications.RadarAvatars, e),
                                 corradeConfiguration.MaximumNotificationThreads);
                             break;
                         default:
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                () => SendNotification(Notifications.RadarPrimitives, e),
+                                () => SendNotification(Configuration.Notifications.RadarPrimitives, e),
                                 corradeConfiguration.MaximumNotificationThreads);
                             break;
                     }
@@ -5108,14 +4976,14 @@ namespace Corrade
         private static void HandleLoadURL(object sender, LoadUrlEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.LoadURL, e),
+                () => SendNotification(Configuration.Notifications.LoadURL, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleScriptControlChange(object sender, ScriptControlEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.ScriptControl, e),
+                () => SendNotification(Configuration.Notifications.ScriptControl, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
@@ -5124,10 +4992,10 @@ namespace Corrade
             switch (e.Success)
             {
                 case true:
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.APPEARANCE_SET_SUCCEEDED));
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.APPEARANCE_SET_SUCCEEDED));
                     break;
                 default:
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.APPEARANCE_SET_FAILED));
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.APPEARANCE_SET_FAILED));
                     break;
             }
         }
@@ -5135,21 +5003,21 @@ namespace Corrade
         private static void HandleRegionCrossed(object sender, RegionCrossedEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.RegionCrossed, e),
+                () => SendNotification(Configuration.Notifications.RegionCrossed, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleMeanCollision(object sender, MeanCollisionEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.MeanCollision, e),
+                () => SendNotification(Configuration.Notifications.MeanCollision, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleViewerEffect(object sender, object e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.ViewerEffect, e),
+                () => SendNotification(Configuration.Notifications.ViewerEffect, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
@@ -5163,7 +5031,7 @@ namespace Corrade
             HttpListenerContext httpContext = null;
             HttpListenerRequest httpRequest;
             string message;
-            Group commandGroup;
+            Configuration.Group commandGroup;
             // Now grab the message and check that the group is set or abandon.
             try
             {
@@ -5219,7 +5087,7 @@ namespace Corrade
                 if (string.IsNullOrEmpty(message)) throw new HTTPCommandException();
                 commandGroup = GetCorradeGroupFromMessage(message);
                 // do not process anything from unknown groups.
-                if (commandGroup.Equals(default(Group))) throw new HTTPCommandException();
+                if (commandGroup.Equals(default(Configuration.Group))) throw new HTTPCommandException();
             }
             catch (HTTPCommandException)
             {
@@ -5234,7 +5102,8 @@ namespace Corrade
             }
             catch (Exception ex)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_PROCESSING_ABORTED), ex.Message);
+                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_PROCESSING_ABORTED),
+                    ex.Message);
                 return;
             }
 
@@ -5251,7 +5120,7 @@ namespace Corrade
                         // set the content type based on chosen output filers
                         switch (corradeConfiguration.OutputFilters.Last())
                         {
-                            case Filter.RFC1738:
+                            case Configuration.Filter.RFC1738:
                                 response.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
                                 break;
                             default:
@@ -5271,12 +5140,14 @@ namespace Corrade
                                 response.KeepAlive = false;
                                 break;
                         }
-                        byte[] data = Encoding.UTF8.GetBytes(wasKeyValueEncode(wasKeyValueEscape(result)));
+                        byte[] data =
+                            Encoding.UTF8.GetBytes(
+                                KeyValue.wasKeyValueEncode(KeyValue.wasKeyValueEscape(result, wasOutput)));
                         using (MemoryStream outputStream = new MemoryStream())
                         {
                             switch (corradeConfiguration.HTTPServerCompression)
                             {
-                                case HTTPCompressionMethod.GZIP:
+                                case Configuration.HTTPCompressionMethod.GZIP:
                                     using (GZipStream dataGZipStream = new GZipStream(outputStream,
                                         CompressionMode.Compress, false))
                                     {
@@ -5286,7 +5157,7 @@ namespace Corrade
                                     response.AddHeader("Content-Encoding", "gzip");
                                     data = outputStream.ToArray();
                                     break;
-                                case HTTPCompressionMethod.DEFLATE:
+                                case Configuration.HTTPCompressionMethod.DEFLATE:
                                     using (
                                         DeflateStream dataDeflateStream = new DeflateStream(outputStream,
                                             CompressionMode.Compress, false))
@@ -5317,7 +5188,8 @@ namespace Corrade
                 }
                 catch (Exception ex)
                 {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_PROCESSING_ABORTED), ex.Message);
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_PROCESSING_ABORTED),
+                        ex.Message);
                 }
                 finally
                 {
@@ -5333,7 +5205,7 @@ namespace Corrade
         /// </summary>
         /// <param name="notification">the notification to send</param>
         /// <param name="args">the event arguments</param>
-        private static void SendNotification(Notifications notification, object args)
+        private static void SendNotification(Configuration.Notifications notification, object args)
         {
             // Create a list of groups that have the notification installed.
             List<Notification> notifyGroups = new List<Notification>();
@@ -5366,46 +5238,46 @@ namespace Corrade
                 // Build the notification data
                 switch (notification)
                 {
-                    case Notifications.ScriptDialog:
+                    case Configuration.Notifications.ScriptDialog:
                         execute = () =>
                         {
                             ScriptDialogEventArgs scriptDialogEventArgs = (ScriptDialogEventArgs) args;
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(scriptDialogEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(scriptDialogEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 scriptDialogEventArgs.Message);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                 scriptDialogEventArgs.FirstName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
                                 scriptDialogEventArgs.LastName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CHANNEL),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.CHANNEL),
                                 scriptDialogEventArgs.Channel.ToString(Utils.EnUsCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
                                 scriptDialogEventArgs.ObjectName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
                                 scriptDialogEventArgs.ObjectID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OWNER),
                                 scriptDialogEventArgs.OwnerID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BUTTON),
-                                wasEnumerableToCSV(scriptDialogEventArgs.ButtonLabels));
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.BUTTON),
+                                CSV.wasEnumerableToCSV(scriptDialogEventArgs.ButtonLabels));
                         };
                         break;
-                    case Notifications.LocalChat:
+                    case Configuration.Notifications.LocalChat:
                         execute = () =>
                         {
                             ChatEventArgs localChatEventArgs = (ChatEventArgs) args;
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(localChatEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(localChatEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
                             IEnumerable<string> name = GetAvatarNames(localChatEventArgs.FromName);
@@ -5414,61 +5286,61 @@ namespace Corrade
                                 List<string> fullName = new List<string>(name);
                                 if (fullName.Count.Equals(2))
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                         fullName.First());
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
                                         fullName.Last());
                                 }
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 localChatEventArgs.Message);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OWNER),
                                 localChatEventArgs.OwnerID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
                                 localChatEventArgs.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
                                 localChatEventArgs.Position.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY),
                                 Enum.GetName(typeof (ChatSourceType), localChatEventArgs.SourceType));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AUDIBLE),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AUDIBLE),
                                 Enum.GetName(typeof (ChatAudibleLevel), localChatEventArgs.AudibleLevel));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.VOLUME),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.VOLUME),
                                 Enum.GetName(typeof (ChatType), localChatEventArgs.Type));
                         };
                         break;
-                    case Notifications.Balance:
+                    case Configuration.Notifications.Balance:
                         execute = () =>
                         {
                             BalanceEventArgs balanceEventArgs = (BalanceEventArgs) args;
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(balanceEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(balanceEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BALANCE),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.BALANCE),
                                 balanceEventArgs.Balance.ToString(Utils.EnUsCulture));
                         };
                         break;
-                    case Notifications.AlertMessage:
+                    case Configuration.Notifications.AlertMessage:
                         execute = () =>
                         {
                             AlertMessageEventArgs alertMessageEventArgs = (AlertMessageEventArgs) args;
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(alertMessageEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(alertMessageEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 alertMessageEventArgs.Message);
                         };
                         break;
-                    case Notifications.Inventory:
+                    case Configuration.Notifications.Inventory:
                         execute = () =>
                         {
                             System.Type inventoryOfferedType = args.GetType();
@@ -5478,9 +5350,9 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                        wasEnumerableToCSV(GetStructuredData(inventoryOfferEventArgs,
-                                            wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.wasEnumerableToCSV(GetStructuredData(inventoryOfferEventArgs,
+                                            CSV.wasEnumerableToCSV(z.Data))));
                                     return;
                                 }
                                 List<string> inventoryObjectOfferedName =
@@ -5504,27 +5376,27 @@ namespace Corrade
                                 switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
                                 {
                                     case true:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                             inventoryObjectOfferedName.First());
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
                                             inventoryObjectOfferedName.Last());
                                         break;
                                     default:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
                                             inventoryObjectOfferedName.First());
                                         break;
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
                                     inventoryOfferEventArgs.IM.FromAgentID.ToString());
                                 switch (inventoryOfferEventArgs.IM.Dialog)
                                 {
                                     case InstantMessageDialog.InventoryAccepted:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                            wasGetDescriptionFromEnumValue(Action.ACCEPT));
+                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                            Reflection.wasGetNameFromEnumValue(Action.ACCEPT));
                                         break;
                                     case InstantMessageDialog.InventoryDeclined:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                            wasGetDescriptionFromEnumValue(Action.DECLINE));
+                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                            Reflection.wasGetNameFromEnumValue(Action.DECLINE));
                                         break;
                                     case InstantMessageDialog.TaskInventoryOffered:
                                     case InstantMessageDialog.InventoryOffered:
@@ -5545,13 +5417,13 @@ namespace Corrade
                                                 {
                                                     case true:
                                                         notificationData.Add(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                                            wasGetDescriptionFromEnumValue(Action.ACCEPT));
+                                                            Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                                            Reflection.wasGetNameFromEnumValue(Action.ACCEPT));
                                                         break;
                                                     default:
                                                         notificationData.Add(
-                                                            wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                                            wasGetDescriptionFromEnumValue(Action.DECLINE));
+                                                            Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                                            Reflection.wasGetNameFromEnumValue(Action.DECLINE));
                                                         break;
                                                 }
                                             }
@@ -5561,15 +5433,15 @@ namespace Corrade
                                             if (groups.Count > 0)
                                             {
                                                 notificationData.Add(
-                                                    wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                                    Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
                                                     groups[1].Value);
                                             }
                                             InventoryOffers.Remove(inventoryObjectOfferedEventArgs.Key);
                                         }
                                         break;
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DIRECTION),
-                                    wasGetDescriptionFromEnumValue(Action.REPLY));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DIRECTION),
+                                    Reflection.wasGetNameFromEnumValue(Action.REPLY));
                                 return;
                             }
                             if (inventoryOfferedType == typeof (InventoryObjectOfferedEventArgs))
@@ -5579,9 +5451,9 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                        wasEnumerableToCSV(GetStructuredData(inventoryObjectOfferedEventArgs,
-                                            wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.wasEnumerableToCSV(GetStructuredData(inventoryObjectOfferedEventArgs,
+                                            CSV.wasEnumerableToCSV(z.Data))));
                                     return;
                                 }
                                 List<string> inventoryObjectOfferedName =
@@ -5605,64 +5477,64 @@ namespace Corrade
                                 switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
                                 {
                                     case true:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                             inventoryObjectOfferedName.First());
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
                                             inventoryObjectOfferedName.Last());
                                         break;
                                     default:
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
                                             inventoryObjectOfferedName.First());
                                         break;
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
                                     inventoryObjectOfferedEventArgs.Offer.FromAgentID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ASSET),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ASSET),
                                     inventoryObjectOfferedEventArgs.AssetType.ToString());
                                 GroupCollection groups =
                                     CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
                                         inventoryObjectOfferedEventArgs.Offer.Message).Groups;
                                 if (groups.Count > 0)
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
                                         groups[1].Value);
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SESSION),
                                     inventoryObjectOfferedEventArgs.Offer.IMSessionID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DIRECTION),
-                                    wasGetDescriptionFromEnumValue(Action.OFFER));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DIRECTION),
+                                    Reflection.wasGetNameFromEnumValue(Action.OFFER));
                             }
                         };
                         break;
-                    case Notifications.ScriptPermission:
+                    case Configuration.Notifications.ScriptPermission:
                         execute = () =>
                         {
                             ScriptQuestionEventArgs scriptQuestionEventArgs = (ScriptQuestionEventArgs) args;
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(scriptQuestionEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(scriptQuestionEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
                                 scriptQuestionEventArgs.ItemID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TASK),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TASK),
                                 scriptQuestionEventArgs.TaskID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.PERMISSIONS),
-                                wasEnumerableToCSV(typeof (ScriptPermission).GetFields(BindingFlags.Public |
-                                                                                       BindingFlags.Static)
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.PERMISSIONS),
+                                CSV.wasEnumerableToCSV(typeof (ScriptPermission).GetFields(BindingFlags.Public |
+                                                                                           BindingFlags.Static)
                                     .AsParallel().Where(
                                         p =>
                                             !(((int) p.GetValue(null) &
                                                (int) scriptQuestionEventArgs.Questions)).Equals(0))
                                     .Select(p => p.Name)));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.REGION),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.REGION),
                                 scriptQuestionEventArgs.Simulator.Name);
                         };
                         break;
-                    case Notifications.Friendship:
+                    case Configuration.Notifications.Friendship:
                         execute = () =>
                         {
                             System.Type friendshipNotificationType = args.GetType();
@@ -5672,9 +5544,9 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                        wasEnumerableToCSV(GetStructuredData(friendInfoEventArgs,
-                                            wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.wasEnumerableToCSV(GetStructuredData(friendInfoEventArgs,
+                                            CSV.wasEnumerableToCSV(z.Data))));
                                     return;
                                 }
                                 IEnumerable<string> name = GetAvatarNames(friendInfoEventArgs.Friend.Name);
@@ -5683,22 +5555,22 @@ namespace Corrade
                                     List<string> fullName = new List<string>(name);
                                     if (fullName.Count.Equals(2))
                                     {
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                             fullName.First());
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
                                             fullName.Last());
                                     }
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
                                     friendInfoEventArgs.Friend.UUID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.STATUS),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.STATUS),
                                     friendInfoEventArgs.Friend.IsOnline
-                                        ? wasGetDescriptionFromEnumValue(Action.ONLINE)
-                                        : wasGetDescriptionFromEnumValue(Action.OFFLINE));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.RIGHTS),
+                                        ? Reflection.wasGetNameFromEnumValue(Action.ONLINE)
+                                        : Reflection.wasGetNameFromEnumValue(Action.OFFLINE));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.RIGHTS),
                                     // Return the friend rights as a nice CSV string.
-                                    wasEnumerableToCSV(typeof (FriendRights).GetFields(BindingFlags.Public |
-                                                                                       BindingFlags.Static)
+                                    CSV.wasEnumerableToCSV(typeof (FriendRights).GetFields(BindingFlags.Public |
+                                                                                           BindingFlags.Static)
                                         .AsParallel().Where(
                                             p =>
                                                 !(((int) p.GetValue(null) &
@@ -5706,8 +5578,8 @@ namespace Corrade
                                                     .Equals(
                                                         0))
                                         .Select(p => p.Name)));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.UPDATE));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.wasGetNameFromEnumValue(Action.UPDATE));
                                 return;
                             }
                             if (friendshipNotificationType == typeof (FriendshipResponseEventArgs))
@@ -5717,9 +5589,9 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                        wasEnumerableToCSV(GetStructuredData(friendshipResponseEventArgs,
-                                            wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.wasEnumerableToCSV(GetStructuredData(friendshipResponseEventArgs,
+                                            CSV.wasEnumerableToCSV(z.Data))));
                                     return;
                                 }
                                 IEnumerable<string> name = GetAvatarNames(friendshipResponseEventArgs.AgentName);
@@ -5728,16 +5600,16 @@ namespace Corrade
                                     List<string> fullName = new List<string>(name);
                                     if (fullName.Count.Equals(2))
                                     {
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                             fullName.First());
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
                                             fullName.Last());
                                     }
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
                                     friendshipResponseEventArgs.AgentID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.RESPONSE));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.wasGetNameFromEnumValue(Action.RESPONSE));
                                 return;
                             }
                             if (friendshipNotificationType == typeof (FriendshipOfferedEventArgs))
@@ -5747,9 +5619,9 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                        wasEnumerableToCSV(GetStructuredData(friendshipOfferedEventArgs,
-                                            wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.wasEnumerableToCSV(GetStructuredData(friendshipOfferedEventArgs,
+                                            CSV.wasEnumerableToCSV(z.Data))));
                                     return;
                                 }
                                 IEnumerable<string> name = GetAvatarNames(friendshipOfferedEventArgs.AgentName);
@@ -5758,29 +5630,29 @@ namespace Corrade
                                     List<string> fullName = new List<string>(name);
                                     if (fullName.Count.Equals(2))
                                     {
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                             fullName.First());
-                                        notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
                                             fullName.Last());
                                     }
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
                                     friendshipOfferedEventArgs.AgentID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.REQUEST));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.wasGetNameFromEnumValue(Action.REQUEST));
                             }
                         };
                         break;
-                    case Notifications.TeleportLure:
+                    case Configuration.Notifications.TeleportLure:
                         execute = () =>
                         {
                             InstantMessageEventArgs teleportLureEventArgs = (InstantMessageEventArgs) args;
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(teleportLureEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(teleportLureEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
                             IEnumerable<string> name = GetAvatarNames(teleportLureEventArgs.IM.FromAgentName);
@@ -5789,19 +5661,19 @@ namespace Corrade
                                 List<string> fullName = new List<string>(name);
                                 if (fullName.Count.Equals(2))
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                         fullName.First());
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
                                         fullName.Last());
                                 }
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
                                 teleportLureEventArgs.IM.FromAgentID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SESSION),
                                 teleportLureEventArgs.IM.IMSessionID.ToString());
                         };
                         break;
-                    case Notifications.GroupNotice:
+                    case Configuration.Notifications.GroupNotice:
                         execute = () =>
                         {
                             InstantMessageEventArgs notificationGroupNoticeEventArgs =
@@ -5809,9 +5681,9 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(notificationGroupNoticeEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(notificationGroupNoticeEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
                             IEnumerable<string> name = GetAvatarNames(notificationGroupNoticeEventArgs.IM.FromAgentName);
@@ -5820,43 +5692,43 @@ namespace Corrade
                                 List<string> fullName = new List<string>(name);
                                 if (fullName.Count.Equals(2))
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                         fullName.First());
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
                                         fullName.Last());
                                 }
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
                                 notificationGroupNoticeEventArgs.IM.FromAgentID.ToString());
                             string[] noticeData = notificationGroupNoticeEventArgs.IM.Message.Split('|');
                             if (noticeData.Length > 0 && !string.IsNullOrEmpty(noticeData[0]))
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SUBJECT),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SUBJECT),
                                     noticeData[0]);
                             }
                             if (noticeData.Length > 1 && !string.IsNullOrEmpty(noticeData[1]))
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
                                     noticeData[1]);
                             }
                             switch (notificationGroupNoticeEventArgs.IM.Dialog)
                             {
                                 case InstantMessageDialog.GroupNoticeInventoryAccepted:
                                 case InstantMessageDialog.GroupNoticeInventoryDeclined:
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
                                         !notificationGroupNoticeEventArgs.IM.Dialog.Equals(
                                             InstantMessageDialog.GroupNoticeInventoryAccepted)
-                                            ? wasGetDescriptionFromEnumValue(Action.DECLINE)
-                                            : wasGetDescriptionFromEnumValue(Action.ACCEPT));
+                                            ? Reflection.wasGetNameFromEnumValue(Action.DECLINE)
+                                            : Reflection.wasGetNameFromEnumValue(Action.ACCEPT));
                                     break;
                                 case InstantMessageDialog.GroupNotice:
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                        wasGetDescriptionFromEnumValue(Action.RECEIVED));
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                        Reflection.wasGetNameFromEnumValue(Action.RECEIVED));
                                     break;
                             }
                         };
                         break;
-                    case Notifications.InstantMessage:
+                    case Configuration.Notifications.InstantMessage:
                         execute = () =>
                         {
                             InstantMessageEventArgs notificationInstantMessage =
@@ -5864,9 +5736,9 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(notificationInstantMessage,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(notificationInstantMessage,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
                             IEnumerable<string> name = GetAvatarNames(notificationInstantMessage.IM.FromAgentName);
@@ -5875,19 +5747,19 @@ namespace Corrade
                                 List<string> fullName = new List<string>(name);
                                 if (fullName.Count.Equals(2))
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                         fullName.First());
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
                                         fullName.Last());
                                 }
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
                                 notificationInstantMessage.IM.FromAgentID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 notificationInstantMessage.IM.Message);
                         };
                         break;
-                    case Notifications.RegionMessage:
+                    case Configuration.Notifications.RegionMessage:
                         execute = () =>
                         {
                             InstantMessageEventArgs notificationRegionMessage =
@@ -5895,9 +5767,9 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(notificationRegionMessage,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(notificationRegionMessage,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
                             IEnumerable<string> name = GetAvatarNames(notificationRegionMessage.IM.FromAgentName);
@@ -5906,19 +5778,19 @@ namespace Corrade
                                 List<string> fullName = new List<string>(name);
                                 if (fullName.Count.Equals(2))
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                         fullName.First());
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
                                         fullName.Last());
                                 }
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
                                 notificationRegionMessage.IM.FromAgentID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 notificationRegionMessage.IM.Message);
                         };
                         break;
-                    case Notifications.GroupMessage:
+                    case Configuration.Notifications.GroupMessage:
                         execute = () =>
                         {
                             GroupMessageEventArgs notificationGroupMessage = (GroupMessageEventArgs) args;
@@ -5927,24 +5799,24 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(notificationGroupMessage,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(notificationGroupMessage,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                 notificationGroupMessage.FirstName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
                                 notificationGroupMessage.LastName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
                                 notificationGroupMessage.AgentUUID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.GROUP),
                                 notificationGroupMessage.GroupName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 notificationGroupMessage.Message);
                         };
                         break;
-                    case Notifications.ViewerEffect:
+                    case Configuration.Notifications.ViewerEffect:
                         execute = () =>
                         {
                             System.Type viewerEffectType = args.GetType();
@@ -5955,26 +5827,26 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                        wasEnumerableToCSV(GetStructuredData(notificationViewerEffectEventArgs,
-                                            wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.wasEnumerableToCSV(GetStructuredData(notificationViewerEffectEventArgs,
+                                            CSV.wasEnumerableToCSV(z.Data))));
                                     return;
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.EFFECT),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.EFFECT),
                                     notificationViewerEffectEventArgs.Type.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SOURCE),
                                     notificationViewerEffectEventArgs.SourceID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET),
                                     notificationViewerEffectEventArgs.TargetID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
                                     notificationViewerEffectEventArgs.TargetPosition.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DURATION),
                                     notificationViewerEffectEventArgs.Duration.ToString(
                                         Utils.EnUsCulture));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
                                     notificationViewerEffectEventArgs.EffectID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.GENERIC));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.wasGetNameFromEnumValue(Action.GENERIC));
                                 return;
                             }
                             if (viewerEffectType == typeof (ViewerEffectPointAtEventArgs))
@@ -5984,24 +5856,24 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                        wasEnumerableToCSV(GetStructuredData(notificationViewerPointAtEventArgs,
-                                            wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.wasEnumerableToCSV(GetStructuredData(notificationViewerPointAtEventArgs,
+                                            CSV.wasEnumerableToCSV(z.Data))));
                                     return;
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SOURCE),
                                     notificationViewerPointAtEventArgs.SourceID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET),
                                     notificationViewerPointAtEventArgs.TargetID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
                                     notificationViewerPointAtEventArgs.TargetPosition.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DURATION),
                                     notificationViewerPointAtEventArgs.Duration.ToString(
                                         Utils.EnUsCulture));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
                                     notificationViewerPointAtEventArgs.EffectID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.POINT));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.wasGetNameFromEnumValue(Action.POINT));
                                 return;
                             }
                             if (viewerEffectType == typeof (ViewerEffectLookAtEventArgs))
@@ -6011,28 +5883,28 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                        wasEnumerableToCSV(GetStructuredData(notificationViewerLookAtEventArgs,
-                                            wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.wasEnumerableToCSV(GetStructuredData(notificationViewerLookAtEventArgs,
+                                            CSV.wasEnumerableToCSV(z.Data))));
                                     return;
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SOURCE),
                                     notificationViewerLookAtEventArgs.SourceID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET),
                                     notificationViewerLookAtEventArgs.TargetID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
                                     notificationViewerLookAtEventArgs.TargetPosition.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DURATION),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DURATION),
                                     notificationViewerLookAtEventArgs.Duration.ToString(
                                         Utils.EnUsCulture));
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
                                     notificationViewerLookAtEventArgs.EffectID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.LOOK));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.wasGetNameFromEnumValue(Action.LOOK));
                             }
                         };
                         break;
-                    case Notifications.MeanCollision:
+                    case Configuration.Notifications.MeanCollision:
                         execute = () =>
                         {
                             MeanCollisionEventArgs meanCollisionEventArgs =
@@ -6040,24 +5912,24 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(meanCollisionEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(meanCollisionEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGGRESSOR),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGGRESSOR),
                                 meanCollisionEventArgs.Aggressor.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MAGNITUDE),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MAGNITUDE),
                                 meanCollisionEventArgs.Magnitude.ToString(Utils.EnUsCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TIME),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TIME),
                                 meanCollisionEventArgs.Time.ToLongDateString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY),
                                 meanCollisionEventArgs.Type.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.VICTIM),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.VICTIM),
                                 meanCollisionEventArgs.Victim.ToString());
                         };
                         break;
-                    case Notifications.RegionCrossed:
+                    case Configuration.Notifications.RegionCrossed:
                         execute = () =>
                         {
                             System.Type regionChangeType = args.GetType();
@@ -6067,20 +5939,20 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                        wasEnumerableToCSV(GetStructuredData(simChangedEventArgs,
-                                            wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.wasEnumerableToCSV(GetStructuredData(simChangedEventArgs,
+                                            CSV.wasEnumerableToCSV(z.Data))));
                                     return;
                                 }
                                 if (simChangedEventArgs.PreviousSimulator != null)
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OLD),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OLD),
                                         simChangedEventArgs.PreviousSimulator.Name);
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NEW),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NEW),
                                     Client.Network.CurrentSim.Name);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.CHANGED));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.wasGetNameFromEnumValue(Action.CHANGED));
                                 return;
                             }
                             if (regionChangeType == typeof (RegionCrossedEventArgs))
@@ -6090,24 +5962,24 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                        wasEnumerableToCSV(GetStructuredData(regionCrossedEventArgs,
-                                            wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.wasEnumerableToCSV(GetStructuredData(regionCrossedEventArgs,
+                                            CSV.wasEnumerableToCSV(z.Data))));
                                     return;
                                 }
                                 if (regionCrossedEventArgs.OldSimulator != null)
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OLD),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OLD),
                                         regionCrossedEventArgs.OldSimulator.Name);
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NEW),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NEW),
                                     regionCrossedEventArgs.NewSimulator.Name);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.CROSSED));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.wasGetNameFromEnumValue(Action.CROSSED));
                             }
                         };
                         break;
-                    case Notifications.TerseUpdates:
+                    case Configuration.Notifications.TerseUpdates:
                         execute = () =>
                         {
                             TerseObjectUpdateEventArgs terseObjectUpdateEventArgs =
@@ -6115,22 +5987,22 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(terseObjectUpdateEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(terseObjectUpdateEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
                                 terseObjectUpdateEventArgs.Prim.ID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
                                 terseObjectUpdateEventArgs.Prim.Position.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ROTATION),
                                 terseObjectUpdateEventArgs.Prim.Rotation.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY),
                                 terseObjectUpdateEventArgs.Prim.PrimData.PCode.ToString());
                         };
                         break;
-                    case Notifications.Typing:
+                    case Configuration.Notifications.Typing:
                         execute = () =>
                         {
                             InstantMessageEventArgs notificationTypingMessageEventArgs =
@@ -6138,9 +6010,9 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(notificationTypingMessageEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(notificationTypingMessageEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
                             IEnumerable<string> name =
@@ -6150,28 +6022,28 @@ namespace Corrade
                                 List<string> fullName = new List<string>(name);
                                 if (fullName.Count.Equals(2))
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                         fullName.First());
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
                                         fullName.Last());
                                 }
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
                                 notificationTypingMessageEventArgs.IM.FromAgentID.ToString());
                             switch (notificationTypingMessageEventArgs.IM.Dialog)
                             {
                                 case InstantMessageDialog.StartTyping:
                                 case InstantMessageDialog.StopTyping:
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
                                         !notificationTypingMessageEventArgs.IM.Dialog.Equals(
                                             InstantMessageDialog.StartTyping)
-                                            ? wasGetDescriptionFromEnumValue(Action.STOP)
-                                            : wasGetDescriptionFromEnumValue(Action.START));
+                                            ? Reflection.wasGetNameFromEnumValue(Action.STOP)
+                                            : Reflection.wasGetNameFromEnumValue(Action.START));
                                     break;
                             }
                         };
                         break;
-                    case Notifications.GroupInvite:
+                    case Configuration.Notifications.GroupInvite:
                         execute = () =>
                         {
                             InstantMessageEventArgs notificationGroupInviteEventArgs =
@@ -6179,9 +6051,9 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(notificationGroupInviteEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(notificationGroupInviteEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
                             IEnumerable<string> name = GetAvatarNames(notificationGroupInviteEventArgs.IM.FromAgentName);
@@ -6190,26 +6062,26 @@ namespace Corrade
                                 List<string> fullName = new List<string>(name);
                                 if (fullName.Count.Equals(2))
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                         fullName.First());
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
                                         fullName.Last());
                                 }
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
                                 notificationGroupInviteEventArgs.IM.FromAgentID.ToString());
                             lock (GroupInviteLock)
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.GROUP),
                                     GroupInvites.AsParallel().FirstOrDefault(
                                         p => p.Session.Equals(notificationGroupInviteEventArgs.IM.IMSessionID))
                                         .Group);
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SESSION),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SESSION),
                                 notificationGroupInviteEventArgs.IM.IMSessionID.ToString());
                         };
                         break;
-                    case Notifications.Economy:
+                    case Configuration.Notifications.Economy:
                         execute = () =>
                         {
                             MoneyBalanceReplyEventArgs notificationMoneyBalanceEventArgs =
@@ -6217,39 +6089,39 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(notificationMoneyBalanceEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(notificationMoneyBalanceEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.BALANCE),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.BALANCE),
                                 notificationMoneyBalanceEventArgs.Balance.ToString(
                                     Utils.EnUsCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DESCRIPTION),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DESCRIPTION),
                                 notificationMoneyBalanceEventArgs.Description);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.COMMITTED),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.COMMITTED),
                                 notificationMoneyBalanceEventArgs.MetersCommitted.ToString(
                                     Utils.EnUsCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CREDIT),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.CREDIT),
                                 notificationMoneyBalanceEventArgs.MetersCredit.ToString(
                                     Utils.EnUsCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SUCCESS),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SUCCESS),
                                 notificationMoneyBalanceEventArgs.Success.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
                                 notificationMoneyBalanceEventArgs.TransactionID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AMOUNT),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AMOUNT),
                                 notificationMoneyBalanceEventArgs.TransactionInfo.Amount.ToString(
                                     Utils.EnUsCulture));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TARGET),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET),
                                 notificationMoneyBalanceEventArgs.TransactionInfo.DestID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.SOURCE),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SOURCE),
                                 notificationMoneyBalanceEventArgs.TransactionInfo.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TRANSACTION),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TRANSACTION),
                                 Enum.GetName(typeof (MoneyTransactionType),
                                     notificationMoneyBalanceEventArgs.TransactionInfo.TransactionType));
                         };
                         break;
-                    case Notifications.GroupMembership:
+                    case Configuration.Notifications.GroupMembership:
                         execute = () =>
                         {
                             GroupMembershipEventArgs groupMembershipEventArgs = (GroupMembershipEventArgs) args;
@@ -6258,9 +6130,9 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(groupMembershipEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(groupMembershipEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
                             IEnumerable<string> name = GetAvatarNames(groupMembershipEventArgs.AgentName);
@@ -6269,102 +6141,102 @@ namespace Corrade
                                 List<string> fullName = new List<string>(name);
                                 if (fullName.Count.Equals(2))
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                         fullName.First());
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
                                         fullName.Last());
                                 }
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.AGENT),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
                                 groupMembershipEventArgs.AgentUUID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.GROUP),
                                 groupMembershipEventArgs.GroupName);
                             switch (groupMembershipEventArgs.Action)
                             {
                                 case Action.JOINED:
                                 case Action.PARTED:
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
                                         !groupMembershipEventArgs.Action.Equals(
                                             Action.JOINED)
-                                            ? wasGetDescriptionFromEnumValue(Action.PARTED)
-                                            : wasGetDescriptionFromEnumValue(Action.JOINED));
+                                            ? Reflection.wasGetNameFromEnumValue(Action.PARTED)
+                                            : Reflection.wasGetNameFromEnumValue(Action.JOINED));
                                     break;
                             }
                         };
                         break;
-                    case Notifications.LoadURL:
+                    case Configuration.Notifications.LoadURL:
                         execute = () =>
                         {
                             LoadUrlEventArgs loadURLEventArgs = (LoadUrlEventArgs) args;
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(loadURLEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(loadURLEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
                                 loadURLEventArgs.ObjectName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
                                 loadURLEventArgs.ObjectID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OWNER),
                                 loadURLEventArgs.OwnerID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.GROUP),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.GROUP),
                                 loadURLEventArgs.OwnerIsGroup.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 loadURLEventArgs.Message);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.URL),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.URL),
                                 loadURLEventArgs.URL);
                         };
                         break;
-                    case Notifications.OwnerSay:
+                    case Configuration.Notifications.OwnerSay:
                         execute = () =>
                         {
                             ChatEventArgs ownerSayEventArgs = (ChatEventArgs) args;
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(ownerSayEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(ownerSayEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 ownerSayEventArgs.Message);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
                                 ownerSayEventArgs.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
                                 ownerSayEventArgs.FromName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
                                 ownerSayEventArgs.Position.ToString());
                         };
                         break;
-                    case Notifications.RegionSayTo:
+                    case Configuration.Notifications.RegionSayTo:
                         execute = () =>
                         {
                             ChatEventArgs regionSayToEventArgs = (ChatEventArgs) args;
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(regionSayToEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(regionSayToEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 regionSayToEventArgs.Message);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OWNER),
                                 regionSayToEventArgs.OwnerID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
                                 regionSayToEventArgs.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
                                 regionSayToEventArgs.FromName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
                                 regionSayToEventArgs.Position.ToString());
                         };
                         break;
-                    case Notifications.ObjectInstantMessage:
+                    case Configuration.Notifications.ObjectInstantMessage:
                         execute = () =>
                         {
                             InstantMessageEventArgs notificationObjectInstantMessage =
@@ -6372,66 +6244,66 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(notificationObjectInstantMessage,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(notificationObjectInstantMessage,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OWNER),
                                 notificationObjectInstantMessage.IM.FromAgentID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
                                 notificationObjectInstantMessage.IM.IMSessionID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
                                 notificationObjectInstantMessage.IM.FromAgentName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 notificationObjectInstantMessage.IM.Message);
                         };
                         break;
-                    case Notifications.RLVMessage:
+                    case Configuration.Notifications.RLVMessage:
                         execute = () =>
                         {
                             ChatEventArgs RLVEventArgs = (ChatEventArgs) args;
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(RLVEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(RLVEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
                                 RLVEventArgs.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
                                 RLVEventArgs.FromName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
                                 RLVEventArgs.Position.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.RLV),
-                                wasEnumerableToCSV(wasRLVToString(RLVEventArgs.Message)));
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.RLV),
+                                CSV.wasEnumerableToCSV(wasRLVToString(RLVEventArgs.Message)));
                         };
                         break;
-                    case Notifications.DebugMessage:
+                    case Configuration.Notifications.DebugMessage:
                         execute = () =>
                         {
                             ChatEventArgs DebugEventArgs = (ChatEventArgs) args;
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(DebugEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(DebugEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
                                 DebugEventArgs.SourceID.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.NAME),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
                                 DebugEventArgs.FromName);
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
                                 DebugEventArgs.Position.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 DebugEventArgs.Message);
                         };
                         break;
-                    case Notifications.RadarAvatars:
+                    case Configuration.Notifications.RadarAvatars:
                         execute = () =>
                         {
                             System.Type radarAvatarsType = args.GetType();
@@ -6447,25 +6319,25 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                        wasEnumerableToCSV(GetStructuredData(avatarUpdateEventArgs,
-                                            wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.wasEnumerableToCSV(GetStructuredData(avatarUpdateEventArgs,
+                                            CSV.wasEnumerableToCSV(z.Data))));
                                     return;
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                     avatarUpdateEventArgs.Avatar.FirstName);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
                                     avatarUpdateEventArgs.Avatar.LastName);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
                                     avatarUpdateEventArgs.Avatar.ID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
                                     avatarUpdateEventArgs.Avatar.Position.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ROTATION),
                                     avatarUpdateEventArgs.Avatar.Rotation.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY),
                                     avatarUpdateEventArgs.Avatar.PrimData.PCode.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.APPEAR));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.wasGetNameFromEnumValue(Action.APPEAR));
                                 return;
                             }
                             if (radarAvatarsType == typeof (KillObjectEventArgs))
@@ -6492,29 +6364,29 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                        wasEnumerableToCSV(GetStructuredData(killObjectEventArgs,
-                                            wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.wasEnumerableToCSV(GetStructuredData(killObjectEventArgs,
+                                            CSV.wasEnumerableToCSV(z.Data))));
                                     return;
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.FIRSTNAME),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                     avatar.FirstName);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.LASTNAME),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
                                     avatar.LastName);
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
                                     avatar.ID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
                                     avatar.Position.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ROTATION),
                                     avatar.Rotation.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY),
                                     avatar.PrimData.PCode.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.VANISH));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.wasGetNameFromEnumValue(Action.VANISH));
                             }
                         };
                         break;
-                    case Notifications.RadarPrimitives:
+                    case Configuration.Notifications.RadarPrimitives:
                         execute = () =>
                         {
                             System.Type radarPrimitivesType = args.GetType();
@@ -6530,23 +6402,23 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                        wasEnumerableToCSV(GetStructuredData(primEventArgs,
-                                            wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.wasEnumerableToCSV(GetStructuredData(primEventArgs,
+                                            CSV.wasEnumerableToCSV(z.Data))));
                                     return;
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OWNER),
                                     primEventArgs.Prim.OwnerID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
                                     primEventArgs.Prim.ID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
                                     primEventArgs.Prim.Position.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ROTATION),
                                     primEventArgs.Prim.Rotation.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY),
                                     primEventArgs.Prim.PrimData.PCode.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.APPEAR));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.wasGetNameFromEnumValue(Action.APPEAR));
                                 return;
                             }
                             if (radarPrimitivesType == typeof (KillObjectEventArgs))
@@ -6572,27 +6444,27 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                        wasEnumerableToCSV(GetStructuredData(killObjectEventArgs,
-                                            wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.wasEnumerableToCSV(GetStructuredData(killObjectEventArgs,
+                                            CSV.wasEnumerableToCSV(z.Data))));
                                     return;
                                 }
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.OWNER),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OWNER),
                                     prim.OwnerID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ID),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
                                     prim.ID.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.POSITION),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
                                     prim.Position.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ROTATION),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ROTATION),
                                     prim.Rotation.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ENTITY),
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY),
                                     prim.PrimData.PCode.ToString());
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.ACTION),
-                                    wasGetDescriptionFromEnumValue(Action.VANISH));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.wasGetNameFromEnumValue(Action.VANISH));
                             }
                         };
                         break;
-                    case Notifications.ScriptControl:
+                    case Configuration.Notifications.ScriptControl:
                         execute = () =>
                         {
                             ScriptControlEventArgs scriptControlEventArgs =
@@ -6600,22 +6472,22 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.DATA),
-                                    wasEnumerableToCSV(GetStructuredData(scriptControlEventArgs,
-                                        wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.wasEnumerableToCSV(GetStructuredData(scriptControlEventArgs,
+                                        CSV.wasEnumerableToCSV(z.Data))));
                                 return;
                             }
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.CONTROLS),
-                                wasEnumerableToCSV(typeof (ScriptControlChange).GetFields(BindingFlags.Public |
-                                                                                          BindingFlags.Static)
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.CONTROLS),
+                                CSV.wasEnumerableToCSV(typeof (ScriptControlChange).GetFields(BindingFlags.Public |
+                                                                                              BindingFlags.Static)
                                     .AsParallel().Where(
                                         p =>
                                             !(((uint) p.GetValue(null) &
                                                (uint) scriptControlEventArgs.Controls)).Equals(0))
                                     .Select(p => p.Name)));
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.PASS),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.PASS),
                                 scriptControlEventArgs.Pass.ToString());
-                            notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TAKE),
+                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TAKE),
                                 scriptControlEventArgs.Take.ToString());
                         };
                         break;
@@ -6623,7 +6495,7 @@ namespace Corrade
                         execute = () =>
                         {
                             throw new Exception(
-                                wasGetDescriptionFromEnumValue(ConsoleError.UNKNOWN_NOTIFICATION_TYPE));
+                                Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNKNOWN_NOTIFICATION_TYPE));
                         };
                         break;
                 }
@@ -6634,7 +6506,7 @@ namespace Corrade
                 }
                 catch (Exception ex)
                 {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_ERROR), ex.Message);
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_ERROR), ex.Message);
                     return;
                 }
 
@@ -6642,8 +6514,8 @@ namespace Corrade
                 if (!notificationData.Any()) return;
 
                 // Add the notification type.
-                notificationData.Add(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE),
-                    wasGetDescriptionFromEnumValue(notification));
+                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE),
+                    Reflection.wasGetNameFromEnumValue(notification));
 
                 // Build the afterburn.
                 if (z.Afterburn != null && z.Afterburn.Any())
@@ -6673,11 +6545,13 @@ namespace Corrade
                                         NotificationQueue.Enqueue(new NotificationQueueElement
                                         {
                                             URL = p,
-                                            message = wasKeyValueEscape(notificationData)
+                                            message = KeyValue.wasKeyValueEscape(notificationData, wasOutput)
                                         });
                                         break;
                                     default:
-                                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_THROTTLED));
+                                        Feedback(
+                                            Reflection.wasGetDescriptionFromEnumValue(
+                                                ConsoleError.NOTIFICATION_THROTTLED));
                                         break;
                                 }
                             });
@@ -6696,12 +6570,14 @@ namespace Corrade
                                     case true:
                                         NotificationTCPQueue.Enqueue(new NotificationTCPQueueElement
                                         {
-                                            message = wasKeyValueEscape(notificationData),
+                                            message = KeyValue.wasKeyValueEscape(notificationData, wasOutput),
                                             IPEndPoint = p
                                         });
                                         break;
                                     default:
-                                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TCP_NOTIFICATION_THROTTLED));
+                                        Feedback(
+                                            Reflection.wasGetDescriptionFromEnumValue(
+                                                ConsoleError.TCP_NOTIFICATION_THROTTLED));
                                         break;
                                 }
                             });
@@ -6729,7 +6605,7 @@ namespace Corrade
                 });
             }
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.ScriptDialog, e),
+                () => SendNotification(Configuration.Notifications.ScriptDialog, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
@@ -6742,7 +6618,7 @@ namespace Corrade
                 return;
             // Get the full name.
             List<string> fullName = new List<string>(GetAvatarNames(e.FromName));
-            Group commandGroup;
+            Configuration.Group commandGroup;
             switch (e.Type)
             {
                 case ChatType.OwnerSay:
@@ -6756,7 +6632,7 @@ namespace Corrade
                     {
                         // Send RLV message notifications.
                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                            () => SendNotification(Notifications.RLVMessage, e),
+                            () => SendNotification(Configuration.Notifications.RLVMessage, e),
                             corradeConfiguration.MaximumNotificationThreads);
                         CorradeThreadPool[CorradeThreadType.RLV].Spawn(
                             () => HandleRLVBehaviour(e.Message.Substring(1, e.Message.Length - 1), e.SourceID),
@@ -6768,7 +6644,7 @@ namespace Corrade
                     {
                         // If the group was not set properly, then bail.
                         commandGroup = GetCorradeGroupFromMessage(e.Message);
-                        switch (!commandGroup.Equals(default(Group)))
+                        switch (!commandGroup.Equals(default(Configuration.Group)))
                         {
                             case false:
                                 return;
@@ -6782,13 +6658,13 @@ namespace Corrade
                     }
                     // Otherwise, send llOwnerSay notifications.
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () => SendNotification(Notifications.OwnerSay, e),
+                        () => SendNotification(Configuration.Notifications.OwnerSay, e),
                         corradeConfiguration.MaximumNotificationThreads);
                     break;
                 case ChatType.Debug:
                     // Send debug notifications.
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () => SendNotification(Notifications.DebugMessage, e),
+                        () => SendNotification(Configuration.Notifications.DebugMessage, e),
                         corradeConfiguration.MaximumNotificationThreads);
                     break;
                 case ChatType.Normal:
@@ -6801,7 +6677,7 @@ namespace Corrade
                     }
                     // Send chat notifications.
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () => SendNotification(Notifications.LocalChat, e),
+                        () => SendNotification(Configuration.Notifications.LocalChat, e),
                         corradeConfiguration.MaximumNotificationThreads);
                     // Log local chat,
                     if (corradeConfiguration.LocalMessageLogEnabled)
@@ -6835,7 +6711,7 @@ namespace Corrade
                             {
                                 // or fail and append the fail message.
                                 Feedback(
-                                    wasGetDescriptionFromEnumValue(
+                                    Reflection.wasGetDescriptionFromEnumValue(
                                         ConsoleError.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
                                     ex.Message);
                             }
@@ -6848,13 +6724,13 @@ namespace Corrade
                     {
                         // Send chat notifications.
                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                            () => SendNotification(Notifications.RegionSayTo, e),
+                            () => SendNotification(Configuration.Notifications.RegionSayTo, e),
                             corradeConfiguration.MaximumNotificationThreads);
                         break;
                     }
                     // If the group was not set properly, then bail.
                     commandGroup = GetCorradeGroupFromMessage(e.Message);
-                    switch (!commandGroup.Equals(default(Group)))
+                    switch (!commandGroup.Equals(default(Configuration.Group)))
                     {
                         case false:
                             return;
@@ -6871,7 +6747,7 @@ namespace Corrade
         private static void HandleAlertMessage(object sender, AlertMessageEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.AlertMessage, e),
+                () => SendNotification(Configuration.Notifications.AlertMessage, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
@@ -6879,7 +6755,7 @@ namespace Corrade
         {
             // Send notification
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.Inventory, e),
+                () => SendNotification(Configuration.Notifications.Inventory, e),
                 corradeConfiguration.MaximumNotificationThreads);
 
             // Accept anything from master avatars.
@@ -7009,7 +6885,7 @@ namespace Corrade
                 });
             }
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.ScriptPermission, e),
+                () => SendNotification(Configuration.Notifications.ScriptPermission, e),
                 corradeConfiguration.MaximumNotificationThreads);
 
             // Handle RLV: acceptpermission
@@ -7017,7 +6893,7 @@ namespace Corrade
             {
                 if (
                     !RLVRules.AsParallel()
-                        .Any(o => o.Behaviour.Equals(wasGetDescriptionFromEnumValue(RLVBehaviour.ACCEPTPERMISSION))))
+                        .Any(o => o.Behaviour.Equals(Reflection.wasGetNameFromEnumValue(RLVBehaviour.ACCEPTPERMISSION))))
                     return;
                 lock (ClientInstanceSelfLock)
                 {
@@ -7028,25 +6904,25 @@ namespace Corrade
 
         private static void HandleDisconnected(object sender, DisconnectedEventArgs e)
         {
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.DISCONNECTED));
+            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.DISCONNECTED));
             ConnectionSemaphores['l'].Set();
         }
 
         private static void HandleEventQueueRunning(object sender, EventQueueRunningEventArgs e)
         {
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.EVENT_QUEUE_STARTED));
+            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.EVENT_QUEUE_STARTED));
         }
 
         private static void HandleSimulatorConnected(object sender, SimConnectedEventArgs e)
         {
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.SIMULATOR_CONNECTED));
+            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.SIMULATOR_CONNECTED));
         }
 
         private static void HandleSimulatorDisconnected(object sender, SimDisconnectedEventArgs e)
         {
             // if any simulators are still connected, we are not disconnected
             if (Client.Network.Simulators.Any()) return;
-            Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ALL_SIMULATORS_DISCONNECTED));
+            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ALL_SIMULATORS_DISCONNECTED));
             ConnectionSemaphores['s'].Set();
         }
 
@@ -7055,7 +6931,7 @@ namespace Corrade
             switch (e.Status)
             {
                 case LoginStatus.Success:
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_SUCCEEDED));
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_SUCCEEDED));
                     // Start inventory update thread.
                     new Thread(() =>
                     {
@@ -7099,7 +6975,7 @@ namespace Corrade
                         );
                     break;
                 case LoginStatus.Failed:
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_FAILED), e.FailReason);
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_FAILED), e.FailReason);
                     ConnectionSemaphores['l'].Set();
                     break;
             }
@@ -7108,21 +6984,21 @@ namespace Corrade
         private static void HandleFriendOnlineStatus(object sender, FriendInfoEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.Friendship, e),
+                () => SendNotification(Configuration.Notifications.Friendship, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleFriendRightsUpdate(object sender, FriendInfoEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.Friendship, e),
+                () => SendNotification(Configuration.Notifications.Friendship, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleFriendShipResponse(object sender, FriendshipResponseEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.Friendship, e),
+                () => SendNotification(Configuration.Notifications.Friendship, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
@@ -7130,7 +7006,7 @@ namespace Corrade
         {
             // Send friendship notifications
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.Friendship, e),
+                () => SendNotification(Configuration.Notifications.Friendship, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
@@ -7139,7 +7015,7 @@ namespace Corrade
             switch (e.Status)
             {
                 case TeleportStatus.Finished:
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_SUCCEEDED));
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_SUCCEEDED));
                     // Set current group to land group.
                     new Thread(() =>
                     {
@@ -7154,7 +7030,7 @@ namespace Corrade
                         );
                     break;
                 case TeleportStatus.Failed:
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_FAILED));
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_FAILED));
                     break;
             }
         }
@@ -7176,7 +7052,7 @@ namespace Corrade
                     // Add the agent to the cache.
                     Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () => SendNotification(Notifications.Typing, args),
+                        () => SendNotification(Configuration.Notifications.Typing, args),
                         corradeConfiguration.MaximumNotificationThreads);
                     return;
                 case InstantMessageDialog.FriendshipOffered:
@@ -7189,7 +7065,8 @@ namespace Corrade
                                 o.FirstName.Equals(fullName.First(), StringComparison.OrdinalIgnoreCase) &&
                                 o.LastName.Equals(fullName.Last(), StringComparison.OrdinalIgnoreCase)))
                         return;
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ACCEPTED_FRIENDSHIP), args.IM.FromAgentName);
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ACCEPTED_FRIENDSHIP),
+                        args.IM.FromAgentName);
                     Client.Friends.AcceptFriendship(args.IM.FromAgentID, args.IM.IMSessionID);
                     break;
                 case InstantMessageDialog.InventoryAccepted:
@@ -7197,7 +7074,7 @@ namespace Corrade
                 case InstantMessageDialog.TaskInventoryOffered:
                 case InstantMessageDialog.InventoryOffered:
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () => SendNotification(Notifications.Inventory, args),
+                        () => SendNotification(Configuration.Notifications.Inventory, args),
                         corradeConfiguration.MaximumNotificationThreads);
                     return;
                 case InstantMessageDialog.MessageBox:
@@ -7211,12 +7088,12 @@ namespace Corrade
                     {
                         if (
                             RLVRules.AsParallel()
-                                .Any(o => o.Behaviour.Equals(wasGetDescriptionFromEnumValue(RLVBehaviour.ACCEPTTP))))
+                                .Any(o => o.Behaviour.Equals(Reflection.wasGetNameFromEnumValue(RLVBehaviour.ACCEPTTP))))
                         {
                             if (IsSecondLife() && !TimedTeleportThrottle.IsSafe)
                             {
                                 // or fail and append the fail message.
-                                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_THROTTLED));
+                                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_THROTTLED));
                                 return;
                             }
                             lock (ClientInstanceSelfLock)
@@ -7242,7 +7119,7 @@ namespace Corrade
                     }
                     // Send teleport lure notification.
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () => SendNotification(Notifications.TeleportLure, args),
+                        () => SendNotification(Configuration.Notifications.TeleportLure, args),
                         corradeConfiguration.MaximumNotificationThreads);
                     // If we got a teleport request from a master, then accept it (for the moment).
                     lock (ClientInstanceConfigurationLock)
@@ -7258,7 +7135,7 @@ namespace Corrade
                     if (IsSecondLife() && !TimedTeleportThrottle.IsSafe)
                     {
                         // or fail and append the fail message.
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_THROTTLED));
+                        Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_THROTTLED));
                         return;
                     }
                     lock (ClientInstanceSelfLock)
@@ -7281,7 +7158,7 @@ namespace Corrade
                     return;
                 // Group invitations received
                 case InstantMessageDialog.GroupInvitation:
-                    OpenMetaverse.Group inviteGroup = new OpenMetaverse.Group();
+                    Group inviteGroup = new Group();
                     if (!RequestGroup(args.IM.FromAgentID, corradeConfiguration.ServicesTimeout, ref inviteGroup))
                         return;
                     // Add the group to the cache.
@@ -7313,7 +7190,7 @@ namespace Corrade
                     }
                     // Send group invitation notification.
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () => SendNotification(Notifications.GroupInvite, args),
+                        () => SendNotification(Configuration.Notifications.GroupInvite, args),
                         corradeConfiguration.MaximumNotificationThreads);
                     // If a master sends it, then accept.
                     lock (ClientInstanceConfigurationLock)
@@ -7333,7 +7210,7 @@ namespace Corrade
                 case InstantMessageDialog.GroupNoticeInventoryDeclined:
                 case InstantMessageDialog.GroupNotice:
                     CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                        () => SendNotification(Notifications.GroupNotice, args),
+                        () => SendNotification(Configuration.Notifications.GroupNotice, args),
                         corradeConfiguration.MaximumNotificationThreads);
                     return;
                 case InstantMessageDialog.SessionSend:
@@ -7351,10 +7228,10 @@ namespace Corrade
 
                     if (new HashSet<UUID>(currentGroups).Contains(args.IM.IMSessionID))
                     {
-                        Group messageGroup =
+                        Configuration.Group messageGroup =
                             corradeConfiguration.Groups.AsParallel()
                                 .FirstOrDefault(p => p.UUID.Equals(args.IM.IMSessionID));
-                        if (!messageGroup.Equals(default(Group)))
+                        if (!messageGroup.Equals(default(Configuration.Group)))
                         {
                             // Add the group to the cache.
                             Cache.AddGroup(messageGroup.Name, messageGroup.UUID);
@@ -7363,7 +7240,7 @@ namespace Corrade
                             // Send group notice notifications.
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                                 () =>
-                                    SendNotification(Notifications.GroupMessage, new GroupMessageEventArgs
+                                    SendNotification(Configuration.Notifications.GroupMessage, new GroupMessageEventArgs
                                     {
                                         AgentUUID = args.IM.FromAgentID,
                                         FirstName = fullName.First(),
@@ -7408,7 +7285,7 @@ namespace Corrade
                                         {
                                             // or fail and append the fail message.
                                             Feedback(
-                                                wasGetDescriptionFromEnumValue(
+                                                Reflection.wasGetDescriptionFromEnumValue(
                                                     ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
                                                 ex.Message);
                                         }
@@ -7424,7 +7301,7 @@ namespace Corrade
                             // Add the agent to the cache.
                             Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                () => SendNotification(Notifications.InstantMessage, args),
+                                () => SendNotification(Configuration.Notifications.InstantMessage, args),
                                 corradeConfiguration.MaximumNotificationThreads);
                             // Check if we were ejected.
                             UUID groupUUID = UUID.Zero;
@@ -7470,7 +7347,7 @@ namespace Corrade
                                     {
                                         // or fail and append the fail message.
                                         Feedback(
-                                            wasGetDescriptionFromEnumValue(
+                                            Reflection.wasGetDescriptionFromEnumValue(
                                                 ConsoleError.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
                                             ex.Message);
                                     }
@@ -7485,7 +7362,7 @@ namespace Corrade
                             // Add the agent to the cache.
                             Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                                () => SendNotification(Notifications.RegionMessage, args),
+                                () => SendNotification(Configuration.Notifications.RegionMessage, args),
                                 corradeConfiguration.MaximumNotificationThreads);
                             // Log region messages,
                             if (corradeConfiguration.RegionMessageLogEnabled)
@@ -7518,7 +7395,7 @@ namespace Corrade
                                     {
                                         // or fail and append the fail message.
                                         Feedback(
-                                            wasGetDescriptionFromEnumValue(
+                                            Reflection.wasGetDescriptionFromEnumValue(
                                                 ConsoleError.COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE),
                                             ex.Message);
                                     }
@@ -7534,14 +7411,14 @@ namespace Corrade
             if (!IsCorradeCommand(args.IM.Message))
             {
                 CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                    () => SendNotification(Notifications.ObjectInstantMessage, args),
+                    () => SendNotification(Configuration.Notifications.ObjectInstantMessage, args),
                     corradeConfiguration.MaximumNotificationThreads);
                 return;
             }
 
             // If the group was not set properly, then bail.
-            Group commandGroup = GetCorradeGroupFromMessage(args.IM.Message);
-            switch (!commandGroup.Equals(default(Group)))
+            Configuration.Group commandGroup = GetCorradeGroupFromMessage(args.IM.Message);
+            switch (!commandGroup.Equals(default(Configuration.Group)))
             {
                 case false:
                     return;
@@ -7631,24 +7508,25 @@ namespace Corrade
             try
             {
                 // Find command.
-                RLVBehaviour RLVBehaviour = wasGetEnumValueFromDescription<RLVBehaviour>(RLVrule.Behaviour);
+                RLVBehaviour RLVBehaviour = Reflection.wasGetEnumValueFromName<RLVBehaviour>(RLVrule.Behaviour);
                 IsRLVBehaviourAttribute isRLVBehaviourAttribute =
-                    wasGetAttributeFromEnumValue<IsRLVBehaviourAttribute>(RLVBehaviour);
+                    Reflection.wasGetAttributeFromEnumValue<IsRLVBehaviourAttribute>(RLVBehaviour);
                 if (isRLVBehaviourAttribute == null || !isRLVBehaviourAttribute.IsRLVBehaviour)
                 {
                     throw new Exception(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR,
-                        wasGetDescriptionFromEnumValue(ConsoleError.BEHAVIOUR_NOT_IMPLEMENTED),
+                        Reflection.wasGetDescriptionFromEnumValue(ConsoleError.BEHAVIOUR_NOT_IMPLEMENTED),
                         RLVrule.Behaviour));
                 }
                 RLVBehaviourAttribute execute =
-                    wasGetAttributeFromEnumValue<RLVBehaviourAttribute>(RLVBehaviour);
+                    Reflection.wasGetAttributeFromEnumValue<RLVBehaviourAttribute>(RLVBehaviour);
 
                 // Execute the command.
                 execute.RLVBehaviour.Invoke(message, RLVrule, senderUUID);
             }
             catch (Exception ex)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.FAILED_TO_MANIFEST_RLV_BEHAVIOUR), ex.Message);
+                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.FAILED_TO_MANIFEST_RLV_BEHAVIOUR),
+                    ex.Message);
             }
 
             CONTINUE:
@@ -7656,21 +7534,22 @@ namespace Corrade
         }
 
         private static Dictionary<string, string> HandleCorradeCommand(string message, string sender, string identifier,
-            Group commandGroup)
+            Configuration.Group commandGroup)
         {
             // Get password.
             string password =
-                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD)), message));
+                wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PASSWORD)),
+                    message));
             // Bail if no password set.
             if (string.IsNullOrEmpty(password)) return null;
             // Authenticate the request against the group password.
             if (!Authenticate(commandGroup.Name, password))
             {
-                Feedback(commandGroup.Name, wasGetDescriptionFromEnumValue(ConsoleError.ACCESS_DENIED));
+                Feedback(commandGroup.Name, Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ACCESS_DENIED));
                 return null;
             }
             // Censor password.
-            message = wasKeyValueSet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.PASSWORD)),
+            message = KeyValue.wasKeyValueSet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PASSWORD)),
                 CORRADE_CONSTANTS.PASSWORD_CENSOR, message);
             /*
              * OpenSim sends the primitive UUID through args.IM.FromAgentID while Second Life properly sends
@@ -7687,7 +7566,7 @@ namespace Corrade
                         !AgentUUIDToName(fromAgentID, corradeConfiguration.ServicesTimeout,
                             ref sender))
                     {
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.AGENT_NOT_FOUND),
+                        Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.AGENT_NOT_FOUND),
                             fromAgentID.ToString());
                         return null;
                     }
@@ -7716,7 +7595,7 @@ namespace Corrade
                         o => o.Name.Equals(commandGroup.Name, StringComparison.OrdinalIgnoreCase)).Workers)
                 {
                     // And refuse to proceed if they have.
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.WORKERS_EXCEEDED),
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.WORKERS_EXCEEDED),
                         commandGroup.Name);
                     return null;
                 }
@@ -7743,18 +7622,19 @@ namespace Corrade
             // do not send a callback if the callback queue is saturated
             if (CallbackQueue.Count >= corradeConfiguration.CallbackQueueLength)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.CALLBACK_THROTTLED));
+                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.CALLBACK_THROTTLED));
                 return result;
             }
             // send callback if registered
             string url =
-                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.CALLBACK)), message));
+                wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.CALLBACK)),
+                    message));
             // if no url was provided, do not send the callback
             if (string.IsNullOrEmpty(url)) return result;
             CallbackQueue.Enqueue(new CallbackQueueElement
             {
                 URL = url,
-                message = wasKeyValueEscape(result)
+                message = KeyValue.wasKeyValueEscape(result, wasOutput)
             });
             return result;
         }
@@ -7769,16 +7649,16 @@ namespace Corrade
             Dictionary<string, string> result = new Dictionary<string, string>
             {
                 // add the command group to the response.
-                {wasGetDescriptionFromEnumValue(ScriptKeys.GROUP), corradeCommandParameters.Group.Name}
+                {Reflection.wasGetNameFromEnumValue(ScriptKeys.GROUP), corradeCommandParameters.Group.Name}
             };
 
             // retrieve the command from the message.
             string command =
-                wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND)),
+                wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.COMMAND)),
                     corradeCommandParameters.Message));
             if (!string.IsNullOrEmpty(command))
             {
-                result.Add(wasGetDescriptionFromEnumValue(ScriptKeys.COMMAND), command);
+                result.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.COMMAND), command);
             }
 
             // execute command, sift data and check for errors
@@ -7786,31 +7666,31 @@ namespace Corrade
             try
             {
                 // Find command.
-                ScriptKeys scriptKey = wasGetEnumValueFromDescription<ScriptKeys>(command);
+                ScriptKeys scriptKey = Reflection.wasGetEnumValueFromName<ScriptKeys>(command);
                 IsCorradeCommandAttribute isCommandAttribute =
-                    wasGetAttributeFromEnumValue<IsCorradeCommandAttribute>(scriptKey);
+                    Reflection.wasGetAttributeFromEnumValue<IsCorradeCommandAttribute>(scriptKey);
                 if (isCommandAttribute == null || !isCommandAttribute.IsCorradeCorradeCommand)
                 {
                     throw new ScriptException(ScriptError.COMMAND_NOT_FOUND);
                 }
                 CorradeCommandAttribute execute =
-                    wasGetAttributeFromEnumValue<CorradeCommandAttribute>(scriptKey);
+                    Reflection.wasGetAttributeFromEnumValue<CorradeCommandAttribute>(scriptKey);
 
                 // Execute the command.
                 execute.CorradeCommand.Invoke(corradeCommandParameters, result);
 
                 // Sift the results
                 string pattern =
-                    wasInput(wasKeyValueGet(wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.SIFT)),
+                    wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.SIFT)),
                         corradeCommandParameters.Message));
                 string data = string.Empty;
                 switch (
                     !string.IsNullOrEmpty(pattern) &&
-                    result.TryGetValue(wasGetDescriptionFromEnumValue(ResultKeys.DATA), out data) &&
+                    result.TryGetValue(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), out data) &&
                     !string.IsNullOrEmpty(data))
                 {
                     case true:
-                        data = wasEnumerableToCSV((((new Regex(pattern, RegexOptions.Compiled)).Matches(data)
+                        data = CSV.wasEnumerableToCSV((((new Regex(pattern, RegexOptions.Compiled)).Matches(data)
                             .AsParallel()
                             .Cast<Match>()
                             .Select(m => m.Groups)).SelectMany(
@@ -7821,10 +7701,10 @@ namespace Corrade
                         switch (!string.IsNullOrEmpty(data))
                         {
                             case true:
-                                result[wasGetDescriptionFromEnumValue(ResultKeys.DATA)] = data;
+                                result[Reflection.wasGetNameFromEnumValue(ResultKeys.DATA)] = data;
                                 break;
                             default:
-                                result.Remove(wasGetDescriptionFromEnumValue(ResultKeys.DATA));
+                                result.Remove(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA));
                                 break;
                         }
                         break;
@@ -7835,29 +7715,29 @@ namespace Corrade
             catch (ScriptException sx)
             {
                 // we have a script error so return a status as well
-                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.ERROR), sx.Message);
-                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.STATUS),
+                result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.ERROR), sx.Message);
+                result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.STATUS),
                     sx.Status.ToString());
             }
             catch (Exception ex)
             {
                 // we have a generic exception so return the message
-                result.Add(wasGetDescriptionFromEnumValue(ResultKeys.ERROR), ex.Message);
+                result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.ERROR), ex.Message);
             }
 
             // add the final success status
-            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.SUCCESS),
+            result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.SUCCESS),
                 success.ToString(Utils.EnUsCulture));
 
             // add the time stamp
-            result.Add(wasGetDescriptionFromEnumValue(ResultKeys.TIME),
+            result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.TIME),
                 DateTime.Now.ToUniversalTime().ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP));
 
             // build afterburn
             object AfterBurnLock = new object();
-            HashSet<string> resultKeys = new HashSet<string>(wasGetEnumDescriptions<ResultKeys>());
-            HashSet<string> scriptKeys = new HashSet<string>(wasGetEnumDescriptions<ScriptKeys>());
-            Parallel.ForEach(wasKeyValueDecode(corradeCommandParameters.Message), o =>
+            HashSet<string> resultKeys = new HashSet<string>(Reflection.wasGetEnumNames<ResultKeys>());
+            HashSet<string> scriptKeys = new HashSet<string>(Reflection.wasGetEnumNames<ScriptKeys>());
+            Parallel.ForEach(KeyValue.wasKeyValueDecode(corradeCommandParameters.Message), o =>
             {
                 // remove keys that are script keys, result keys or invalid key-value pairs
                 if (string.IsNullOrEmpty(o.Key) || resultKeys.Contains(wasInput(o.Key)) ||
@@ -7893,7 +7773,7 @@ namespace Corrade
             }
             List<string> data;
             object LockObject = new object();
-            Parallel.ForEach(wasCSVToEnumerable(query).AsParallel().Where(o => !string.IsNullOrEmpty(o)), name =>
+            Parallel.ForEach(CSV.wasCSVToEnumerable(query).AsParallel().Where(o => !string.IsNullOrEmpty(o)), name =>
             {
                 KeyValuePair<FieldInfo, object> fi =
                     wasGetFields(structure, structure.GetType().Name).AsParallel()
@@ -7940,7 +7820,7 @@ namespace Corrade
         {
             foreach (
                 KeyValuePair<string, string> match in
-                    wasCSVToEnumerable(data).AsParallel().Select((o, p) => new {o, p})
+                    CSV.wasCSVToEnumerable(data).AsParallel().Select((o, p) => new {o, p})
                         .GroupBy(q => q.p/2, q => q.o)
                         .Select(o => o.ToList())
                         .TakeWhile(o => o.Count%2 == 0)
@@ -7995,7 +7875,7 @@ namespace Corrade
                 // set the content type based on chosen output filers
                 switch (corradeConfiguration.OutputFilters.Last())
                 {
-                    case Filter.RFC1738:
+                    case Configuration.Filter.RFC1738:
                         request.ContentType = CORRADE_CONSTANTS.CONTENT_TYPE.WWW_FORM_URLENCODED;
                         break;
                     default:
@@ -8007,7 +7887,7 @@ namespace Corrade
                 {
                     using (StreamWriter dataStream = new StreamWriter(requestStream))
                     {
-                        dataStream.Write(wasKeyValueEncode(message));
+                        dataStream.Write(KeyValue.wasKeyValueEncode(message));
                     }
                 }
                 // read response
@@ -8027,14 +7907,15 @@ namespace Corrade
             }
             catch (Exception ex)
             {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_MAKING_POST_REQUEST), URL, ex.Message);
+                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_MAKING_POST_REQUEST), URL,
+                    ex.Message);
             }
         }
 
         private static void HandleTerseObjectUpdate(object sender, TerseObjectUpdateEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.TerseUpdates, e),
+                () => SendNotification(Configuration.Notifications.TerseUpdates, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
@@ -8052,147 +7933,869 @@ namespace Corrade
         private static void HandleSimChanged(object sender, SimChangedEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.RegionCrossed, e),
+                () => SendNotification(Configuration.Notifications.RegionCrossed, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleMoneyBalance(object sender, BalanceEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.Balance, e),
+                () => SendNotification(Configuration.Notifications.Balance, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
         private static void HandleMoneyBalance(object sender, MoneyBalanceReplyEventArgs e)
         {
             CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
-                () => SendNotification(Notifications.Economy, e),
+                () => SendNotification(Configuration.Notifications.Economy, e),
                 corradeConfiguration.MaximumNotificationThreads);
         }
 
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>URI unescapes an RFC3986 URI escaped string</summary>
-        /// <param name="data">a string to unescape</param>
-        /// <returns>the resulting string</returns>
-        private static string wasURIUnescapeDataString(string data)
+        public static void UpdateDynamicConfiguration(Configuration configuration)
         {
-            // Uri.UnescapeDataString can only handle 32766 characters at a time
-            return string.Join("", Enumerable.Range(0, (data.Length + 32765)/32766)
-                .Select(o => Uri.UnescapeDataString(data.Substring(o*32766, Math.Min(32766, data.Length - (o*32766)))))
-                .ToArray());
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>RFC3986 URI Escapes a string</summary>
-        /// <param name="data">a string to escape</param>
-        /// <returns>an RFC3986 escaped string</returns>
-        private static string wasURIEscapeDataString(string data)
-        {
-            // Uri.EscapeDataString can only handle 32766 characters at a time
-            return string.Join("", Enumerable.Range(0, (data.Length + 32765)/32766)
-                .Select(o => Uri.EscapeDataString(data.Substring(o*32766, Math.Min(32766, data.Length - (o*32766)))))
-                .ToArray());
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2015 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>RFC1738 URL Escapes a string</summary>
-        /// <param name="data">a string to escape</param>
-        /// <returns>an RFC1738 escaped string</returns>
-        private static string wasURLEscapeDataString(string data)
-        {
-            return HttpUtility.UrlEncode(data);
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2015 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>RFC1738 URL Unescape a string</summary>
-        /// <param name="data">a string to unescape</param>
-        /// <returns>an RFC1738 unescaped string</returns>
-        private static string wasURLUnescapeDataString(string data)
-        {
-            return HttpUtility.UrlDecode(data);
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Converts a list of string to a comma-separated values string.
-        /// </summary>
-        /// <param name="l">a list of strings</param>
-        /// <returns>a commma-separated list of values</returns>
-        /// <remarks>compliant with RFC 4180</remarks>
-        public static string wasEnumerableToCSV(IEnumerable<string> l)
-        {
-            string[] csv = l.Select(o => o.Clone() as string).ToArray();
-            Parallel.ForEach(csv.Select((v, i) => new {i, v}), o =>
+            // Enable the group scheduling thread if permissions were granted to groups.
+            switch (configuration.Groups.AsParallel()
+                .Any(
+                    o =>
+                        !(o.PermissionMask & (uint) Configuration.Permissions.Schedule).Equals(0) &&
+                        !o.Schedules.Equals(0)))
             {
-                string cell = o.v.Replace("\"", "\"\"");
-                switch (new[] {'"', ' ', ',', '\r', '\n'}.Any(p => cell.Contains(p)))
+                case true:
+                    // Don't start if the expiration thread is already started.
+                    if (GroupSchedulesThread != null) return;
+                    // Start sphere and beam effect expiration thread
+                    runGroupSchedulesThread = true;
+                    GroupSchedulesThread = new Thread(() =>
+                    {
+                        do
+                        {
+                            // Check schedules with a one second resolution.
+                            Thread.Sleep((int) corradeConfiguration.SchedulesResolution);
+                            HashSet<GroupSchedule> groupSchedules;
+                            lock (GroupSchedulesLock)
+                            {
+                                groupSchedules =
+                                    new HashSet<GroupSchedule>(GroupSchedules.AsParallel()
+                                        .Where(
+                                            o =>
+                                                DateTime.Compare(DateTime.Now.ToUniversalTime(),
+                                                    o.At) >= 0));
+                            }
+                            if (groupSchedules.Any())
+                            {
+                                Parallel.ForEach(groupSchedules,
+                                    o =>
+                                    {
+                                        // Spawn the command.
+                                        CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
+                                            () => HandleCorradeCommand(o.Message, o.Sender, o.Identifier, o.Group),
+                                            corradeConfiguration.MaximumCommandThreads, o.Group.UUID,
+                                            corradeConfiguration.SchedulerExpiration);
+                                        lock (GroupSchedulesLock)
+                                        {
+                                            GroupSchedules.Remove(o);
+                                        }
+                                    });
+                                SaveGroupSchedulesState.Invoke();
+                            }
+                        } while (runGroupSchedulesThread);
+                    })
+                    {IsBackground = true};
+                    GroupSchedulesThread.Start();
+                    break;
+                default:
+                    runGroupSchedulesThread = false;
+                    try
+                    {
+                        if (GroupSchedulesThread != null)
+                        {
+                            if (
+                                (GroupSchedulesThread.ThreadState.Equals(ThreadState.Running) ||
+                                 GroupSchedulesThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                            {
+                                if (!GroupSchedulesThread.Join(1000))
+                                {
+                                    GroupSchedulesThread.Abort();
+                                    GroupSchedulesThread.Join();
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        /* We are going down and we do not care. */
+                    }
+                    finally
+                    {
+                        GroupSchedulesThread = null;
+                    }
+                    break;
+            }
+            // Enable AIML in case it was enabled in the configuration file.
+            try
+            {
+                switch (configuration.EnableAIML)
                 {
                     case true:
-                        csv[o.i] = "\"" + cell + "\"";
+                        switch (!AIMLBotBrainCompiled)
+                        {
+                            case true:
+                                new Thread(
+                                    () =>
+                                    {
+                                        lock (AIMLBotLock)
+                                        {
+                                            LoadChatBotFiles.Invoke();
+                                            AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
+                                        }
+                                    })
+                                {IsBackground = true}.Start();
+                                break;
+                            default:
+                                AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
+                                AIMLBot.isAcceptingUserInput = true;
+                                break;
+                        }
                         break;
                     default:
-                        csv[o.i] = cell;
+                        AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
+                        AIMLBot.isAcceptingUserInput = false;
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Feedback(
+                    Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER),
+                    ex.Message);
+            }
+
+            // Dynamically disable or enable notifications.
+            Parallel.ForEach(Reflection.wasGetEnumValues<Configuration.Notifications>(), o =>
+            {
+                bool enabled = configuration.Groups.AsParallel().Any(
+                    p =>
+                        !(p.NotificationMask & (uint) o).Equals(0));
+                switch (o)
+                {
+                    case Configuration.Notifications.GroupMembership:
+                        switch (enabled)
+                        {
+                            case true:
+                                // Start the group membership thread.
+                                StartGroupMembershipSweepThread.Invoke();
+                                break;
+                            default:
+                                // Stop the group sweep thread.
+                                StopGroupMembershipSweepThread.Invoke();
+                                break;
+                        }
+                        break;
+                    case Configuration.Notifications.Friendship:
+                        switch (enabled)
+                        {
+                            case true:
+                                Client.Friends.FriendshipOffered += HandleFriendshipOffered;
+                                Client.Friends.FriendshipResponse += HandleFriendShipResponse;
+                                Client.Friends.FriendOnline += HandleFriendOnlineStatus;
+                                Client.Friends.FriendOffline += HandleFriendOnlineStatus;
+                                Client.Friends.FriendRightsUpdate += HandleFriendRightsUpdate;
+                                break;
+                            default:
+                                Client.Friends.FriendshipOffered -= HandleFriendshipOffered;
+                                Client.Friends.FriendshipResponse -= HandleFriendShipResponse;
+                                Client.Friends.FriendOnline -= HandleFriendOnlineStatus;
+                                Client.Friends.FriendOffline -= HandleFriendOnlineStatus;
+                                Client.Friends.FriendRightsUpdate -= HandleFriendRightsUpdate;
+                                break;
+                        }
+                        break;
+                    case Configuration.Notifications.ScriptPermission:
+                        switch (enabled)
+                        {
+                            case true:
+                                Client.Self.ScriptQuestion += HandleScriptQuestion;
+                                break;
+                            default:
+                                Client.Self.ScriptQuestion -= HandleScriptQuestion;
+                                break;
+                        }
+                        break;
+                    case Configuration.Notifications.AlertMessage:
+                        switch (enabled)
+                        {
+                            case true:
+                                Client.Self.AlertMessage += HandleAlertMessage;
+                                break;
+                            default:
+                                Client.Self.AlertMessage -= HandleAlertMessage;
+                                break;
+                        }
+                        break;
+                    case Configuration.Notifications.Balance:
+                        switch (enabled)
+                        {
+                            case true:
+                                Client.Self.MoneyBalance += HandleMoneyBalance;
+                                break;
+                            default:
+                                Client.Self.MoneyBalance -= HandleMoneyBalance;
+                                break;
+                        }
+                        break;
+                    case Configuration.Notifications.Economy:
+                        switch (enabled)
+                        {
+                            case true:
+                                Client.Self.MoneyBalanceReply += HandleMoneyBalance;
+                                break;
+                            default:
+                                Client.Self.MoneyBalanceReply -= HandleMoneyBalance;
+                                break;
+                        }
+                        break;
+                    case Configuration.Notifications.ScriptDialog:
+                        switch (enabled)
+                        {
+                            case true:
+                                Client.Self.ScriptDialog += HandleScriptDialog;
+                                break;
+                            default:
+                                Client.Self.ScriptDialog -= HandleScriptDialog;
+                                break;
+                        }
+                        break;
+                    case Configuration.Notifications.TerseUpdates:
+                        switch (enabled)
+                        {
+                            case true:
+                                Client.Objects.TerseObjectUpdate += HandleTerseObjectUpdate;
+                                break;
+                            default:
+                                Client.Objects.TerseObjectUpdate -= HandleTerseObjectUpdate;
+                                break;
+                        }
+                        break;
+                    case Configuration.Notifications.ViewerEffect:
+                        switch (enabled)
+                        {
+                            case true:
+                                Client.Avatars.ViewerEffect += HandleViewerEffect;
+                                Client.Avatars.ViewerEffectPointAt += HandleViewerEffect;
+                                Client.Avatars.ViewerEffectLookAt += HandleViewerEffect;
+                                break;
+                            default:
+                                Client.Avatars.ViewerEffect -= HandleViewerEffect;
+                                Client.Avatars.ViewerEffectPointAt -= HandleViewerEffect;
+                                Client.Avatars.ViewerEffectLookAt -= HandleViewerEffect;
+                                break;
+                        }
+                        break;
+                    case Configuration.Notifications.MeanCollision:
+                        switch (enabled)
+                        {
+                            case true:
+                                Client.Self.MeanCollision += HandleMeanCollision;
+                                break;
+                            default:
+                                Client.Self.MeanCollision -= HandleMeanCollision;
+                                break;
+                        }
+                        break;
+                    case Configuration.Notifications.RegionCrossed:
+                        switch (enabled)
+                        {
+                            case true:
+                                Client.Self.RegionCrossed += HandleRegionCrossed;
+                                Client.Network.SimChanged += HandleSimChanged;
+                                break;
+                            default:
+                                Client.Self.RegionCrossed -= HandleRegionCrossed;
+                                Client.Network.SimChanged -= HandleSimChanged;
+                                break;
+                        }
+                        break;
+                    case Configuration.Notifications.LoadURL:
+                        switch (enabled)
+                        {
+                            case true:
+                                Client.Self.LoadURL += HandleLoadURL;
+                                break;
+                            default:
+                                Client.Self.LoadURL -= HandleLoadURL;
+                                break;
+                        }
+                        break;
+                    case Configuration.Notifications.ScriptControl:
+                        switch (enabled)
+                        {
+                            case true:
+                                Client.Self.ScriptControlChange += HandleScriptControlChange;
+                                break;
+                            default:
+                                Client.Self.ScriptControlChange -= HandleScriptControlChange;
+                                break;
+                        }
                         break;
                 }
             });
-            return string.Join(",", csv);
-        }
 
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Converts a comma-separated list of values to a list of strings.
-        /// </summary>
-        /// <param name="csv">a comma-separated list of values</param>
-        /// <returns>a list of strings</returns>
-        /// <remarks>compliant with RFC 4180</remarks>
-        public static IEnumerable<string> wasCSVToEnumerable(string csv)
-        {
-            Stack<char> s = new Stack<char>();
-            StringBuilder m = new StringBuilder();
-            for (int i = 0; i < csv.Length; ++i)
+            // Depending on whether groups have bound to the viewer effects notification,
+            // start or stop the viwer effect expiration thread.
+            switch (
+                configuration.Groups.AsParallel()
+                    .Any(o => !(o.NotificationMask & (uint) Configuration.Notifications.ViewerEffect).Equals(0)))
             {
-                switch (csv[i])
-                {
-                    case ',':
-                        if (!s.Any() || !s.Peek().Equals('"'))
+                case true:
+                    // Don't start if the expiration thread is already started.
+                    if (EffectsExpirationThread != null) return;
+                    // Start sphere and beam effect expiration thread
+                    runEffectsExpirationThread = true;
+                    EffectsExpirationThread = new Thread(() =>
+                    {
+                        do
                         {
-                            yield return m.ToString();
-                            m = new StringBuilder();
-                            continue;
-                        }
-                        m.Append(csv[i]);
-                        continue;
-                    case '"':
-                        if (i + 1 < csv.Length && csv[i].Equals(csv[i + 1]))
+                            Thread.Sleep(1000);
+                            lock (SphereEffectsLock)
+                            {
+                                SphereEffects.RemoveWhere(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
+                            }
+                            lock (BeamEffectsLock)
+                            {
+                                BeamEffects.RemoveWhere(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
+                            }
+                        } while (runEffectsExpirationThread);
+                    })
+                    {IsBackground = true};
+                    EffectsExpirationThread.Start();
+                    break;
+                default:
+                    runEffectsExpirationThread = false;
+                    try
+                    {
+                        if (EffectsExpirationThread != null)
                         {
-                            m.Append(csv[i]);
-                            ++i;
-                            continue;
+                            if (
+                                (EffectsExpirationThread.ThreadState.Equals(ThreadState.Running) ||
+                                 EffectsExpirationThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                            {
+                                if (!EffectsExpirationThread.Join(1000))
+                                {
+                                    EffectsExpirationThread.Abort();
+                                    EffectsExpirationThread.Join();
+                                }
+                            }
                         }
-                        if (!s.Any() || !s.Peek().Equals(csv[i]))
-                        {
-                            s.Push(csv[i]);
-                            continue;
-                        }
-                        s.Pop();
-                        continue;
-                }
-                m.Append(csv[i]);
+                    }
+                    catch (Exception)
+                    {
+                        /* We are going down and we do not care. */
+                    }
+                    finally
+                    {
+                        EffectsExpirationThread = null;
+                    }
+                    break;
             }
 
-            yield return m.ToString();
+            // Depending on whether any group has bound either the avatar radar notification,
+            // or the primitive radar notification, install or uinstall the listeners.
+            switch (
+                configuration.Groups.AsParallel().Any(
+                    o =>
+                        !(o.NotificationMask & (uint) Configuration.Notifications.RadarAvatars).Equals(0) ||
+                        !(o.NotificationMask & (uint) Configuration.Notifications.RadarPrimitives).Equals(0)))
+            {
+                case true:
+                    Client.Network.SimChanged += HandleRadarObjects;
+                    Client.Objects.AvatarUpdate += HandleAvatarUpdate;
+                    Client.Objects.ObjectUpdate += HandleObjectUpdate;
+                    Client.Objects.KillObject += HandleKillObject;
+                    break;
+                default:
+                    Client.Network.SimChanged -= HandleRadarObjects;
+                    Client.Objects.AvatarUpdate -= HandleAvatarUpdate;
+                    Client.Objects.ObjectUpdate -= HandleObjectUpdate;
+                    Client.Objects.KillObject -= HandleKillObject;
+                    break;
+            }
+
+            // Enable the TCP notifications server in case it was enabled in the Configuration.
+            switch (configuration.EnableTCPNotificationsServer)
+            {
+                case true:
+                    // Don't start if the TCP notifications server is already started.
+                    if (TCPNotificationsThread != null) return;
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.STARTING_TCP_NOTIFICATIONS_SERVER));
+                    runTCPNotificationsServer = true;
+                    // Start the TCP notifications server.
+                    TCPNotificationsThread = new Thread(() =>
+                    {
+                        TCPListener =
+                            new TcpListener(
+                                new IPEndPoint(IPAddress.Parse(configuration.TCPNotificationsServerAddress),
+                                    (int) configuration.TCPNotificationsServerPort));
+                        TCPListener.Start();
+
+                        do
+                        {
+                            TcpClient TCPClient = TCPListener.AcceptTcpClient();
+
+                            new Thread(() =>
+                            {
+                                IPEndPoint remoteEndPoint = null;
+                                Configuration.Group commandGroup = new Configuration.Group();
+                                try
+                                {
+                                    remoteEndPoint = TCPClient.Client.RemoteEndPoint as IPEndPoint;
+                                    using (NetworkStream networkStream = TCPClient.GetStream())
+                                    {
+                                        using (
+                                            StreamReader streamReader = new StreamReader(networkStream,
+                                                Encoding.UTF8))
+                                        {
+                                            string receiveLine = streamReader.ReadLine();
+
+                                            using (
+                                                StreamWriter streamWriter = new StreamWriter(networkStream,
+                                                    Encoding.UTF8))
+                                            {
+                                                commandGroup = GetCorradeGroupFromMessage(receiveLine);
+                                                switch (!commandGroup.Equals(default(Configuration.Group)) &&
+                                                        Authenticate(commandGroup.Name,
+                                                            wasInput(
+                                                                KeyValue.wasKeyValueGet(
+                                                                    wasOutput(
+                                                                        Reflection.wasGetNameFromEnumValue(
+                                                                            ScriptKeys.PASSWORD)),
+                                                                    receiveLine))))
+                                                {
+                                                    case false:
+                                                        streamWriter.WriteLine(
+                                                            KeyValue.wasKeyValueEncode(new Dictionary
+                                                                <string, string>
+                                                            {
+                                                                {
+                                                                    Reflection.wasGetNameFromEnumValue(
+                                                                        ScriptKeys.SUCCESS),
+                                                                    false.ToString()
+                                                                }
+                                                            }));
+                                                        streamWriter.Flush();
+                                                        TCPClient.Close();
+                                                        return;
+                                                }
+
+                                                string notificationTypes =
+                                                    wasInput(
+                                                        KeyValue.wasKeyValueGet(
+                                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
+                                                            receiveLine));
+                                                Notification notification;
+                                                lock (GroupNotificationsLock)
+                                                {
+                                                    notification =
+                                                        GroupNotifications.AsParallel().FirstOrDefault(
+                                                            o =>
+                                                                o.GroupName.Equals(commandGroup.Name,
+                                                                    StringComparison.OrdinalIgnoreCase));
+                                                }
+                                                // Build any requested data for raw notifications.
+                                                string fields =
+                                                    wasInput(
+                                                        KeyValue.wasKeyValueGet(
+                                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                                            receiveLine));
+                                                HashSet<string> data = new HashSet<string>();
+                                                object LockObject = new object();
+                                                if (!string.IsNullOrEmpty(fields))
+                                                {
+                                                    Parallel.ForEach(
+                                                        CSV.wasCSVToEnumerable(fields)
+                                                            .AsParallel()
+                                                            .Where(o => !string.IsNullOrEmpty(o)),
+                                                        o =>
+                                                        {
+                                                            lock (LockObject)
+                                                            {
+                                                                data.Add(o);
+                                                            }
+                                                        });
+                                                }
+                                                switch (!notification.Equals(default(Notification)))
+                                                {
+                                                    case false:
+                                                        notification = new Notification
+                                                        {
+                                                            GroupName = commandGroup.Name,
+                                                            GroupUUID = commandGroup.UUID,
+                                                            NotificationURLDestination =
+                                                                new SerializableDictionary
+                                                                    <Configuration.Notifications, HashSet<string>>(),
+                                                            NotificationTCPDestination =
+                                                                new Dictionary
+                                                                    <Configuration.Notifications, HashSet<IPEndPoint>>(),
+                                                            Data = data
+                                                        };
+                                                        break;
+                                                    case true:
+                                                        if (notification.NotificationTCPDestination == null)
+                                                        {
+                                                            notification.NotificationTCPDestination =
+                                                                new Dictionary
+                                                                    <Configuration.Notifications, HashSet<IPEndPoint>>();
+                                                        }
+                                                        if (notification.NotificationURLDestination == null)
+                                                        {
+                                                            notification.NotificationURLDestination =
+                                                                new SerializableDictionary
+                                                                    <Configuration.Notifications, HashSet<string>>();
+                                                        }
+                                                        break;
+                                                }
+
+                                                bool succeeded = true;
+                                                Parallel.ForEach(CSV.wasCSVToEnumerable(
+                                                    notificationTypes)
+                                                    .AsParallel()
+                                                    .Where(o => !string.IsNullOrEmpty(o)),
+                                                    (o, state) =>
+                                                    {
+                                                        uint notificationValue =
+                                                            (uint)
+                                                                Reflection
+                                                                    .wasGetEnumValueFromName
+                                                                    <Configuration.Notifications>(o);
+                                                        if (
+                                                            !GroupHasNotification(commandGroup.Name,
+                                                                notificationValue))
+                                                        {
+                                                            // one of the notification was not allowed, so abort
+                                                            succeeded = false;
+                                                            state.Break();
+                                                        }
+                                                        switch (
+                                                            !notification.NotificationTCPDestination.ContainsKey(
+                                                                (Configuration.Notifications) notificationValue))
+                                                        {
+                                                            case true:
+                                                                lock (LockObject)
+                                                                {
+                                                                    notification.NotificationTCPDestination.Add(
+                                                                        (Configuration.Notifications) notificationValue,
+                                                                        new HashSet<IPEndPoint> {remoteEndPoint});
+                                                                }
+                                                                break;
+                                                            default:
+                                                                lock (LockObject)
+                                                                {
+                                                                    notification.NotificationTCPDestination[
+                                                                        (Configuration.Notifications) notificationValue]
+                                                                        .Add(
+                                                                            remoteEndPoint);
+                                                                }
+                                                                break;
+                                                        }
+                                                    });
+
+                                                switch (succeeded)
+                                                {
+                                                    case true:
+                                                        lock (GroupNotificationsLock)
+                                                        {
+                                                            // Replace notification.
+                                                            GroupNotifications.RemoveWhere(
+                                                                o =>
+                                                                    o.GroupName.Equals(commandGroup.Name,
+                                                                        StringComparison.OrdinalIgnoreCase));
+                                                            GroupNotifications.Add(notification);
+                                                        }
+                                                        // Save the notifications state.
+                                                        SaveNotificationState.Invoke();
+                                                        streamWriter.WriteLine(
+                                                            KeyValue.wasKeyValueEncode(new Dictionary
+                                                                <string, string>
+                                                            {
+                                                                {
+                                                                    Reflection.wasGetNameFromEnumValue(
+                                                                        ScriptKeys.SUCCESS),
+                                                                    true.ToString()
+                                                                }
+                                                            }));
+                                                        streamWriter.Flush();
+                                                        break;
+                                                    default:
+                                                        streamWriter.WriteLine(
+                                                            KeyValue.wasKeyValueEncode(new Dictionary
+                                                                <string, string>
+                                                            {
+                                                                {
+                                                                    Reflection.wasGetNameFromEnumValue(
+                                                                        ScriptKeys.SUCCESS),
+                                                                    false.ToString()
+                                                                }
+                                                            }));
+                                                        streamWriter.Flush();
+                                                        TCPClient.Close();
+                                                        return;
+                                                }
+                                                do
+                                                {
+                                                    NotificationTCPQueueElement notificationTCPQueueElement =
+                                                        new NotificationTCPQueueElement();
+                                                    if (
+                                                        NotificationTCPQueue.Dequeue(
+                                                            (int) configuration.TCPNotificationThrottle,
+                                                            ref notificationTCPQueueElement))
+                                                    {
+                                                        if (
+                                                            !notificationTCPQueueElement.Equals(
+                                                                default(NotificationTCPQueueElement)) &&
+                                                            notificationTCPQueueElement.IPEndPoint.Equals(
+                                                                remoteEndPoint))
+                                                        {
+                                                            streamWriter.WriteLine(
+                                                                KeyValue.wasKeyValueEncode(
+                                                                    notificationTCPQueueElement.message));
+                                                            streamWriter.Flush();
+                                                        }
+                                                    }
+                                                } while (runTCPNotificationsServer && TCPClient.Connected);
+                                            }
+                                        }
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Feedback(
+                                        Reflection.wasGetDescriptionFromEnumValue(
+                                            ConsoleError.TCP_NOTIFICATIONS_SERVER_ERROR),
+                                        ex.Message);
+                                }
+                                finally
+                                {
+                                    if (remoteEndPoint != null && !commandGroup.Equals(default(Configuration.Group)))
+                                    {
+                                        lock (GroupNotificationsLock)
+                                        {
+                                            Notification notification =
+                                                GroupNotifications.FirstOrDefault(
+                                                    o =>
+                                                        o.GroupName.Equals(commandGroup.Name,
+                                                            StringComparison.OrdinalIgnoreCase));
+                                            if (!notification.Equals(default(Notification)))
+                                            {
+                                                Dictionary<Configuration.Notifications, HashSet<IPEndPoint>>
+                                                    notificationTCPDestination =
+                                                        new Dictionary<Configuration.Notifications, HashSet<IPEndPoint>>
+                                                            ();
+                                                Parallel.ForEach(notification.NotificationTCPDestination, o =>
+                                                {
+                                                    switch (o.Value.Contains(remoteEndPoint))
+                                                    {
+                                                        case true:
+                                                            HashSet<IPEndPoint> destinations =
+                                                                new HashSet<IPEndPoint>(
+                                                                    o.Value.Where(p => !p.Equals(remoteEndPoint)));
+                                                            notificationTCPDestination.Add(o.Key, destinations);
+                                                            break;
+                                                        default:
+                                                            notificationTCPDestination.Add(o.Key, o.Value);
+                                                            break;
+                                                    }
+                                                });
+
+                                                GroupNotifications.Remove(notification);
+                                                GroupNotifications.Add(new Notification
+                                                {
+                                                    GroupName = notification.GroupName,
+                                                    GroupUUID = notification.GroupUUID,
+                                                    NotificationURLDestination =
+                                                        notification.NotificationURLDestination,
+                                                    NotificationTCPDestination = notificationTCPDestination,
+                                                    Afterburn = notification.Afterburn,
+                                                    Data = notification.Data
+                                                });
+                                            }
+                                        }
+                                    }
+                                }
+                            })
+                            {IsBackground = true}.Start();
+                        } while (runTCPNotificationsServer);
+                    })
+                    {IsBackground = true};
+                    TCPNotificationsThread.Start();
+                    break;
+                default:
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.STOPPING_TCP_NOTIFICATIONS_SERVER));
+                    runTCPNotificationsServer = false;
+                    try
+                    {
+                        if (TCPNotificationsThread != null)
+                        {
+                            TCPListener.Stop();
+                            if (
+                                (TCPNotificationsThread.ThreadState.Equals(ThreadState.Running) ||
+                                 TCPNotificationsThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                            {
+                                if (!TCPNotificationsThread.Join(1000))
+                                {
+                                    TCPNotificationsThread.Abort();
+                                    TCPNotificationsThread.Join();
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        /* We are going down and we do not care. */
+                    }
+                    finally
+                    {
+                        TCPNotificationsThread = null;
+                    }
+                    break;
+            }
+
+            // Enable the HTTP server in case it is supported and it was enabled in the Configuration.
+            switch (HttpListener.IsSupported)
+            {
+                case true:
+                    switch (configuration.EnableHTTPServer)
+                    {
+                        case true:
+                            // Don't start if the HTTP server is already started.
+                            if (HTTPListenerThread != null) return;
+                            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.STARTING_HTTP_SERVER));
+                            runHTTPServer = true;
+                            HTTPListenerThread = new Thread(() =>
+                            {
+                                try
+                                {
+                                    using (HTTPListener = new HttpListener())
+                                    {
+                                        HTTPListener.Prefixes.Add(configuration.HTTPServerPrefix);
+                                        // TimeoutManager is not supported on mono (what is mono good for anyway, practically speaking?).
+                                        switch (Environment.OSVersion.Platform)
+                                        {
+                                            case PlatformID.Win32NT:
+                                                // We have to set this through reflection to prevent mono from bombing.
+                                                PropertyInfo pi =
+                                                    HTTPListener.GetType()
+                                                        .GetProperty("TimeoutManager",
+                                                            BindingFlags.Public | BindingFlags.Instance);
+                                                object timeoutManager = pi?.GetValue(HTTPListener, null);
+                                                // Check if we have TimeoutManager.
+                                                if (timeoutManager == null) break;
+                                                // Now, set the properties through reflection.
+                                                pi = timeoutManager.GetType().GetProperty("DrainEntityBody");
+                                                pi?.SetValue(timeoutManager,
+                                                    TimeSpan.FromMilliseconds(configuration.HTTPServerDrainTimeout),
+                                                    null);
+                                                pi = timeoutManager.GetType().GetProperty("EntityBody");
+                                                pi?.SetValue(timeoutManager,
+                                                    TimeSpan.FromMilliseconds(configuration.HTTPServerBodyTimeout),
+                                                    null);
+                                                pi = timeoutManager.GetType().GetProperty("HeaderWait");
+                                                pi?.SetValue(timeoutManager,
+                                                    TimeSpan.FromMilliseconds(configuration.HTTPServerHeaderTimeout),
+                                                    null);
+                                                pi = timeoutManager.GetType().GetProperty("IdleConnection");
+                                                pi?.SetValue(timeoutManager,
+                                                    TimeSpan.FromMilliseconds(configuration.HTTPServerIdleTimeout),
+                                                    null);
+                                                pi = timeoutManager.GetType().GetProperty("RequestQueue");
+                                                pi?.SetValue(timeoutManager,
+                                                    TimeSpan.FromMilliseconds(configuration.HTTPServerQueueTimeout),
+                                                    null);
+                                                break;
+                                        }
+                                        HTTPListener.Start();
+                                        while (runHTTPServer && HTTPListener.IsListening)
+                                        {
+                                            (HTTPListener.BeginGetContext(ProcessHTTPRequest,
+                                                HTTPListener)).AsyncWaitHandle.WaitOne(
+                                                    (int) configuration.HTTPServerTimeout,
+                                                    false);
+                                        }
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR),
+                                        ex.Message);
+                                }
+                            })
+                            {IsBackground = true};
+                            HTTPListenerThread.Start();
+                            break;
+                        default:
+                            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.STOPPING_HTTP_SERVER));
+                            runHTTPServer = false;
+                            try
+                            {
+                                if (HTTPListenerThread != null)
+                                {
+                                    HTTPListener.Stop();
+                                    if (
+                                        (HTTPListenerThread.ThreadState.Equals(ThreadState.Running) ||
+                                         HTTPListenerThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
+                                    {
+                                        if (!HTTPListenerThread.Join(1000))
+                                        {
+                                            HTTPListenerThread.Abort();
+                                            HTTPListenerThread.Join();
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception)
+                            {
+                                /* We are going down and we do not care. */
+                            }
+                            finally
+                            {
+                                HTTPListenerThread = null;
+                            }
+                            break;
+                    }
+                    break;
+                default:
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR),
+                        Reflection.wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_NOT_SUPPORTED));
+                    break;
+            }
+
+            // Apply settings to the instance.
+            Client.Self.Movement.Camera.Far = corradeConfiguration.Range;
+            Client.Settings.LOGIN_TIMEOUT = (int) corradeConfiguration.ServicesTimeout;
+            Client.Settings.LOGOUT_TIMEOUT = (int) corradeConfiguration.ServicesTimeout;
+            Client.Settings.SIMULATOR_TIMEOUT = (int) corradeConfiguration.ServicesTimeout;
+            Client.Settings.CAPS_TIMEOUT = (int) corradeConfiguration.ServicesTimeout;
+            Client.Settings.MAP_REQUEST_TIMEOUT = (int) corradeConfiguration.ServicesTimeout;
+            Client.Settings.TRANSFER_TIMEOUT = (int) corradeConfiguration.ServicesTimeout;
+            Client.Settings.TELEPORT_TIMEOUT = (int) corradeConfiguration.ServicesTimeout;
+            Settings.MAX_HTTP_CONNECTIONS = (int) corradeConfiguration.ConnectionLimit;
+
+            // Network Settings
+            ServicePointManager.DefaultConnectionLimit = (int) corradeConfiguration.ConnectionLimit;
+            ServicePointManager.UseNagleAlgorithm = corradeConfiguration.UseNaggle;
+            ServicePointManager.Expect100Continue = corradeConfiguration.UseExpect100Continue;
+            ServicePointManager.MaxServicePointIdleTime = (int) corradeConfiguration.ConnectionIdleTime;
+
+            // Throttles.
+            Client.Throttle.Total = corradeConfiguration.ThrottleTotal;
+            Client.Throttle.Land = corradeConfiguration.ThrottleLand;
+            Client.Throttle.Task = corradeConfiguration.ThrottleTask;
+            Client.Throttle.Texture = corradeConfiguration.ThrottleTexture;
+            Client.Throttle.Wind = corradeConfiguration.ThrottleWind;
+            Client.Throttle.Resend = corradeConfiguration.ThrottleResend;
+            Client.Throttle.Asset = corradeConfiguration.ThrottleAsset;
+            Client.Throttle.Cloud = corradeConfiguration.ThrottleCloud;
+
+            // Client Identification Tag.
+            Client.Settings.CLIENT_IDENTIFICATION_TAG = corradeConfiguration.ClientIdentificationTag;
         }
 
         /// <summary>
@@ -8251,62 +8854,62 @@ namespace Corrade
         /// </summary>
         private enum Action : uint
         {
-            [Description("none")] NONE = 0,
-            [Description("get")] GET,
-            [Description("set")] SET,
-            [Description("add")] ADD,
-            [Description("remove")] REMOVE,
-            [Description("start")] START,
-            [Description("stop")] STOP,
-            [Description("mute")] MUTE,
-            [Description("unmute")] UNMUTE,
-            [Description("restart")] RESTART,
-            [Description("cancel")] CANCEL,
-            [Description("accept")] ACCEPT,
-            [Description("decline")] DECLINE,
-            [Description("online")] ONLINE,
-            [Description("offline")] OFFLINE,
-            [Description("request")] REQUEST,
-            [Description("response")] RESPONSE,
-            [Description("delete")] DELETE,
-            [Description("take")] TAKE,
-            [Description("read")] READ,
-            [Description("wrtie")] WRITE,
-            [Description("purge")] PURGE,
-            [Description("crossed")] CROSSED,
-            [Description("changed")] CHANGED,
-            [Description("reply")] REPLY,
-            [Description("offer")] OFFER,
-            [Description("generic")] GENERIC,
-            [Description("point")] POINT,
-            [Description("look")] LOOK,
-            [Description("update")] UPDATE,
-            [Description("received")] RECEIVED,
-            [Description("joined")] JOINED,
-            [Description("parted")] PARTED,
-            [Description("save")] SAVE,
-            [Description("load")] LOAD,
-            [Description("enable")] ENABLE,
-            [Description("disable")] DISABLE,
-            [Description("process")] PROCESS,
-            [Description("rebuild")] REBUILD,
-            [Description("clear")] CLEAR,
-            [Description("ls")] LS,
-            [Description("cwd")] CWD,
-            [Description("cd")] CD,
-            [Description("mkdir")] MKDIR,
-            [Description("chmod")] CHMOD,
-            [Description("rm")] RM,
-            [Description("ln")] LN,
-            [Description("mv")] MV,
-            [Description("cp")] CP,
-            [Description("appear")] APPEAR,
-            [Description("vanish")] VANISH,
-            [Description("list")] LIST,
-            [Description("link")] LINK,
-            [Description("delink")] DELINK,
-            [Description("ban")] BAN,
-            [Description("unban")] UNBAN
+            [Reflection.NameAttribute("none")] NONE = 0,
+            [Reflection.NameAttribute("get")] GET,
+            [Reflection.NameAttribute("set")] SET,
+            [Reflection.NameAttribute("add")] ADD,
+            [Reflection.NameAttribute("remove")] REMOVE,
+            [Reflection.NameAttribute("start")] START,
+            [Reflection.NameAttribute("stop")] STOP,
+            [Reflection.NameAttribute("mute")] MUTE,
+            [Reflection.NameAttribute("unmute")] UNMUTE,
+            [Reflection.NameAttribute("restart")] RESTART,
+            [Reflection.NameAttribute("cancel")] CANCEL,
+            [Reflection.NameAttribute("accept")] ACCEPT,
+            [Reflection.NameAttribute("decline")] DECLINE,
+            [Reflection.NameAttribute("online")] ONLINE,
+            [Reflection.NameAttribute("offline")] OFFLINE,
+            [Reflection.NameAttribute("request")] REQUEST,
+            [Reflection.NameAttribute("response")] RESPONSE,
+            [Reflection.NameAttribute("delete")] DELETE,
+            [Reflection.NameAttribute("take")] TAKE,
+            [Reflection.NameAttribute("read")] READ,
+            [Reflection.NameAttribute("wrtie")] WRITE,
+            [Reflection.NameAttribute("purge")] PURGE,
+            [Reflection.NameAttribute("crossed")] CROSSED,
+            [Reflection.NameAttribute("changed")] CHANGED,
+            [Reflection.NameAttribute("reply")] REPLY,
+            [Reflection.NameAttribute("offer")] OFFER,
+            [Reflection.NameAttribute("generic")] GENERIC,
+            [Reflection.NameAttribute("point")] POINT,
+            [Reflection.NameAttribute("look")] LOOK,
+            [Reflection.NameAttribute("update")] UPDATE,
+            [Reflection.NameAttribute("received")] RECEIVED,
+            [Reflection.NameAttribute("joined")] JOINED,
+            [Reflection.NameAttribute("parted")] PARTED,
+            [Reflection.NameAttribute("save")] SAVE,
+            [Reflection.NameAttribute("load")] LOAD,
+            [Reflection.NameAttribute("enable")] ENABLE,
+            [Reflection.NameAttribute("disable")] DISABLE,
+            [Reflection.NameAttribute("process")] PROCESS,
+            [Reflection.NameAttribute("rebuild")] REBUILD,
+            [Reflection.NameAttribute("clear")] CLEAR,
+            [Reflection.NameAttribute("ls")] LS,
+            [Reflection.NameAttribute("cwd")] CWD,
+            [Reflection.NameAttribute("cd")] CD,
+            [Reflection.NameAttribute("mkdir")] MKDIR,
+            [Reflection.NameAttribute("chmod")] CHMOD,
+            [Reflection.NameAttribute("rm")] RM,
+            [Reflection.NameAttribute("ln")] LN,
+            [Reflection.NameAttribute("mv")] MV,
+            [Reflection.NameAttribute("cp")] CP,
+            [Reflection.NameAttribute("appear")] APPEAR,
+            [Reflection.NameAttribute("vanish")] VANISH,
+            [Reflection.NameAttribute("list")] LIST,
+            [Reflection.NameAttribute("link")] LINK,
+            [Reflection.NameAttribute("delink")] DELINK,
+            [Reflection.NameAttribute("ban")] BAN,
+            [Reflection.NameAttribute("unban")] UNBAN
         }
 
         /// <summary>
@@ -8314,9 +8917,11 @@ namespace Corrade
         /// </summary>
         private struct Agent
         {
-            [Description("firstname")] public string FirstName;
-            [Description("lastname")] public string LastName;
-            [Description("uuid")] public UUID UUID;
+            [Reflection.NameAttribute("firstname")] public string FirstName;
+
+            [Reflection.NameAttribute("lastname")] public string LastName;
+
+            [Reflection.NameAttribute("uuid")] public UUID UUID;
         }
 
         /// <summary>
@@ -8324,14 +8929,21 @@ namespace Corrade
         /// </summary>
         private struct BeamEffect
         {
-            [Description("alpha")] public float Alpha;
-            [Description("color")] public Vector3 Color;
-            [Description("duration")] public float Duration;
-            [Description("effect")] public UUID Effect;
-            [Description("offset")] public Vector3d Offset;
-            [Description("source")] public UUID Source;
-            [Description("target")] public UUID Target;
-            [Description("termination")] public DateTime Termination;
+            [Reflection.NameAttribute("alpha")] public float Alpha;
+
+            [Reflection.NameAttribute("color")] public Vector3 Color;
+
+            [Reflection.NameAttribute("duration")] public float Duration;
+
+            [Reflection.NameAttribute("effect")] public UUID Effect;
+
+            [Reflection.NameAttribute("offset")] public Vector3d Offset;
+
+            [Reflection.NameAttribute("source")] public UUID Source;
+
+            [Reflection.NameAttribute("target")] public UUID Target;
+
+            [Reflection.NameAttribute("termination")] public DateTime Termination;
         }
 
         /// <summary>
@@ -8445,8 +9057,8 @@ namespace Corrade
 
             public struct PRIMTIVE_BODIES
             {
-                [Description("cube")] public static readonly Primitive.ConstructionData CUBE = new Primitive.
-                    ConstructionData
+                [Reflection.NameAttribute("cube")] public static readonly Primitive.ConstructionData CUBE = new Primitive
+                    .ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8472,8 +9084,8 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("prism")] public static readonly Primitive.ConstructionData PRISM = new Primitive.
-                    ConstructionData
+                [Reflection.NameAttribute("prism")] public static readonly Primitive.ConstructionData PRISM = new Primitive
+                    .ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8499,8 +9111,8 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("pyramid")] public static readonly Primitive.ConstructionData PYRAMID = new Primitive.
-                    ConstructionData
+                [Reflection.NameAttribute("pyramid")] public static readonly Primitive.ConstructionData PYRAMID = new Primitive
+                    .ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8526,35 +9138,35 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("tetrahedron")] public static readonly Primitive.ConstructionData TETRAHEDRON = new Primitive
-                    .ConstructionData
-                {
-                    AttachmentPoint = AttachmentPoint.Default,
-                    Material = Material.Wood,
-                    PathBegin = 0f,
-                    PathCurve = PathCurve.Line,
-                    PathEnd = 1.0f,
-                    PathRadiusOffset = 0.0f,
-                    PathRevolutions = 1.0f,
-                    PathScaleX = 0.0f,
-                    PathScaleY = 0.0f,
-                    PathShearX = 0.0f,
-                    PathShearY = 0.0f,
-                    PathSkew = 0.0f,
-                    PathTaperX = 0.0f,
-                    PathTaperY = 0.0f,
-                    PathTwistBegin = 0.0f,
-                    PCode = PCode.Prim,
-                    ProfileBegin = 0.0f,
-                    ProfileCurve = ProfileCurve.EqualTriangle,
-                    ProfileEnd = 1.0f,
-                    ProfileHole = HoleType.Same,
-                    ProfileHollow = 0.0f,
-                    State = 0
-                };
+                [Reflection.NameAttribute("tetrahedron")] public static readonly Primitive.ConstructionData TETRAHEDRON
+                    = new Primitive.ConstructionData
+                    {
+                        AttachmentPoint = AttachmentPoint.Default,
+                        Material = Material.Wood,
+                        PathBegin = 0f,
+                        PathCurve = PathCurve.Line,
+                        PathEnd = 1.0f,
+                        PathRadiusOffset = 0.0f,
+                        PathRevolutions = 1.0f,
+                        PathScaleX = 0.0f,
+                        PathScaleY = 0.0f,
+                        PathShearX = 0.0f,
+                        PathShearY = 0.0f,
+                        PathSkew = 0.0f,
+                        PathTaperX = 0.0f,
+                        PathTaperY = 0.0f,
+                        PathTwistBegin = 0.0f,
+                        PCode = PCode.Prim,
+                        ProfileBegin = 0.0f,
+                        ProfileCurve = ProfileCurve.EqualTriangle,
+                        ProfileEnd = 1.0f,
+                        ProfileHole = HoleType.Same,
+                        ProfileHollow = 0.0f,
+                        State = 0
+                    };
 
-                [Description("cylinder")] public static readonly Primitive.ConstructionData CYLINDER = new Primitive.
-                    ConstructionData
+                [Reflection.NameAttribute("cylinder")] public static readonly Primitive.ConstructionData CYLINDER = new Primitive
+                    .ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8580,35 +9192,35 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("hemicylinder")] public static readonly Primitive.ConstructionData HEMICYLINDER = new Primitive
-                    .ConstructionData
-                {
-                    AttachmentPoint = AttachmentPoint.Default,
-                    Material = Material.Wood,
-                    PathBegin = 0.0f,
-                    PathCurve = PathCurve.Line,
-                    PathEnd = 1.0f,
-                    PathRadiusOffset = 0.0f,
-                    PathRevolutions = 1.0f,
-                    PathScaleX = 1.0f,
-                    PathScaleY = 1.0f,
-                    PathShearX = 0.0f,
-                    PathShearY = 0.0f,
-                    PathSkew = 0.0f,
-                    PathTaperX = 0.0f,
-                    PathTaperY = 0.0f,
-                    PathTwistBegin = 0.0f,
-                    PCode = PCode.Prim,
-                    ProfileBegin = 0.25f,
-                    ProfileCurve = ProfileCurve.Circle,
-                    ProfileEnd = 0.75f,
-                    ProfileHole = HoleType.Same,
-                    ProfileHollow = 0.0f,
-                    State = 0
-                };
+                [Reflection.NameAttribute("hemicylinder")] public static readonly Primitive.ConstructionData
+                    HEMICYLINDER = new Primitive.ConstructionData
+                    {
+                        AttachmentPoint = AttachmentPoint.Default,
+                        Material = Material.Wood,
+                        PathBegin = 0.0f,
+                        PathCurve = PathCurve.Line,
+                        PathEnd = 1.0f,
+                        PathRadiusOffset = 0.0f,
+                        PathRevolutions = 1.0f,
+                        PathScaleX = 1.0f,
+                        PathScaleY = 1.0f,
+                        PathShearX = 0.0f,
+                        PathShearY = 0.0f,
+                        PathSkew = 0.0f,
+                        PathTaperX = 0.0f,
+                        PathTaperY = 0.0f,
+                        PathTwistBegin = 0.0f,
+                        PCode = PCode.Prim,
+                        ProfileBegin = 0.25f,
+                        ProfileCurve = ProfileCurve.Circle,
+                        ProfileEnd = 0.75f,
+                        ProfileHole = HoleType.Same,
+                        ProfileHollow = 0.0f,
+                        State = 0
+                    };
 
-                [Description("cone")] public static readonly Primitive.ConstructionData CONE = new Primitive.
-                    ConstructionData
+                [Reflection.NameAttribute("cone")] public static readonly Primitive.ConstructionData CONE = new Primitive
+                    .ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8634,8 +9246,8 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("hemicone")] public static readonly Primitive.ConstructionData HEMICONE = new Primitive.
-                    ConstructionData
+                [Reflection.NameAttribute("hemicone")] public static readonly Primitive.ConstructionData HEMICONE = new Primitive
+                    .ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8661,8 +9273,8 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("sphere")] public static readonly Primitive.ConstructionData SPHERE = new Primitive.
-                    ConstructionData
+                [Reflection.NameAttribute("sphere")] public static readonly Primitive.ConstructionData SPHERE = new Primitive
+                    .ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8688,7 +9300,7 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("hemisphere")] public static readonly Primitive.ConstructionData HEMISPHERE = new Primitive
+                [Reflection.NameAttribute("hemisphere")] public static readonly Primitive.ConstructionData HEMISPHERE = new Primitive
                     .ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
@@ -8715,8 +9327,8 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("torus")] public static readonly Primitive.ConstructionData TORUS = new Primitive.
-                    ConstructionData
+                [Reflection.NameAttribute("torus")] public static readonly Primitive.ConstructionData TORUS = new Primitive
+                    .ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8742,8 +9354,8 @@ namespace Corrade
                     State = 0
                 };
 
-                [Description("ring")] public static readonly Primitive.ConstructionData RING = new Primitive.
-                    ConstructionData
+                [Reflection.NameAttribute("ring")] public static readonly Primitive.ConstructionData RING = new Primitive
+                    .ConstructionData
                 {
                     AttachmentPoint = AttachmentPoint.Default,
                     Material = Material.Wood,
@@ -8924,7 +9536,8 @@ namespace Corrade
                 }
                 catch (Exception e)
                 {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_CACHE), e.Message);
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_CACHE),
+                        e.Message);
                 }
             }
 
@@ -8947,7 +9560,8 @@ namespace Corrade
                 }
                 catch (Exception ex)
                 {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CACHE), ex.Message);
+                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CACHE),
+                        ex.Message);
                 }
                 return o;
             }
@@ -8975,2533 +9589,89 @@ namespace Corrade
             public string URL;
         }
 
-        [Serializable]
-        public class CorradeConfiguration
-        {
-            private uint _activateDelay = 5000;
-            private byte[] _AESIV;
-            private byte[] _AESKey;
-            private bool _autoActivateGroup;
-            private string _bindIPAddress = string.Empty;
-            private uint _callbackQueueLength = 100;
-            private uint _callbackThrottle = 1000;
-            private uint _callbackTimeout = 5000;
-            private UUID _clientIdentificationTag = new UUID("0705230f-cbd0-99bd-040b-28eb348b5255");
-            private bool _clientLogEnabled = true;
-            private string _clientLogFile = "logs/Corrade.log";
-            private uint _connectionIdleTime = 900000;
-            private uint _connectionLimit = 100;
-            private wasAdaptiveAlarm.DECAY_TYPE _dataDecayType = wasAdaptiveAlarm.DECAY_TYPE.ARITHMETIC;
-            private uint _dataTimeout = 2500;
-            private string _driveIdentifierHash = string.Empty;
-            private bool _enableAIML;
-            private bool _enableHTTPServer;
-            private bool _enableRLV;
-            private bool _enableTCPNotificationsServer;
-
-            private ENIGMA _enigma = new ENIGMA
-            {
-                rotors = new[] {'3', 'g', '1'},
-                plugs = new[] {'z', 'p', 'q'},
-                reflector = 'b'
-            };
-
-            private int _exitCodeAbnormal = -2;
-            private int _exitCodeExpected = -1;
-            private string _firstName = string.Empty;
-            private uint _groupCreateFee = 100;
-            private HashSet<Group> _groups = new HashSet<Group>();
-            private uint _HTTPServerBodyTimeout = 5000;
-            private HTTPCompressionMethod _HTTPServerCompression = HTTPCompressionMethod.NONE;
-            private uint _HTTPServerDrainTimeout = 10000;
-            private uint _HTTPServerHeaderTimeout = 2500;
-            private uint _HTTPServerIdleTimeout = 2500;
-            private bool _HTTPServerKeepAlive = true;
-            private string _HTTPServerPrefix = @"http://+:8080/";
-            private uint _HTTPServerQueueTimeout = 10000;
-            private uint _HTTPServerTimeout = 5000;
-            private List<Filter> _inputFilters = new List<Filter>();
-            private string _instantMessageLogDirectory = @"logs/im";
-            private bool _instantMessageLogEnabled;
-            private string _lastName = string.Empty;
-            private string _localMessageLogDirectory = @"logs/local";
-            private bool _localMessageLogEnabled;
-            private string _loginURL = @"https://login.agni.lindenlab.com/cgi-bin/login.cgi";
-            private uint _logoutGrace = 2500;
-            private HashSet<Master> _masters = new HashSet<Master>();
-            private uint _maximumCommandThreads = 10;
-            private uint _maximumInstantMessageThreads = 10;
-            private uint _maximumLogThreads = 40;
-            private uint _maximumNotificationThreads = 10;
-            private uint _maximumPOSTThreads = 25;
-            private uint _maximumRLVThreads = 10;
-            private uint _membershipSweepInterval = 60000;
-            private string _networkCardMAC = string.Empty;
-            private uint _notificationQueueLength = 100;
-            private uint _notificationThrottle = 1000;
-            private uint _notificationTimeout = 5000;
-            private List<Filter> _outputFilters = new List<Filter>();
-            private string _password = string.Empty;
-            private float _range = 64;
-            private uint _rebakeDelay = 1000;
-            private string _regionMessageLogDirectory = @"logs/region";
-            private bool _regionMessageLogEnabled;
-            private uint _schedulerExpiration = 60000;
-            private uint _schedulesResolution = 1000;
-            private uint _servicesTimeout = 60000;
-            private string _startLocation = "last";
-            private uint _TCPnotificationQueueLength = 100;
-            private string _TCPNotificationsServerAddress = @"0.0.0.0";
-            private uint _TCPNotificationsServerPort = 8095;
-            private uint _TCPnotificationThrottle = 1000;
-            private uint _throttleAsset = 100000;
-            private uint _throttleCloud = 10000;
-            private uint _throttleLand = 80000;
-            private uint _throttleResend = 100000;
-            private uint _throttleTask = 200000;
-            private uint _throttleTexture = 100000;
-            private uint _throttleTotal = 600000;
-            private uint _throttleWind = 10000;
-            private bool _TOSAccepted;
-            private bool _useExpect100Continue;
-            private bool _useNaggle;
-            private string _vigenereSecret = string.Empty;
-
-            public string FirstName
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _firstName;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _firstName = value;
-                    }
-                }
-            }
-
-            public string LastName
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _lastName;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _lastName = value;
-                    }
-                }
-            }
-
-            public string Password
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _password;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _password = value;
-                    }
-                }
-            }
-
-            public string LoginURL
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _loginURL;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _loginURL = value;
-                    }
-                }
-            }
-
-            public string InstantMessageLogDirectory
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _instantMessageLogDirectory;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _instantMessageLogDirectory = value;
-                    }
-                }
-            }
-
-            public bool InstantMessageLogEnabled
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _instantMessageLogEnabled;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _instantMessageLogEnabled = value;
-                    }
-                }
-            }
-
-            public string LocalMessageLogDirectory
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _localMessageLogDirectory;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _localMessageLogDirectory = value;
-                    }
-                }
-            }
-
-            public bool LocalMessageLogEnabled
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _localMessageLogEnabled;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _localMessageLogEnabled = value;
-                    }
-                }
-            }
-
-            public string RegionMessageLogDirectory
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _regionMessageLogDirectory;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _regionMessageLogDirectory = value;
-                    }
-                }
-            }
-
-            public bool RegionMessageLogEnabled
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _regionMessageLogEnabled;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _regionMessageLogEnabled = value;
-                    }
-                }
-            }
-
-            public bool EnableHTTPServer
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _enableHTTPServer;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _enableHTTPServer = value;
-                    }
-                }
-            }
-
-            public bool EnableTCPNotificationsServer
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _enableTCPNotificationsServer;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _enableTCPNotificationsServer = value;
-                    }
-                }
-            }
-
-            public bool EnableAIML
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _enableAIML;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _enableAIML = value;
-                    }
-                }
-            }
-
-            public bool EnableRLV
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _enableRLV;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _enableRLV = value;
-                    }
-                }
-            }
-
-            public string HTTPServerPrefix
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _HTTPServerPrefix;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _HTTPServerPrefix = value;
-                    }
-                }
-            }
-
-            public uint TCPNotificationsServerPort
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _TCPNotificationsServerPort;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _TCPNotificationsServerPort = value;
-                    }
-                }
-            }
-
-            public string TCPNotificationsServerAddress
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _TCPNotificationsServerAddress;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _TCPNotificationsServerAddress = value;
-                    }
-                }
-            }
-
-            public uint HTTPServerTimeout
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _HTTPServerTimeout;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _HTTPServerTimeout = value;
-                    }
-                }
-            }
-
-            public uint HTTPServerDrainTimeout
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _HTTPServerDrainTimeout;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _HTTPServerDrainTimeout = value;
-                    }
-                }
-            }
-
-            public uint HTTPServerBodyTimeout
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _HTTPServerBodyTimeout;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _HTTPServerBodyTimeout = value;
-                    }
-                }
-            }
-
-            public uint HTTPServerHeaderTimeout
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _HTTPServerHeaderTimeout;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _HTTPServerHeaderTimeout = value;
-                    }
-                }
-            }
-
-            public uint HTTPServerIdleTimeout
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _HTTPServerIdleTimeout;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _HTTPServerIdleTimeout = value;
-                    }
-                }
-            }
-
-            public uint HTTPServerQueueTimeout
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _HTTPServerQueueTimeout;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _HTTPServerQueueTimeout = value;
-                    }
-                }
-            }
-
-            public HTTPCompressionMethod HTTPServerCompression
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _HTTPServerCompression;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _HTTPServerCompression = value;
-                    }
-                }
-            }
-
-            public uint ThrottleTotal
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _throttleTotal;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _throttleTotal = value;
-                    }
-                }
-            }
-
-            public uint ThrottleLand
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _throttleLand;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _throttleLand = value;
-                    }
-                }
-            }
-
-            public uint ThrottleTask
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _throttleTask;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _throttleTask = value;
-                    }
-                }
-            }
-
-            public uint ThrottleTexture
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _throttleTexture;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _throttleTexture = value;
-                    }
-                }
-            }
-
-            public uint ThrottleWind
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _throttleWind;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _throttleWind = value;
-                    }
-                }
-            }
-
-            public uint ThrottleResend
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _throttleResend;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _throttleResend = value;
-                    }
-                }
-            }
-
-            public uint ThrottleAsset
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _throttleAsset;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _throttleAsset = value;
-                    }
-                }
-            }
-
-            public uint ThrottleCloud
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _throttleCloud;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _throttleCloud = value;
-                    }
-                }
-            }
-
-            public bool HTTPServerKeepAlive
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _HTTPServerKeepAlive;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _HTTPServerKeepAlive = value;
-                    }
-                }
-            }
-
-            public uint CallbackTimeout
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _callbackTimeout;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _callbackTimeout = value;
-                    }
-                }
-            }
-
-            public uint CallbackThrottle
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _callbackThrottle;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _callbackThrottle = value;
-                    }
-                }
-            }
-
-            public uint CallbackQueueLength
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _callbackQueueLength;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _callbackQueueLength = value;
-                    }
-                }
-            }
-
-            public uint NotificationTimeout
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _notificationTimeout;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _notificationTimeout = value;
-                    }
-                }
-            }
-
-            public uint NotificationThrottle
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _notificationThrottle;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _notificationThrottle = value;
-                    }
-                }
-            }
-
-            public uint TCPNotificationThrottle
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _TCPnotificationThrottle;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _TCPnotificationThrottle = value;
-                    }
-                }
-            }
-
-            public uint NotificationQueueLength
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _notificationQueueLength;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _notificationQueueLength = value;
-                    }
-                }
-            }
-
-            public uint TCPNotificationQueueLength
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _TCPnotificationQueueLength;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _TCPnotificationQueueLength = value;
-                    }
-                }
-            }
-
-            public uint ConnectionLimit
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _connectionLimit;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _connectionLimit = value;
-                    }
-                }
-            }
-
-            public uint ConnectionIdleTime
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _connectionIdleTime;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _connectionIdleTime = value;
-                    }
-                }
-            }
-
-            public float Range
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _range;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _range = value;
-                    }
-                }
-            }
-
-            public uint SchedulerExpiration
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _schedulerExpiration;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _schedulerExpiration = value;
-                    }
-                }
-            }
-
-            public uint MaximumNotificationThreads
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _maximumNotificationThreads;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _maximumNotificationThreads = value;
-                    }
-                }
-            }
-
-            public uint MaximumCommandThreads
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _maximumCommandThreads;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _maximumCommandThreads = value;
-                    }
-                }
-            }
-
-            public uint MaximumRLVThreads
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _maximumRLVThreads;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _maximumRLVThreads = value;
-                    }
-                }
-            }
-
-            public uint MaximumInstantMessageThreads
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _maximumInstantMessageThreads;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _maximumInstantMessageThreads = value;
-                    }
-                }
-            }
-
-            public uint MaximumLogThreads
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _maximumLogThreads;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _maximumLogThreads = value;
-                    }
-                }
-            }
-
-            public uint MaximumPOSTThreads
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _maximumPOSTThreads;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _maximumPOSTThreads = value;
-                    }
-                }
-            }
-
-            public bool UseNaggle
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _useNaggle;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _useNaggle = value;
-                    }
-                }
-            }
-
-            public bool UseExpect100Continue
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _useExpect100Continue;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _useExpect100Continue = value;
-                    }
-                }
-            }
-
-            public uint ServicesTimeout
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _servicesTimeout;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _servicesTimeout = value;
-                    }
-                }
-            }
-
-            public uint DataTimeout
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _dataTimeout;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _dataTimeout = value;
-                    }
-                }
-            }
-
-            public wasAdaptiveAlarm.DECAY_TYPE DataDecayType
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _dataDecayType;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _dataDecayType = value;
-                    }
-                }
-            }
-
-            public uint RebakeDelay
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _rebakeDelay;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _rebakeDelay = value;
-                    }
-                }
-            }
-
-            public uint MembershipSweepInterval
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _membershipSweepInterval;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _membershipSweepInterval = value;
-                    }
-                }
-            }
-
-            public bool TOSAccepted
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _TOSAccepted;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _TOSAccepted = value;
-                    }
-                }
-            }
-
-            public UUID ClientIdentificationTag
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _clientIdentificationTag;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _clientIdentificationTag = value;
-                    }
-                }
-            }
-
-            public string StartLocation
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _startLocation;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _startLocation = value;
-                    }
-                }
-            }
-
-            public string BindIPAddress
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _bindIPAddress;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _bindIPAddress = value;
-                    }
-                }
-            }
-
-            public string NetworkCardMAC
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _networkCardMAC;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _networkCardMAC = value;
-                    }
-                }
-            }
-
-            public string DriveIdentifierHash
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _driveIdentifierHash;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _driveIdentifierHash = value;
-                    }
-                }
-            }
-
-            public string ClientLogFile
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _clientLogFile;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _clientLogFile = value;
-                    }
-                }
-            }
-
-            public bool ClientLogEnabled
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _clientLogEnabled;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _clientLogEnabled = value;
-                    }
-                }
-            }
-
-            public bool AutoActivateGroup
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _autoActivateGroup;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _autoActivateGroup = value;
-                    }
-                }
-            }
-
-            public uint ActivateDelay
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _activateDelay;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _activateDelay = value;
-                    }
-                }
-            }
-
-            public uint GroupCreateFee
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _groupCreateFee;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _groupCreateFee = value;
-                    }
-                }
-            }
-
-            public int ExitCodeExpected
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _exitCodeExpected;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _exitCodeExpected = value;
-                    }
-                }
-            }
-
-            public int ExitCodeAbnormal
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _exitCodeAbnormal;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _exitCodeAbnormal = value;
-                    }
-                }
-            }
-
-            public HashSet<Group> Groups
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _groups;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _groups = value;
-                    }
-                }
-            }
-
-            public HashSet<Master> Masters
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _masters;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _masters = value;
-                    }
-                }
-            }
-
-            public List<Filter> InputFilters
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _inputFilters;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _inputFilters = value;
-                    }
-                }
-            }
-
-            public List<Filter> OutputFilters
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _outputFilters;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _outputFilters = value;
-                    }
-                }
-            }
-
-            public byte[] AESKey
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _AESKey;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _AESKey = value;
-                    }
-                }
-            }
-
-            public byte[] AESIV
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _AESIV;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _AESIV = value;
-                    }
-                }
-            }
-
-            public string VIGENERESecret
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _vigenereSecret;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _vigenereSecret = value;
-                    }
-                }
-            }
-
-            public ENIGMA ENIGMA
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _enigma;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _enigma = value;
-                    }
-                }
-            }
-
-            public uint LogoutGrace
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _logoutGrace;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _logoutGrace = value;
-                    }
-                }
-            }
-
-            public uint SchedulesResolution
-            {
-                get
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        return _schedulesResolution;
-                    }
-                }
-                set
-                {
-                    lock (ClientInstanceConfigurationLock)
-                    {
-                        _schedulesResolution = value;
-                    }
-                }
-            }
-
-            public string Read(string file)
-            {
-                return File.ReadAllText(file, Encoding.UTF8);
-            }
-
-            public void Write(string file, string data)
-            {
-                File.WriteAllText(file, data, Encoding.UTF8);
-            }
-
-            public void Write(string file, XmlDocument document)
-            {
-                using (TextWriter writer = new StreamWriter(file, false, Encoding.UTF8))
-                {
-                    document.Save(writer);
-                    writer.Flush();
-                }
-            }
-
-            public void Save(string file, ref CorradeConfiguration configuration)
-            {
-                try
-                {
-                    using (StreamWriter writer = new StreamWriter(file, false, Encoding.UTF8))
-                    {
-                        XmlSerializer serializer = new XmlSerializer(typeof (CorradeConfiguration));
-                        serializer.Serialize(writer, configuration);
-                        writer.Flush();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_CONFIGURATION),
-                        ex.Message);
-                }
-            }
-
-            public void Load(string file, ref CorradeConfiguration configuration)
-            {
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READING_CORRADE_CONFIGURATION));
-                try
-                {
-                    using (StreamReader stream = new StreamReader(file, Encoding.UTF8))
-                    {
-                        XmlSerializer serializer =
-                            new XmlSerializer(typeof (CorradeConfiguration));
-                        CorradeConfiguration loadedConfiguration = (CorradeConfiguration) serializer.Deserialize(stream);
-                        configuration = loadedConfiguration;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CONFIGURATION),
-                        ex.Message);
-                    return;
-                }
-                UpdateDynamicConfiguration(configuration);
-                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
-            }
-
-            public void UpdateDynamicConfiguration(CorradeConfiguration configuration)
-            {
-                // Enable the group scheduling thread if permissions were granted to groups.
-                switch (configuration.Groups.AsParallel()
-                    .Any(o => !(o.PermissionMask & (uint) Permissions.Schedule).Equals(0) && !o.Schedules.Equals(0)))
-                {
-                    case true:
-                        // Don't start if the expiration thread is already started.
-                        if (GroupSchedulesThread != null) return;
-                        // Start sphere and beam effect expiration thread
-                        runGroupSchedulesThread = true;
-                        GroupSchedulesThread = new Thread(() =>
-                        {
-                            do
-                            {
-                                // Check schedules with a one second resolution.
-                                Thread.Sleep((int) corradeConfiguration.SchedulesResolution);
-                                HashSet<GroupSchedule> groupSchedules;
-                                lock (GroupSchedulesLock)
-                                {
-                                    groupSchedules =
-                                        new HashSet<GroupSchedule>(GroupSchedules.AsParallel()
-                                            .Where(
-                                                o =>
-                                                    DateTime.Compare(DateTime.Now.ToUniversalTime(),
-                                                        o.At) >= 0));
-                                }
-                                if (groupSchedules.Any())
-                                {
-                                    Parallel.ForEach(groupSchedules,
-                                        o =>
-                                        {
-                                            // Spawn the command.
-                                            CorradeThreadPool[CorradeThreadType.COMMAND].Spawn(
-                                                () => HandleCorradeCommand(o.Message, o.Sender, o.Identifier, o.Group),
-                                                corradeConfiguration.MaximumCommandThreads, o.Group.UUID,
-                                                corradeConfiguration.SchedulerExpiration);
-                                            lock (GroupSchedulesLock)
-                                            {
-                                                GroupSchedules.Remove(o);
-                                            }
-                                        });
-                                    SaveGroupSchedulesState.Invoke();
-                                }
-                            } while (runGroupSchedulesThread);
-                        })
-                        {IsBackground = true};
-                        GroupSchedulesThread.Start();
-                        break;
-                    default:
-                        runGroupSchedulesThread = false;
-                        try
-                        {
-                            if (GroupSchedulesThread != null)
-                            {
-                                if (
-                                    (GroupSchedulesThread.ThreadState.Equals(ThreadState.Running) ||
-                                     GroupSchedulesThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
-                                {
-                                    if (!GroupSchedulesThread.Join(1000))
-                                    {
-                                        GroupSchedulesThread.Abort();
-                                        GroupSchedulesThread.Join();
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception)
-                        {
-                            /* We are going down and we do not care. */
-                        }
-                        finally
-                        {
-                            GroupSchedulesThread = null;
-                        }
-                        break;
-                }
-                // Enable AIML in case it was enabled in the configuration file.
-                try
-                {
-                    switch (configuration.EnableAIML)
-                    {
-                        case true:
-                            switch (!AIMLBotBrainCompiled)
-                            {
-                                case true:
-                                    new Thread(
-                                        () =>
-                                        {
-                                            lock (AIMLBotLock)
-                                            {
-                                                LoadChatBotFiles.Invoke();
-                                                AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
-                                            }
-                                        })
-                                    {IsBackground = true}.Start();
-                                    break;
-                                default:
-                                    AIMLBotConfigurationWatcher.EnableRaisingEvents = true;
-                                    AIMLBot.isAcceptingUserInput = true;
-                                    break;
-                            }
-                            break;
-                        default:
-                            AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
-                            AIMLBot.isAcceptingUserInput = false;
-                            break;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER),
-                        ex.Message);
-                }
-
-                // Dynamically disable or enable notifications.
-                Parallel.ForEach(wasGetEnumDescriptions<Notifications>().AsParallel().Select(
-                    wasGetEnumValueFromDescription<Notifications>), o =>
-                    {
-                        bool enabled = configuration.Groups.AsParallel().Any(
-                            p =>
-                                !(p.NotificationMask & (uint) o).Equals(0));
-                        switch (o)
-                        {
-                            case Notifications.GroupMembership:
-                                switch (enabled)
-                                {
-                                    case true:
-                                        // Start the group membership thread.
-                                        StartGroupMembershipSweepThread.Invoke();
-                                        break;
-                                    default:
-                                        // Stop the group sweep thread.
-                                        StopGroupMembershipSweepThread.Invoke();
-                                        break;
-                                }
-                                break;
-                            case Notifications.Friendship:
-                                switch (enabled)
-                                {
-                                    case true:
-                                        Client.Friends.FriendshipOffered += HandleFriendshipOffered;
-                                        Client.Friends.FriendshipResponse += HandleFriendShipResponse;
-                                        Client.Friends.FriendOnline += HandleFriendOnlineStatus;
-                                        Client.Friends.FriendOffline += HandleFriendOnlineStatus;
-                                        Client.Friends.FriendRightsUpdate += HandleFriendRightsUpdate;
-                                        break;
-                                    default:
-                                        Client.Friends.FriendshipOffered -= HandleFriendshipOffered;
-                                        Client.Friends.FriendshipResponse -= HandleFriendShipResponse;
-                                        Client.Friends.FriendOnline -= HandleFriendOnlineStatus;
-                                        Client.Friends.FriendOffline -= HandleFriendOnlineStatus;
-                                        Client.Friends.FriendRightsUpdate -= HandleFriendRightsUpdate;
-                                        break;
-                                }
-                                break;
-                            case Notifications.ScriptPermission:
-                                switch (enabled)
-                                {
-                                    case true:
-                                        Client.Self.ScriptQuestion += HandleScriptQuestion;
-                                        break;
-                                    default:
-                                        Client.Self.ScriptQuestion -= HandleScriptQuestion;
-                                        break;
-                                }
-                                break;
-                            case Notifications.AlertMessage:
-                                switch (enabled)
-                                {
-                                    case true:
-                                        Client.Self.AlertMessage += HandleAlertMessage;
-                                        break;
-                                    default:
-                                        Client.Self.AlertMessage -= HandleAlertMessage;
-                                        break;
-                                }
-                                break;
-                            case Notifications.Balance:
-                                switch (enabled)
-                                {
-                                    case true:
-                                        Client.Self.MoneyBalance += HandleMoneyBalance;
-                                        break;
-                                    default:
-                                        Client.Self.MoneyBalance -= HandleMoneyBalance;
-                                        break;
-                                }
-                                break;
-                            case Notifications.Economy:
-                                switch (enabled)
-                                {
-                                    case true:
-                                        Client.Self.MoneyBalanceReply += HandleMoneyBalance;
-                                        break;
-                                    default:
-                                        Client.Self.MoneyBalanceReply -= HandleMoneyBalance;
-                                        break;
-                                }
-                                break;
-                            case Notifications.ScriptDialog:
-                                switch (enabled)
-                                {
-                                    case true:
-                                        Client.Self.ScriptDialog += HandleScriptDialog;
-                                        break;
-                                    default:
-                                        Client.Self.ScriptDialog -= HandleScriptDialog;
-                                        break;
-                                }
-                                break;
-                            case Notifications.TerseUpdates:
-                                switch (enabled)
-                                {
-                                    case true:
-                                        Client.Objects.TerseObjectUpdate += HandleTerseObjectUpdate;
-                                        break;
-                                    default:
-                                        Client.Objects.TerseObjectUpdate -= HandleTerseObjectUpdate;
-                                        break;
-                                }
-                                break;
-                            case Notifications.ViewerEffect:
-                                switch (enabled)
-                                {
-                                    case true:
-                                        Client.Avatars.ViewerEffect += HandleViewerEffect;
-                                        Client.Avatars.ViewerEffectPointAt += HandleViewerEffect;
-                                        Client.Avatars.ViewerEffectLookAt += HandleViewerEffect;
-                                        break;
-                                    default:
-                                        Client.Avatars.ViewerEffect -= HandleViewerEffect;
-                                        Client.Avatars.ViewerEffectPointAt -= HandleViewerEffect;
-                                        Client.Avatars.ViewerEffectLookAt -= HandleViewerEffect;
-                                        break;
-                                }
-                                break;
-                            case Notifications.MeanCollision:
-                                switch (enabled)
-                                {
-                                    case true:
-                                        Client.Self.MeanCollision += HandleMeanCollision;
-                                        break;
-                                    default:
-                                        Client.Self.MeanCollision -= HandleMeanCollision;
-                                        break;
-                                }
-                                break;
-                            case Notifications.RegionCrossed:
-                                switch (enabled)
-                                {
-                                    case true:
-                                        Client.Self.RegionCrossed += HandleRegionCrossed;
-                                        Client.Network.SimChanged += HandleSimChanged;
-                                        break;
-                                    default:
-                                        Client.Self.RegionCrossed -= HandleRegionCrossed;
-                                        Client.Network.SimChanged -= HandleSimChanged;
-                                        break;
-                                }
-                                break;
-                            case Notifications.LoadURL:
-                                switch (enabled)
-                                {
-                                    case true:
-                                        Client.Self.LoadURL += HandleLoadURL;
-                                        break;
-                                    default:
-                                        Client.Self.LoadURL -= HandleLoadURL;
-                                        break;
-                                }
-                                break;
-                            case Notifications.ScriptControl:
-                                switch (enabled)
-                                {
-                                    case true:
-                                        Client.Self.ScriptControlChange += HandleScriptControlChange;
-                                        break;
-                                    default:
-                                        Client.Self.ScriptControlChange -= HandleScriptControlChange;
-                                        break;
-                                }
-                                break;
-                        }
-                    });
-
-                // Depending on whether groups have bound to the viewer effects notification,
-                // start or stop the viwer effect expiration thread.
-                switch (
-                    configuration.Groups.AsParallel()
-                        .Any(o => !(o.NotificationMask & (uint) Notifications.ViewerEffect).Equals(0)))
-                {
-                    case true:
-                        // Don't start if the expiration thread is already started.
-                        if (EffectsExpirationThread != null) return;
-                        // Start sphere and beam effect expiration thread
-                        runEffectsExpirationThread = true;
-                        EffectsExpirationThread = new Thread(() =>
-                        {
-                            do
-                            {
-                                Thread.Sleep(1000);
-                                lock (SphereEffectsLock)
-                                {
-                                    SphereEffects.RemoveWhere(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
-                                }
-                                lock (BeamEffectsLock)
-                                {
-                                    BeamEffects.RemoveWhere(o => DateTime.Compare(DateTime.Now, o.Termination) > 0);
-                                }
-                            } while (runEffectsExpirationThread);
-                        })
-                        {IsBackground = true};
-                        EffectsExpirationThread.Start();
-                        break;
-                    default:
-                        runEffectsExpirationThread = false;
-                        try
-                        {
-                            if (EffectsExpirationThread != null)
-                            {
-                                if (
-                                    (EffectsExpirationThread.ThreadState.Equals(ThreadState.Running) ||
-                                     EffectsExpirationThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
-                                {
-                                    if (!EffectsExpirationThread.Join(1000))
-                                    {
-                                        EffectsExpirationThread.Abort();
-                                        EffectsExpirationThread.Join();
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception)
-                        {
-                            /* We are going down and we do not care. */
-                        }
-                        finally
-                        {
-                            EffectsExpirationThread = null;
-                        }
-                        break;
-                }
-
-                // Depending on whether any group has bound either the avatar radar notification,
-                // or the primitive radar notification, install or uinstall the listeners.
-                switch (
-                    configuration.Groups.AsParallel().Any(
-                        o =>
-                            !(o.NotificationMask & (uint) Notifications.RadarAvatars).Equals(0) ||
-                            !(o.NotificationMask & (uint) Notifications.RadarPrimitives).Equals(0)))
-                {
-                    case true:
-                        Client.Network.SimChanged += HandleRadarObjects;
-                        Client.Objects.AvatarUpdate += HandleAvatarUpdate;
-                        Client.Objects.ObjectUpdate += HandleObjectUpdate;
-                        Client.Objects.KillObject += HandleKillObject;
-                        break;
-                    default:
-                        Client.Network.SimChanged -= HandleRadarObjects;
-                        Client.Objects.AvatarUpdate -= HandleAvatarUpdate;
-                        Client.Objects.ObjectUpdate -= HandleObjectUpdate;
-                        Client.Objects.KillObject -= HandleKillObject;
-                        break;
-                }
-
-                // Enable the TCP notifications server in case it was enabled in the configuration.
-                switch (configuration.EnableTCPNotificationsServer)
-                {
-                    case true:
-                        // Don't start if the TCP notifications server is already started.
-                        if (TCPNotificationsThread != null) return;
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.STARTING_TCP_NOTIFICATIONS_SERVER));
-                        runTCPNotificationsServer = true;
-                        // Start the TCP notifications server.
-                        TCPNotificationsThread = new Thread(() =>
-                        {
-                            TCPListener =
-                                new TcpListener(
-                                    new IPEndPoint(IPAddress.Parse(configuration.TCPNotificationsServerAddress),
-                                        (int) configuration.TCPNotificationsServerPort));
-                            TCPListener.Start();
-
-                            do
-                            {
-                                TcpClient TCPClient = TCPListener.AcceptTcpClient();
-
-                                new Thread(() =>
-                                {
-                                    IPEndPoint remoteEndPoint = null;
-                                    Group commandGroup = new Group();
-                                    try
-                                    {
-                                        remoteEndPoint = TCPClient.Client.RemoteEndPoint as IPEndPoint;
-                                        using (NetworkStream networkStream = TCPClient.GetStream())
-                                        {
-                                            using (
-                                                StreamReader streamReader = new StreamReader(networkStream,
-                                                    Encoding.UTF8))
-                                            {
-                                                string receiveLine = streamReader.ReadLine();
-
-                                                using (
-                                                    StreamWriter streamWriter = new StreamWriter(networkStream,
-                                                        Encoding.UTF8))
-                                                {
-                                                    commandGroup = GetCorradeGroupFromMessage(receiveLine);
-                                                    switch (!commandGroup.Equals(default(Group)) &&
-                                                            Authenticate(commandGroup.Name,
-                                                                wasInput(
-                                                                    wasKeyValueGet(
-                                                                        wasOutput(
-                                                                            wasGetDescriptionFromEnumValue(
-                                                                                ScriptKeys.PASSWORD)),
-                                                                        receiveLine))))
-                                                    {
-                                                        case false:
-                                                            streamWriter.WriteLine(
-                                                                wasKeyValueEncode(new Dictionary<string, string>
-                                                                {
-                                                                    {
-                                                                        wasGetDescriptionFromEnumValue(
-                                                                            ScriptKeys.SUCCESS),
-                                                                        false.ToString()
-                                                                    }
-                                                                }));
-                                                            streamWriter.Flush();
-                                                            TCPClient.Close();
-                                                            return;
-                                                    }
-
-                                                    string notificationTypes =
-                                                        wasInput(
-                                                            wasKeyValueGet(
-                                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.TYPE)),
-                                                                receiveLine));
-                                                    Notification notification;
-                                                    lock (GroupNotificationsLock)
-                                                    {
-                                                        notification =
-                                                            GroupNotifications.AsParallel().FirstOrDefault(
-                                                                o =>
-                                                                    o.GroupName.Equals(commandGroup.Name,
-                                                                        StringComparison.OrdinalIgnoreCase));
-                                                    }
-                                                    // Build any requested data for raw notifications.
-                                                    string fields =
-                                                        wasInput(
-                                                            wasKeyValueGet(
-                                                                wasOutput(wasGetDescriptionFromEnumValue(ScriptKeys.DATA)),
-                                                                receiveLine));
-                                                    HashSet<string> data = new HashSet<string>();
-                                                    object LockObject = new object();
-                                                    if (!string.IsNullOrEmpty(fields))
-                                                    {
-                                                        Parallel.ForEach(
-                                                            wasCSVToEnumerable(fields)
-                                                                .AsParallel()
-                                                                .Where(o => !string.IsNullOrEmpty(o)),
-                                                            o =>
-                                                            {
-                                                                lock (LockObject)
-                                                                {
-                                                                    data.Add(o);
-                                                                }
-                                                            });
-                                                    }
-                                                    switch (!notification.Equals(default(Notification)))
-                                                    {
-                                                        case false:
-                                                            notification = new Notification
-                                                            {
-                                                                GroupName = commandGroup.Name,
-                                                                GroupUUID = commandGroup.UUID,
-                                                                NotificationURLDestination =
-                                                                    new SerializableDictionary
-                                                                        <Notifications, HashSet<string>>(),
-                                                                NotificationTCPDestination =
-                                                                    new Dictionary<Notifications, HashSet<IPEndPoint>>(),
-                                                                Data = data
-                                                            };
-                                                            break;
-                                                        case true:
-                                                            if (notification.NotificationTCPDestination == null)
-                                                            {
-                                                                notification.NotificationTCPDestination =
-                                                                    new Dictionary<Notifications, HashSet<IPEndPoint>>();
-                                                            }
-                                                            if (notification.NotificationURLDestination == null)
-                                                            {
-                                                                notification.NotificationURLDestination =
-                                                                    new SerializableDictionary
-                                                                        <Notifications, HashSet<string>>();
-                                                            }
-                                                            break;
-                                                    }
-
-                                                    bool succeeded = true;
-                                                    Parallel.ForEach(wasCSVToEnumerable(
-                                                        notificationTypes)
-                                                        .AsParallel()
-                                                        .Where(o => !string.IsNullOrEmpty(o)),
-                                                        (o, state) =>
-                                                        {
-                                                            uint notificationValue =
-                                                                (uint) wasGetEnumValueFromDescription<Notifications>(o);
-                                                            if (
-                                                                !GroupHasNotification(commandGroup.Name,
-                                                                    notificationValue))
-                                                            {
-                                                                // one of the notification was not allowed, so abort
-                                                                succeeded = false;
-                                                                state.Break();
-                                                            }
-                                                            switch (
-                                                                !notification.NotificationTCPDestination.ContainsKey(
-                                                                    (Notifications) notificationValue))
-                                                            {
-                                                                case true:
-                                                                    lock (LockObject)
-                                                                    {
-                                                                        notification.NotificationTCPDestination.Add(
-                                                                            (Notifications) notificationValue,
-                                                                            new HashSet<IPEndPoint> {remoteEndPoint});
-                                                                    }
-                                                                    break;
-                                                                default:
-                                                                    lock (LockObject)
-                                                                    {
-                                                                        notification.NotificationTCPDestination[
-                                                                            (Notifications) notificationValue].Add(
-                                                                                remoteEndPoint);
-                                                                    }
-                                                                    break;
-                                                            }
-                                                        });
-
-                                                    switch (succeeded)
-                                                    {
-                                                        case true:
-                                                            lock (GroupNotificationsLock)
-                                                            {
-                                                                // Replace notification.
-                                                                GroupNotifications.RemoveWhere(
-                                                                    o =>
-                                                                        o.GroupName.Equals(commandGroup.Name,
-                                                                            StringComparison.OrdinalIgnoreCase));
-                                                                GroupNotifications.Add(notification);
-                                                            }
-                                                            // Save the notifications state.
-                                                            SaveNotificationState.Invoke();
-                                                            streamWriter.WriteLine(
-                                                                wasKeyValueEncode(new Dictionary<string, string>
-                                                                {
-                                                                    {
-                                                                        wasGetDescriptionFromEnumValue(
-                                                                            ScriptKeys.SUCCESS),
-                                                                        true.ToString()
-                                                                    }
-                                                                }));
-                                                            streamWriter.Flush();
-                                                            break;
-                                                        default:
-                                                            streamWriter.WriteLine(
-                                                                wasKeyValueEncode(new Dictionary<string, string>
-                                                                {
-                                                                    {
-                                                                        wasGetDescriptionFromEnumValue(
-                                                                            ScriptKeys.SUCCESS),
-                                                                        false.ToString()
-                                                                    }
-                                                                }));
-                                                            streamWriter.Flush();
-                                                            TCPClient.Close();
-                                                            return;
-                                                    }
-                                                    do
-                                                    {
-                                                        NotificationTCPQueueElement notificationTCPQueueElement =
-                                                            new NotificationTCPQueueElement();
-                                                        if (
-                                                            NotificationTCPQueue.Dequeue(
-                                                                (int) configuration.TCPNotificationThrottle,
-                                                                ref notificationTCPQueueElement))
-                                                        {
-                                                            if (
-                                                                !notificationTCPQueueElement.Equals(
-                                                                    default(NotificationTCPQueueElement)) &&
-                                                                notificationTCPQueueElement.IPEndPoint.Equals(
-                                                                    remoteEndPoint))
-                                                            {
-                                                                streamWriter.WriteLine(
-                                                                    wasKeyValueEncode(
-                                                                        notificationTCPQueueElement.message));
-                                                                streamWriter.Flush();
-                                                            }
-                                                        }
-                                                    } while (runTCPNotificationsServer && TCPClient.Connected);
-                                                }
-                                            }
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Feedback(
-                                            wasGetDescriptionFromEnumValue(ConsoleError.TCP_NOTIFICATIONS_SERVER_ERROR),
-                                            ex.Message);
-                                    }
-                                    finally
-                                    {
-                                        if (remoteEndPoint != null && !commandGroup.Equals(default(Group)))
-                                        {
-                                            lock (GroupNotificationsLock)
-                                            {
-                                                Notification notification =
-                                                    GroupNotifications.FirstOrDefault(
-                                                        o =>
-                                                            o.GroupName.Equals(commandGroup.Name,
-                                                                StringComparison.OrdinalIgnoreCase));
-                                                if (!notification.Equals(default(Notification)))
-                                                {
-                                                    Dictionary<Notifications, HashSet<IPEndPoint>>
-                                                        notificationTCPDestination =
-                                                            new Dictionary<Notifications, HashSet<IPEndPoint>>();
-                                                    Parallel.ForEach(notification.NotificationTCPDestination, o =>
-                                                    {
-                                                        switch (o.Value.Contains(remoteEndPoint))
-                                                        {
-                                                            case true:
-                                                                HashSet<IPEndPoint> destinations =
-                                                                    new HashSet<IPEndPoint>(
-                                                                        o.Value.Where(p => !p.Equals(remoteEndPoint)));
-                                                                notificationTCPDestination.Add(o.Key, destinations);
-                                                                break;
-                                                            default:
-                                                                notificationTCPDestination.Add(o.Key, o.Value);
-                                                                break;
-                                                        }
-                                                    });
-
-                                                    GroupNotifications.Remove(notification);
-                                                    GroupNotifications.Add(new Notification
-                                                    {
-                                                        GroupName = notification.GroupName,
-                                                        GroupUUID = notification.GroupUUID,
-                                                        NotificationURLDestination =
-                                                            notification.NotificationURLDestination,
-                                                        NotificationTCPDestination = notificationTCPDestination,
-                                                        Afterburn = notification.Afterburn,
-                                                        Data = notification.Data
-                                                    });
-                                                }
-                                            }
-                                        }
-                                    }
-                                })
-                                {IsBackground = true}.Start();
-                            } while (runTCPNotificationsServer);
-                        })
-                        {IsBackground = true};
-                        TCPNotificationsThread.Start();
-                        break;
-                    default:
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.STOPPING_TCP_NOTIFICATIONS_SERVER));
-                        runTCPNotificationsServer = false;
-                        try
-                        {
-                            if (TCPNotificationsThread != null)
-                            {
-                                TCPListener.Stop();
-                                if (
-                                    (TCPNotificationsThread.ThreadState.Equals(ThreadState.Running) ||
-                                     TCPNotificationsThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
-                                {
-                                    if (!TCPNotificationsThread.Join(1000))
-                                    {
-                                        TCPNotificationsThread.Abort();
-                                        TCPNotificationsThread.Join();
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception)
-                        {
-                            /* We are going down and we do not care. */
-                        }
-                        finally
-                        {
-                            TCPNotificationsThread = null;
-                        }
-                        break;
-                }
-
-                // Enable the HTTP server in case it is supported and it was enabled in the configuration.
-                switch (HttpListener.IsSupported)
-                {
-                    case true:
-                        switch (configuration.EnableHTTPServer)
-                        {
-                            case true:
-                                // Don't start if the HTTP server is already started.
-                                if (HTTPListenerThread != null) return;
-                                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.STARTING_HTTP_SERVER));
-                                runHTTPServer = true;
-                                HTTPListenerThread = new Thread(() =>
-                                {
-                                    try
-                                    {
-                                        using (HTTPListener = new HttpListener())
-                                        {
-                                            HTTPListener.Prefixes.Add(configuration.HTTPServerPrefix);
-                                            // TimeoutManager is not supported on mono (what is mono good for anyway, practically speaking?).
-                                            switch (Environment.OSVersion.Platform)
-                                            {
-                                                case PlatformID.Win32NT:
-                                                    // We have to set this through reflection to prevent mono from bombing.
-                                                    PropertyInfo pi =
-                                                        HTTPListener.GetType()
-                                                            .GetProperty("TimeoutManager",
-                                                                BindingFlags.Public | BindingFlags.Instance);
-                                                    object timeoutManager = pi?.GetValue(HTTPListener, null);
-                                                    // Check if we have TimeoutManager.
-                                                    if (timeoutManager == null) break;
-                                                    // Now, set the properties through reflection.
-                                                    pi = timeoutManager.GetType().GetProperty("DrainEntityBody");
-                                                    pi?.SetValue(timeoutManager,
-                                                        TimeSpan.FromMilliseconds(configuration.HTTPServerDrainTimeout),
-                                                        null);
-                                                    pi = timeoutManager.GetType().GetProperty("EntityBody");
-                                                    pi?.SetValue(timeoutManager,
-                                                        TimeSpan.FromMilliseconds(configuration.HTTPServerBodyTimeout),
-                                                        null);
-                                                    pi = timeoutManager.GetType().GetProperty("HeaderWait");
-                                                    pi?.SetValue(timeoutManager,
-                                                        TimeSpan.FromMilliseconds(configuration.HTTPServerHeaderTimeout),
-                                                        null);
-                                                    pi = timeoutManager.GetType().GetProperty("IdleConnection");
-                                                    pi?.SetValue(timeoutManager,
-                                                        TimeSpan.FromMilliseconds(configuration.HTTPServerIdleTimeout),
-                                                        null);
-                                                    pi = timeoutManager.GetType().GetProperty("RequestQueue");
-                                                    pi?.SetValue(timeoutManager,
-                                                        TimeSpan.FromMilliseconds(configuration.HTTPServerQueueTimeout),
-                                                        null);
-                                                    break;
-                                            }
-                                            HTTPListener.Start();
-                                            while (runHTTPServer && HTTPListener.IsListening)
-                                            {
-                                                (HTTPListener.BeginGetContext(ProcessHTTPRequest,
-                                                    HTTPListener)).AsyncWaitHandle.WaitOne(
-                                                        (int) configuration.HTTPServerTimeout,
-                                                        false);
-                                            }
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR),
-                                            ex.Message);
-                                    }
-                                })
-                                {IsBackground = true};
-                                HTTPListenerThread.Start();
-                                break;
-                            default:
-                                Feedback(wasGetDescriptionFromEnumValue(ConsoleError.STOPPING_HTTP_SERVER));
-                                runHTTPServer = false;
-                                try
-                                {
-                                    if (HTTPListenerThread != null)
-                                    {
-                                        HTTPListener.Stop();
-                                        if (
-                                            (HTTPListenerThread.ThreadState.Equals(ThreadState.Running) ||
-                                             HTTPListenerThread.ThreadState.Equals(ThreadState.WaitSleepJoin)))
-                                        {
-                                            if (!HTTPListenerThread.Join(1000))
-                                            {
-                                                HTTPListenerThread.Abort();
-                                                HTTPListenerThread.Join();
-                                            }
-                                        }
-                                    }
-                                }
-                                catch (Exception)
-                                {
-                                    /* We are going down and we do not care. */
-                                }
-                                finally
-                                {
-                                    HTTPListenerThread = null;
-                                }
-                                break;
-                        }
-                        break;
-                    default:
-                        Feedback(wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR),
-                            wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_NOT_SUPPORTED));
-                        break;
-                }
-
-                // Apply settings to the instance.
-                Client.Self.Movement.Camera.Far = configuration.Range;
-                Client.Settings.LOGIN_TIMEOUT = (int) configuration.ServicesTimeout;
-                Client.Settings.LOGOUT_TIMEOUT = (int) configuration.ServicesTimeout;
-                Client.Settings.SIMULATOR_TIMEOUT = (int) configuration.ServicesTimeout;
-                Client.Settings.CAPS_TIMEOUT = (int) configuration.ServicesTimeout;
-                Client.Settings.MAP_REQUEST_TIMEOUT = (int) configuration.ServicesTimeout;
-                Client.Settings.TRANSFER_TIMEOUT = (int) configuration.ServicesTimeout;
-                Client.Settings.TELEPORT_TIMEOUT = (int) configuration.ServicesTimeout;
-                Settings.MAX_HTTP_CONNECTIONS = (int) configuration.ConnectionLimit;
-
-                // Network Settings
-                ServicePointManager.DefaultConnectionLimit = (int) corradeConfiguration.ConnectionLimit;
-                ServicePointManager.UseNagleAlgorithm = corradeConfiguration.UseNaggle;
-                ServicePointManager.Expect100Continue = corradeConfiguration.UseExpect100Continue;
-                ServicePointManager.MaxServicePointIdleTime = (int) corradeConfiguration.ConnectionIdleTime;
-
-                // Throttles.
-                Client.Throttle.Total = corradeConfiguration.ThrottleTotal;
-                Client.Throttle.Land = corradeConfiguration.ThrottleLand;
-                Client.Throttle.Task = corradeConfiguration.ThrottleTask;
-                Client.Throttle.Texture = corradeConfiguration.ThrottleTexture;
-                Client.Throttle.Wind = corradeConfiguration.ThrottleWind;
-                Client.Throttle.Resend = corradeConfiguration.ThrottleResend;
-                Client.Throttle.Asset = corradeConfiguration.ThrottleAsset;
-                Client.Throttle.Cloud = corradeConfiguration.ThrottleCloud;
-
-                // Client Identification Tag.
-                Client.Settings.CLIENT_IDENTIFICATION_TAG = corradeConfiguration.ClientIdentificationTag;
-            }
-        }
-
         /// <summary>
         ///     Structure containing error messages printed on console for the owner.
         /// </summary>
         private enum ConsoleError
         {
-            [Description("none")] NONE = 0,
-            [Description("access denied")] ACCESS_DENIED,
+            [Reflection.DescriptionAttribute("none")] NONE = 0,
+            [Reflection.DescriptionAttribute("access denied")] ACCESS_DENIED,
 
-            [Description(
+            [Reflection.DescriptionAttribute(
                 "the Terms of Service (TOS) for the grid you are connecting to have not been accepted, please check your configuration file"
                 )] TOS_NOT_ACCEPTED,
-            [Description("teleport failed")] TELEPORT_FAILED,
-            [Description("teleport succeeded")] TELEPORT_SUCCEEDED,
-            [Description("accepted friendship")] ACCEPTED_FRIENDSHIP,
-            [Description("login failed")] LOGIN_FAILED,
-            [Description("login succeeded")] LOGIN_SUCCEEDED,
-            [Description("failed to set appearance")] APPEARANCE_SET_FAILED,
-            [Description("appearance set")] APPEARANCE_SET_SUCCEEDED,
-            [Description("all simulators disconnected")] ALL_SIMULATORS_DISCONNECTED,
-            [Description("simulator connected")] SIMULATOR_CONNECTED,
-            [Description("event queue started")] EVENT_QUEUE_STARTED,
-            [Description("disconnected")] DISCONNECTED,
-            [Description("logging out")] LOGGING_OUT,
-            [Description("logging in")] LOGGING_IN,
-            [Description("agent not found")] AGENT_NOT_FOUND,
-            [Description("reading Corrade configuration")] READING_CORRADE_CONFIGURATION,
-            [Description("read Corrade configuration")] READ_CORRADE_CONFIGURATION,
-            [Description("configuration file modified")] CONFIGURATION_FILE_MODIFIED,
-            [Description("HTTP server error")] HTTP_SERVER_ERROR,
-            [Description("HTTP server not supported")] HTTP_SERVER_NOT_SUPPORTED,
-            [Description("starting HTTP server")] STARTING_HTTP_SERVER,
-            [Description("stopping HTTP server")] STOPPING_HTTP_SERVER,
-            [Description("HTTP server processing aborted")] HTTP_SERVER_PROCESSING_ABORTED,
-            [Description("timeout logging out")] TIMEOUT_LOGGING_OUT,
-            [Description("callback error")] CALLBACK_ERROR,
-            [Description("notification error")] NOTIFICATION_ERROR,
-            [Description("inventory cache items loaded")] INVENTORY_CACHE_ITEMS_LOADED,
-            [Description("inventory cache items saved")] INVENTORY_CACHE_ITEMS_SAVED,
-            [Description("unable to load Corrade cache")] UNABLE_TO_LOAD_CORRADE_CACHE,
-            [Description("unable to save Corrade cache")] UNABLE_TO_SAVE_CORRADE_CACHE,
-            [Description("failed to manifest RLV behaviour")] FAILED_TO_MANIFEST_RLV_BEHAVIOUR,
-            [Description("behaviour not implemented")] BEHAVIOUR_NOT_IMPLEMENTED,
-            [Description("workers exceeded")] WORKERS_EXCEEDED,
-            [Description("AIML bot configuration modified")] AIML_CONFIGURATION_MODIFIED,
-            [Description("read AIML bot configuration")] READ_AIML_BOT_CONFIGURATION,
-            [Description("reading AIML bot configuration")] READING_AIML_BOT_CONFIGURATION,
-            [Description("wrote AIML bot configuration")] WROTE_AIML_BOT_CONFIGURATION,
-            [Description("writing AIML bot configuration")] WRITING_AIML_BOT_CONFIGURATION,
-            [Description("error loading AIML bot files")] ERROR_LOADING_AIML_BOT_FILES,
-            [Description("error saving AIML bot files")] ERROR_SAVING_AIML_BOT_FILES,
-            [Description("could not write to client log file")] COULD_NOT_WRITE_TO_CLIENT_LOG_FILE,
-            [Description("could not write to group chat log file")] COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE,
-            [Description("could not write to instant message log file")] COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE,
-            [Description("could not write to local message log file")] COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE,
-            [Description("could not write to region message log file")] COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE,
-            [Description("unknown IP address")] UNKNOWN_IP_ADDRESS,
-            [Description("unable to save Corrade notifications state")] UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE,
-            [Description("unable to load Corrade notifications state")] UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE,
-            [Description("unknwon notification type")] UNKNOWN_NOTIFICATION_TYPE,
-            [Description("teleport throttled")] TELEPORT_THROTTLED,
-            [Description("uncaught exception for thread")] UNCAUGHT_EXCEPTION_FOR_THREAD,
-            [Description("error setting up configuration watcher")] ERROR_SETTING_UP_CONFIGURATION_WATCHER,
-            [Description("error setting up AIML configuration watcher")] ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER,
-            [Description("callback throttled")] CALLBACK_THROTTLED,
-            [Description("notification throttled")] NOTIFICATION_THROTTLED,
-            [Description("error updating inventory")] ERROR_UPDATING_INVENTORY,
-            [Description("unable to load group members state")] UNABLE_TO_LOAD_GROUP_MEMBERS_STATE,
-            [Description("unable to save group members state")] UNABLE_TO_SAVE_GROUP_MEMBERS_STATE,
-            [Description("error making POST request")] ERROR_MAKING_POST_REQUEST,
-            [Description("notifications file modified")] NOTIFICATIONS_FILE_MODIFIED,
-            [Description("unable to load Corrade configuration")] UNABLE_TO_LOAD_CORRADE_CONFIGURATION,
-            [Description("unable to save Corrade configuration")] UNABLE_TO_SAVE_CORRADE_CONFIGURATION,
-            [Description("unable to load Corrade group schedules state")] UNABLE_TO_LOAD_CORRADE_GROUP_SCHEDULES_STATE,
-            [Description("unable to save Corrade group schedules state")] UNABLE_TO_SAVE_CORRADE_GROUP_SCHEDULES_STATE,
-            [Description("group schedules file modified")] GROUP_SCHEDULES_FILE_MODIFIED,
-            [Description("error setting up notifications watcher")] ERROR_SETTING_UP_NOTIFICATIONS_WATCHER,
-            [Description("error setting up schedules watcher")] ERROR_SETTING_UP_SCHEDULES_WATCHER,
-            [Description("unable to load Corrade movement state")] UNABLE_TO_LOAD_CORRADE_MOVEMENT_STATE,
-            [Description("unable to save Corrade movement state")] UNABLE_TO_SAVE_CORRADE_MOVEMENT_STATE,
-            [Description("TCP notifications server error")] TCP_NOTIFICATIONS_SERVER_ERROR,
-            [Description("stopping TCP notifications server")] STOPPING_TCP_NOTIFICATIONS_SERVER,
-            [Description("starting TCP notifications server")] STARTING_TCP_NOTIFICATIONS_SERVER,
-            [Description("TCP notification throttled")] TCP_NOTIFICATION_THROTTLED
+            [Reflection.DescriptionAttribute("teleport failed")] TELEPORT_FAILED,
+            [Reflection.DescriptionAttribute("teleport succeeded")] TELEPORT_SUCCEEDED,
+            [Reflection.DescriptionAttribute("accepted friendship")] ACCEPTED_FRIENDSHIP,
+            [Reflection.DescriptionAttribute("login failed")] LOGIN_FAILED,
+            [Reflection.DescriptionAttribute("login succeeded")] LOGIN_SUCCEEDED,
+            [Reflection.DescriptionAttribute("failed to set appearance")] APPEARANCE_SET_FAILED,
+            [Reflection.DescriptionAttribute("appearance set")] APPEARANCE_SET_SUCCEEDED,
+            [Reflection.DescriptionAttribute("all simulators disconnected")] ALL_SIMULATORS_DISCONNECTED,
+            [Reflection.DescriptionAttribute("simulator connected")] SIMULATOR_CONNECTED,
+            [Reflection.DescriptionAttribute("event queue started")] EVENT_QUEUE_STARTED,
+            [Reflection.DescriptionAttribute("disconnected")] DISCONNECTED,
+            [Reflection.DescriptionAttribute("logging out")] LOGGING_OUT,
+            [Reflection.DescriptionAttribute("logging in")] LOGGING_IN,
+            [Reflection.DescriptionAttribute("agent not found")] AGENT_NOT_FOUND,
+            [Reflection.DescriptionAttribute("reading Corrade configuration")] READING_CORRADE_CONFIGURATION,
+            [Reflection.DescriptionAttribute("read Corrade configuration")] READ_CORRADE_CONFIGURATION,
+            [Reflection.DescriptionAttribute("configuration file modified")] CONFIGURATION_FILE_MODIFIED,
+            [Reflection.DescriptionAttribute("HTTP server error")] HTTP_SERVER_ERROR,
+            [Reflection.DescriptionAttribute("HTTP server not supported")] HTTP_SERVER_NOT_SUPPORTED,
+            [Reflection.DescriptionAttribute("starting HTTP server")] STARTING_HTTP_SERVER,
+            [Reflection.DescriptionAttribute("stopping HTTP server")] STOPPING_HTTP_SERVER,
+            [Reflection.DescriptionAttribute("HTTP server processing aborted")] HTTP_SERVER_PROCESSING_ABORTED,
+            [Reflection.DescriptionAttribute("timeout logging out")] TIMEOUT_LOGGING_OUT,
+            [Reflection.DescriptionAttribute("callback error")] CALLBACK_ERROR,
+            [Reflection.DescriptionAttribute("notification error")] NOTIFICATION_ERROR,
+            [Reflection.DescriptionAttribute("inventory cache items loaded")] INVENTORY_CACHE_ITEMS_LOADED,
+            [Reflection.DescriptionAttribute("inventory cache items saved")] INVENTORY_CACHE_ITEMS_SAVED,
+            [Reflection.DescriptionAttribute("unable to load Corrade cache")] UNABLE_TO_LOAD_CORRADE_CACHE,
+            [Reflection.DescriptionAttribute("unable to save Corrade cache")] UNABLE_TO_SAVE_CORRADE_CACHE,
+            [Reflection.DescriptionAttribute("failed to manifest RLV behaviour")] FAILED_TO_MANIFEST_RLV_BEHAVIOUR,
+            [Reflection.DescriptionAttribute("behaviour not implemented")] BEHAVIOUR_NOT_IMPLEMENTED,
+            [Reflection.DescriptionAttribute("workers exceeded")] WORKERS_EXCEEDED,
+            [Reflection.DescriptionAttribute("AIML bot configuration modified")] AIML_CONFIGURATION_MODIFIED,
+            [Reflection.DescriptionAttribute("read AIML bot configuration")] READ_AIML_BOT_CONFIGURATION,
+            [Reflection.DescriptionAttribute("reading AIML bot configuration")] READING_AIML_BOT_CONFIGURATION,
+            [Reflection.DescriptionAttribute("wrote AIML bot configuration")] WROTE_AIML_BOT_CONFIGURATION,
+            [Reflection.DescriptionAttribute("writing AIML bot configuration")] WRITING_AIML_BOT_CONFIGURATION,
+            [Reflection.DescriptionAttribute("error loading AIML bot files")] ERROR_LOADING_AIML_BOT_FILES,
+            [Reflection.DescriptionAttribute("error saving AIML bot files")] ERROR_SAVING_AIML_BOT_FILES,
+            [Reflection.DescriptionAttribute("could not write to client log file")] COULD_NOT_WRITE_TO_CLIENT_LOG_FILE,
+            [Reflection.DescriptionAttribute("could not write to group chat log file")] COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE,
+            [Reflection.DescriptionAttribute("could not write to instant message log file")] COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE,
+            [Reflection.DescriptionAttribute("could not write to local message log file")] COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE,
+            [Reflection.DescriptionAttribute("could not write to region message log file")] COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE,
+            [Reflection.DescriptionAttribute("unknown IP address")] UNKNOWN_IP_ADDRESS,
+            [Reflection.DescriptionAttribute("unable to save Corrade notifications state")] UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE,
+            [Reflection.DescriptionAttribute("unable to load Corrade notifications state")] UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE,
+            [Reflection.DescriptionAttribute("unknwon notification type")] UNKNOWN_NOTIFICATION_TYPE,
+            [Reflection.DescriptionAttribute("teleport throttled")] TELEPORT_THROTTLED,
+            [Reflection.DescriptionAttribute("uncaught exception for thread")] UNCAUGHT_EXCEPTION_FOR_THREAD,
+            [Reflection.DescriptionAttribute("error setting up configuration watcher")] ERROR_SETTING_UP_CONFIGURATION_WATCHER,
+            [Reflection.DescriptionAttribute("error setting up AIML configuration watcher")] ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER,
+            [Reflection.DescriptionAttribute("callback throttled")] CALLBACK_THROTTLED,
+            [Reflection.DescriptionAttribute("notification throttled")] NOTIFICATION_THROTTLED,
+            [Reflection.DescriptionAttribute("error updating inventory")] ERROR_UPDATING_INVENTORY,
+            [Reflection.DescriptionAttribute("unable to load group members state")] UNABLE_TO_LOAD_GROUP_MEMBERS_STATE,
+            [Reflection.DescriptionAttribute("unable to save group members state")] UNABLE_TO_SAVE_GROUP_MEMBERS_STATE,
+            [Reflection.DescriptionAttribute("error making POST request")] ERROR_MAKING_POST_REQUEST,
+            [Reflection.DescriptionAttribute("notifications file modified")] NOTIFICATIONS_FILE_MODIFIED,
+            [Reflection.DescriptionAttribute("unable to load Corrade configuration")] UNABLE_TO_LOAD_CORRADE_CONFIGURATION,
+            [Reflection.DescriptionAttribute("unable to save Corrade configuration")] UNABLE_TO_SAVE_CORRADE_CONFIGURATION,
+            [Reflection.DescriptionAttribute("unable to load Corrade group schedules state")] UNABLE_TO_LOAD_CORRADE_GROUP_SCHEDULES_STATE,
+            [Reflection.DescriptionAttribute("unable to save Corrade group schedules state")] UNABLE_TO_SAVE_CORRADE_GROUP_SCHEDULES_STATE,
+            [Reflection.DescriptionAttribute("group schedules file modified")] GROUP_SCHEDULES_FILE_MODIFIED,
+            [Reflection.DescriptionAttribute("error setting up notifications watcher")] ERROR_SETTING_UP_NOTIFICATIONS_WATCHER,
+            [Reflection.DescriptionAttribute("error setting up schedules watcher")] ERROR_SETTING_UP_SCHEDULES_WATCHER,
+            [Reflection.DescriptionAttribute("unable to load Corrade movement state")] UNABLE_TO_LOAD_CORRADE_MOVEMENT_STATE,
+            [Reflection.DescriptionAttribute("unable to save Corrade movement state")] UNABLE_TO_SAVE_CORRADE_MOVEMENT_STATE,
+            [Reflection.DescriptionAttribute("TCP notifications server error")] TCP_NOTIFICATIONS_SERVER_ERROR,
+            [Reflection.DescriptionAttribute("stopping TCP notifications server")] STOPPING_TCP_NOTIFICATIONS_SERVER,
+            [Reflection.DescriptionAttribute("starting TCP notifications server")] STARTING_TCP_NOTIFICATIONS_SERVER,
+            [Reflection.DescriptionAttribute("TCP notification throttled")] TCP_NOTIFICATION_THROTTLED
         }
 
         /// <summary>
@@ -11529,7 +9699,7 @@ namespace Corrade
 
             private static readonly object GroupExecutionTimeLock = new object();
             private static readonly Stopwatch ThreadExecutuionStopwatch = new Stopwatch();
-            private static CorradeThreadType corradeThreadType;
+            private readonly CorradeThreadType corradeThreadType;
 
             /// <summary>
             ///     Constructor for a Corrade thread.
@@ -11537,7 +9707,7 @@ namespace Corrade
             /// <param name="corradeThreadType">the type of Corrade thread</param>
             public CorradeThread(CorradeThreadType corradeThreadType)
             {
-                CorradeThread.corradeThreadType = corradeThreadType;
+                this.corradeThreadType = corradeThreadType;
             }
 
             /// <summary>
@@ -11557,6 +9727,7 @@ namespace Corrade
                     }
                 }
                 Thread t = null;
+                CorradeThreadType threadType = corradeThreadType;
                 t = new Thread(() =>
                 {
                     // Wait for previous sequential thread to complete.
@@ -11570,9 +9741,8 @@ namespace Corrade
                     catch (Exception ex)
                     {
                         Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(corradeThreadType), ex.Message);
+                            Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
+                            Reflection.wasGetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message);
                     }
                     // Thread has completed.
                     ThreadCompletedEvent.Set();
@@ -11605,6 +9775,7 @@ namespace Corrade
                     }
                 }
                 Thread t = null;
+                CorradeThreadType threadType = corradeThreadType;
                 t = new Thread(() =>
                 {
                     // protect inner thread
@@ -11615,9 +9786,8 @@ namespace Corrade
                     catch (Exception ex)
                     {
                         Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(corradeThreadType), ex.Message);
+                            Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
+                            Reflection.wasGetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message);
                     }
                     lock (WorkSetLock)
                     {
@@ -11655,6 +9825,7 @@ namespace Corrade
                     }
                 }
                 Thread t = null;
+                CorradeThreadType threadType = corradeThreadType;
                 t = new Thread(() =>
                 {
                     // protect inner thread
@@ -11725,9 +9896,9 @@ namespace Corrade
                     catch (Exception ex)
                     {
                         Feedback(
-                            wasGetDescriptionFromEnumValue(
-                                ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            wasGetDescriptionFromEnumValue(corradeThreadType), ex.Message);
+                            Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
+                            Reflection.wasGetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message,
+                            ex.StackTrace);
                     }
                     lock (WorkSetLock)
                     {
@@ -11754,10 +9925,13 @@ namespace Corrade
         /// </summary>
         private struct DirItem
         {
-            [Description("item")] public UUID Item;
-            [Description("name")] public string Name;
-            [Description("permissions")] public string Permissions;
-            [Description("type")] public DirItemType Type;
+            [Reflection.NameAttribute("item")] public UUID Item;
+
+            [Reflection.NameAttribute("name")] public string Name;
+
+            [Reflection.NameAttribute("permissions")] public string Permissions;
+
+            [Reflection.NameAttribute("type")] public DirItemType Type;
 
             public static DirItem FromInventoryBase(InventoryBase inventoryBase)
             {
@@ -11874,36 +10048,36 @@ namespace Corrade
         /// </summary>
         private enum DirItemType : uint
         {
-            [Description("none")] NONE = 0,
-            [Description("texture")] TEXTURE,
-            [Description("sound")] SOUND,
-            [Description("callingcard")] CALLINGCARD,
-            [Description("landmark")] LANDMARK,
-            [Description("object")] OBJECT,
-            [Description("notecard")] NOTECARD,
-            [Description("category")] CATEGORY,
-            [Description("LSL")] LSL,
-            [Description("snapshot")] SNAPSHOT,
-            [Description("attachment")] ATTACHMENT,
-            [Description("animation")] ANIMATION,
-            [Description("gesture")] GESTURE,
-            [Description("folder")] FOLDER,
-            [Description("shape")] SHAPE,
-            [Description("skin")] SKIN,
-            [Description("hair")] HAIR,
-            [Description("eyes")] EYES,
-            [Description("shirt")] SHIRT,
-            [Description("pants")] PANTS,
-            [Description("shoes")] SHOES,
-            [Description("socks")] SOCKS,
-            [Description("jacket")] JACKET,
-            [Description("gloves")] GLOVES,
-            [Description("undershirt")] UNDERSHIRT,
-            [Description("underpants")] UNDERPANTS,
-            [Description("skirt")] SKIRT,
-            [Description("tattoo")] TATTOO,
-            [Description("alpha")] ALPHA,
-            [Description("physics")] PHYSICS
+            [Reflection.NameAttribute("none")] NONE = 0,
+            [Reflection.NameAttribute("texture")] TEXTURE,
+            [Reflection.NameAttribute("sound")] SOUND,
+            [Reflection.NameAttribute("callingcard")] CALLINGCARD,
+            [Reflection.NameAttribute("landmark")] LANDMARK,
+            [Reflection.NameAttribute("object")] OBJECT,
+            [Reflection.NameAttribute("notecard")] NOTECARD,
+            [Reflection.NameAttribute("category")] CATEGORY,
+            [Reflection.NameAttribute("LSL")] LSL,
+            [Reflection.NameAttribute("snapshot")] SNAPSHOT,
+            [Reflection.NameAttribute("attachment")] ATTACHMENT,
+            [Reflection.NameAttribute("animation")] ANIMATION,
+            [Reflection.NameAttribute("gesture")] GESTURE,
+            [Reflection.NameAttribute("folder")] FOLDER,
+            [Reflection.NameAttribute("shape")] SHAPE,
+            [Reflection.NameAttribute("skin")] SKIN,
+            [Reflection.NameAttribute("hair")] HAIR,
+            [Reflection.NameAttribute("eyes")] EYES,
+            [Reflection.NameAttribute("shirt")] SHIRT,
+            [Reflection.NameAttribute("pants")] PANTS,
+            [Reflection.NameAttribute("shoes")] SHOES,
+            [Reflection.NameAttribute("socks")] SOCKS,
+            [Reflection.NameAttribute("jacket")] JACKET,
+            [Reflection.NameAttribute("gloves")] GLOVES,
+            [Reflection.NameAttribute("undershirt")] UNDERSHIRT,
+            [Reflection.NameAttribute("underpants")] UNDERPANTS,
+            [Reflection.NameAttribute("skirt")] SKIRT,
+            [Reflection.NameAttribute("tattoo")] TATTOO,
+            [Reflection.NameAttribute("alpha")] ALPHA,
+            [Reflection.NameAttribute("physics")] PHYSICS
         }
 
         /// <summary>
@@ -11911,23 +10085,13 @@ namespace Corrade
         /// </summary>
         private enum Direction : uint
         {
-            [Description("none")] NONE = 0,
-            [Description("back")] BACK,
-            [Description("forward")] FORWARD,
-            [Description("left")] LEFT,
-            [Description("right")] RIGHT,
-            [Description("up")] UP,
-            [Description("down")] DOWN
-        }
-
-        /// <summary>
-        ///     ENIGMA machine settings.
-        /// </summary>
-        public struct ENIGMA
-        {
-            public char[] plugs;
-            public char reflector;
-            public char[] rotors;
+            [Reflection.NameAttribute("none")] NONE = 0,
+            [Reflection.NameAttribute("back")] BACK,
+            [Reflection.NameAttribute("forward")] FORWARD,
+            [Reflection.NameAttribute("left")] LEFT,
+            [Reflection.NameAttribute("right")] RIGHT,
+            [Reflection.NameAttribute("up")] UP,
+            [Reflection.NameAttribute("down")] DOWN
         }
 
         /// <summary>
@@ -11935,58 +10099,18 @@ namespace Corrade
         /// </summary>
         private enum Entity : uint
         {
-            [Description("none")] NONE = 0,
-            [Description("avatar")] AVATAR,
-            [Description("local")] LOCAL,
-            [Description("group")] GROUP,
-            [Description("estate")] ESTATE,
-            [Description("region")] REGION,
-            [Description("object")] OBJECT,
-            [Description("parcel")] PARCEL,
-            [Description("range")] RANGE,
-            [Description("syntax")] SYNTAX,
-            [Description("permission")] PERMISSION,
-            [Description("description")] DESCRIPTION
-        }
-
-        /// <summary>
-        ///     Group structure.
-        /// </summary>
-        [Serializable]
-        public struct Group
-        {
-            public string ChatLog;
-            public bool ChatLogEnabled;
-            public string DatabaseFile;
-            public string Name;
-            public HashSet<Notifications> Notifications;
-            public string Password;
-            public HashSet<Permissions> Permissions;
-            public uint Schedules;
-            public UUID UUID;
-            public uint Workers;
-
-            public uint NotificationMask
-            {
-                get
-                {
-                    return Notifications != null && Notifications.Any()
-                        ? Notifications.Cast<uint>()
-                            .Aggregate((p, q) => p |= q)
-                        : 0;
-                }
-            }
-
-            public uint PermissionMask
-            {
-                get
-                {
-                    return Permissions != null && Permissions.Any()
-                        ? Permissions.Cast<uint>()
-                            .Aggregate((p, q) => p |= q)
-                        : 0;
-                }
-            }
+            [Reflection.NameAttribute("none")] NONE = 0,
+            [Reflection.NameAttribute("avatar")] AVATAR,
+            [Reflection.NameAttribute("local")] LOCAL,
+            [Reflection.NameAttribute("group")] GROUP,
+            [Reflection.NameAttribute("estate")] ESTATE,
+            [Reflection.NameAttribute("region")] REGION,
+            [Reflection.NameAttribute("object")] OBJECT,
+            [Reflection.NameAttribute("parcel")] PARCEL,
+            [Reflection.NameAttribute("range")] RANGE,
+            [Reflection.NameAttribute("syntax")] SYNTAX,
+            [Reflection.NameAttribute("permission")] PERMISSION,
+            [Reflection.NameAttribute("description")] DESCRIPTION
         }
 
         /// <summary>
@@ -11994,18 +10118,24 @@ namespace Corrade
         /// </summary>
         private struct GroupInvite
         {
-            [Description("agent")] public Agent Agent;
-            [Description("fee")] public int Fee;
-            [Description("group")] public string Group;
-            [Description("session")] public UUID Session;
+            [Reflection.NameAttribute("agent")] public Agent Agent;
+
+            [Reflection.NameAttribute("fee")] public int Fee;
+
+            [Reflection.NameAttribute("group")] public string Group;
+
+            [Reflection.NameAttribute("session")] public UUID Session;
         }
 
         public struct CorradeCommandParameters
         {
-            [Description("group")] public Group Group;
-            [Description("identifier")] public string Identifier;
-            [Description("message")] public string Message;
-            [Description("sender")] public string Sender;
+            [Reflection.NameAttribute("group")] public Configuration.Group Group;
+
+            [Reflection.NameAttribute("identifier")] public string Identifier;
+
+            [Reflection.NameAttribute("message")] public string Message;
+
+            [Reflection.NameAttribute("sender")] public string Sender;
         }
 
         /// <summary>
@@ -12014,11 +10144,15 @@ namespace Corrade
         [Serializable]
         public struct GroupSchedule
         {
-            [Description("at")] public DateTime At;
-            [Description("group")] public Group Group;
-            [Description("identifier")] public string Identifier;
-            [Description("message")] public string Message;
-            [Description("sender")] public string Sender;
+            [Reflection.NameAttribute("at")] public DateTime At;
+
+            [Reflection.NameAttribute("group")] public Configuration.Group Group;
+
+            [Reflection.NameAttribute("identifier")] public string Identifier;
+
+            [Reflection.NameAttribute("message")] public string Message;
+
+            [Reflection.NameAttribute("sender")] public string Sender;
         }
 
         /// <summary>
@@ -12242,20 +10376,15 @@ namespace Corrade
         /// </summary>
         private struct LookAtEffect
         {
-            [Description("effect")] public UUID Effect;
-            [Description("offset")] public Vector3d Offset;
-            [Description("source")] public UUID Source;
-            [Description("target")] public UUID Target;
-            [Description("type")] public LookAtType Type;
-        }
+            [Reflection.NameAttribute("effect")] public UUID Effect;
 
-        /// <summary>
-        ///     Masters structure.
-        /// </summary>
-        public struct Master
-        {
-            public string FirstName;
-            public string LastName;
+            [Reflection.NameAttribute("offset")] public Vector3d Offset;
+
+            [Reflection.NameAttribute("source")] public UUID Source;
+
+            [Reflection.NameAttribute("target")] public UUID Target;
+
+            [Reflection.NameAttribute("type")] public LookAtType Type;
         }
 
         /// <summary>
@@ -12273,9 +10402,9 @@ namespace Corrade
             ///     Holds TCP notification destinations.
             /// </summary>
             /// <remarks>These are state dependant so they do not have to be serialized.</remarks>
-            [XmlIgnore] public Dictionary<Notifications, HashSet<IPEndPoint>> NotificationTCPDestination;
+            [XmlIgnore] public Dictionary<Configuration.Notifications, HashSet<IPEndPoint>> NotificationTCPDestination;
 
-            public SerializableDictionary<Notifications, HashSet<string>> NotificationURLDestination;
+            public SerializableDictionary<Configuration.Notifications, HashSet<string>> NotificationURLDestination;
 
             public uint NotificationMask
             {
@@ -12310,11 +10439,15 @@ namespace Corrade
         /// </summary>
         private struct PointAtEffect
         {
-            [Description("effect")] public UUID Effect;
-            [Description("offset")] public Vector3d Offset;
-            [Description("source")] public UUID Source;
-            [Description("target")] public UUID Target;
-            [Description("type")] public PointAtType Type;
+            [Reflection.NameAttribute("effect")] public UUID Effect;
+
+            [Reflection.NameAttribute("offset")] public Vector3d Offset;
+
+            [Reflection.NameAttribute("source")] public UUID Source;
+
+            [Reflection.NameAttribute("target")] public UUID Target;
+
+            [Reflection.NameAttribute("type")] public PointAtType Type;
         }
 
         /// <summary>
@@ -12322,12 +10455,12 @@ namespace Corrade
         /// </summary>
         private enum ResultKeys : uint
         {
-            [Description("none")] NONE = 0,
-            [Description("data")] DATA,
-            [Description("success")] SUCCESS,
-            [Description("error")] ERROR,
-            [Description("status")] STATUS,
-            [Description("time")] TIME
+            [Reflection.NameAttribute("none")] NONE = 0,
+            [Reflection.NameAttribute("data")] DATA,
+            [Reflection.NameAttribute("success")] SUCCESS,
+            [Reflection.NameAttribute("error")] ERROR,
+            [Reflection.NameAttribute("status")] STATUS,
+            [Reflection.NameAttribute("time")] TIME
         }
 
         /// <summary>
@@ -12336,11 +10469,16 @@ namespace Corrade
         private struct ScriptDialog
         {
             public Agent Agent;
-            [Description("button")] public List<string> Button;
-            [Description("channel")] public int Channel;
-            [Description("item")] public UUID Item;
-            [Description("message")] public string Message;
-            [Description("name")] public string Name;
+
+            [Reflection.NameAttribute("button")] public List<string> Button;
+
+            [Reflection.NameAttribute("channel")] public int Channel;
+
+            [Reflection.NameAttribute("item")] public UUID Item;
+
+            [Reflection.NameAttribute("message")] public string Message;
+
+            [Reflection.NameAttribute("name")] public string Name;
         }
 
         /// <summary>
@@ -12365,9 +10503,9 @@ namespace Corrade
         public class ScriptException : Exception
         {
             public ScriptException(ScriptError error)
-                : base(wasGetDescriptionFromEnumValue(error))
+                : base(Reflection.wasGetDescriptionFromEnumValue(error))
             {
-                Status = wasGetAttributeFromEnumValue<StatusAttribute>(error).Status;
+                Status = Reflection.wasGetAttributeFromEnumValue<StatusAttribute>(error).Status;
             }
 
             protected ScriptException(SerializationInfo info, StreamingContext context)
@@ -12404,920 +10542,923 @@ namespace Corrade
         /// </summary>
         private enum ScriptKeys : uint
         {
-            [Description("none")] NONE = 0,
+            [Reflection.NameAttribute("none")] NONE = 0,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=terraform>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR2>>&<height=<FLOAT>>&<width=<FLOAT>>&<amount=<FLOAT>>&<brush=<TerraformBrushSize>>&<action=<TerraformAction>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("terraform")] [Description("terraform")] TERRAFORM,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("terraform")] [Reflection.NameAttribute("terraform")] TERRAFORM,
 
-            [Description("height")] HEIGHT,
-            [Description("width")] WIDTH,
-            [Description("brush")] BRUSH,
+            [Reflection.NameAttribute("height")] HEIGHT,
+            [Reflection.NameAttribute("width")] WIDTH,
+            [Reflection.NameAttribute("brush")] BRUSH,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getestatecovenant>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("getestatecovenant")] [Description("getestatecovenant")] GETESTATECOVENANT,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getestatecovenant")] [Reflection.NameAttribute("getestatecovenant")] GETESTATECOVENANT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=estateteleportusershome>&<group=<UUID|STRING>>&<password=<STRING>>&[avatars=<UUID|STRING[,UUID|STRING...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("estateteleportusershome")] [Description("estateteleportusershome")] ESTATETELEPORTUSERSHOME,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("estateteleportusershome")] [Reflection.NameAttribute("estateteleportusershome")] ESTATETELEPORTUSERSHOME,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setregionterrainvariables>&<group=<UUID|STRING>>&<password=<STRING>>&[waterheight=<FLOAT>]&[terrainraiselimit=<FLOAT>]&[terrainlowerlimit=<FLOAT>]&[usestatesun=<BOOL>]&[fixedsun=<BOOL>]&[sunposition=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("setregionterrainvariables")] [Description("setregionterrainvariables")] SETREGIONTERRAINVARIABLES,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("setregionterrainvariables")] [Reflection.NameAttribute("setregionterrainvariables")] SETREGIONTERRAINVARIABLES,
 
-            [Description("useestatesun")] USEESTATESUN,
-            [Description("terrainraiselimit")] TERRAINRAISELIMIT,
-            [Description("terrainlowerlimit")] TERRAINLOWERLIMIT,
-            [Description("sunposition")] SUNPOSITION,
-            [Description("fixedsun")] FIXEDSUN,
-            [Description("waterheight")] WATERHEIGHT,
+            [Reflection.NameAttribute("useestatesun")] USEESTATESUN,
+            [Reflection.NameAttribute("terrainraiselimit")] TERRAINRAISELIMIT,
+            [Reflection.NameAttribute("terrainlowerlimit")] TERRAINLOWERLIMIT,
+            [Reflection.NameAttribute("sunposition")] SUNPOSITION,
+            [Reflection.NameAttribute("fixedsun")] FIXEDSUN,
+            [Reflection.NameAttribute("waterheight")] WATERHEIGHT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getregionterrainheights>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("getregionterrainheights")] [Description("getregionterrainheights")] GETREGIONTERRAINHEIGHTS,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getregionterrainheights")] [Reflection.NameAttribute("getregionterrainheights")] GETREGIONTERRAINHEIGHTS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setregionterrainheights>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<FLOAT[,FLOAT...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("setregionterrainheights")] [Description("setregionterrainheights")] SETREGIONTERRAINHEIGHTS,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("setregionterrainheights")] [Reflection.NameAttribute("setregionterrainheights")] SETREGIONTERRAINHEIGHTS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getregionterraintextures>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("getregionterraintextures")] [Description("getregionterraintextures")] GETREGIONTERRAINTEXTURES,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getregionterraintextures")] [Reflection.NameAttribute("getregionterraintextures")] GETREGIONTERRAINTEXTURES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setregionterraintextures>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<UUID|STRING[,UUID|STRING...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("setregionterraintextures")] [Description("setregionterraintextures")] SETREGIONTERRAINTEXTURES,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("setregionterraintextures")] [Reflection.NameAttribute("setregionterraintextures")] SETREGIONTERRAINTEXTURES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setregioninfo>&<group=<UUID|STRING>>&<password=<STRING>>&[terraform=<BOOL>]&[fly=<BOOL>]&[damage=<BOOL>]&[resell=<BOOL>]&[push=<BOOL>]&[parcel=<BOOL>]&[limit=<FLOAT>]&[bonus=<FLOAT>]&[mature=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("setregioninfo")] [Description("setregioninfo")] SETREGIONINFO,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("setregioninfo")] [Reflection.NameAttribute("setregioninfo")] SETREGIONINFO,
 
-            [Description("bonus")] BONUS,
-            [Description("damage")] DAMAGE,
-            [Description("limit")] LIMIT,
-            [Description("mature")] MATURE,
-            [Description("parcel")] PARCEL,
-            [Description("push")] PUSH,
-            [Description("resell")] RESELL,
+            [Reflection.NameAttribute("bonus")] BONUS,
+            [Reflection.NameAttribute("damage")] DAMAGE,
+            [Reflection.NameAttribute("limit")] LIMIT,
+            [Reflection.NameAttribute("mature")] MATURE,
+            [Reflection.NameAttribute("parcel")] PARCEL,
+            [Reflection.NameAttribute("push")] PUSH,
+            [Reflection.NameAttribute("resell")] RESELL,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setcameradata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager.AgentMovement.AgentCamera[,AgentManager.AgentMovement.AgentCamera...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("setcameradata")] [Description("setcameradata")] SETCAMERADATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("setcameradata")] [Reflection.NameAttribute("setcameradata")] SETCAMERADATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getcameradata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager.AgentMovement.AgentCamera[,AgentManager.AgentMovement.AgentCamera...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("getcameradata")] [Description("getcameradata")] GETCAMERADATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("getcameradata")] [Reflection.NameAttribute("getcameradata")] GETCAMERADATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setmovementdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager.AgentMovement[,AgentManager.AgentMovement...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("setmovementdata")] [Description("setmovementdata")] SETMOVEMENTDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("setmovementdata")] [Reflection.NameAttribute("setmovementdata")] SETMOVEMENTDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getmovementdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager.AgentMovement[,AgentManager.AgentMovement...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("getmovementdata")] [Description("getmovementdata")] GETMOVEMENTDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("getmovementdata")] [Reflection.NameAttribute("getmovementdata")] GETMOVEMENTDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=at>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<add|get|remove|list>>&action=add:<time=<Timestamp>>&action=add:<data=<STRING>>&action=get,remove:<index=<INTEGER>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Schedule)] [CorradeCommand("at")] [Description("at")] AT,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Schedule)] [CorradeCommand("at")] [Reflection.NameAttribute("at")] AT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=flyto>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR3>>&[duration=<INTGEGER>]&[affinity=<INTEGER>]&[fly=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("flyto")] [Description("flyto")] FLYTO,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Movement)] [CorradeCommand("flyto")] [Reflection.NameAttribute("flyto")] FLYTO,
 
-            [Description("vicinity")] VICINITY,
-            [Description("affinity")] AFFINITY,
+            [Reflection.NameAttribute("vicinity")] VICINITY,
+            [Reflection.NameAttribute("affinity")] AFFINITY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=batchmute>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<mute|unmute>>&[mutes=<STRING|UUID[,STRING|UUID...]>]&action=mute:[type=MuteType]&action=mute:[flags=MuteFlags]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("batchmute")] [Description("batchmute")] BATCHMUTE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("batchmute")] [Reflection.NameAttribute("batchmute")] BATCHMUTE,
 
-            [Description("mutes")] MUTES,
-
-            [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=setconfigurationdata>&<group=<UUID|STRING>>&<password=<STRING>>&[data=<CorradeConfiguration,[CorradeConfiguration...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.System)] [CorradeCommand("setconfigurationdata")] [Description("setconfigurationdata")] SETCONFIGURATIONDATA,
+            [Reflection.NameAttribute("mutes")] MUTES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getconfigurationdata>&<group=<UUID|STRING>>&<password=<STRING>>&[data=<CorradeConfiguration,[CorradeConfiguration...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.System)] [CorradeCommand("getconfigurationdata")] [Description("getconfigurationdata")] GETCONFIGURATIONDATA,
+                "<command=setconfigurationdata>&<group=<UUID|STRING>>&<password=<STRING>>&[data=<CorradeConfiguration,[Configuration...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Configuration.Permissions.System)] [CorradeCommand("setconfigurationdata")] [Reflection.NameAttribute("setconfigurationdata")] SETCONFIGURATIONDATA,
+
+            [IsCorradeCommand(true)] [CommandInputSyntax(
+                "<command=getconfigurationdata>&<group=<UUID|STRING>>&<password=<STRING>>&[data=<CorradeConfiguration,[Configuration...]>]&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Configuration.Permissions.System)] [CorradeCommand("getconfigurationdata")] [Reflection.NameAttribute("getconfigurationdata")] GETCONFIGURATIONDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=ban>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<ban|unban|list>>&action=ban,unban:[avatars=<UUID|STRING[,UUID|STRING...]>]&action=ban:[eject=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("ban")] [Description("ban")] BAN,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("ban")] [Reflection.NameAttribute("ban")] BAN,
 
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=ping>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.None)] [CorradeCommand("ping")] [Description("ping")] PING,
-            [Description("pong")] PONG,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=ping>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.None)] [CorradeCommand("ping")] [Reflection.NameAttribute("ping")] PING,
+            [Reflection.NameAttribute("pong")] PONG,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=batcheject>&<group=<UUID|STRING>>&<password=<STRING>>&[avatars=<UUID|STRING[,UUID|STRING...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("batcheject")] [Description("batcheject")] BATCHEJECT,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("batcheject")] [Reflection.NameAttribute("batcheject")] BATCHEJECT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=batchinvite>&<group=<UUID|STRING>>&<password=<STRING>>&[role=<UUID[,STRING...]>]&[avatars=<UUID|STRING[,UUID|STRING...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("batchinvite")] [Description("batchinvite")] BATCHINVITE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("batchinvite")] [Reflection.NameAttribute("batchinvite")] BATCHINVITE,
 
-            [Description("avatars")] AVATARS,
+            [Reflection.NameAttribute("avatars")] AVATARS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setobjectmediadata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<face=<INTEGER>>&[data=<MediaEntry[,MediaEntry...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setobjectmediadata")] [Description("setobjectmediadata")] SETOBJECTMEDIADATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setobjectmediadata")] [Reflection.NameAttribute("setobjectmediadata")] SETOBJECTMEDIADATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getobjectmediadata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<MediaEntry[,MediaEntry...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getobjectmediadata")] [Description("getobjectmediadata")] GETOBJECTMEDIADATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getobjectmediadata")] [Reflection.NameAttribute("getobjectmediadata")] GETOBJECTMEDIADATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivematerial>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[material=<Material>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setprimitivematerial")] [Description("setprimitivematerial")] SETPRIMITIVEMATERIAL,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivematerial")] [Reflection.NameAttribute("setprimitivematerial")] SETPRIMITIVEMATERIAL,
 
-            [Description("material")] MATERIAL,
+            [Reflection.NameAttribute("material")] MATERIAL,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivelightdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<LightData[,LightData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setprimitivelightdata")] [Description("setprimitivelightdata")] SETPRIMITIVELIGHTDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivelightdata")] [Reflection.NameAttribute("setprimitivelightdata")] SETPRIMITIVELIGHTDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivelightdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<LightData [,LightData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getprimitivelightdata")] [Description("getprimitivelightdata")] GETPRIMITIVELIGHTDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivelightdata")] [Reflection.NameAttribute("getprimitivelightdata")] GETPRIMITIVELIGHTDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitiveflexibledata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<FlexibleData[,FlexibleData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setprimitiveflexibledata")] [Description("setprimitiveflexibledata")] SETPRIMITIVEFLEXIBLEDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setprimitiveflexibledata")] [Reflection.NameAttribute("setprimitiveflexibledata")] SETPRIMITIVEFLEXIBLEDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitiveflexibledata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<FlexibleData[,FlexibleData ...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getprimitiveflexibledata")] [Description("getprimitiveflexibledata")] GETPRIMITIVEFLEXIBLEDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getprimitiveflexibledata")] [Reflection.NameAttribute("getprimitiveflexibledata")] GETPRIMITIVEFLEXIBLEDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=creategrass>&<group=<UUID|STRING>>&<password=<STRING>>>&[region=<STRING>]&<position=<VECTOR3>>&[rotation=<Quaternion>]&<type=<Grass>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("creategrass")] [Description("creategrass")] CREATEGRASS,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("creategrass")] [Reflection.NameAttribute("creategrass")] CREATEGRASS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getstatus>&<group=<UUID|STRING>>&<password=<STRING>>&<status=<INTEGER>>&<entity=<description>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.None)] [CorradeCommand("getstatus")] [Description("getstatus")] GETSTATUS,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.None)] [CorradeCommand("getstatus")] [Reflection.NameAttribute("getstatus")] GETSTATUS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivebodytypes>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getprimitivebodytypes")] [Description("getprimitivebodytypes")] GETPRIMITIVEBODYTYPES,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivebodytypes")] [Reflection.NameAttribute("getprimitivebodytypes")] GETPRIMITIVEBODYTYPES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivephysicsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<PhysicsProperties[,PhysicsProperties ...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getprimitivephysicsdata")] [Description("getprimitivephysicsdata")] GETPRIMITIVEPHYSICSDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivephysicsdata")] [Reflection.NameAttribute("getprimitivephysicsdata")] GETPRIMITIVEPHYSICSDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivepropertiesdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<ObjectProperties[,ObjectProperties ...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getprimitivepropertiesdata")] [Description("getprimitivepropertiesdata")] GETPRIMITIVEPROPERTIESDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivepropertiesdata")] [Reflection.NameAttribute("getprimitivepropertiesdata")] GETPRIMITIVEPROPERTIESDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitiveflags>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<SINGLE>]&[temporary=<BOOL>]&[shadows=<BOOL>]&[restitution=<SINGLE>]&[phantom=<BOOL>]&[gravity=<SINGLE>]&[friction=<SINGLE>]&[density=<SINGLE>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setprimitiveflags")] [Description("setprimitiveflags")] SETPRIMITIVEFLAGS,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setprimitiveflags")] [Reflection.NameAttribute("setprimitiveflags")] SETPRIMITIVEFLAGS,
 
-            [Description("temporary")] TEMPORARY,
-            [Description("shadows")] SHADOWS,
-            [Description("restitution")] RESTITUTION,
-            [Description("phantom")] PHANTOM,
-            [Description("gravity")] GRAVITY,
-            [Description("friction")] FRICTION,
-            [Description("density")] DENSITY,
+            [Reflection.NameAttribute("temporary")] TEMPORARY,
+            [Reflection.NameAttribute("shadows")] SHADOWS,
+            [Reflection.NameAttribute("restitution")] RESTITUTION,
+            [Reflection.NameAttribute("phantom")] PHANTOM,
+            [Reflection.NameAttribute("gravity")] GRAVITY,
+            [Reflection.NameAttribute("friction")] FRICTION,
+            [Reflection.NameAttribute("density")] DENSITY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=grab>&<group=<UUID|STRING>>&<password=<STRING>>&[region=<STRING>]&<item=<UUID|STRING>>&[range=<FLOAT>]&<texture=<VECTOR3>&<surface=<VECTOR3>>&<normal=<VECTOR3>>&<binormal=<VECTOR3>>&<face=<INTEGER>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("grab")] [Description("grab")] GRAB,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("grab")] [Reflection.NameAttribute("grab")] GRAB,
 
-            [Description("texture")] TEXTURE,
-            [Description("surface")] SURFACE,
-            [Description("normal")] NORMAL,
-            [Description("binormal")] BINORMAL,
-            [Description("face")] FACE,
+            [Reflection.NameAttribute("texture")] TEXTURE,
+            [Reflection.NameAttribute("surface")] SURFACE,
+            [Reflection.NameAttribute("normal")] NORMAL,
+            [Reflection.NameAttribute("binormal")] BINORMAL,
+            [Reflection.NameAttribute("face")] FACE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=createtree>&<group=<UUID|STRING>>&<password=<STRING>>>&[region=<STRING>]&<position=<VECTOR3>>&[rotation=<Quaternion>]&<type=<Tree>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("createtree")] [Description("createtree")] CREATETREE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("createtree")] [Reflection.NameAttribute("createtree")] CREATETREE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivetexturedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[index=<INTEGER>]&[data=<TextureEntryFace [,TextureEntryFace ...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setprimitivetexturedata")] [Description("setprimitivetexturedata")] SETPRIMITIVETEXTUREDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivetexturedata")] [Reflection.NameAttribute("setprimitivetexturedata")] SETPRIMITIVETEXTUREDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivetexturedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<TextureEntry[,TextureEntry ...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getprimitivetexturedata")] [Description("getprimitivetexturedata")] GETPRIMITIVETEXTUREDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivetexturedata")] [Reflection.NameAttribute("getprimitivetexturedata")] GETPRIMITIVETEXTUREDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivesculptdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<SculptData[,SculptData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setprimitivesculptdata")] [Description("setprimitivesculptdata")] SETPRIMITIVESCULPTDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivesculptdata")] [Reflection.NameAttribute("setprimitivesculptdata")] SETPRIMITIVESCULPTDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivesculptdata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<SculptData[,SculptData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getprimitivesculptdata")] [Description("getprimitivesculptdata")] GETPRIMITIVESCULPTDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivesculptdata")] [Reflection.NameAttribute("getprimitivesculptdata")] GETPRIMITIVESCULPTDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitiveshapedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[type=<CorradePrimitiveShape>]&[data=<ConstructionData[,ConstructionData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setprimitiveshapedata")] [Description("setprimitiveshapedata")] SETPRIMITIVESHAPEDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setprimitiveshapedata")] [Reflection.NameAttribute("setprimitiveshapedata")] SETPRIMITIVESHAPEDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitiveshapedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[data=<ConstructionData[,ConstructionData...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getprimitiveshapedata")] [Description("getprimitiveshapedata")] GETPRIMITIVESHAPEDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getprimitiveshapedata")] [Reflection.NameAttribute("getprimitiveshapedata")] GETPRIMITIVESHAPEDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=createprimitive>&<group=<UUID|STRING>>&<password=<STRING>>>&[region=<STRING>]&<position=<VECTOR3>>&[rotation=<Quaternion>]&[type=<CorradePrimitiveShape>]&[data=<ConstructionData>]&[flags=<PrimFlags>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("createprimitive")] [Description("createprimitive")] CREATEPRIMITIVE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("createprimitive")] [Reflection.NameAttribute("createprimitive")] CREATEPRIMITIVE,
 
-            [Description("flags")] FLAGS,
-            [Description("take")] TAKE,
-            [Description("pass")] PASS,
-            [Description("controls")] CONTROLS,
-            [Description("afterburn")] AFTERBURN,
+            [Reflection.NameAttribute("flags")] FLAGS,
+            [Reflection.NameAttribute("take")] TAKE,
+            [Reflection.NameAttribute("pass")] PASS,
+            [Reflection.NameAttribute("controls")] CONTROLS,
+            [Reflection.NameAttribute("afterburn")] AFTERBURN,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivepayprices>&<group=<UUID|STRING>>&<password=<STRING>>>&item=<STRING|UUID>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getprimitivepayprices")] [Description("getprimitivepayprices")] GETPRIMITIVEPAYPRICES,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivepayprices")] [Reflection.NameAttribute("getprimitivepayprices")] GETPRIMITIVEPAYPRICES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=primitivebuy>&<group=<UUID|STRING>>&<password=<STRING>>>&item=<STRING|UUID>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact | (uint) Permissions.Economy)] [CorradeCommand("primitivebuy")] [Description("primitivebuy")] PRIMITIVEBUY,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact | (uint) Configuration.Permissions.Economy)
+                   ] [CorradeCommand("primitivebuy")] [Reflection.NameAttribute("primitivebuy")] PRIMITIVEBUY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=changeprimitivelink>&<group=<UUID|STRING>>&<password=<STRING>>>&<action=<link|delink>>&action=link:<item=<STRING|UUID,STRING|UUID[,STRING|UUID...>>&action=delink:<item=<STRING|UUID[,STRING|UUID...>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("changeprimitivelink")] [Description("changeprimitivelink")] CHANGEPRIMITIVELINK,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("changeprimitivelink")] [Reflection.NameAttribute("changeprimitivelink")] CHANGEPRIMITIVELINK,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getgroupmemberdata>&<group=<UUID|STRING>>&<password=<STRING>>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<AvatarGroup[,AvatarGroup...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("getgroupmemberdata")] [Description("getgroupmemberdata")] GETGROUPMEMBERDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("getgroupmemberdata")] [Reflection.NameAttribute("getgroupmemberdata")] GETGROUPMEMBERDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getcommand>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<entity=<syntax|permission>>&entity=syntax:<type=<input>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.None)] [CorradeCommand("getcommand")] [Description("getcommand")] GETCOMMAND,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=listcommands>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.None)] [CorradeCommand("listcommands")] [Description("listcommands")] LISTCOMMANDS,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.None)] [CorradeCommand("getcommand")] [Reflection.NameAttribute("getcommand")] GETCOMMAND,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=listcommands>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.None)] [CorradeCommand("listcommands")] [Reflection.NameAttribute("listcommands")] LISTCOMMANDS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getconnectedregions>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("getconnectedregions")] [Description("getconnectedregions")] GETCONNECTEDREGIONS,
+                "<command=getconnectedregions>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getconnectedregions")] [Reflection.NameAttribute("getconnectedregions")] GETCONNECTEDREGIONS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getnetworkdata>&<group=<UUID|STRING>>&<password=<STRING>>&[data=<NetworkManager[,NetworkManager...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("getnetworkdata")] [Description("getnetworkdata")] GETNETWORKDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("getnetworkdata")] [Reflection.NameAttribute("getnetworkdata")] GETNETWORKDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=typing>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable|get>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("typing")] [Description("typing")] TYPING,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("typing")] [Reflection.NameAttribute("typing")] TYPING,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=busy>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable|get>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("busy")] [Description("busy")] BUSY,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("busy")] [Reflection.NameAttribute("busy")] BUSY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=away>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable|get>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("away")] [Description("away")] AWAY,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("away")] [Reflection.NameAttribute("away")] AWAY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getobjectpermissions>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getobjectpermissions")] [Description("getobjectpermissions")] GETOBJECTPERMISSIONS,
-            [Description("scale")] SCALE,
-            [Description("uniform")] UNIFORM,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getobjectpermissions")] [Reflection.NameAttribute("getobjectpermissions")] GETOBJECTPERMISSIONS,
+            [Reflection.NameAttribute("scale")] SCALE,
+            [Reflection.NameAttribute("uniform")] UNIFORM,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setobjectscale>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&<scale=<FLOAT>>&[uniform=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setobjectscale")] [Description("setobjectscale")] SETOBJECTSCALE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setobjectscale")] [Reflection.NameAttribute("setobjectscale")] SETOBJECTSCALE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivescale>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&<scale=<FLOAT>>&[uniform=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setprimitivescale")] [Description("setprimitivescale")] SETPRIMITIVESCALE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivescale")] [Reflection.NameAttribute("setprimitivescale")] SETPRIMITIVESCALE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitiverotation>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&<rotation=<QUATERNION>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setprimitiverotation")] [Description("setprimitiverotation")] SETPRIMITIVEROTATION,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setprimitiverotation")] [Reflection.NameAttribute("setprimitiverotation")] SETPRIMITIVEROTATION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitiveposition>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&<position=<VECTOR3>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setprimitiveposition")] [Description("setprimitiveposition")] SETPRIMITIVEPOSITION,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setprimitiveposition")] [Reflection.NameAttribute("setprimitiveposition")] SETPRIMITIVEPOSITION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=exportdae>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&[format=<ImageFormat>]&[path=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("exportdae")] [Description("exportdae")] EXPORTDAE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("exportdae")] [Reflection.NameAttribute("exportdae")] EXPORTDAE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=exportxml>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[range=<FLOAT>]&[format=<ImageFormat>]&[path=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("exportxml")] [Description("exportxml")] EXPORTXML,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("exportxml")] [Reflection.NameAttribute("exportxml")] EXPORTXML,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivesdata>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<range|parcel|region|avatar>>&entity=range:[range=<FLOAT>]&entity=parcel:[position=<VECTOR2>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[data=<Primitive[,Primitive...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getprimitivesdata")] [Description("getprimitivesdata")] GETPRIMITIVESDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivesdata")] [Reflection.NameAttribute("getprimitivesdata")] GETPRIMITIVESDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getavatarsdata>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<range|parcel|region|avatar>>&entity=range:[range=<FLOAT>]&entity=parcel:[position=<VECTOR2>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[data=<Avatar[,Avatar...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getavatarsdata")] [Description("getavatarsdata")] GETAVATARSDATA,
-            [Description("format")] FORMAT,
-            [Description("volume")] VOLUME,
-            [Description("audible")] AUDIBLE,
-            [Description("path")] PATH,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getavatarsdata")] [Reflection.NameAttribute("getavatarsdata")] GETAVATARSDATA,
+            [Reflection.NameAttribute("format")] FORMAT,
+            [Reflection.NameAttribute("volume")] VOLUME,
+            [Reflection.NameAttribute("audible")] AUDIBLE,
+            [Reflection.NameAttribute("path")] PATH,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=inventory>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<ls|cwd|cd|mkdir|chmod|rm|cp|mv|ln>>&action=ls|mkdir|chmod:[path=<STRING>]&action=cd,action=rm:<path=<STRING>>&action=mkdir:<name=<STRING>>&action=chmod:<permissions=<STRING>>&action=cp|mv|ln:<source=<STRING>>&action=cp|mv|ln:<target=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Inventory)] [CorradeCommand("inventory")] [Description("inventory")] INVENTORY,
-            [Description("offset")] OFFSET,
-            [Description("alpha")] ALPHA,
-            [Description("color")] COLOR,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Inventory)] [CorradeCommand("inventory")] [Reflection.NameAttribute("inventory")] INVENTORY,
+            [Reflection.NameAttribute("offset")] OFFSET,
+            [Reflection.NameAttribute("alpha")] ALPHA,
+            [Reflection.NameAttribute("color")] COLOR,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=deleteviewereffect>&<group=<UUID|STRING>>&<password=<STRING>>&<effect=<Look|Point>>&<id=<UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("deleteviewereffect")] [Description("deleteviewereffect")] DELETEVIEWEREFFECT,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("deleteviewereffect")] [Reflection.NameAttribute("deleteviewereffect")] DELETEVIEWEREFFECT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getviewereffects>&<group=<UUID|STRING>>&<password=<STRING>>&<effect=<Look|Point|Sphere|Beam>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getviewereffects")] [Description("getviewereffects")] GETVIEWEREFFECTS,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getviewereffects")] [Reflection.NameAttribute("getviewereffects")] GETVIEWEREFFECTS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setviewereffect>&<group=<UUID|STRING>>&<password=<STRING>>&<effect=<Look|Point|Sphere|Beam>>&effect=Look:<item=<UUID|STRING>&<range=<FLOAT>>>|<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&effect=Look:<offset=<VECTOR3>>&effect=Look:<type=LookAt>&effect=Point:<item=<UUID|STRING>&<range=<FLOAT>>>|<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&effect=Point:<offset=<VECTOR3>>&effect=Point:<type=PointAt>&effect=Beam:<item=<UUID|STRING>&<range=<FLOAT>>>|<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&effect=Beam:<color=<VECTOR3>>&effect=Beam:<alpha=<FLOAT>>&effect=Beam:<duration=<FLOAT>>&effect=Beam:<offset=<VECTOR3>>&effect=Sphere:<color=<VECTOR3>>&effect=Sphere:<alpha=<FLOAT>>&effect=Sphere:<duration=<FLOAT>>&effect=Sphere:<offset=<VECTOR3>>&[id=<UUID>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setviewereffect")] [Description("setviewereffect")] SETVIEWEREFFECT,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setviewereffect")] [Reflection.NameAttribute("setviewereffect")] SETVIEWEREFFECT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=ai>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<process|enable|disable|rebuild>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Talk)] [CorradeCommand("ai")] [Description("ai")] AI,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=gettitles>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("gettitles")] [Description("gettitles")] GETTITLES,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Talk)] [CorradeCommand("ai")] [Reflection.NameAttribute("ai")] AI,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=gettitles>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("gettitles")] [Reflection.NameAttribute("gettitles")] GETTITLES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=tag>&<group=<UUID|STRING>>&<password=<STRING>>&action=<set|get>&action=set:<title=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("tag")] [Description("tag")] TAG,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("tag")] [Reflection.NameAttribute("tag")] TAG,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=filter>&<group=<UUID|STRING>>&<password=<STRING>>&action=<set|get>&action=get:<type=<input|output>>&action=set:<input=<STRING>>&action=set:<output=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Filter)] [CorradeCommand("filter")] [Description("filter")] FILTER,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Filter)] [CorradeCommand("filter")] [Reflection.NameAttribute("filter")] FILTER,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=run>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable|get>>&[callback=<STRING>]"
                 )
-                                     ] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("run")] [Description("run")] RUN,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=relax>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("relax")] [Description("relax")] RELAX,
-            [Description("sift")] SIFT,
+                                     ] [CommandPermissionMask((uint) Configuration.Permissions.Movement)] [CorradeCommand("run")] [Reflection.NameAttribute("run")] RUN,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=relax>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Movement)] [CorradeCommand("relax")] [Reflection.NameAttribute("relax")] RELAX,
+            [Reflection.NameAttribute("sift")] SIFT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=rlv>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<enable|disable>>&[callback=<STRING>]")
-                                     ] [CommandPermissionMask((uint) Permissions.System)] [CorradeCommand("rlv")] [Description("rlv")] RLV,
+                                     ] [CommandPermissionMask((uint) Configuration.Permissions.System)] [CorradeCommand("rlv")] [Reflection.NameAttribute("rlv")] RLV,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getinventorypath>&<group=<UUID|STRING>>&<password=<STRING>>&<pattern=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Inventory)] [CorradeCommand("getinventorypath")] [Description("getinventorypath")] GETINVENTORYPATH,
-            [Description("committed")] COMMITTED,
-            [Description("credit")] CREDIT,
-            [Description("success")] SUCCESS,
-            [Description("transaction")] TRANSACTION,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Inventory)] [CorradeCommand("getinventorypath")] [Reflection.NameAttribute("getinventorypath")] GETINVENTORYPATH,
+            [Reflection.NameAttribute("committed")] COMMITTED,
+            [Reflection.NameAttribute("credit")] CREDIT,
+            [Reflection.NameAttribute("success")] SUCCESS,
+            [Reflection.NameAttribute("transaction")] TRANSACTION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getscriptdialogs>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getscriptdialogs")] [Description("getscriptdialogs")] GETSCRIPTDIALOGS,
+                "<command=getscriptdialogs>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getscriptdialogs")] [Reflection.NameAttribute("getscriptdialogs")] GETSCRIPTDIALOGS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getscriptpermissionrequests>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getscriptpermissionrequests")] [Description("getscriptpermissionrequests")] GETSCRIPTPERMISSIONREQUESTS,
+                "<command=getscriptpermissionrequests>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getscriptpermissionrequests")] [Reflection.NameAttribute("getscriptpermissionrequests")] GETSCRIPTPERMISSIONREQUESTS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getteleportlures>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("getteleportlures")] [Description("getteleportlures")] GETTELEPORTLURES,
+                "<command=getteleportlures>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Movement)] [CorradeCommand("getteleportlures")] [Reflection.NameAttribute("getteleportlures")] GETTELEPORTLURES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=replytogroupinvite>&<group=<UUID|STRING>>&<password=<STRING>>&[action=<accept|decline>]&<session=<UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group | (uint) Permissions.Economy)] [CorradeCommand("replytogroupinvite")] [Description("replytogroupinvite")] REPLYTOGROUPINVITE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group | (uint) Configuration.Permissions.Economy)] [CorradeCommand("replytogroupinvite")] [Reflection.NameAttribute("replytogroupinvite")] REPLYTOGROUPINVITE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getgroupinvites>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("getgroupinvites")] [Description("getgroupinvites")] GETGROUPINVITES,
+                "<command=getgroupinvites>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("getgroupinvites")] [Reflection.NameAttribute("getgroupinvites")] GETGROUPINVITES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getmemberroles>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("getmemberroles")] [Description("getmemberroles")] GETMEMBERROLES,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("getmemberroles")] [Reflection.NameAttribute("getmemberroles")] GETMEMBERROLES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=execute>&<group=<UUID|STRING>>&<password=<STRING>>&<file=<STRING>>&[parameter=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Execute)] [CorradeCommand("execute")] [Description("execute")] EXECUTE,
-            [Description("parameter")] PARAMETER,
-            [Description("file")] FILE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Execute)] [CorradeCommand("execute")] [Reflection.NameAttribute("execute")] EXECUTE,
+            [Reflection.NameAttribute("parameter")] PARAMETER,
+            [Reflection.NameAttribute("file")] FILE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=cache>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<purge|load|save>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.System)] [CorradeCommand("cache")] [Description("cache")] CACHE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.System)] [CorradeCommand("cache")] [Reflection.NameAttribute("cache")] CACHE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getgridregiondata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<GridRegion[,GridRegion...]>>&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("getgridregiondata")] [Description("getgridregiondata")] GETGRIDREGIONDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getgridregiondata")] [Reflection.NameAttribute("getgridregiondata")] GETGRIDREGIONDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getregionparcelsboundingbox>&<group=<UUID|STRING>>&<password=<STRING>>&[region=<STRING>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("getregionparcelsboundingbox")] [Description("getregionparcelsboundingbox")] GETREGIONPARCELSBOUNDINGBOX,
-            [Description("pattern")] PATTERN,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getregionparcelsboundingbox")] [Reflection.NameAttribute("getregionparcelsboundingbox")] GETREGIONPARCELSBOUNDINGBOX,
+            [Reflection.NameAttribute("pattern")] PATTERN,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=searchinventory>&<group=<UUID|STRING>>&<password=<STRING>>&<pattern=<STRING>>&[type=<AssetType>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Inventory)] [CorradeCommand("searchinventory")] [Description("searchinventory")] SEARCHINVENTORY,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Inventory)] [CorradeCommand("searchinventory")] [Reflection.NameAttribute("searchinventory")] SEARCHINVENTORY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getterrainheight>&<group=<UUID|STRING>>&<password=<STRING>>&[southwest=<VECTOR>]&[northwest=<VECTOR>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("getterrainheight")] [Description("getterrainheight")] GETTERRAINHEIGHT,
-            [Description("northeast")] NORTHEAST,
-            [Description("southwest")] SOUTHWEST,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getterrainheight")] [Reflection.NameAttribute("getterrainheight")] GETTERRAINHEIGHT,
+            [Reflection.NameAttribute("northeast")] NORTHEAST,
+            [Reflection.NameAttribute("southwest")] SOUTHWEST,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=upload>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<type=<Texture|Sound|Animation|Clothing|Bodypart|Landmark|Gesture|Notecard|LSLText>>&type=Clothing:[wear=<WearableType>]&type=Bodypart:[wear=<WearableType>]&<data=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Inventory | (uint) Permissions.Economy)] [CorradeCommand("upload")] [Description("upload")] UPLOAD,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Inventory | (uint) Configuration.Permissions.Economy
+                    )] [CorradeCommand("upload")] [Reflection.NameAttribute("upload")] UPLOAD,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=download>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<type=<Texture|Sound|Animation|Clothing|Bodypart|Landmark|Gesture|Notecard|LSLText>>&type=Texture:[format=<ImageFormat>]&[path=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact | (uint) Permissions.System)] [CorradeCommand("download")] [Description("download")] DOWNLOAD,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact | (uint) Configuration.Permissions.System)] [CorradeCommand("download")] [Reflection.NameAttribute("download")] DOWNLOAD,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setparceldata>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR>]&[data=<Parcel[,Parcel...]>]&[region=<STRING>]&[callback=<STRING>]"
                 )
-                                     ] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("setparceldata")] [Description("setparceldata")] SETPARCELDATA,
-            [Description("new")] NEW,
-            [Description("old")] OLD,
-            [Description("aggressor")] AGGRESSOR,
-            [Description("magnitude")] MAGNITUDE,
-            [Description("time")] TIME,
-            [Description("victim")] VICTIM,
+                                     ] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("setparceldata")] [Reflection.NameAttribute("setparceldata")] SETPARCELDATA,
+            [Reflection.NameAttribute("new")] NEW,
+            [Reflection.NameAttribute("old")] OLD,
+            [Reflection.NameAttribute("aggressor")] AGGRESSOR,
+            [Reflection.NameAttribute("magnitude")] MAGNITUDE,
+            [Reflection.NameAttribute("time")] TIME,
+            [Reflection.NameAttribute("victim")] VICTIM,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=playgesture>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("playgesture")] [Description("playgesture")] PLAYGESTURE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("playgesture")] [Reflection.NameAttribute("playgesture")] PLAYGESTURE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=jump>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("jump")] [Description("jump")] JUMP,
+                "<command=jump>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Movement)] [CorradeCommand("jump")] [Reflection.NameAttribute("jump")] JUMP,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=crouch>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("crouch")] [Description("crouch")] CROUCH,
+                "<command=crouch>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Movement)] [CorradeCommand("crouch")] [Reflection.NameAttribute("crouch")] CROUCH,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=turnto>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR3>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("turnto")] [Description("turnto")] TURNTO,
+                "<command=turnto>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR3>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Movement)] [CorradeCommand("turnto")] [Reflection.NameAttribute("turnto")] TURNTO,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=nudge>&<group=<UUID|STRING>>&<password=<STRING>>&<direction=<left|right|up|down|back|forward>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("nudge")] [Description("nudge")] NUDGE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Movement)] [CorradeCommand("nudge")] [Reflection.NameAttribute("nudge")] NUDGE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=createnotecard>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[text=<STRING>]&[description=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Inventory)] [CorradeCommand("createnotecard")] [Description("createnotecard")] CREATENOTECARD,
-            [Description("direction")] DIRECTION,
-            [Description("agent")] AGENT,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Inventory)] [CorradeCommand("createnotecard")] [Reflection.NameAttribute("createnotecard")] CREATENOTECARD,
+            [Reflection.NameAttribute("direction")] DIRECTION,
+            [Reflection.NameAttribute("agent")] AGENT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=replytoinventoryoffer>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<accept|decline>>&<session=<UUID>>&[folder=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Inventory)] [CorradeCommand("replytoinventoryoffer")] [Description("replytoinventoryoffer")] REPLYTOINVENTORYOFFER,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Inventory)] [CorradeCommand("replytoinventoryoffer")] [Reflection.NameAttribute("replytoinventoryoffer")] REPLYTOINVENTORYOFFER,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getinventoryoffers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Inventory)] [CorradeCommand("getinventoryoffers")] [Description("getinventoryoffers")] GETINVENTORYOFFERS,
+                "<command=getinventoryoffers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Inventory)] [CorradeCommand("getinventoryoffers")] [Reflection.NameAttribute("getinventoryoffers")] GETINVENTORYOFFERS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=updateprimitiveinventory>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<add|remove|take>>&action=add:<entity=<UUID|STRING>>&action=remove:<entity=<UUID|STRING>>&action=take:<entity=<UUID|STRING>>&action=take:<folder=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("updateprimitiveinventory")] [Description("updateprimitiveinventory")] UPDATEPRIMITIVEINVENTORY,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=version>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.None)] [CorradeCommand("version")] [Description("version")] VERSION,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("updateprimitiveinventory")] [Reflection.NameAttribute("updateprimitiveinventory")] UPDATEPRIMITIVEINVENTORY,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=version>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.None)] [CorradeCommand("version")] [Reflection.NameAttribute("version")] VERSION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=playsound>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[gain=<FLOAT>]&[position=<VECTOR3>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("playsound")] [Description("playsound")] PLAYSOUND,
-            [Description("gain")] GAIN,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("playsound")] [Reflection.NameAttribute("playsound")] PLAYSOUND,
+            [Reflection.NameAttribute("gain")] GAIN,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getrolemembers>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("getrolemembers")] [Description("getrolemembers")] GETROLEMEMBERS,
-            [Description("status")] STATUS,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getmembers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("getmembers")] [Description("getmembers")] GETMEMBERS,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("getrolemembers")] [Reflection.NameAttribute("getrolemembers")] GETROLEMEMBERS,
+            [Reflection.NameAttribute("status")] STATUS,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getmembers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("getmembers")] [Reflection.NameAttribute("getmembers")] GETMEMBERS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=replytoteleportlure>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<session=<UUID>>&<action=<accept|decline>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("replytoteleportlure")] [Description("replytoteleportlure")] REPLYTOTELEPORTLURE,
-            [Description("session")] SESSION,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Movement)] [CorradeCommand("replytoteleportlure")] [Reflection.NameAttribute("replytoteleportlure")] REPLYTOTELEPORTLURE,
+            [Reflection.NameAttribute("session")] SESSION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=replytoscriptpermissionrequest>&<group=<UUID|STRING>>&<password=<STRING>>&<task=<UUID>>&<item=<UUID>>&<permissions=<ScriptPermission>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("replytoscriptpermissionrequest")] [Description("replytoscriptpermissionrequest")] REPLYTOSCRIPTPERMISSIONREQUEST,
-            [Description("task")] TASK,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("replytoscriptpermissionrequest")] [Reflection.NameAttribute("replytoscriptpermissionrequest")] REPLYTOSCRIPTPERMISSIONREQUEST,
+            [Reflection.NameAttribute("task")] TASK,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getparcellist>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("getparcellist")] [Description("getparcellist")] GETPARCELLIST,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getparcellist")] [Reflection.NameAttribute("getparcellist")] GETPARCELLIST,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=parcelrelease>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("parcelrelease")] [Description("parcelrelease")] PARCELRELEASE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("parcelrelease")] [Reflection.NameAttribute("parcelrelease")] PARCELRELEASE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=parcelbuy>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[forgroup=<BOOL>]&[removecontribution=<BOOL>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land | (uint) Permissions.Economy)] [CorradeCommand("parcelbuy")] [Description("parcelbuy")] PARCELBUY,
-            [Description("removecontribution")] REMOVECONTRIBUTION,
-            [Description("forgroup")] FORGROUP,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land | (uint) Configuration.Permissions.Economy)] [CorradeCommand("parcelbuy")] [Reflection.NameAttribute("parcelbuy")] PARCELBUY,
+            [Reflection.NameAttribute("removecontribution")] REMOVECONTRIBUTION,
+            [Reflection.NameAttribute("forgroup")] FORGROUP,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=parceldeed>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("parceldeed")] [Description("parceldeed")] PARCELDEED,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("parceldeed")] [Reflection.NameAttribute("parceldeed")] PARCELDEED,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=parcelreclaim>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("parcelreclaim")] [Description("parcelreclaim")] PARCELRECLAIM,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("parcelreclaim")] [Reflection.NameAttribute("parcelreclaim")] PARCELRECLAIM,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=unwear>&<group=<UUID|STRING>>&<password=<STRING>>&<wearables=<STRING[,UUID...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("unwear")] [Description("unwear")] UNWEAR,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("unwear")] [Reflection.NameAttribute("unwear")] UNWEAR,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=wear>&<group=<UUID|STRING>>&<password=<STRING>>&<wearables=<STRING[,UUID...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("wear")] [Description("wear")] WEAR,
-            [Description("wearables")] WEARABLES,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getwearables>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("getwearables")] [Description("getwearables")] GETWEARABLES,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("wear")] [Reflection.NameAttribute("wear")] WEAR,
+            [Reflection.NameAttribute("wearables")] WEARABLES,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getwearables>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("getwearables")] [Reflection.NameAttribute("getwearables")] GETWEARABLES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=changeappearance>&<group=<UUID|STRING>>&<password=<STRING>>&<folder=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("changeappearance")] [Description("changeappearance")] CHANGEAPPEARANCE,
-            [Description("folder")] FOLDER,
-            [Description("replace")] REPLACE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("changeappearance")] [Reflection.NameAttribute("changeappearance")] CHANGEAPPEARANCE,
+            [Reflection.NameAttribute("folder")] FOLDER,
+            [Reflection.NameAttribute("replace")] REPLACE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setobjectrotation>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<rotation=<QUARTERNION>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setobjectrotation")] [Description("setobjectrotation")] SETOBJECTROTATION,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setobjectrotation")] [Reflection.NameAttribute("setobjectrotation")] SETOBJECTROTATION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivedescription>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<description=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setprimitivedescription")] [Description("setprimitivedescription")] SETPRIMITIVEDESCRIPTION,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivedescription")] [Reflection.NameAttribute("setprimitivedescription")] SETPRIMITIVEDESCRIPTION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprimitivename>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<name=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setprimitivename")] [Description("setprimitivename")] SETPRIMITIVENAME,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setprimitivename")] [Reflection.NameAttribute("setprimitivename")] SETPRIMITIVENAME,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setobjectposition>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<position=<VECTOR3>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setobjectposition")] [Description("setobjectposition")] SETOBJECTPOSITION,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setobjectposition")] [Reflection.NameAttribute("setobjectposition")] SETOBJECTPOSITION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setobjectsaleinfo>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<price=<INTEGER>>&<type=<SaleType>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setobjectsaleinfo")] [Description("setobjectsaleinfo")] SETOBJECTSALEINFO,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setobjectsaleinfo")] [Reflection.NameAttribute("setobjectsaleinfo")] SETOBJECTSALEINFO,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setobjectgroup>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setobjectgroup")] [Description("setobjectgroup")] SETOBJECTGROUP,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setobjectgroup")] [Reflection.NameAttribute("setobjectgroup")] SETOBJECTGROUP,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=objectdeed>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("objectdeed")] [Description("objectdeed")] OBJECTDEED,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("objectdeed")] [Reflection.NameAttribute("objectdeed")] OBJECTDEED,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setobjectpermissions>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<permissions=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setobjectpermissions")] [Description("setobjectpermissions")] SETOBJECTPERMISSIONS,
-            [Description("permissions")] PERMISSIONS,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setobjectpermissions")] [Reflection.NameAttribute("setobjectpermissions")] SETOBJECTPERMISSIONS,
+            [Reflection.NameAttribute("permissions")] PERMISSIONS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getavatarpositions>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<region|parcel>>&entity=parcel:<position=<VECTOR2>>&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getavatarpositions")] [Description("getavatarpositions")] GETAVATARPOSITIONS,
-            [Description("delay")] DELAY,
-            [Description("asset")] ASSET,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getavatarpositions")] [Reflection.NameAttribute("getavatarpositions")] GETAVATARPOSITIONS,
+            [Reflection.NameAttribute("delay")] DELAY,
+            [Reflection.NameAttribute("asset")] ASSET,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setregiondebug>&<group=<UUID|STRING>>&<password=<STRING>>&<scripts=<BOOL>>&<collisions=<BOOL>>&<physics=<BOOL>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("setregiondebug")] [Description("setregiondebug")] SETREGIONDEBUG,
-            [Description("scripts")] SCRIPTS,
-            [Description("collisions")] COLLISIONS,
-            [Description("physics")] PHYSICS,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("setregiondebug")] [Reflection.NameAttribute("setregiondebug")] SETREGIONDEBUG,
+            [Reflection.NameAttribute("scripts")] SCRIPTS,
+            [Reflection.NameAttribute("collisions")] COLLISIONS,
+            [Reflection.NameAttribute("physics")] PHYSICS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getmapavatarpositions>&<group=<UUID|STRING>>&<password=<STRING>>&<region=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getmapavatarpositions")] [Description("getmapavatarpositions")] GETMAPAVATARPOSITIONS,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getmapavatarpositions")] [Reflection.NameAttribute("getmapavatarpositions")] GETMAPAVATARPOSITIONS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=mapfriend>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Friendship)] [CorradeCommand("mapfriend")] [Description("mapfriend")] MAPFRIEND,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Friendship)] [CorradeCommand("mapfriend")] [Reflection.NameAttribute("mapfriend")] MAPFRIEND,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=replytofriendshiprequest>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<action=<accept|decline>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Friendship)] [CorradeCommand("replytofriendshiprequest")] [Description("replytofriendshiprequest")] REPLYTOFRIENDSHIPREQUEST,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Friendship)] [CorradeCommand("replytofriendshiprequest")] [Reflection.NameAttribute("replytofriendshiprequest")] REPLYTOFRIENDSHIPREQUEST,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getfriendshiprequests>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Friendship)] [CorradeCommand("getfriendshiprequests")] [Description("getfriendshiprequests")] GETFRIENDSHIPREQUESTS,
+                "<command=getfriendshiprequests>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Friendship)] [CorradeCommand("getfriendshiprequests")] [Reflection.NameAttribute("getfriendshiprequests")] GETFRIENDSHIPREQUESTS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=grantfriendrights>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<rights=<FriendRights>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Friendship)] [CorradeCommand("grantfriendrights")] [Description("grantfriendrights")] GRANTFRIENDRIGHTS,
-            [Description("rights")] RIGHTS,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Friendship)] [CorradeCommand("grantfriendrights")] [Reflection.NameAttribute("grantfriendrights")] GRANTFRIENDRIGHTS,
+            [Reflection.NameAttribute("rights")] RIGHTS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax("<command=getfriendslist>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Friendship)] [CorradeCommand("getfriendslist")] [Description("getfriendslist")] GETFRIENDSLIST,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Friendship)] [CorradeCommand("getfriendslist")] [Reflection.NameAttribute("getfriendslist")] GETFRIENDSLIST,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=terminatefriendship>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Friendship)] [CorradeCommand("terminatefriendship")] [Description("terminatefriendship")] TERMINATEFRIENDSHIP,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Friendship)] [CorradeCommand("terminatefriendship")] [Reflection.NameAttribute("terminatefriendship")] TERMINATEFRIENDSHIP,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=offerfriendship>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Friendship)] [CorradeCommand("offerfriendship")] [Description("offerfriendship")] OFFERFRIENDSHIP,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Friendship)] [CorradeCommand("offerfriendship")] [Reflection.NameAttribute("offerfriendship")] OFFERFRIENDSHIP,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getfrienddata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<FriendInfo[,FriendInfo...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Friendship)] [CorradeCommand("getfrienddata")] [Description("getfrienddata")] GETFRIENDDATA,
-            [Description("days")] DAYS,
-            [Description("interval")] INTERVAL,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Friendship)] [CorradeCommand("getfrienddata")] [Reflection.NameAttribute("getfrienddata")] GETFRIENDDATA,
+            [Reflection.NameAttribute("days")] DAYS,
+            [Reflection.NameAttribute("interval")] INTERVAL,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getgroupaccountsummarydata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<GroupAccountSummary[,GroupAccountSummary...]>>&<days=<INTEGER>>&<interval=<INTEGER>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("getgroupaccountsummarydata")] [Description("getgroupaccountsummarydata")] GETGROUPACCOUNTSUMMARYDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("getgroupaccountsummarydata")] [Reflection.NameAttribute("getgroupaccountsummarydata")] GETGROUPACCOUNTSUMMARYDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getselfdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AgentManager[,AgentManager...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("getselfdata")] [Description("getselfdata")] GETSELFDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("getselfdata")] [Reflection.NameAttribute("getselfdata")] GETSELFDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=deleteclassified>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("deleteclassified")] [Description("deleteclassified")] DELETECLASSIFIED,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("deleteclassified")] [Reflection.NameAttribute("deleteclassified")] DELETECLASSIFIED,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=addclassified>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&<price=<INTEGER>>&<type=<Any|Shopping|LandRental|PropertyRental|SpecialAttraction|NewProducts|Employment|Wanted|Service|Personal>>&[item=<UUID|STRING>]&[description=<STRING>]&[renew=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming | (uint) Permissions.Economy)] [CorradeCommand("addclassified")] [Description("addclassified")] ADDCLASSIFIED,
-            [Description("price")] PRICE,
-            [Description("renew")] RENEW,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=logout>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.System)] [CorradeCommand("logout")] [Description("logout")] LOGOUT,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming | (uint) Configuration.Permissions.Economy)
+                   ] [CorradeCommand("addclassified")] [Reflection.NameAttribute("addclassified")] ADDCLASSIFIED,
+            [Reflection.NameAttribute("price")] PRICE,
+            [Reflection.NameAttribute("renew")] RENEW,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=logout>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.System)] [CorradeCommand("logout")] [Reflection.NameAttribute("logout")] LOGOUT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=displayname>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<get|set>>&action=set:<name=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("displayname")] [Description("displayname")] DISPLAYNAME,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("displayname")] [Reflection.NameAttribute("displayname")] DISPLAYNAME,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=returnprimitives>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<entity=<parcel|estate>>&<type=<Owner|Group|Other|Sell|ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers>>&type=Owner|Group|Other|Sell:[position=<VECTOR2>]&type=ReturnScripted|ReturnOnOthersLand|ReturnScriptedAndOnOthers:[all=<BOOL>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("returnprimitives")] [Description("returnprimitives")] RETURNPRIMITIVES,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("returnprimitives")] [Reflection.NameAttribute("returnprimitives")] RETURNPRIMITIVES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getgroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,Group...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("getgroupdata")] [Description("getgroupdata")] GETGROUPDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("getgroupdata")] [Reflection.NameAttribute("getgroupdata")] GETGROUPDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getavatardata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<Avatar[,Avatar...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getavatardata")] [Description("getavatardata")] GETAVATARDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getavatardata")] [Reflection.NameAttribute("getavatardata")] GETAVATARDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitiveinventory>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getprimitiveinventory")] [Description("getprimitiveinventory")] GETPRIMITIVEINVENTORY,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getprimitiveinventory")] [Reflection.NameAttribute("getprimitiveinventory")] GETPRIMITIVEINVENTORY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<InventoryItem[,InventoryItem...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Inventory)] [CorradeCommand("getinventorydata")] [Description("getinventorydata")] GETINVENTORYDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Inventory)] [CorradeCommand("getinventorydata")] [Reflection.NameAttribute("getinventorydata")] GETINVENTORYDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitiveinventorydata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<InventoryItem[,InventoryItem...]>>&<entity=<STRING|UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getprimitiveinventorydata")] [Description("getprimitiveinventorydata")] GETPRIMITIVEINVENTORYDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getprimitiveinventorydata")] [Reflection.NameAttribute("getprimitiveinventorydata")] GETPRIMITIVEINVENTORYDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getscriptrunning>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<entity=<STRING|UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getscriptrunning")] [Description("getscriptrunning")] GETSCRIPTRUNNING,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getscriptrunning")] [Reflection.NameAttribute("getscriptrunning")] GETSCRIPTRUNNING,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setscriptrunning>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<entity=<STRING|UUID>>&<action=<start|stop>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("setscriptrunning")] [Description("setscriptrunning")] SETSCRIPTRUNNING,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("setscriptrunning")] [Reflection.NameAttribute("setscriptrunning")] SETSCRIPTRUNNING,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=derez>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[folder=<STRING|UUID>]&[type=<DeRezDestination>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("derez")] [Description("derez")] DEREZ,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("derez")] [Reflection.NameAttribute("derez")] DEREZ,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getparceldata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Parcel[,Parcel...]>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("getparceldata")] [Description("getparceldata")] GETPARCELDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getparceldata")] [Reflection.NameAttribute("getparceldata")] GETPARCELDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=rez>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR2>>&<item=<UUID|STRING>&[rotation=<QUARTERNION>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("rez")] [Description("rez")] REZ,
-            [Description("rotation")] ROTATION,
-            [Description("index")] INDEX,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("rez")] [Reflection.NameAttribute("rez")] REZ,
+            [Reflection.NameAttribute("rotation")] ROTATION,
+            [Reflection.NameAttribute("index")] INDEX,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=replytoscriptdialog>&<group=<UUID|STRING>>&<password=<STRING>>&<channel=<INTEGER>>&<index=<INTEGER>&<button=<STRING>>&<item=<UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("replytoscriptdialog")] [Description("replytoscriptdialog")] REPLYTOSCRIPTDIALOG,
-            [Description("owner")] OWNER,
-            [Description("button")] BUTTON,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("replytoscriptdialog")] [Reflection.NameAttribute("replytoscriptdialog")] REPLYTOSCRIPTDIALOG,
+            [Reflection.NameAttribute("owner")] OWNER,
+            [Reflection.NameAttribute("button")] BUTTON,
 
             [IsCorradeCommand(true)] [CommandInputSyntax("<command=getanimations>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")
-                                     ] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("getanimations")] [Description("getanimations")] GETANIMATIONS,
+                                     ] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("getanimations")] [Reflection.NameAttribute("getanimations")] GETANIMATIONS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=animation>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&<action=<start|stop>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("animation")] [Description("animation")] ANIMATION,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("animation")] [Reflection.NameAttribute("animation")] ANIMATION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setestatelist>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<ban|group|manager|user>>&<action=<add|remove>>&type=ban|manager|user,action=add|remove:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&type=group,action=add|remove:<target=<STRING|UUID>>&[all=<BOOL>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("setestatelist")] [Description("setestatelist")] SETESTATELIST,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("setestatelist")] [Reflection.NameAttribute("setestatelist")] SETESTATELIST,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getestatelist>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<ban|group|manager|user>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("getestatelist")] [Description("getestatelist")] GETESTATELIST,
-            [Description("all")] ALL,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getestatelist")] [Reflection.NameAttribute("getestatelist")] GETESTATELIST,
+            [Reflection.NameAttribute("all")] ALL,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getregiontop>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<scripts|colliders>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("getregiontop")] [Description("getregiontop")] GETREGIONTOP,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getregiontop")] [Reflection.NameAttribute("getregiontop")] GETREGIONTOP,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=restartregion>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<scripts|colliders>>&[delay=<INTEGER>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("restartregion")] [Description("restartregion")] RESTARTREGION,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("restartregion")] [Reflection.NameAttribute("restartregion")] RESTARTREGION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=directorysearch>&<group=<UUID|STRING>>&<password=<STRING>>&<type=<classified|event|group|land|people|places>>&type=classified:<data=<Classified[,Classified...]>>&type=classified:<name=<STRING>>&type=event:<data=<EventsSearchData[,EventSearchData...]>>&type=event:<name=<STRING>>&type=group:<data=<GroupSearchData[,GroupSearchData...]>>&type=land:<data=<DirectoryParcel[,DirectoryParcel...]>>&type=people:<data=<AgentSearchData[,AgentSearchData...]>>&type=places:<data=<DirectoryParcel[,DirectoryParcel...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Directory)] [CorradeCommand("directorysearch")] [Description("directorysearch")] DIRECTORYSEARCH,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Directory)] [CorradeCommand("directorysearch")] [Reflection.NameAttribute("directorysearch")] DIRECTORYSEARCH,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprofiledata>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<data=<AvatarProperties[,AvatarProperties...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getprofiledata")] [Description("getprofiledata")] GETPROFILEDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getprofiledata")] [Reflection.NameAttribute("getprofiledata")] GETPROFILEDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getparticlesystem>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getparticlesystem")] [Description("getparticlesystem")] GETPARTICLESYSTEM,
-            [Description("data")] DATA,
-            [Description("range")] RANGE,
-            [Description("balance")] BALANCE,
-            [Description("key")] KEY,
-            [Description("value")] VALUE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getparticlesystem")] [Reflection.NameAttribute("getparticlesystem")] GETPARTICLESYSTEM,
+            [Reflection.NameAttribute("data")] DATA,
+            [Reflection.NameAttribute("range")] RANGE,
+            [Reflection.NameAttribute("balance")] BALANCE,
+            [Reflection.NameAttribute("key")] KEY,
+            [Reflection.NameAttribute("value")] VALUE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=database>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<get|set|delete>>&action=get|delete:<key=<STRING>>&action=set:<key=<STRING>>&action=set:<value=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Database)] [CorradeCommand("database")] [Description("database")] DATABASE,
-            [Description("text")] TEXT,
-            [Description("quorum")] QUORUM,
-            [Description("majority")] MAJORITY,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Database)] [CorradeCommand("database")] [Reflection.NameAttribute("database")] DATABASE,
+            [Reflection.NameAttribute("text")] TEXT,
+            [Reflection.NameAttribute("quorum")] QUORUM,
+            [Reflection.NameAttribute("majority")] MAJORITY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=startproposal>&<group=<UUID|STRING>>&<password=<STRING>>&<duration=<INTEGER>>&<majority=<FLOAT>>&<quorum=<INTEGER>>&<text=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("startproposal")] [Description("startproposal")] STARTPROPOSAL,
-            [Description("duration")] DURATION,
-            [Description("action")] ACTION,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("startproposal")] [Reflection.NameAttribute("startproposal")] STARTPROPOSAL,
+            [Reflection.NameAttribute("duration")] DURATION,
+            [Reflection.NameAttribute("action")] ACTION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=deletefromrole>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<role=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("deletefromrole")] [Description("deletefromrole")] DELETEFROMROLE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("deletefromrole")] [Reflection.NameAttribute("deletefromrole")] DELETEFROMROLE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=addtorole>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<role=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("addtorole")] [Description("addtorole")] ADDTOROLE,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=leave>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("leave")] [Description("leave")] LEAVE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("addtorole")] [Reflection.NameAttribute("addtorole")] ADDTOROLE,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=leave>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("leave")] [Reflection.NameAttribute("leave")] LEAVE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=updategroupdata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<[Charter<,STRING>][,ListInProfile<,BOOL>][,MembershipFee<,INTEGER>][,OpenEnrollment<,BOOL>][,ShowInList<,BOOL>]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("updategroupdata")] [Description("updategroupdata")] UPDATEGROUPDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("updategroupdata")] [Reflection.NameAttribute("updategroupdata")] UPDATEGROUPDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=eject>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("eject")] [Description("eject")] EJECT,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("eject")] [Reflection.NameAttribute("eject")] EJECT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=invite>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[role=<UUID[,STRING...]>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("invite")] [Description("invite")] INVITE,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=join>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Group | (uint) Permissions.Economy)] [CorradeCommand("join")] [Description("join")] JOIN,
-            [Description("callback")] CALLBACK,
-            [Description("group")] GROUP,
-            [Description("password")] PASSWORD,
-            [Description("firstname")] FIRSTNAME,
-            [Description("lastname")] LASTNAME,
-            [Description("command")] COMMAND,
-            [Description("role")] ROLE,
-            [Description("title")] TITLE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("invite")] [Reflection.NameAttribute("invite")] INVITE,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=join>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Group | (uint) Configuration.Permissions.Economy)] [CorradeCommand("join")] [Reflection.NameAttribute("join")] JOIN,
+            [Reflection.NameAttribute("callback")] CALLBACK,
+            [Reflection.NameAttribute("group")] GROUP,
+            [Reflection.NameAttribute("password")] PASSWORD,
+            [Reflection.NameAttribute("firstname")] FIRSTNAME,
+            [Reflection.NameAttribute("lastname")] LASTNAME,
+            [Reflection.NameAttribute("command")] COMMAND,
+            [Reflection.NameAttribute("role")] ROLE,
+            [Reflection.NameAttribute("title")] TITLE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=tell>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<local|group|avatar|estate|region>>&entity=local:<type=<Normal|Whisper|Shout>>&entity=local,type=Normal|Whisper|Shout:[channel=<INTEGER>]&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Talk)] [CorradeCommand("tell")] [Description("tell")] TELL,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Talk)] [CorradeCommand("tell")] [Reflection.NameAttribute("tell")] TELL,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=notice>&<group=<UUID|STRING>>&<password=<STRING>>&<message=<STRING>>&[subject=<STRING>]&[item=<UUID|STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("notice")] [Description("notice")] NOTICE,
-            [Description("message")] MESSAGE,
-            [Description("subject")] SUBJECT,
-            [Description("item")] ITEM,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("notice")] [Reflection.NameAttribute("notice")] NOTICE,
+            [Reflection.NameAttribute("message")] MESSAGE,
+            [Reflection.NameAttribute("subject")] SUBJECT,
+            [Reflection.NameAttribute("item")] ITEM,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=pay>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<avatar|object|group>>&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&entity=object:<target=<UUID>>&[reason=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Economy)] [CorradeCommand("pay")] [Description("pay")] PAY,
-            [Description("amount")] AMOUNT,
-            [Description("target")] TARGET,
-            [Description("reason")] REASON,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getbalance>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Economy)] [CorradeCommand("getbalance")] [Description("getbalance")] GETBALANCE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Economy)] [CorradeCommand("pay")] [Reflection.NameAttribute("pay")] PAY,
+            [Reflection.NameAttribute("amount")] AMOUNT,
+            [Reflection.NameAttribute("target")] TARGET,
+            [Reflection.NameAttribute("reason")] REASON,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getbalance>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Economy)] [CorradeCommand("getbalance")] [Reflection.NameAttribute("getbalance")] GETBALANCE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=teleport>&<group=<UUID|STRING>>&<password=<STRING>>&<region=<STRING>>&[position=<VECTOR3>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("teleport")] [Description("teleport")] TELEPORT,
-            [Description("region")] REGION,
-            [Description("position")] POSITION,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Movement)] [CorradeCommand("teleport")] [Reflection.NameAttribute("teleport")] TELEPORT,
+            [Reflection.NameAttribute("region")] REGION,
+            [Reflection.NameAttribute("position")] POSITION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getregiondata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Simulator[,Simulator...]>>&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("getregiondata")] [Description("getregiondata")] GETREGIONDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getregiondata")] [Reflection.NameAttribute("getregiondata")] GETREGIONDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=sit>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("sit")] [Description("sit")] SIT,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=stand>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("stand")] [Description("stand")] STAND,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Movement)] [CorradeCommand("sit")] [Reflection.NameAttribute("sit")] SIT,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=stand>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Movement)] [CorradeCommand("stand")] [Reflection.NameAttribute("stand")] STAND,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=parceleject>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[ban=<BOOL>]&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("parceleject")] [Description("parceleject")] PARCELEJECT,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("parceleject")] [Reflection.NameAttribute("parceleject")] PARCELEJECT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=creategroup>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<Group[,Group...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group | (uint) Permissions.Economy)] [CorradeCommand("creategroup")] [Description("creategroup")] CREATEGROUP,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group | (uint) Configuration.Permissions.Economy)] [CorradeCommand("creategroup")] [Reflection.NameAttribute("creategroup")] CREATEGROUP,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=parcelfreeze>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[freeze=<BOOL>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("parcelfreeze")] [Description("parcelfreeze")] PARCELFREEZE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("parcelfreeze")] [Reflection.NameAttribute("parcelfreeze")] PARCELFREEZE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=createrole>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<STRING>>&[powers=<GroupPowers[,GroupPowers...]>]&[title=<STRING>]&[description=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("createrole")] [Description("createrole")] CREATEROLE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("createrole")] [Reflection.NameAttribute("createrole")] CREATEROLE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=deleterole>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<STRING|UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("deleterole")] [Description("deleterole")] DELETEROLE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("deleterole")] [Reflection.NameAttribute("deleterole")] DELETEROLE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=getrolesmembers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("getrolesmembers")] [Description("getrolesmembers")] GETROLESMEMBERS,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getroles>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("getroles")] [Description("getroles")] GETROLES,
+                "<command=getrolesmembers>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("getrolesmembers")] [Reflection.NameAttribute("getrolesmembers")] GETROLESMEMBERS,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getroles>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("getroles")] [Reflection.NameAttribute("getroles")] GETROLES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getrolepowers>&<group=<UUID|STRING>>&<password=<STRING>>&<role=<UUID|STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("getrolepowers")] [Description("getrolepowers")] GETROLEPOWERS,
-            [Description("powers")] POWERS,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("getrolepowers")] [Reflection.NameAttribute("getrolepowers")] GETROLEPOWERS,
+            [Reflection.NameAttribute("powers")] POWERS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=lure>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("lure")] [Description("lure")] LURE,
-            [Description("URL")] URL,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=sethome>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("sethome")] [Description("sethome")] SETHOME,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=gohome>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("gohome")] [Description("gohome")] GOHOME,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Movement)] [CorradeCommand("lure")] [Reflection.NameAttribute("lure")] LURE,
+            [Reflection.NameAttribute("URL")] URL,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=sethome>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("sethome")] [Reflection.NameAttribute("sethome")] SETHOME,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=gohome>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Movement)] [CorradeCommand("gohome")] [Reflection.NameAttribute("gohome")] GOHOME,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=setprofiledata>&<group=<UUID|STRING>>&<password=<STRING>>&<data=<AvatarProperties[,AvatarProperties...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("setprofiledata")] [Description("setprofiledata")] SETPROFILEDATA,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("setprofiledata")] [Reflection.NameAttribute("setprofiledata")] SETPROFILEDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=give>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<avatar|object>>&entity=avatar:<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&entity=avatar:<item=<UUID|STRING>&entity=object:<item=<UUID|STRING>&entity=object:[range=<FLOAT>]&entity=object:<target=<UUID|STRING>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Inventory)] [CorradeCommand("give")] [Description("give")] GIVE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Inventory)] [CorradeCommand("give")] [Reflection.NameAttribute("give")] GIVE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=deleteitem>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<STRING|UUID>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Inventory)] [CorradeCommand("deleteitem")] [Description("deleteitem")] DELETEITEM,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=emptytrash>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Inventory)] [CorradeCommand("emptytrash")] [Description("emptytrash")] EMPTYTRASH,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Inventory)] [CorradeCommand("deleteitem")] [Reflection.NameAttribute("deleteitem")] DELETEITEM,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=emptytrash>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Inventory)] [CorradeCommand("emptytrash")] [Reflection.NameAttribute("emptytrash")] EMPTYTRASH,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=fly>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("fly")] [Description("fly")] FLY,
+                "<command=fly>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<start|stop>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Movement)] [CorradeCommand("fly")] [Reflection.NameAttribute("fly")] FLY,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=addpick>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[description=<STRING>]&[item=<STRING|UUID>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("addpick")] [Description("addpick")] ADDPICK,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("addpick")] [Reflection.NameAttribute("addpick")] ADDPICK,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=deletepick>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("deltepick")] [Description("deltepick")] DELETEPICK,
+                "<command=deletepick>&<group=<UUID|STRING>>&<password=<STRING>>&<name=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("deltepick")] [Reflection.NameAttribute("deltepick")] DELETEPICK,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=touch>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("touch")] [Description("touch")] TOUCH,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("touch")] [Reflection.NameAttribute("touch")] TOUCH,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=moderate>&<group=<UUID|STRING>>&<password=<STRING>>&<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<type=<voice|text>>&<silence=<BOOL>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Group)] [CorradeCommand("moderate")] [Description("moderate")] MODERATE,
-            [Description("type")] TYPE,
-            [Description("silence")] SILENCE,
-            [Description("freeze")] FREEZE,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=rebake>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("rebake")] [Description("rebake")] REBAKE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("moderate")] [Reflection.NameAttribute("moderate")] MODERATE,
+            [Reflection.NameAttribute("type")] TYPE,
+            [Reflection.NameAttribute("silence")] SILENCE,
+            [Reflection.NameAttribute("freeze")] FREEZE,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=rebake>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("rebake")] [Reflection.NameAttribute("rebake")] REBAKE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax("<command=getattachments>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("getattachments")] [Description("getattachments")] GETATTACHMENTS,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("getattachments")] [Reflection.NameAttribute("getattachments")] GETATTACHMENTS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=attach>&<group=<UUID|STRING>>&<password=<STRING>>&<attachments=<AttachmentPoint<,<UUID|STRING>>[,AttachmentPoint<,<UUID|STRING>>...]>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("attach")] [Description("attach")] ATTACH,
-            [Description("attachments")] ATTACHMENTS,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("attach")] [Reflection.NameAttribute("attach")] ATTACH,
+            [Reflection.NameAttribute("attachments")] ATTACHMENTS,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=detach>&<group=<UUID|STRING>>&<password=<STRING>>&<attachments=<STRING[,UUID...]>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("detach")] [Description("detach")] DETACH,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("detach")] [Reflection.NameAttribute("detach")] DETACH,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitiveowners>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR2>]&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("getprimitiveowners")] [Description("getprimitiveowners")] GETPRIMITIVEOWNERS,
-            [Description("entity")] ENTITY,
-            [Description("channel")] CHANNEL,
-            [Description("name")] NAME,
-            [Description("description")] DESCRIPTION,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("getprimitiveowners")] [Reflection.NameAttribute("getprimitiveowners")] GETPRIMITIVEOWNERS,
+            [Reflection.NameAttribute("entity")] ENTITY,
+            [Reflection.NameAttribute("channel")] CHANNEL,
+            [Reflection.NameAttribute("name")] NAME,
+            [Reflection.NameAttribute("description")] DESCRIPTION,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=getprimitivedata>&<group=<UUID|STRING>>&<password=<STRING>>&<item=<UUID|STRING>>&[range=<FLOAT>]&<data=<Primitive[,Primitive...]>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Interact)] [CorradeCommand("getprimitivedata")] [Description("getprimitivedata")] GETPRIMITIVEDATA,
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=activate>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Grooming)] [CorradeCommand("activate")] [Description("activate")] ACTIVATE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Interact)] [CorradeCommand("getprimitivedata")] [Reflection.NameAttribute("getprimitivedata")] GETPRIMITIVEDATA,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=activate>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("activate")] [Reflection.NameAttribute("activate")] ACTIVATE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=autopilot>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR2>>&<action=<start|stop>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Movement)] [CorradeCommand("autopilot")] [Description("autopilot")] AUTOPILOT,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Movement)] [CorradeCommand("autopilot")] [Reflection.NameAttribute("autopilot")] AUTOPILOT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=mute>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<mute|unmute>>&action=mute:<name=<STRING>&target=<UUID>>&action=unmute:<name=<STRING>|target=<UUID>>&action=mute:[type=MuteType]&action=mute:[flags=MuteFlags]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Mute)] [CorradeCommand("mute")] [Description("mute")] MUTE,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Mute)] [CorradeCommand("mute")] [Reflection.NameAttribute("mute")] MUTE,
 
-            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getmutes>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Permissions.Mute)] [CorradeCommand("getmutes")] [Description("getmutes")] GETMUTES,
+            [IsCorradeCommand(true)] [CommandInputSyntax("<command=getmutes>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")] [CommandPermissionMask((uint) Configuration.Permissions.Mute)] [CorradeCommand("getmutes")] [Reflection.NameAttribute("getmutes")] GETMUTES,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=notify>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<add|set|remove|list|clear|purge>>&action=add|set|remove|clear:<type=<STRING[,STRING...]>>&action=add|set|remove:<URL=<STRING>>&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Notifications)] [CorradeCommand("notify")] [Description("notify")] NOTIFY,
-            [Description("source")] SOURCE,
-            [Description("effect")] EFFECT,
-            [Description("id")] ID,
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Notifications)] [CorradeCommand("notify")] [Reflection.NameAttribute("notify")] NOTIFY,
+            [Reflection.NameAttribute("source")] SOURCE,
+            [Reflection.NameAttribute("effect")] EFFECT,
+            [Reflection.NameAttribute("id")] ID,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=terrain>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<set|get>>&action=set:<data=<STRING>>&[region=<STRING>]&[callback=<STRING>]"
-                )] [CommandPermissionMask((uint) Permissions.Land)] [CorradeCommand("terrain")] [Description("terrain")] TERRAIN,
-            [Description("output")] OUTPUT,
-            [Description("input")] INPUT
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Land)] [CorradeCommand("terrain")] [Reflection.NameAttribute("terrain")] TERRAIN,
+            [Reflection.NameAttribute("output")] OUTPUT,
+            [Reflection.NameAttribute("input")] INPUT
         }
 
         /// <summary>
@@ -13405,11 +11546,16 @@ namespace Corrade
         private struct ScriptPermissionRequest
         {
             public Agent Agent;
-            [Description("item")] public UUID Item;
-            [Description("name")] public string Name;
-            [Description("permission")] public ScriptPermission Permission;
-            [Description("region")] public string Region;
-            [Description("task")] public UUID Task;
+
+            [Reflection.NameAttribute("item")] public UUID Item;
+
+            [Reflection.NameAttribute("name")] public string Name;
+
+            [Reflection.NameAttribute("permission")] public ScriptPermission Permission;
+
+            [Reflection.NameAttribute("region")] public string Region;
+
+            [Reflection.NameAttribute("task")] public UUID Task;
         }
 
         /// <summary>
@@ -13577,12 +11723,17 @@ namespace Corrade
         /// </summary>
         private struct SphereEffect
         {
-            [Description("alpha")] public float Alpha;
-            [Description("color")] public Vector3 Color;
-            [Description("duration")] public float Duration;
-            [Description("effect")] public UUID Effect;
-            [Description("offset")] public Vector3d Offset;
-            [Description("termination")] public DateTime Termination;
+            [Reflection.NameAttribute("alpha")] public float Alpha;
+
+            [Reflection.NameAttribute("color")] public Vector3 Color;
+
+            [Reflection.NameAttribute("duration")] public float Duration;
+
+            [Reflection.NameAttribute("effect")] public UUID Effect;
+
+            [Reflection.NameAttribute("offset")] public Vector3d Offset;
+
+            [Reflection.NameAttribute("termination")] public DateTime Termination;
         }
 
         /// <summary>
@@ -13599,22 +11750,22 @@ namespace Corrade
         /// </summary>
         private enum Type : uint
         {
-            [Description("none")] NONE = 0,
-            [Description("text")] TEXT,
-            [Description("voice")] VOICE,
-            [Description("scripts")] SCRIPTS,
-            [Description("colliders")] COLLIDERS,
-            [Description("ban")] BAN,
-            [Description("group")] GROUP,
-            [Description("user")] USER,
-            [Description("manager")] MANAGER,
-            [Description("classified")] CLASSIFIED,
-            [Description("event")] EVENT,
-            [Description("land")] LAND,
-            [Description("people")] PEOPLE,
-            [Description("place")] PLACE,
-            [Description("input")] INPUT,
-            [Description("output")] OUTPUT
+            [Reflection.NameAttribute("none")] NONE = 0,
+            [Reflection.NameAttribute("text")] TEXT,
+            [Reflection.NameAttribute("voice")] VOICE,
+            [Reflection.NameAttribute("scripts")] SCRIPTS,
+            [Reflection.NameAttribute("colliders")] COLLIDERS,
+            [Reflection.NameAttribute("ban")] BAN,
+            [Reflection.NameAttribute("group")] GROUP,
+            [Reflection.NameAttribute("user")] USER,
+            [Reflection.NameAttribute("manager")] MANAGER,
+            [Reflection.NameAttribute("classified")] CLASSIFIED,
+            [Reflection.NameAttribute("event")] EVENT,
+            [Reflection.NameAttribute("land")] LAND,
+            [Reflection.NameAttribute("people")] PEOPLE,
+            [Reflection.NameAttribute("place")] PLACE,
+            [Reflection.NameAttribute("input")] INPUT,
+            [Reflection.NameAttribute("output")] OUTPUT
         }
 
         /// <summary>
@@ -13622,827 +11773,14 @@ namespace Corrade
         /// </summary>
         private enum ViewerEffectType : uint
         {
-            [Description("none")] NONE = 0,
-            [Description("look")] LOOK,
-            [Description("point")] POINT,
-            [Description("sphere")] SPHERE,
-            [Description("beam")] BEAM
+            [Reflection.NameAttribute("none")] NONE = 0,
+            [Reflection.NameAttribute("look")] LOOK,
+            [Reflection.NameAttribute("point")] POINT,
+            [Reflection.NameAttribute("sphere")] SPHERE,
+            [Reflection.NameAttribute("beam")] BEAM
         }
 
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2015 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Given a number of allowed events per seconds, this class allows you
-        ///     to determine via the IsSafe property whether it is safe to trigger
-        ///     another lined-up event. This is mostly used to check that throttles
-        ///     are being respected.
-        /// </summary>
-        public class wasTimedThrottle : IDisposable
-        {
-            private readonly uint EventsAllowed;
-            private readonly object LockObject = new object();
-            private uint _Events;
-            private System.Timers.Timer timer;
-
-            public wasTimedThrottle(uint events, uint seconds)
-            {
-                EventsAllowed = events;
-                if (timer == null)
-                {
-                    timer = new System.Timers.Timer(seconds);
-                    timer.Elapsed += (o, p) =>
-                    {
-                        lock (LockObject)
-                        {
-                            _Events = 0;
-                        }
-                    };
-                    timer.Start();
-                }
-            }
-
-            public bool IsSafe
-            {
-                get
-                {
-                    lock (LockObject)
-                    {
-                        return ++_Events <= EventsAllowed;
-                    }
-                }
-            }
-
-            public void Dispose()
-            {
-                Dispose(true);
-                GC.SuppressFinalize(this);
-            }
-
-            protected virtual void Dispose(bool dispose)
-            {
-                if (timer != null)
-                {
-                    timer.Dispose();
-                    timer = null;
-                }
-            }
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2013 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     An alarm class similar to the UNIX alarm with the added benefit
-        ///     of a decaying timer that tracks the time between rescheduling.
-        /// </summary>
-        /// <remarks>
-        ///     (C) Wizardry and Steamworks 2013 - License: GNU GPLv3
-        /// </remarks>
-        public class wasAdaptiveAlarm : IDisposable
-        {
-            [Flags]
-            public enum DECAY_TYPE
-            {
-                [XmlEnum(Name = "none")] [Description("none")] NONE = 0,
-                [XmlEnum(Name = "arithmetic")] [Description("arithmetic")] ARITHMETIC = 1,
-                [XmlEnum(Name = "geometric")] [Description("geometric")] GEOMETRIC = 2,
-                [XmlEnum(Name = "harmonic")] [Description("harmonic")] HARMONIC = 4,
-                [XmlEnum(Name = "weighted")] [Description("weighted")] WEIGHTED = 5
-            }
-
-            private readonly DECAY_TYPE decay = DECAY_TYPE.NONE;
-            private readonly Stopwatch elapsed = new Stopwatch();
-            private readonly object LockObject = new object();
-            private readonly HashSet<double> times = new HashSet<double>();
-            private System.Timers.Timer alarm;
-
-            /// <summary>
-            ///     The default constructor using no decay.
-            /// </summary>
-            public wasAdaptiveAlarm()
-            {
-                Signal = new ManualResetEvent(false);
-            }
-
-            /// <summary>
-            ///     The constructor for the wasAdaptiveAlarm class taking as parameter a decay type.
-            /// </summary>
-            /// <param name="decay">the type of decay: arithmetic, geometric, harmonic, heronian or quadratic</param>
-            public wasAdaptiveAlarm(DECAY_TYPE decay)
-            {
-                Signal = new ManualResetEvent(false);
-                this.decay = decay;
-            }
-
-            public ManualResetEvent Signal { get; set; }
-
-            public void Dispose()
-            {
-                Dispose(true);
-                GC.SuppressFinalize(this);
-            }
-
-            public void Alarm(double deadline)
-            {
-                lock (LockObject)
-                {
-                    switch (alarm == null)
-                    {
-                        case true:
-                            alarm = new System.Timers.Timer(deadline);
-                            alarm.Elapsed += (o, p) =>
-                            {
-                                lock (LockObject)
-                                {
-                                    Signal.Set();
-                                    elapsed.Stop();
-                                    times.Clear();
-                                    alarm = null;
-                                }
-                            };
-                            elapsed.Start();
-                            alarm.Start();
-                            return;
-                        case false:
-                            elapsed.Stop();
-                            times.Add(elapsed.ElapsedMilliseconds);
-                            switch (decay)
-                            {
-                                case DECAY_TYPE.ARITHMETIC:
-                                    alarm.Interval = (deadline + times.Aggregate((a, b) => b + a))/(1f + times.Count);
-                                    break;
-                                case DECAY_TYPE.GEOMETRIC:
-                                    alarm.Interval = Math.Pow(deadline*times.Aggregate((a, b) => b*a),
-                                        1f/(1f + times.Count));
-                                    break;
-                                case DECAY_TYPE.HARMONIC:
-                                    alarm.Interval = (1f + times.Count)/
-                                                     (1f/deadline + times.Aggregate((a, b) => 1f/b + 1f/a));
-                                    break;
-                                case DECAY_TYPE.WEIGHTED:
-                                    HashSet<double> d = new HashSet<double>(times) {deadline};
-                                    double total = d.Aggregate((a, b) => b + a);
-                                    alarm.Interval = d.Aggregate((a, b) => Math.Pow(a, 2)/total + Math.Pow(b, 2)/total);
-                                    break;
-                                default:
-                                    alarm.Interval = deadline;
-                                    break;
-                            }
-                            elapsed.Reset();
-                            elapsed.Start();
-                            break;
-                    }
-                }
-            }
-
-            protected virtual void Dispose(bool dispose)
-            {
-                if (alarm != null)
-                {
-                    alarm.Dispose();
-                    alarm = null;
-                }
-            }
-        }
-
-        #region KEY-VALUE DATA
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Returns the value of a key from a key-value data string.
-        /// </summary>
-        /// <param name="key">the key of the value</param>
-        /// <param name="data">the key-value data segment</param>
-        /// <returns>true if the key was found in data</returns>
-        private static string wasKeyValueGet(string key, string data)
-        {
-            return data.Split('&')
-                .AsParallel()
-                .Select(o => o.Split('=').ToList())
-                .Where(o => o.Count.Equals(2))
-                .Select(o => new
-                {
-                    k = o.First(),
-                    v = o.Last()
-                })
-                .Where(o => o.k.Equals(key))
-                .Select(o => o.v)
-                .FirstOrDefault();
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Returns a key-value data string with a key set to a given value.
-        /// </summary>
-        /// <param name="key">the key of the value</param>
-        /// <param name="value">the value to set the key to</param>
-        /// <param name="data">the key-value data segment</param>
-        /// <returns>
-        ///     a key-value data string or the empty string if either key or
-        ///     value are empty
-        /// </returns>
-        private static string wasKeyValueSet(string key, string value, string data)
-        {
-            HashSet<string> output = new HashSet<string>(data.Split('&')
-                .AsParallel()
-                .Select(o => o.Split('=').ToList())
-                .Where(o => o.Count.Equals(2))
-                .Select(o => new
-                {
-                    k = o.First(),
-                    v = !o.First().Equals(key) ? o.Last() : value
-                }).Select(o => string.Join("=", o.k, o.v)));
-            string append = string.Join("=", key, value);
-            if (!output.Contains(append))
-            {
-                output.Add(append);
-            }
-            return string.Join("&", output.ToArray());
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Deletes a key-value pair from a string referenced by a key.
-        /// </summary>
-        /// <param name="key">the key to search for</param>
-        /// <param name="data">the key-value data segment</param>
-        /// <returns>a key-value pair string</returns>
-        private static string wasKeyValueDelete(string key, string data)
-        {
-            return string.Join("&", data.Split('&')
-                .AsParallel()
-                .Select(o => o.Split('=').ToList())
-                .Where(o => o.Count.Equals(2))
-                .Select(o => new
-                {
-                    k = o.First(),
-                    v = o.Last()
-                })
-                .Where(o => !o.k.Equals(key))
-                .Select(o => string.Join("=", o.k, o.v))
-                .ToArray());
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Decodes key-value pair data to a dictionary.
-        /// </summary>
-        /// <param name="data">the key-value pair data</param>
-        /// <returns>a dictionary containing the keys and values</returns>
-        private static Dictionary<string, string> wasKeyValueDecode(string data)
-        {
-            return data.Split('&')
-                .AsParallel()
-                .Select(o => o.Split('=').ToList())
-                .Where(o => o.Count.Equals(2))
-                .Select(o => new
-                {
-                    k = o.First(),
-                    v = o.Last()
-                })
-                .GroupBy(o => o.k)
-                .ToDictionary(o => o.Key, p => p.First().v);
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Serialises a dictionary to key-value data.
-        /// </summary>
-        /// <param name="data">a dictionary</param>
-        /// <returns>a key-value data encoded string</returns>
-        private static string wasKeyValueEncode(Dictionary<string, string> data)
-        {
-            return string.Join("&", data.AsParallel().Select(o => string.Join("=", o.Key, o.Value)));
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>Escapes a dictionary's keys and values for sending as POST data.</summary>
-        /// <param name="data">A dictionary containing keys and values to be escaped</param>
-        private static Dictionary<string, string> wasKeyValueEscape(Dictionary<string, string> data)
-        {
-            return data.AsParallel().ToDictionary(o => wasOutput(o.Key), p => wasOutput(p.Value));
-        }
-
-        #endregion
-
-        #region CRYPTOGRAPHY
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Gets an array element at a given modulo index.
-        /// </summary>
-        /// <typeparam name="T">the array type</typeparam>
-        /// <param name="index">a positive or negative index of the element</param>
-        /// <param name="data">the array</param>
-        /// <return>an array element</return>
-        public static T wasGetElementAt<T>(T[] data, int index)
-        {
-            switch (index < 0)
-            {
-                case true:
-                    return data[((index%data.Length) + data.Length)%data.Length];
-                default:
-                    return data[index%data.Length];
-            }
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Gets a sub-array from an array.
-        /// </summary>
-        /// <typeparam name="T">the array type</typeparam>
-        /// <param name="data">the array</param>
-        /// <param name="start">the start index</param>
-        /// <param name="stop">the stop index (-1 denotes the end)</param>
-        /// <returns>the array slice between start and stop</returns>
-        public static T[] wasGetSubArray<T>(T[] data, int start, int stop)
-        {
-            if (stop.Equals(-1))
-                stop = data.Length - 1;
-            T[] result = new T[stop - start + 1];
-            Array.Copy(data, start, result, 0, stop - start + 1);
-            return result;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Delete a sub-array and return the result.
-        /// </summary>
-        /// <typeparam name="T">the array type</typeparam>
-        /// <param name="data">the array</param>
-        /// <param name="start">the start index</param>
-        /// <param name="stop">the stop index (-1 denotes the end)</param>
-        /// <returns>the array without elements between start and stop</returns>
-        public static T[] wasDeleteSubArray<T>(T[] data, int start, int stop)
-        {
-            if (stop.Equals(-1))
-                stop = data.Length - 1;
-            T[] result = new T[data.Length - (stop - start) - 1];
-            Array.Copy(data, 0, result, 0, start);
-            Array.Copy(data, stop + 1, result, start, data.Length - stop - 1);
-            return result;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Concatenate multiple arrays.
-        /// </summary>
-        /// <typeparam name="T">the array type</typeparam>
-        /// <param name="arrays">multiple arrays</param>
-        /// <returns>a flat array with all arrays concatenated</returns>
-        public static T[] wasConcatenateArrays<T>(params T[][] arrays)
-        {
-            int resultLength = 0;
-            foreach (T[] o in arrays)
-            {
-                resultLength += o.Length;
-            }
-            T[] result = new T[resultLength];
-            int offset = 0;
-            for (int x = 0; x < arrays.Length; x++)
-            {
-                arrays[x].CopyTo(result, offset);
-                offset += arrays[x].Length;
-            }
-            return result;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Permutes an array in reverse a given number of times.
-        /// </summary>
-        /// <typeparam name="T">the array type</typeparam>
-        /// <param name="input">the array</param>
-        /// <param name="times">the number of times to permute</param>
-        /// <returns>the array with the elements permuted</returns>
-        private static T[] wasReversePermuteArrayElements<T>(T[] input, int times)
-        {
-            if (times.Equals(0)) return input;
-            T[] slice = new T[input.Length];
-            Array.Copy(input, 1, slice, 0, input.Length - 1);
-            Array.Copy(input, 0, slice, input.Length - 1, 1);
-            return wasReversePermuteArrayElements(slice, --times);
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Permutes an array forward a given number of times.
-        /// </summary>
-        /// <typeparam name="T">the array type</typeparam>
-        /// <param name="input">the array</param>
-        /// <param name="times">the number of times to permute</param>
-        /// <returns>the array with the elements permuted</returns>
-        private static T[] wasForwardPermuteArrayElements<T>(T[] input, int times)
-        {
-            if (times.Equals(0)) return input;
-            T[] slice = new T[input.Length];
-            Array.Copy(input, input.Length - 1, slice, 0, 1);
-            Array.Copy(input, 0, slice, 1, input.Length - 1);
-            return wasForwardPermuteArrayElements(slice, --times);
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Encrypt or decrypt a message given a set of rotors, plugs and a reflector.
-        /// </summary>
-        /// <param name="message">the message to encyrpt or decrypt</param>
-        /// <param name="rotors">any combination of: 1, 2, 3, 4, 5, 6, 7, 8, b, g</param>
-        /// <param name="plugs">the letter representing the start character for the rotor</param>
-        /// <param name="reflector">any one of: B, b, C, c</param>
-        /// <returns>either a decrypted or encrypted string</returns>
-        private static string wasEnigma(string message, char[] rotors, char[] plugs, char reflector)
-        {
-            Dictionary<char, char[]> def_rotors = new Dictionary<char, char[]>
-            {
-                {
-                    '1', new[]
-                    {
-                        'e', 'k', 'm', 'f', 'l',
-                        'g', 'd', 'q', 'v', 'z',
-                        'n', 't', 'o', 'w', 'y',
-                        'h', 'x', 'u', 's', 'p',
-                        'a', 'i', 'b', 'r', 'c',
-                        'j'
-                    }
-                },
-                {
-                    '2', new[]
-                    {
-                        'a', 'j', 'd', 'k', 's',
-                        'i', 'r', 'u', 'x', 'b',
-                        'l', 'h', 'w', 't', 'm',
-                        'c', 'q', 'g', 'z', 'n',
-                        'p', 'y', 'f', 'v', 'o',
-                        'e'
-                    }
-                },
-                {
-                    '3', new[]
-                    {
-                        'b', 'd', 'f', 'h', 'j',
-                        'l', 'c', 'p', 'r', 't',
-                        'x', 'v', 'z', 'n', 'y',
-                        'e', 'i', 'w', 'g', 'a',
-                        'k', 'm', 'u', 's', 'q',
-                        'o'
-                    }
-                },
-                {
-                    '4', new[]
-                    {
-                        'e', 's', 'o', 'v', 'p',
-                        'z', 'j', 'a', 'y', 'q',
-                        'u', 'i', 'r', 'h', 'x',
-                        'l', 'n', 'f', 't', 'g',
-                        'k', 'd', 'c', 'm', 'w',
-                        'b'
-                    }
-                },
-                {
-                    '5', new[]
-                    {
-                        'v', 'z', 'b', 'r', 'g',
-                        'i', 't', 'y', 'u', 'p',
-                        's', 'd', 'n', 'h', 'l',
-                        'x', 'a', 'w', 'm', 'j',
-                        'q', 'o', 'f', 'e', 'c',
-                        'k'
-                    }
-                },
-                {
-                    '6', new[]
-                    {
-                        'j', 'p', 'g', 'v', 'o',
-                        'u', 'm', 'f', 'y', 'q',
-                        'b', 'e', 'n', 'h', 'z',
-                        'r', 'd', 'k', 'a', 's',
-                        'x', 'l', 'i', 'c', 't',
-                        'w'
-                    }
-                },
-                {
-                    '7', new[]
-                    {
-                        'n', 'z', 'j', 'h', 'g',
-                        'r', 'c', 'x', 'm', 'y',
-                        's', 'w', 'b', 'o', 'u',
-                        'f', 'a', 'i', 'v', 'l',
-                        'p', 'e', 'k', 'q', 'd',
-                        't'
-                    }
-                },
-                {
-                    '8', new[]
-                    {
-                        'f', 'k', 'q', 'h', 't',
-                        'l', 'x', 'o', 'c', 'b',
-                        'j', 's', 'p', 'd', 'z',
-                        'r', 'a', 'm', 'e', 'w',
-                        'n', 'i', 'u', 'y', 'g',
-                        'v'
-                    }
-                },
-                {
-                    'b', new[]
-                    {
-                        'l', 'e', 'y', 'j', 'v',
-                        'c', 'n', 'i', 'x', 'w',
-                        'p', 'b', 'q', 'm', 'd',
-                        'r', 't', 'a', 'k', 'z',
-                        'g', 'f', 'u', 'h', 'o',
-                        's'
-                    }
-                },
-                {
-                    'g', new[]
-                    {
-                        'f', 's', 'o', 'k', 'a',
-                        'n', 'u', 'e', 'r', 'h',
-                        'm', 'b', 't', 'i', 'y',
-                        'c', 'w', 'l', 'q', 'p',
-                        'z', 'x', 'v', 'g', 'j',
-                        'd'
-                    }
-                }
-            };
-
-            Dictionary<char, char[]> def_reflectors = new Dictionary<char, char[]>
-            {
-                {
-                    'B', new[]
-                    {
-                        'a', 'y', 'b', 'r', 'c', 'u', 'd', 'h',
-                        'e', 'q', 'f', 's', 'g', 'l', 'i', 'p',
-                        'j', 'x', 'k', 'n', 'm', 'o', 't', 'z',
-                        'v', 'w'
-                    }
-                },
-                {
-                    'b', new[]
-                    {
-                        'a', 'e', 'b', 'n', 'c', 'k', 'd', 'q',
-                        'f', 'u', 'g', 'y', 'h', 'w', 'i', 'j',
-                        'l', 'o', 'm', 'p', 'r', 'x', 's', 'z',
-                        't', 'v'
-                    }
-                },
-                {
-                    'C', new[]
-                    {
-                        'a', 'f', 'b', 'v', 'c', 'p', 'd', 'j',
-                        'e', 'i', 'g', 'o', 'h', 'y', 'k', 'r',
-                        'l', 'z', 'm', 'x', 'n', 'w', 't', 'q',
-                        's', 'u'
-                    }
-                },
-                {
-                    'c', new[]
-                    {
-                        'a', 'r', 'b', 'd', 'c', 'o', 'e', 'j',
-                        'f', 'n', 'g', 't', 'h', 'k', 'i', 'v',
-                        'l', 'm', 'p', 'w', 'q', 'z', 's', 'x',
-                        'u', 'y'
-                    }
-                }
-            };
-
-            // Setup rotors from plugs.
-            foreach (char rotor in rotors)
-            {
-                char plug = plugs[Array.IndexOf(rotors, rotor)];
-                int i = Array.IndexOf(def_rotors[rotor], plug);
-                if (i.Equals(0)) continue;
-                def_rotors[rotor] = wasConcatenateArrays(new[] {plug},
-                    wasGetSubArray(wasDeleteSubArray(def_rotors[rotor], i, i), i, -1),
-                    wasGetSubArray(wasDeleteSubArray(def_rotors[rotor], i + 1, -1), 0, i - 1));
-            }
-
-            StringBuilder result = new StringBuilder();
-            foreach (char c in message)
-            {
-                if (!char.IsLetter(c))
-                {
-                    result.Append(c);
-                    continue;
-                }
-
-                // Normalize to lower.
-                char l = char.ToLower(c);
-
-                Action<char[]> rotate = o =>
-                {
-                    int i = o.Length - 1;
-                    do
-                    {
-                        def_rotors[o[0]] = wasForwardPermuteArrayElements(def_rotors[o[0]], 1);
-                        if (i.Equals(0))
-                        {
-                            rotors = wasReversePermuteArrayElements(o, 1);
-                            continue;
-                        }
-                        l = wasGetElementAt(def_rotors[o[1]], Array.IndexOf(def_rotors[o[0]], l) - 1);
-                        o = wasReversePermuteArrayElements(o, 1);
-                    } while (--i > -1);
-                };
-
-                // Forward pass through the Enigma's rotors.
-                rotate.Invoke(rotors);
-
-                // Reflect
-                int x = Array.IndexOf(def_reflectors[reflector], l);
-                l = (x + 1)%2 == 0 ? def_reflectors[reflector][x - 1] : def_reflectors[reflector][x + 1];
-
-                // Reverse the order of the rotors.
-                Array.Reverse(rotors);
-
-                // Reverse pass through the Enigma's rotors.
-                rotate.Invoke(rotors);
-
-                if (char.IsUpper(c))
-                {
-                    l = char.ToUpper(l);
-                }
-                result.Append(l);
-            }
-
-            return result.ToString();
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Expand the VIGENRE key to the length of the input.
-        /// </summary>
-        /// <param name="input">the input to expand to</param>
-        /// <param name="enc_key">the key to expand</param>
-        /// <returns>the expanded key</returns>
-        private static string wasVigenereExpandKey(string input, string enc_key)
-        {
-            string exp_key = string.Empty;
-            int i = 0, j = 0;
-            do
-            {
-                char p = input[i];
-                if (!char.IsLetter(p))
-                {
-                    exp_key += p;
-                    ++i;
-                    continue;
-                }
-                int m = j%enc_key.Length;
-                exp_key += enc_key[m];
-                ++j;
-                ++i;
-            } while (i < input.Length);
-            return exp_key;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Encrypt using VIGENERE.
-        /// </summary>
-        /// <param name="input">the input to encrypt</param>
-        /// <param name="enc_key">the key to encrypt with</param>
-        /// <returns>the encrypted input</returns>
-        private static string wasEncryptVIGENERE(string input, string enc_key)
-        {
-            char[] a =
-            {
-                'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-                'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
-            };
-
-            enc_key = wasVigenereExpandKey(input, enc_key);
-            string result = string.Empty;
-            int i = 0;
-            do
-            {
-                char p = input[i];
-                if (!char.IsLetter(p))
-                {
-                    result += p;
-                    ++i;
-                    continue;
-                }
-                char q =
-                    wasReversePermuteArrayElements(a, Array.IndexOf(a, enc_key[i]))[
-                        Array.IndexOf(a, char.ToLowerInvariant(p))];
-                if (char.IsUpper(p))
-                {
-                    q = char.ToUpperInvariant(q);
-                }
-                result += q;
-                ++i;
-            } while (i < input.Length);
-            return result;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2014 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Decrypt using VIGENERE.
-        /// </summary>
-        /// <param name="input">the input to decrypt</param>
-        /// <param name="enc_key">the key to decrypt with</param>
-        /// <returns>the decrypted input</returns>
-        private static string wasDecryptVIGENERE(string input, string enc_key)
-        {
-            char[] a =
-            {
-                'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-                'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
-            };
-
-            enc_key = wasVigenereExpandKey(input, enc_key);
-            string result = string.Empty;
-            int i = 0;
-            do
-            {
-                char p = input[i];
-                if (!char.IsLetter(p))
-                {
-                    result += p;
-                    ++i;
-                    continue;
-                }
-                char q =
-                    a[
-                        Array.IndexOf(wasReversePermuteArrayElements(a, Array.IndexOf(a, enc_key[i])),
-                            char.ToLowerInvariant(p))];
-                if (char.IsUpper(p))
-                {
-                    q = char.ToUpperInvariant(q);
-                }
-                result += q;
-                ++i;
-            } while (i < input.Length);
-            return result;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //  Copyright (C) Wizardry and Steamworks 2015 - License: GNU GPLv3      //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     An implementation of the ATBASH cypher for latin alphabets.
-        /// </summary>
-        /// <param name="data">the data to encrypt or decrypt</param>
-        /// <returns>the encrypted or decrypted data</returns>
-        private static string wasATBASH(string data)
-        {
-            char[] a =
-            {
-                'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-                'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
-            };
-
-            char[] input = data.ToArray();
-
-            Parallel.ForEach(Enumerable.Range(0, data.Length), i =>
-            {
-                char e = input[i];
-                if (!char.IsLetter(e)) return;
-                int x = 25 - Array.BinarySearch(a, char.ToLowerInvariant(e));
-                if (!char.IsUpper(e))
-                {
-                    input[i] = a[x];
-                    return;
-                }
-                input[i] = char.ToUpperInvariant(a[x]);
-            });
-
-            return new string(input);
-        }
+        #region NOT PORTABLE HELPERS
 
         /// <summary>
         ///     Encrypts a string given a key and initialization vector.
@@ -14585,7 +11923,7 @@ namespace Corrade
             ref UUID groupUUID)
         {
             UUID localGroupUUID = UUID.Zero;
-            wasAdaptiveAlarm DirGroupsReceivedAlarm = new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+            Time.wasAdaptiveAlarm DirGroupsReceivedAlarm = new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
             EventHandler<DirGroupsReplyEventArgs> DirGroupsReplyDelegate = (sender, args) =>
             {
                 DirGroupsReceivedAlarm.Alarm(dataTimeout);
@@ -14732,7 +12070,7 @@ namespace Corrade
             ref UUID agentUUID)
         {
             UUID localAgentUUID = UUID.Zero;
-            wasAdaptiveAlarm DirPeopleReceivedAlarm = new wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+            Time.wasAdaptiveAlarm DirPeopleReceivedAlarm = new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
             EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyDelegate = (sender, args) =>
             {
                 DirPeopleReceivedAlarm.Alarm(dataTimeout);
@@ -15063,36 +12401,36 @@ namespace Corrade
         /// </summary>
         private enum RLVBehaviour : uint
         {
-            [Description("none")] NONE = 0,
-            [IsRLVBehaviour(true)] [RLVBehaviour("version")] [Description("version")] VERSION,
-            [IsRLVBehaviour(true)] [RLVBehaviour("versionnew")] [Description("versionnew")] VERSIONNEW,
-            [IsRLVBehaviour(true)] [RLVBehaviour("versionnum")] [Description("versionnum")] VERSIONNUM,
-            [IsRLVBehaviour(true)] [RLVBehaviour("getgroup")] [Description("getgroup")] GETGROUP,
-            [IsRLVBehaviour(true)] [RLVBehaviour("setgroup")] [Description("setgroup")] SETGROUP,
-            [IsRLVBehaviour(true)] [RLVBehaviour("getsitid")] [Description("getsitid")] GETSITID,
-            [IsRLVBehaviour(true)] [RLVBehaviour("getstatusall")] [Description("getstatusall")] GETSTATUSALL,
-            [IsRLVBehaviour(true)] [RLVBehaviour("getstatus")] [Description("getstatus")] GETSTATUS,
-            [IsRLVBehaviour(true)] [RLVBehaviour("sit")] [Description("sit")] SIT,
-            [IsRLVBehaviour(true)] [RLVBehaviour("unsit")] [Description("unsit")] UNSIT,
-            [IsRLVBehaviour(true)] [RLVBehaviour("setrot")] [Description("setrot")] SETROT,
-            [IsRLVBehaviour(true)] [RLVBehaviour("tpto")] [Description("tpto")] TPTO,
-            [IsRLVBehaviour(true)] [RLVBehaviour("getoutfit")] [Description("getoutfit")] GETOUTFIT,
-            [IsRLVBehaviour(true)] [RLVBehaviour("getattach")] [Description("getattach")] GETATTACH,
-            [IsRLVBehaviour(true)] [RLVBehaviour("remattach")] [Description("remattach")] REMATTACH,
-            [IsRLVBehaviour(true)] [RLVBehaviour("detach")] [Description("detach")] DETACH,
-            [IsRLVBehaviour(true)] [RLVBehaviour("detachme")] [Description("detachme")] DETACHME,
-            [IsRLVBehaviour(true)] [RLVBehaviour("remoutfit")] [Description("remoutfit")] REMOUTFIT,
-            [IsRLVBehaviour(true)] [RLVBehaviour("attach")] [Description("attach")] ATTACH,
-            [IsRLVBehaviour(true)] [RLVBehaviour("attachoverorreplace")] [Description("attachoverorreplace")] ATTACHOVERORREPLACE,
-            [IsRLVBehaviour(true)] [RLVBehaviour("attachover")] [Description("attachover")] ATTACHOVER,
-            [IsRLVBehaviour(true)] [RLVBehaviour("getinv")] [Description("getinv")] GETINV,
-            [IsRLVBehaviour(true)] [RLVBehaviour("getinvworn")] [Description("getinvworn")] GETINVWORN,
-            [IsRLVBehaviour(true)] [RLVBehaviour("getpath")] [Description("getpath")] GETPATH,
-            [IsRLVBehaviour(true)] [RLVBehaviour("getpathnew")] [Description("getpathnew")] GETPATHNEW,
-            [IsRLVBehaviour(true)] [RLVBehaviour("findfolder")] [Description("findfolder")] FINDFOLDER,
-            [IsRLVBehaviour(true)] [RLVBehaviour("clear")] [Description("clear")] CLEAR,
-            [Description("accepttp")] ACCEPTTP,
-            [Description("acceptpermission")] ACCEPTPERMISSION
+            [Reflection.NameAttribute("none")] NONE = 0,
+            [IsRLVBehaviour(true)] [RLVBehaviour("version")] [Reflection.NameAttribute("version")] VERSION,
+            [IsRLVBehaviour(true)] [RLVBehaviour("versionnew")] [Reflection.NameAttribute("versionnew")] VERSIONNEW,
+            [IsRLVBehaviour(true)] [RLVBehaviour("versionnum")] [Reflection.NameAttribute("versionnum")] VERSIONNUM,
+            [IsRLVBehaviour(true)] [RLVBehaviour("getgroup")] [Reflection.NameAttribute("getgroup")] GETGROUP,
+            [IsRLVBehaviour(true)] [RLVBehaviour("setgroup")] [Reflection.NameAttribute("setgroup")] SETGROUP,
+            [IsRLVBehaviour(true)] [RLVBehaviour("getsitid")] [Reflection.NameAttribute("getsitid")] GETSITID,
+            [IsRLVBehaviour(true)] [RLVBehaviour("getstatusall")] [Reflection.NameAttribute("getstatusall")] GETSTATUSALL,
+            [IsRLVBehaviour(true)] [RLVBehaviour("getstatus")] [Reflection.NameAttribute("getstatus")] GETSTATUS,
+            [IsRLVBehaviour(true)] [RLVBehaviour("sit")] [Reflection.NameAttribute("sit")] SIT,
+            [IsRLVBehaviour(true)] [RLVBehaviour("unsit")] [Reflection.NameAttribute("unsit")] UNSIT,
+            [IsRLVBehaviour(true)] [RLVBehaviour("setrot")] [Reflection.NameAttribute("setrot")] SETROT,
+            [IsRLVBehaviour(true)] [RLVBehaviour("tpto")] [Reflection.NameAttribute("tpto")] TPTO,
+            [IsRLVBehaviour(true)] [RLVBehaviour("getoutfit")] [Reflection.NameAttribute("getoutfit")] GETOUTFIT,
+            [IsRLVBehaviour(true)] [RLVBehaviour("getattach")] [Reflection.NameAttribute("getattach")] GETATTACH,
+            [IsRLVBehaviour(true)] [RLVBehaviour("remattach")] [Reflection.NameAttribute("remattach")] REMATTACH,
+            [IsRLVBehaviour(true)] [RLVBehaviour("detach")] [Reflection.NameAttribute("detach")] DETACH,
+            [IsRLVBehaviour(true)] [RLVBehaviour("detachme")] [Reflection.NameAttribute("detachme")] DETACHME,
+            [IsRLVBehaviour(true)] [RLVBehaviour("remoutfit")] [Reflection.NameAttribute("remoutfit")] REMOUTFIT,
+            [IsRLVBehaviour(true)] [RLVBehaviour("attach")] [Reflection.NameAttribute("attach")] ATTACH,
+            [IsRLVBehaviour(true)] [RLVBehaviour("attachoverorreplace")] [Reflection.NameAttribute("attachoverorreplace")] ATTACHOVERORREPLACE,
+            [IsRLVBehaviour(true)] [RLVBehaviour("attachover")] [Reflection.NameAttribute("attachover")] ATTACHOVER,
+            [IsRLVBehaviour(true)] [RLVBehaviour("getinv")] [Reflection.NameAttribute("getinv")] GETINV,
+            [IsRLVBehaviour(true)] [RLVBehaviour("getinvworn")] [Reflection.NameAttribute("getinvworn")] GETINVWORN,
+            [IsRLVBehaviour(true)] [RLVBehaviour("getpath")] [Reflection.NameAttribute("getpath")] GETPATH,
+            [IsRLVBehaviour(true)] [RLVBehaviour("getpathnew")] [Reflection.NameAttribute("getpathnew")] GETPATHNEW,
+            [IsRLVBehaviour(true)] [RLVBehaviour("findfolder")] [Reflection.NameAttribute("findfolder")] FINDFOLDER,
+            [IsRLVBehaviour(true)] [RLVBehaviour("clear")] [Reflection.NameAttribute("clear")] CLEAR,
+            [Reflection.NameAttribute("accepttp")] ACCEPTTP,
+            [Reflection.NameAttribute("acceptpermission")] ACCEPTPERMISSION
         }
 
         public struct RLVRule
