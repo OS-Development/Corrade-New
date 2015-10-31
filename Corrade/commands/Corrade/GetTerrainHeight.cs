@@ -89,11 +89,11 @@ namespace Corrade
 
                     if (x1 > x2)
                     {
-                        wasXORSwap(ref x1, ref x2);
+                        BitTwiddling.wasXORSwap(ref x1, ref x2);
                     }
                     if (y1 > y2)
                     {
-                        wasXORSwap(ref y1, ref y2);
+                        BitTwiddling.wasXORSwap(ref y1, ref y2);
                     }
 
                     int sx = x2 - x1 + 1;

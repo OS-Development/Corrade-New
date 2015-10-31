@@ -38,6 +38,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Arrays.cs" />
+    <Compile Include="BitTwiddling.cs" />
     <Compile Include="Cryptography.cs" />
     <Compile Include="CSV.cs" />
     <Compile Include="KeyValue.cs" />

@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using CorradeConfiguration;
 using OpenMetaverse;
 using wasSharp;
@@ -27,6 +28,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
+
                     string folder =
                         wasInput(
                             KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FOLDER)),
@@ -35,69 +37,99 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_FOLDER_SPECIFIED);
                     }
-                    // Check for items that can be worn.
-                    List<InventoryBase> items =
-                        GetInventoryFolderContents<InventoryBase>(Client.Inventory.Store.RootNode, folder)
-                            .AsParallel().Where(CanBeWorn)
-                            .ToList();
+
+                    InventoryFolder inventoryFolder;
+                    lock (ClientInstanceInventoryLock)
+                    {
+                        inventoryFolder = FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, folder)
+                            .FirstOrDefault(o => o is InventoryFolder) as InventoryFolder;
+                    }
+                    if (inventoryFolder == null)
+                    {
+                        throw new ScriptException(ScriptError.FOLDER_NOT_FOUND);
+                    }
+
+                    List<InventoryItem> equipItems = new List<InventoryItem>();
+                    lock (ClientInstanceInventoryLock)
+                    {
+                        equipItems.AddRange(GetInventoryFolderContents(inventoryFolder,
+                            corradeConfiguration.ServicesTimeout)
+                            .Select(o => ResolveItemLink(o as InventoryItem))
+                            .Where(CanBeWorn));
+                    }
                     // Check if any items are left over.
-                    if (!items.Any())
+                    if (!equipItems.Any())
                     {
                         throw new ScriptException(ScriptError.NO_EQUIPABLE_ITEMS);
                     }
-                    // Now remove the current outfit items.
-                    Client.Inventory.Store.GetContents(
-                        Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)).FindAll(
-                            o => CanBeWorn(o) && ((InventoryItem) o).AssetType.Equals(AssetType.Link))
-                        .ForEach(p =>
-                        {
-                            InventoryItem item = ResolveItemLink(p as InventoryItem);
-                            if (item is InventoryWearable)
-                            {
-                                if (!IsBodyPart(item))
-                                {
-                                    UnWear(item);
-                                    return;
-                                }
-                                if (items.AsParallel().Any(q =>
-                                {
-                                    InventoryWearable i = q as InventoryWearable;
-                                    return i != null &&
-                                           ((InventoryWearable) item).WearableType.Equals(i.WearableType);
-                                }))
-                                    UnWear(item);
-                                return;
-                            }
-                            if (item is InventoryAttachment)
-                            {
-                                Detach(item);
-                                return;
-                            }
-                            if (item is InventoryObject)
-                            {
-                                Detach(item);
-                            }
-                        });
 
-                    // And equip the specified folder.
-                    Parallel.ForEach(items, o =>
+                    // stop non default animations if requested
+                    bool deanimate;
+                    switch (!bool.TryParse(wasInput(
+                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DEANIMATE)),
+                            corradeCommandParameters.Message)), out deanimate) && deanimate)
                     {
-                        InventoryItem item = o as InventoryItem;
-                        if (item is InventoryWearable)
+                        case true:
+                            // stop all non-built-in animations
+                            HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetProperties(
+                                BindingFlags.Public |
+                                BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
+                            Parallel.ForEach(
+                                Client.Self.SignaledAnimations.Copy()
+                                    .Keys.AsParallel()
+                                    .Where(o => !lindenAnimations.Contains(o)),
+                                o => { Client.Self.AnimationStop(o, true); });
+                            break;
+                    }
+
+                    // Create a list of links that should be removed.
+                    List<UUID> removeItems = new List<UUID>();
+                    object LockObject = new object();
+                    Parallel.ForEach(
+                        GetCurrentOutfitFolderLinks(
+                            Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
+                                InventoryFolder), o =>
+                                {
+                                    switch (IsBodyPart(o))
+                                    {
+                                        case true:
+                                            if (
+                                                equipItems.AsParallel()
+                                                    .Where(IsBodyPart)
+                                                    .Any(
+                                                        p =>
+                                                            ((InventoryWearable) p).WearableType.Equals(
+                                                                ((InventoryWearable) ResolveItemLink(o)).WearableType)))
+                                                goto default;
+                                            break;
+                                        default:
+                                            lock (LockObject)
+                                            {
+                                                removeItems.Add(o.UUID);
+                                            }
+                                            break;
+                                    }
+                                });
+
+                    lock (ClientInstanceInventoryLock)
+                    {
+                        // Now remove the links.
+                        Client.Inventory.Remove(removeItems, null);
+
+                        // Add links to new items.
+                        foreach (InventoryItem item in equipItems)
                         {
-                            Wear(item, true);
-                            return;
+                            AddLink(item,
+                                Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)
+                                    ] as InventoryFolder);
                         }
-                        if (item is InventoryAttachment)
-                        {
-                            Attach(item, AttachmentPoint.Default, true);
-                            return;
-                        }
-                        if (item is InventoryObject)
-                        {
-                            Attach(item, AttachmentPoint.Default, true);
-                        }
-                    });
+                    }
+
+                    // And replace the outfit wit hthe new items.
+                    lock (ClientInstanceAppearanceLock)
+                    {
+                        Client.Appearance.ReplaceOutfit(equipItems, false);
+                    }
 
                     // Schedule a rebake.
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);

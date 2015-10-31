@@ -1613,35 +1613,56 @@ namespace Corrade
         /// <returns>the real inventory item</returns>
         private static InventoryItem ResolveItemLink(InventoryItem item)
         {
-            return item.IsLink() && Client.Inventory.Store.Contains(item.AssetUUID) &&
-                   Client.Inventory.Store[item.AssetUUID] is InventoryItem
-                ? Client.Inventory.Store[item.AssetUUID] as InventoryItem
-                : item;
+            if (item.IsLink() && Client.Inventory.Store.Contains(item.AssetUUID) &&
+                Client.Inventory.Store[item.AssetUUID] is InventoryItem)
+            {
+                return (InventoryItem) Client.Inventory.Store[item.AssetUUID];
+            }
+
+            return item;
         }
 
         /// <summary>
         ///     Get current outfit folder links.
         /// </summary>
         /// <returns>a list of inventory items that can be part of appearance (attachments, wearables)</returns>
-        private static HashSet<InventoryItem> GetCurrentOutfitFolderLinks(InventoryFolder outfitFolder)
+        private static List<InventoryItem> GetCurrentOutfitFolderLinks(InventoryFolder outfitFolder)
         {
-            HashSet<InventoryItem> ret = new HashSet<InventoryItem>();
+            List<InventoryItem> ret = new List<InventoryItem>();
             if (outfitFolder == null) return ret;
 
-            object LockObject = new object();
-            Parallel.ForEach(
-                Client.Inventory.Store.GetContents(outfitFolder)
-                    .AsParallel()
-                    .Where(o => CanBeWorn(o) && ((InventoryItem) o).AssetType.Equals(AssetType.Link)),
-                o =>
-                {
-                    lock (LockObject)
-                    {
-                        ret.Add((InventoryItem) o);
-                    }
-                });
+            Client.Inventory.Store.GetContents(outfitFolder)
+                .FindAll(b => CanBeWorn(b) && ((InventoryItem) b).AssetType == AssetType.Link)
+                .ForEach(item => ret.Add((InventoryItem) item));
 
             return ret;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
+        ///////////////////////////////////////////////////////////////////////////
+        /// <summary>
+        ///     Gets all the items from an inventory folder and returns the items.
+        /// </summary>
+        /// <param name="folder">the folder to search for</param>
+        /// <param name="millisecondsTimeout">the timeout in milliseconds</param>
+        /// <returns>a list of items from the folder</returns>
+        private static IEnumerable<InventoryBase> GetInventoryFolderContents(InventoryFolder folder,
+            uint millisecondsTimeout)
+        {
+            List<InventoryBase> inventoryItems = new List<InventoryBase>();
+            ManualResetEvent FolderUpdatedEvent = new ManualResetEvent(false);
+            EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
+            {
+                inventoryItems.AddRange(Client.Inventory.Store.GetContents(q.FolderID));
+                FolderUpdatedEvent.Set();
+            };
+            Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+            Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
+                InventorySortOrder.ByDate);
+            FolderUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
+            Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+            return inventoryItems;
         }
 
         private static void Attach(InventoryItem item, AttachmentPoint point, bool replace)
@@ -1649,7 +1670,7 @@ namespace Corrade
             lock (ClientInstanceInventoryLock)
             {
                 InventoryItem realItem = ResolveItemLink(item);
-                if (realItem == null) return;
+                if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
                 Client.Appearance.Attach(realItem, point, replace);
                 AddLink(realItem,
                     Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
@@ -1662,7 +1683,7 @@ namespace Corrade
             lock (ClientInstanceInventoryLock)
             {
                 InventoryItem realItem = ResolveItemLink(item);
-                if (realItem == null) return;
+                if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
                 RemoveLink(realItem,
                     Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
                         InventoryFolder);
@@ -1675,7 +1696,7 @@ namespace Corrade
             lock (ClientInstanceInventoryLock)
             {
                 InventoryItem realItem = ResolveItemLink(item);
-                if (realItem == null) return;
+                if (!(realItem is InventoryWearable)) return;
                 Client.Appearance.AddToOutfit(realItem, replace);
                 AddLink(realItem,
                     Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
@@ -1688,13 +1709,13 @@ namespace Corrade
             lock (ClientInstanceInventoryLock)
             {
                 InventoryItem realItem = ResolveItemLink(item);
-                if (realItem == null) return;
+                if (!(realItem is InventoryWearable)) return;
                 Client.Appearance.RemoveFromOutfit(realItem);
                 InventoryItem link = GetCurrentOutfitFolderLinks(
                     Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
                         InventoryFolder)
                     .AsParallel()
-                    .FirstOrDefault(o => o.AssetType.Equals(AssetType.Link) && o.Name.Equals(item.Name));
+                    .FirstOrDefault(o => o.AssetType.Equals(AssetType.Link) && o.AssetUUID.Equals(item.UUID));
                 if (link == null) return;
                 RemoveLink(link,
                     Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
@@ -1727,23 +1748,18 @@ namespace Corrade
         {
             if (outfitFolder == null) return;
 
-            /* If the link already exists, then don't add another one. */
-            if (GetCurrentOutfitFolderLinks(outfitFolder).AsParallel().Any(o => o.AssetUUID.Equals(item.UUID))) return;
-
-            string description = (item.InventoryType.Equals(InventoryType.Wearable) && !IsBodyPart(item))
-                ? string.Format("@{0}{1:00}", (int) ((InventoryWearable) item).WearableType, 0)
-                : string.Empty;
-            lock (ClientInstanceInventoryLock)
+            if (GetCurrentOutfitFolderLinks(outfitFolder).Find(itemLink => itemLink.AssetUUID.Equals(item.UUID)) == null)
             {
-                Client.Inventory.CreateLink(Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder), item.UUID,
-                    item.Name, description, AssetType.Link,
-                    item.InventoryType, UUID.Random(), (success, newItem) =>
-                    {
-                        if (success)
+                Client.Inventory.CreateLink(outfitFolder.UUID, item.UUID, item.Name,
+                    item.InventoryType.Equals(InventoryType.Wearable) && !IsBodyPart(item)
+                        ? $"@{(int) ((InventoryWearable) item).WearableType}{0:00}"
+                        : string.Empty, AssetType.Link, item.InventoryType, UUID.Random(), (success, newItem) =>
                         {
-                            Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
-                        }
-                    });
+                            if (success)
+                            {
+                                Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
+                            }
+                        });
             }
         }
 
@@ -1756,36 +1772,13 @@ namespace Corrade
         {
             if (outfitFolder == null) return;
 
-            HashSet<UUID> removeItems = new HashSet<UUID>();
-            object LockOject = new object();
-            Parallel.ForEach(GetCurrentOutfitFolderLinks(outfitFolder).AsParallel().Where(o =>
-                o.AssetUUID.Equals(item is InventoryWearable ? item.AssetUUID : item.UUID)), o =>
-                {
-                    lock (LockOject)
-                    {
-                        removeItems.Add(o.UUID);
-                    }
-                });
+            List<UUID> links = new List<UUID>();
 
-            lock (ClientInstanceInventoryLock)
-            {
-                Client.Inventory.Remove(removeItems.ToList(), null);
-            }
-        }
+            GetCurrentOutfitFolderLinks(outfitFolder)
+                .FindAll(itemLink => itemLink.AssetUUID.Equals(item.UUID))
+                .ForEach(o => links.Add(o.UUID));
 
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Swaps two integers passed by reference using XOR.
-        /// </summary>
-        /// <param name="q">first integer to swap</param>
-        /// <param name="p">second integer to swap</param>
-        private static void wasXORSwap(ref int q, ref int p)
-        {
-            q ^= p;
-            p ^= q;
-            q ^= p;
+            Client.Inventory.Remove(links, null);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -2289,8 +2282,12 @@ namespace Corrade
                 UUID UUIDData;
                 if (!UUID.TryParse(setting, out UUIDData))
                 {
-                    InventoryItem item = FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                        setting).FirstOrDefault() as InventoryItem;
+                    InventoryItem item = null;
+                    lock (ClientInstanceInventoryLock)
+                    {
+                        item = FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
+                            setting).FirstOrDefault() as InventoryItem;
+                    }
                     if (item == null)
                     {
                         throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
@@ -4109,41 +4106,6 @@ namespace Corrade
             }
         }
 
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Gets all the items from an inventory folder and returns the items.
-        /// </summary>
-        /// <param name="rootFolder">a folder from which to search</param>
-        /// <param name="folder">the folder to search for</param>
-        /// <returns>a list of items from the folder</returns>
-        private static IEnumerable<T> GetInventoryFolderContents<T>(InventoryNode rootFolder,
-            string folder)
-        {
-            foreach (
-                InventoryNode node in
-                    rootFolder.Nodes.Values.AsParallel()
-                        .Where(
-                            node =>
-                                node.Data is InventoryFolder && node.Data.Name.Equals(folder, StringComparison.Ordinal))
-                )
-            {
-                foreach (InventoryNode item in node.Nodes.Values)
-                {
-                    if (typeof (T) == typeof (InventoryNode))
-                    {
-                        yield return (T) (object) item;
-                    }
-                    if (typeof (T) == typeof (InventoryBase))
-                    {
-                        yield return (T) (object) Client.Inventory.Store[item.Data.UUID];
-                    }
-                }
-                break;
-            }
-        }
-
         /// <summary>
         ///     Posts messages to console or log-files.
         /// </summary>
@@ -4530,8 +4492,6 @@ namespace Corrade
             // More precision for object and avatar tracking updates.
             Client.Settings.USE_INTERPOLATION_TIMER = true;
             Client.Settings.FETCH_MISSING_INVENTORY = true;
-            Client.Settings.HTTP_INVENTORY = true;
-            Settings.SORT_INVENTORY = true;
             // Transfer textures over HTTP if possible.
             Client.Settings.USE_HTTP_TEXTURES = true;
             // Needed for commands dealing with terrain height.
@@ -4541,9 +4501,8 @@ namespace Corrade
             // Send pings for lag measurement.
             Client.Settings.SEND_PINGS = true;
             // Throttling.
-            Client.Settings.THROTTLE_OUTGOING_PACKETS = false;
             Client.Settings.SEND_AGENT_THROTTLE = true;
-            // Enable multiple simulators
+            // Enable multiple simulators.
             Client.Settings.MULTIPLE_SIMS = true;
             // Check TOS
             if (!corradeConfiguration.TOSAccepted)
@@ -6931,7 +6890,10 @@ namespace Corrade
             switch (e.Status)
             {
                 case LoginStatus.Success:
+                    // Login succeeded so start all the updates.
                     Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_SUCCEEDED));
+
+
                     // Start inventory update thread.
                     new Thread(() =>
                     {
@@ -6973,6 +6935,7 @@ namespace Corrade
                         Client.Self.SimPosition,
                         Client.Self.SimPosition
                         );
+
                     break;
                 case LoginStatus.Failed:
                     Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_FAILED), e.FailReason);
@@ -8918,9 +8881,7 @@ namespace Corrade
         private struct Agent
         {
             [Reflection.NameAttribute("firstname")] public string FirstName;
-
             [Reflection.NameAttribute("lastname")] public string LastName;
-
             [Reflection.NameAttribute("uuid")] public UUID UUID;
         }
 
@@ -8930,19 +8891,12 @@ namespace Corrade
         private struct BeamEffect
         {
             [Reflection.NameAttribute("alpha")] public float Alpha;
-
             [Reflection.NameAttribute("color")] public Vector3 Color;
-
             [Reflection.NameAttribute("duration")] public float Duration;
-
             [Reflection.NameAttribute("effect")] public UUID Effect;
-
             [Reflection.NameAttribute("offset")] public Vector3d Offset;
-
             [Reflection.NameAttribute("source")] public UUID Source;
-
             [Reflection.NameAttribute("target")] public UUID Target;
-
             [Reflection.NameAttribute("termination")] public DateTime Termination;
         }
 
@@ -9926,11 +9880,8 @@ namespace Corrade
         private struct DirItem
         {
             [Reflection.NameAttribute("item")] public UUID Item;
-
             [Reflection.NameAttribute("name")] public string Name;
-
             [Reflection.NameAttribute("permissions")] public string Permissions;
-
             [Reflection.NameAttribute("type")] public DirItemType Type;
 
             public static DirItem FromInventoryBase(InventoryBase inventoryBase)
@@ -10119,22 +10070,16 @@ namespace Corrade
         private struct GroupInvite
         {
             [Reflection.NameAttribute("agent")] public Agent Agent;
-
             [Reflection.NameAttribute("fee")] public int Fee;
-
             [Reflection.NameAttribute("group")] public string Group;
-
             [Reflection.NameAttribute("session")] public UUID Session;
         }
 
         public struct CorradeCommandParameters
         {
             [Reflection.NameAttribute("group")] public Configuration.Group Group;
-
             [Reflection.NameAttribute("identifier")] public string Identifier;
-
             [Reflection.NameAttribute("message")] public string Message;
-
             [Reflection.NameAttribute("sender")] public string Sender;
         }
 
@@ -10145,13 +10090,9 @@ namespace Corrade
         public struct GroupSchedule
         {
             [Reflection.NameAttribute("at")] public DateTime At;
-
             [Reflection.NameAttribute("group")] public Configuration.Group Group;
-
             [Reflection.NameAttribute("identifier")] public string Identifier;
-
             [Reflection.NameAttribute("message")] public string Message;
-
             [Reflection.NameAttribute("sender")] public string Sender;
         }
 
@@ -10377,13 +10318,9 @@ namespace Corrade
         private struct LookAtEffect
         {
             [Reflection.NameAttribute("effect")] public UUID Effect;
-
             [Reflection.NameAttribute("offset")] public Vector3d Offset;
-
             [Reflection.NameAttribute("source")] public UUID Source;
-
             [Reflection.NameAttribute("target")] public UUID Target;
-
             [Reflection.NameAttribute("type")] public LookAtType Type;
         }
 
@@ -10440,13 +10377,9 @@ namespace Corrade
         private struct PointAtEffect
         {
             [Reflection.NameAttribute("effect")] public UUID Effect;
-
             [Reflection.NameAttribute("offset")] public Vector3d Offset;
-
             [Reflection.NameAttribute("source")] public UUID Source;
-
             [Reflection.NameAttribute("target")] public UUID Target;
-
             [Reflection.NameAttribute("type")] public PointAtType Type;
         }
 
@@ -10469,15 +10402,10 @@ namespace Corrade
         private struct ScriptDialog
         {
             public Agent Agent;
-
             [Reflection.NameAttribute("button")] public List<string> Button;
-
             [Reflection.NameAttribute("channel")] public int Channel;
-
             [Reflection.NameAttribute("item")] public UUID Item;
-
             [Reflection.NameAttribute("message")] public string Message;
-
             [Reflection.NameAttribute("name")] public string Name;
         }
 
@@ -10543,6 +10471,8 @@ namespace Corrade
         private enum ScriptKeys : uint
         {
             [Reflection.NameAttribute("none")] NONE = 0,
+
+            [Reflection.NameAttribute("deanimate")] DEANIMATE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
                 "<command=terraform>&<group=<UUID|STRING>>&<password=<STRING>>&<position=<VECTOR2>>&<height=<FLOAT>>&<width=<FLOAT>>&<amount=<FLOAT>>&<brush=<TerraformBrushSize>>&<action=<TerraformAction>>&[callback=<STRING>]"
@@ -11546,15 +11476,10 @@ namespace Corrade
         private struct ScriptPermissionRequest
         {
             public Agent Agent;
-
             [Reflection.NameAttribute("item")] public UUID Item;
-
             [Reflection.NameAttribute("name")] public string Name;
-
             [Reflection.NameAttribute("permission")] public ScriptPermission Permission;
-
             [Reflection.NameAttribute("region")] public string Region;
-
             [Reflection.NameAttribute("task")] public UUID Task;
         }
 
@@ -11724,15 +11649,10 @@ namespace Corrade
         private struct SphereEffect
         {
             [Reflection.NameAttribute("alpha")] public float Alpha;
-
             [Reflection.NameAttribute("color")] public Vector3 Color;
-
             [Reflection.NameAttribute("duration")] public float Duration;
-
             [Reflection.NameAttribute("effect")] public UUID Effect;
-
             [Reflection.NameAttribute("offset")] public Vector3d Offset;
-
             [Reflection.NameAttribute("termination")] public DateTime Termination;
         }
 

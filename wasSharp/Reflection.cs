@@ -8,44 +8,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace wasSharp
 {
     public class Reflection
     {
-
-        /// <summary>
-        ///     A generic name attribute.
-        /// </summary>
-        public class NameAttribute : Attribute
-        {
-            protected readonly string name;
-
-            public NameAttribute(string name)
-            {
-                this.name = name;
-            }
-
-            public string Name => name;
-        }
-
-        /// <summary>
-        ///     A generic description attribute.
-        /// </summary>
-        public class DescriptionAttribute : Attribute
-        {
-            protected readonly string description;
-
-            public DescriptionAttribute(string description)
-            {
-                this.description = description;
-            }
-
-            public string Description => description;
-        }
-
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
@@ -55,9 +22,9 @@ namespace wasSharp
         /// <returns>an attribute of type T</returns>
         public static T wasGetAttributeFromEnumValue<T>(Enum value) where T : Attribute
         {
-            return (T)value.GetType()
+            return (T) value.GetType()
                 .GetRuntimeField(value.ToString())
-                .GetCustomAttributes(typeof(T), false)
+                .GetCustomAttributes(typeof (T), false)
                 .SingleOrDefault();
         }
 
@@ -72,7 +39,8 @@ namespace wasSharp
         public static IEnumerable<T> wasGetEnumAttributes<T>(Enum e) where T : Attribute
         {
             return e.GetType().GetRuntimeFields()
-                .AsParallel().Select(o => wasGetAttributeFromEnumValue<T>((Enum)o.GetValue(Activator.CreateInstance<T>())));
+                .AsParallel()
+                .Select(o => wasGetAttributeFromEnumValue<T>((Enum) o.GetValue(Activator.CreateInstance<T>())));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -117,7 +85,7 @@ namespace wasSharp
         {
             NameAttribute attribute = value.GetType()
                 .GetRuntimeField(value.ToString())
-                .GetCustomAttributes(typeof(NameAttribute), false)
+                .GetCustomAttributes(typeof (NameAttribute), false)
                 .SingleOrDefault() as NameAttribute;
             return attribute?.Name;
         }
@@ -134,7 +102,7 @@ namespace wasSharp
         {
             DescriptionAttribute attribute = value.GetType()
                 .GetRuntimeField(value.ToString())
-                .GetCustomAttributes(typeof(DescriptionAttribute), false)
+                .GetCustomAttributes(typeof (DescriptionAttribute), false)
                 .SingleOrDefault() as DescriptionAttribute;
             return attribute?.Description;
         }
@@ -150,12 +118,12 @@ namespace wasSharp
         /// <returns>the value or the default of T if case no name attribute found</returns>
         public static T wasGetEnumValueFromName<T>(string name)
         {
-            var field = typeof(T).GetRuntimeFields()
+            var field = typeof (T).GetRuntimeFields()
                 .AsParallel().SelectMany(f => f.GetCustomAttributes(
-                    typeof(NameAttribute), false), (
-                       f, a) => new { Field = f, Att = a }).SingleOrDefault(a => ((NameAttribute)a.Att)
-                             .Name.Equals(name));
-            return field != null ? (T)field.Field.GetValue(Activator.CreateInstance<T>()) : default(T);
+                    typeof (NameAttribute), false), (
+                        f, a) => new {Field = f, Att = a}).SingleOrDefault(a => ((NameAttribute) a.Att)
+                            .Name.Equals(name));
+            return field != null ? (T) field.Field.GetValue(Activator.CreateInstance<T>()) : default(T);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -170,10 +138,40 @@ namespace wasSharp
         /// <returns>the description or the empty string</returns>
         public static string wasGetStructureMemberName<T>(T structure, object item) where T : struct
         {
-            var field = typeof(T).GetRuntimeFields()
-                .AsParallel().SelectMany(f => f.GetCustomAttributes(typeof(NameAttribute), false),
-                    (f, a) => new { Field = f, Att = a }).SingleOrDefault(f => f.Field.GetValue(structure).Equals(item));
-            return field != null ? ((NameAttribute)field.Att).Name : string.Empty;
+            var field = typeof (T).GetRuntimeFields()
+                .AsParallel().SelectMany(f => f.GetCustomAttributes(typeof (NameAttribute), false),
+                    (f, a) => new {Field = f, Att = a}).SingleOrDefault(f => f.Field.GetValue(structure).Equals(item));
+            return field != null ? ((NameAttribute) field.Att).Name : string.Empty;
+        }
+
+        /// <summary>
+        ///     A generic name attribute.
+        /// </summary>
+        public class NameAttribute : Attribute
+        {
+            protected readonly string name;
+
+            public NameAttribute(string name)
+            {
+                this.name = name;
+            }
+
+            public string Name => name;
+        }
+
+        /// <summary>
+        ///     A generic description attribute.
+        /// </summary>
+        public class DescriptionAttribute : Attribute
+        {
+            protected readonly string description;
+
+            public DescriptionAttribute(string description)
+            {
+                this.description = description;
+            }
+
+            public string Description => description;
         }
     }
 }
