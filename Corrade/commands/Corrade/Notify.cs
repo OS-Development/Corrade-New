@@ -76,8 +76,8 @@ namespace Corrade
                                     KeyValue.wasKeyValueGet(
                                         wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AFTERBURN)),
                                         corradeCommandParameters.Message));
-                            SerializableDictionary<string, string> afterburn =
-                                new SerializableDictionary<string, string>();
+                            Collections.SerializableDictionary<string, string> afterburn =
+                                new Collections.SerializableDictionary<string, string>();
                             if (!string.IsNullOrEmpty(afterBurnData))
                             {
                                 HashSet<string> results = new HashSet<string>(Reflection.wasGetEnumNames<ResultKeys>());
@@ -129,7 +129,8 @@ namespace Corrade
                                         GroupName = corradeCommandParameters.Group.Name,
                                         GroupUUID = corradeCommandParameters.Group.UUID,
                                         NotificationURLDestination =
-                                            new SerializableDictionary<Configuration.Notifications, HashSet<string>>(),
+                                            new Collections.SerializableDictionary
+                                                <Configuration.Notifications, HashSet<string>>(),
                                         NotificationTCPDestination =
                                             new Dictionary<Configuration.Notifications, HashSet<IPEndPoint>>(),
                                         Data = data,
@@ -145,7 +146,8 @@ namespace Corrade
                                     if (notification.NotificationURLDestination == null)
                                     {
                                         notification.NotificationURLDestination =
-                                            new SerializableDictionary<Configuration.Notifications, HashSet<string>>();
+                                            new Collections.SerializableDictionary
+                                                <Configuration.Notifications, HashSet<string>>();
                                     }
                                     break;
                             }
@@ -247,9 +249,10 @@ namespace Corrade
                                         }
                                         return;
                                     }
-                                    SerializableDictionary<Configuration.Notifications, HashSet<string>>
+                                    Collections.SerializableDictionary<Configuration.Notifications, HashSet<string>>
                                         notificationDestination =
-                                            new SerializableDictionary<Configuration.Notifications, HashSet<string>>();
+                                            new Collections.SerializableDictionary
+                                                <Configuration.Notifications, HashSet<string>>();
                                     object NotficatinDestinationLock = new object();
                                     Parallel.ForEach(o.NotificationURLDestination, p =>
                                     {
@@ -342,9 +345,10 @@ namespace Corrade
                                     switch (!o.GroupName.Equals(corradeCommandParameters.Group.Name))
                                     {
                                         case false: // this is our group
-                                            SerializableDictionary<Configuration.Notifications, HashSet<string>>
+                                            Collections.SerializableDictionary
+                                                <Configuration.Notifications, HashSet<string>>
                                                 notificationDestination =
-                                                    new SerializableDictionary
+                                                    new Collections.SerializableDictionary
                                                         <Configuration.Notifications, HashSet<string>>();
                                             Parallel.ForEach(o.NotificationURLDestination, p =>
                                             {

@@ -11,7 +11,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Security;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -201,7 +200,7 @@ namespace Configurator
             {
                 mainForm.Groups.Items.Add(new ListViewItem
                 {
-                    Text = UnescapeXML(group.Name),
+                    Text = XML.UnescapeXML(group.Name),
                     Tag = group
                 });
             }
@@ -806,29 +805,6 @@ namespace Configurator
             }));
         }
 
-        private static string EscapeXML(string s)
-        {
-            if (string.IsNullOrEmpty(s)) return s;
-
-            return !SecurityElement.IsValidText(s)
-                ? SecurityElement.Escape(s)
-                : s;
-        }
-
-        private static string UnescapeXML(string s)
-        {
-            if (string.IsNullOrEmpty(s)) return s;
-
-            string returnString = s;
-            returnString = returnString.Replace("&apos;", "'");
-            returnString = returnString.Replace("&quot;", "\"");
-            returnString = returnString.Replace("&gt;", ">");
-            returnString = returnString.Replace("&lt;", "<");
-            returnString = returnString.Replace("&amp;", "&");
-
-            return returnString;
-        }
-
         private void GroupConfigurationChanged(object sender, EventArgs e)
         {
             mainForm.BeginInvoke((MethodInvoker) (() =>
@@ -925,9 +901,9 @@ namespace Configurator
 
                 group = new Configuration.Group
                 {
-                    Name = EscapeXML(GroupName.Text),
+                    Name = XML.EscapeXML(GroupName.Text),
                     UUID = groupUUID,
-                    Password = EscapeXML(GroupPassword.Text),
+                    Password = XML.EscapeXML(GroupPassword.Text),
                     Workers = groupWorkers,
                     Schedules = groupSchedules,
                     DatabaseFile = GroupDatabaseFile.Text,
@@ -1028,9 +1004,9 @@ namespace Configurator
 
                 Configuration.Group group = new Configuration.Group
                 {
-                    Name = EscapeXML(GroupName.Text),
+                    Name = XML.EscapeXML(GroupName.Text),
                     UUID = groupUUID,
-                    Password = EscapeXML(GroupPassword.Text),
+                    Password = XML.EscapeXML(GroupPassword.Text),
                     Workers = groupWorkers,
                     Schedules = groupSchedules,
                     DatabaseFile = GroupDatabaseFile.Text,

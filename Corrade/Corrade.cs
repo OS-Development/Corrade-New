@@ -28,7 +28,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Xml;
-using System.Xml.Schema;
 using System.Xml.Serialization;
 using AIMLbot;
 using CorradeConfiguration;
@@ -394,9 +393,9 @@ namespace Corrade
         private static readonly object GroupNotificationsLock = new object();
         public static HashSet<Notification> GroupNotifications = new HashSet<Notification>();
 
-        private static readonly SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>
+        private static readonly Collections.SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>
             InventoryOffers =
-                new SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>();
+                new Collections.SerializableDictionary<InventoryObjectOfferedEventArgs, ManualResetEvent>();
 
         private static readonly object InventoryOffersLock = new object();
 
@@ -422,8 +421,8 @@ namespace Corrade
         private static readonly List<ScriptDialog> ScriptDialogs = new List<ScriptDialog>();
         private static readonly object ScriptDialogLock = new object();
 
-        private static readonly SerializableDictionary<UUID, HashSet<UUID>> GroupMembers =
-            new SerializableDictionary<UUID, HashSet<UUID>>();
+        private static readonly Collections.SerializableDictionary<UUID, HashSet<UUID>> GroupMembers =
+            new Collections.SerializableDictionary<UUID, HashSet<UUID>>();
 
         private static readonly object GroupMembersLock = new object();
         private static readonly Hashtable GroupWorkers = new Hashtable();
@@ -930,7 +929,7 @@ namespace Corrade
                             CORRADE_CONSTANTS.GROUP_MEMBERS_STATE_FILE), false, Encoding.UTF8))
                 {
                     XmlSerializer serializer =
-                        new XmlSerializer(typeof (SerializableDictionary<UUID, HashSet<UUID>>));
+                        new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>));
                     lock (GroupMembersLock)
                     {
                         serializer.Serialize(writer, GroupMembers);
@@ -959,8 +958,9 @@ namespace Corrade
                     using (StreamReader stream = new StreamReader(groupMembersStateFile, Encoding.UTF8))
                     {
                         XmlSerializer serializer =
-                            new XmlSerializer(typeof (SerializableDictionary<UUID, HashSet<UUID>>));
-                        Parallel.ForEach((SerializableDictionary<UUID, HashSet<UUID>>) serializer.Deserialize(stream),
+                            new XmlSerializer(typeof (Collections.SerializableDictionary<UUID, HashSet<UUID>>));
+                        Parallel.ForEach(
+                            (Collections.SerializableDictionary<UUID, HashSet<UUID>>) serializer.Deserialize(stream),
                             o =>
                             {
                                 if (!corradeConfiguration.Groups.AsParallel().Any(p => p.UUID.Equals(o.Key)))
@@ -8393,7 +8393,7 @@ namespace Corrade
                                                             GroupName = commandGroup.Name,
                                                             GroupUUID = commandGroup.UUID,
                                                             NotificationURLDestination =
-                                                                new SerializableDictionary
+                                                                new Collections.SerializableDictionary
                                                                     <Configuration.Notifications, HashSet<string>>(),
                                                             NotificationTCPDestination =
                                                                 new Dictionary
@@ -8411,7 +8411,7 @@ namespace Corrade
                                                         if (notification.NotificationURLDestination == null)
                                                         {
                                                             notification.NotificationURLDestination =
-                                                                new SerializableDictionary
+                                                                new Collections.SerializableDictionary
                                                                     <Configuration.Notifications, HashSet<string>>();
                                                         }
                                                         break;
@@ -8881,7 +8881,9 @@ namespace Corrade
         private struct Agent
         {
             [Reflection.NameAttribute("firstname")] public string FirstName;
+
             [Reflection.NameAttribute("lastname")] public string LastName;
+
             [Reflection.NameAttribute("uuid")] public UUID UUID;
         }
 
@@ -8891,12 +8893,19 @@ namespace Corrade
         private struct BeamEffect
         {
             [Reflection.NameAttribute("alpha")] public float Alpha;
+
             [Reflection.NameAttribute("color")] public Vector3 Color;
+
             [Reflection.NameAttribute("duration")] public float Duration;
+
             [Reflection.NameAttribute("effect")] public UUID Effect;
+
             [Reflection.NameAttribute("offset")] public Vector3d Offset;
+
             [Reflection.NameAttribute("source")] public UUID Source;
+
             [Reflection.NameAttribute("target")] public UUID Target;
+
             [Reflection.NameAttribute("termination")] public DateTime Termination;
         }
 
@@ -9880,8 +9889,11 @@ namespace Corrade
         private struct DirItem
         {
             [Reflection.NameAttribute("item")] public UUID Item;
+
             [Reflection.NameAttribute("name")] public string Name;
+
             [Reflection.NameAttribute("permissions")] public string Permissions;
+
             [Reflection.NameAttribute("type")] public DirItemType Type;
 
             public static DirItem FromInventoryBase(InventoryBase inventoryBase)
@@ -10070,16 +10082,22 @@ namespace Corrade
         private struct GroupInvite
         {
             [Reflection.NameAttribute("agent")] public Agent Agent;
+
             [Reflection.NameAttribute("fee")] public int Fee;
+
             [Reflection.NameAttribute("group")] public string Group;
+
             [Reflection.NameAttribute("session")] public UUID Session;
         }
 
         public struct CorradeCommandParameters
         {
             [Reflection.NameAttribute("group")] public Configuration.Group Group;
+
             [Reflection.NameAttribute("identifier")] public string Identifier;
+
             [Reflection.NameAttribute("message")] public string Message;
+
             [Reflection.NameAttribute("sender")] public string Sender;
         }
 
@@ -10090,9 +10108,13 @@ namespace Corrade
         public struct GroupSchedule
         {
             [Reflection.NameAttribute("at")] public DateTime At;
+
             [Reflection.NameAttribute("group")] public Configuration.Group Group;
+
             [Reflection.NameAttribute("identifier")] public string Identifier;
+
             [Reflection.NameAttribute("message")] public string Message;
+
             [Reflection.NameAttribute("sender")] public string Sender;
         }
 
@@ -10318,9 +10340,13 @@ namespace Corrade
         private struct LookAtEffect
         {
             [Reflection.NameAttribute("effect")] public UUID Effect;
+
             [Reflection.NameAttribute("offset")] public Vector3d Offset;
+
             [Reflection.NameAttribute("source")] public UUID Source;
+
             [Reflection.NameAttribute("target")] public UUID Target;
+
             [Reflection.NameAttribute("type")] public LookAtType Type;
         }
 
@@ -10330,7 +10356,7 @@ namespace Corrade
         [Serializable]
         public struct Notification
         {
-            public SerializableDictionary<string, string> Afterburn;
+            public Collections.SerializableDictionary<string, string> Afterburn;
             public HashSet<string> Data;
             public string GroupName;
             public UUID GroupUUID;
@@ -10341,7 +10367,8 @@ namespace Corrade
             /// <remarks>These are state dependant so they do not have to be serialized.</remarks>
             [XmlIgnore] public Dictionary<Configuration.Notifications, HashSet<IPEndPoint>> NotificationTCPDestination;
 
-            public SerializableDictionary<Configuration.Notifications, HashSet<string>> NotificationURLDestination;
+            public Collections.SerializableDictionary<Configuration.Notifications, HashSet<string>>
+                NotificationURLDestination;
 
             public uint NotificationMask
             {
@@ -10377,9 +10404,13 @@ namespace Corrade
         private struct PointAtEffect
         {
             [Reflection.NameAttribute("effect")] public UUID Effect;
+
             [Reflection.NameAttribute("offset")] public Vector3d Offset;
+
             [Reflection.NameAttribute("source")] public UUID Source;
+
             [Reflection.NameAttribute("target")] public UUID Target;
+
             [Reflection.NameAttribute("type")] public PointAtType Type;
         }
 
@@ -10402,10 +10433,15 @@ namespace Corrade
         private struct ScriptDialog
         {
             public Agent Agent;
+
             [Reflection.NameAttribute("button")] public List<string> Button;
+
             [Reflection.NameAttribute("channel")] public int Channel;
+
             [Reflection.NameAttribute("item")] public UUID Item;
+
             [Reflection.NameAttribute("message")] public string Message;
+
             [Reflection.NameAttribute("name")] public string Name;
         }
 
@@ -11476,171 +11512,16 @@ namespace Corrade
         private struct ScriptPermissionRequest
         {
             public Agent Agent;
+
             [Reflection.NameAttribute("item")] public UUID Item;
+
             [Reflection.NameAttribute("name")] public string Name;
+
             [Reflection.NameAttribute("permission")] public ScriptPermission Permission;
+
             [Reflection.NameAttribute("region")] public string Region;
+
             [Reflection.NameAttribute("task")] public UUID Task;
-        }
-
-        /// <summary>
-        ///     A serializable dictionary implementation.
-        /// </summary>
-        /// <typeparam name="TKey">the key</typeparam>
-        /// <typeparam name="TVal">the value</typeparam>
-        /// <remarks>Copyright (c) Dacris Software Inc. MIT license</remarks>
-        [Serializable]
-        public sealed class SerializableDictionary<TKey, TVal> : Dictionary<TKey, TVal>, IXmlSerializable, ISerializable
-        {
-            #region Constants
-
-            private const string DictionaryNodeName = "Dictionary";
-            private const string ItemNodeName = "Item";
-            private const string KeyNodeName = "Key";
-            private const string ValueNodeName = "Value";
-
-            #endregion
-
-            #region Constructors
-
-            public SerializableDictionary()
-            {
-            }
-
-            public SerializableDictionary(IDictionary<TKey, TVal> dictionary)
-                : base(dictionary)
-            {
-            }
-
-            public SerializableDictionary(IEqualityComparer<TKey> comparer)
-                : base(comparer)
-            {
-            }
-
-            public SerializableDictionary(int capacity)
-                : base(capacity)
-            {
-            }
-
-            public SerializableDictionary(IDictionary<TKey, TVal> dictionary, IEqualityComparer<TKey> comparer)
-                : base(dictionary, comparer)
-            {
-            }
-
-            public SerializableDictionary(int capacity, IEqualityComparer<TKey> comparer)
-                : base(capacity, comparer)
-            {
-            }
-
-            #endregion
-
-            #region ISerializable Members
-
-            private SerializableDictionary(SerializationInfo info, StreamingContext context)
-                : base(info, context)
-            {
-                int itemCount = info.GetInt32("ItemCount");
-                for (int i = 0; i < itemCount; i++)
-                {
-                    KeyValuePair<TKey, TVal> kvp =
-                        (KeyValuePair<TKey, TVal>)
-                            info.GetValue(string.Format("Item{0}", i), typeof (KeyValuePair<TKey, TVal>));
-                    Add(kvp.Key, kvp.Value);
-                }
-            }
-
-            void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context)
-            {
-                info.AddValue("ItemCount", Count);
-                int itemIdx = 0;
-                foreach (KeyValuePair<TKey, TVal> kvp in this)
-                {
-                    info.AddValue(string.Format("Item{0}", itemIdx), kvp, typeof (KeyValuePair<TKey, TVal>));
-                    itemIdx++;
-                }
-                base.GetObjectData(info, context);
-            }
-
-            #endregion
-
-            #region IXmlSerializable Members
-
-            void IXmlSerializable.WriteXml(XmlWriter writer)
-            {
-                //writer.WriteStartElement(DictionaryNodeName);
-                foreach (KeyValuePair<TKey, TVal> kvp in this)
-                {
-                    writer.WriteStartElement(ItemNodeName);
-                    writer.WriteStartElement(KeyNodeName);
-                    KeySerializer.Serialize(writer, kvp.Key);
-                    writer.WriteEndElement();
-                    writer.WriteStartElement(ValueNodeName);
-                    ValueSerializer.Serialize(writer, kvp.Value);
-                    writer.WriteEndElement();
-                    writer.WriteEndElement();
-                }
-                //writer.WriteEndElement();
-            }
-
-            void IXmlSerializable.ReadXml(XmlReader reader)
-            {
-                if (reader.IsEmptyElement)
-                {
-                    return;
-                }
-
-                // Move past container
-                if (!reader.Read())
-                {
-                    throw new XmlException("Error in Deserialization of Dictionary");
-                }
-
-                //reader.ReadStartElement(DictionaryNodeName);
-                while (reader.NodeType != XmlNodeType.EndElement)
-                {
-                    reader.ReadStartElement(ItemNodeName);
-                    reader.ReadStartElement(KeyNodeName);
-                    TKey key = (TKey) KeySerializer.Deserialize(reader);
-                    reader.ReadEndElement();
-                    reader.ReadStartElement(ValueNodeName);
-                    TVal value = (TVal) ValueSerializer.Deserialize(reader);
-                    reader.ReadEndElement();
-                    reader.ReadEndElement();
-                    Add(key, value);
-                    reader.MoveToContent();
-                }
-                //reader.ReadEndElement();
-
-                reader.ReadEndElement(); // Read End Element to close Read of containing node
-            }
-
-            XmlSchema IXmlSerializable.GetSchema()
-            {
-                return null;
-            }
-
-            #endregion
-
-            #region Private Properties
-
-            private XmlSerializer ValueSerializer
-            {
-                get { return valueSerializer ?? (valueSerializer = new XmlSerializer(typeof (TVal))); }
-            }
-
-            private XmlSerializer KeySerializer
-            {
-                get { return keySerializer ?? (keySerializer = new XmlSerializer(typeof (TKey))); }
-            }
-
-            #endregion
-
-            #region Private Members
-
-            private XmlSerializer keySerializer;
-            private XmlSerializer valueSerializer;
-
-            #endregion
         }
 
         /// <summary>
@@ -11649,10 +11530,15 @@ namespace Corrade
         private struct SphereEffect
         {
             [Reflection.NameAttribute("alpha")] public float Alpha;
+
             [Reflection.NameAttribute("color")] public Vector3 Color;
+
             [Reflection.NameAttribute("duration")] public float Duration;
+
             [Reflection.NameAttribute("effect")] public UUID Effect;
+
             [Reflection.NameAttribute("offset")] public Vector3d Offset;
+
             [Reflection.NameAttribute("termination")] public DateTime Termination;
         }
 

@@ -25,11 +25,12 @@ namespace wasSharp
         public static string wasEnumerableToCSV(IEnumerable<string> l)
         {
             string[] csv = l.Select(o => o).ToArray();
+            char[] escapeCharacters = {'"', ' ', ',', '\r', '\n'};
             Parallel.ForEach(csv.Select((v, i) => new {i, v}), o =>
             {
                 string cell = o.v.Replace("\"", "\"\"");
 
-                switch (cell.IndexOfAny(new[] {'"', ' ', ',', '\r', '\n'}))
+                switch (cell.IndexOfAny(escapeCharacters))
                 {
                     case -1:
                         csv[o.i] = cell;
