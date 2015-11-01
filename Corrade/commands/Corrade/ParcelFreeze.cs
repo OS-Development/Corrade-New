@@ -28,8 +28,8 @@ namespace Corrade
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
                     {
@@ -37,7 +37,7 @@ namespace Corrade
                     }
                     string region =
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator =
                         Client.Network.Simulators.AsParallel().FirstOrDefault(
@@ -74,17 +74,17 @@ namespace Corrade
                     UUID agentUUID;
                     if (
                         !UUID.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
                                 corradeCommandParameters.Message)),
                             out agentUUID) && !AgentNameToUUID(
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
                                         corradeCommandParameters.Message)),
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
                                         corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 ref agentUUID))
@@ -95,8 +95,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FREEZE)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FREEZE)),
                                     corradeCommandParameters.Message)),
                             out freeze))
                     {

@@ -22,7 +22,7 @@ namespace wasSharp
         /// <param name="l">a list of strings</param>
         /// <returns>a commma-separated list of values</returns>
         /// <remarks>compliant with RFC 4180</remarks>
-        public static string wasEnumerableToCSV(IEnumerable<string> l)
+        public static string FromEnumerable(IEnumerable<string> l)
         {
             string[] csv = l.Select(o => o).ToArray();
             char[] escapeCharacters = {'"', ' ', ',', '\r', '\n'};
@@ -52,7 +52,7 @@ namespace wasSharp
         /// <param name="csv">a comma-separated list of values</param>
         /// <returns>a list of strings</returns>
         /// <remarks>compliant with RFC 4180</remarks>
-        public static IEnumerable<string> wasCSVToEnumerable(string csv)
+        public static IEnumerable<string> ToEnumerable(string csv)
         {
             Stack<char> s = new Stack<char>();
             StringBuilder m = new StringBuilder();

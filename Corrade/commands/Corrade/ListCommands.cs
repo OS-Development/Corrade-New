@@ -22,15 +22,15 @@ namespace Corrade
                 {
                     HashSet<string> data = new HashSet<string>();
                     object LockObject = new object();
-                    Parallel.ForEach(Reflection.wasGetEnumNames<ScriptKeys>(), o =>
+                    Parallel.ForEach(Reflection.GetEnumNames<ScriptKeys>(), o =>
                     {
-                        ScriptKeys scriptKey = Reflection.wasGetEnumValueFromName<ScriptKeys>(o);
+                        ScriptKeys scriptKey = Reflection.GetEnumValueFromName<ScriptKeys>(o);
                         IsCorradeCommandAttribute isCommandAttribute =
-                            Reflection.wasGetAttributeFromEnumValue<IsCorradeCommandAttribute>(scriptKey);
+                            Reflection.GetAttributeFromEnumValue<IsCorradeCommandAttribute>(scriptKey);
                         if (isCommandAttribute == null || !isCommandAttribute.IsCorradeCorradeCommand)
                             return;
                         CommandPermissionMaskAttribute commandPermissionMaskAttribute =
-                            Reflection.wasGetAttributeFromEnumValue<CommandPermissionMaskAttribute>(scriptKey);
+                            Reflection.GetAttributeFromEnumValue<CommandPermissionMaskAttribute>(scriptKey);
                         if (commandPermissionMaskAttribute == null) return;
                         if (!corradeCommandParameters.Group.Equals(default(Configuration.Group)) &&
                             !(corradeCommandParameters.Group.PermissionMask &
@@ -44,7 +44,7 @@ namespace Corrade
                     });
                     if (data.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), CSV.wasEnumerableToCSV(data));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), CSV.FromEnumerable(data));
                     }
                 };
         }

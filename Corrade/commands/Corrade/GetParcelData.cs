@@ -28,8 +28,8 @@ namespace Corrade
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
                     {
@@ -37,7 +37,7 @@ namespace Corrade
                     }
                     string region =
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator =
                         Client.Network.Simulators.AsParallel().FirstOrDefault(
@@ -55,12 +55,12 @@ namespace Corrade
                         throw new ScriptException(ScriptError.COULD_NOT_FIND_PARCEL);
                     }
                     List<string> data = GetStructuredData(parcel,
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
                     if (data.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(data));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(data));
                     }
                 };
         }

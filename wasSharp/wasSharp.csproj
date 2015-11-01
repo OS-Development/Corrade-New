@@ -43,6 +43,7 @@
     <Compile Include="Cryptography.cs" />
     <Compile Include="CSV.cs" />
     <Compile Include="KeyValue.cs" />
+    <Compile Include="Numerics.cs" />
     <Compile Include="Reflection.cs" />
     <Compile Include="Time.cs" />
     <Compile Include="wasSharp.cs" />

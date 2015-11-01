@@ -29,7 +29,7 @@ namespace Corrade
                     object item =
                         StringOrUUID(
                             wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                     corradeCommandParameters.Message)));
                     InventoryItem inventoryItem;
                     switch (item != null)
@@ -52,10 +52,10 @@ namespace Corrade
                             throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
                     }
                     switch (
-                        Reflection.wasGetEnumValueFromName<Action>(
+                        Reflection.GetEnumValueFromName<Action>(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.START:

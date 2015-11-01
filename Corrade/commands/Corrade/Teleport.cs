@@ -33,8 +33,8 @@ namespace Corrade
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
                     {
@@ -44,8 +44,8 @@ namespace Corrade
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TURNTO)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TURNTO)),
                                     corradeCommandParameters.Message)),
                             out lookAt))
                     {
@@ -54,7 +54,7 @@ namespace Corrade
                     // We override the default teleport since region names are unique and case insensitive.
                     string region =
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(region))
                     {
@@ -141,7 +141,7 @@ namespace Corrade
                     bool fly;
                     // perform the post-action
                     switch (bool.TryParse(wasInput(
-                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FLY)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FLY)),
                             corradeCommandParameters.Message)), out fly))
                     {
                         case true: // if fly was specified, set the fly state

@@ -25,7 +25,7 @@ namespace wasSharp
         /// <param name="plugs">the letter representing the start character for the rotor</param>
         /// <param name="reflector">any one of: B, b, C, c</param>
         /// <returns>either a decrypted or encrypted string</returns>
-        public static string wasEnigma(string message, char[] rotors, char[] plugs, char reflector)
+        public static string ENIGMA(string message, char[] rotors, char[] plugs, char reflector)
         {
             Dictionary<char, char[]> def_rotors = new Dictionary<char, char[]>
             {
@@ -187,9 +187,9 @@ namespace wasSharp
                 char plug = plugs[Array.IndexOf(rotors, rotor)];
                 int i = Array.IndexOf(def_rotors[rotor], plug);
                 if (i.Equals(0)) continue;
-                def_rotors[rotor] = Arrays.wasConcatenateArrays(new[] {plug},
-                    Arrays.wasGetSubArray(Arrays.wasDeleteSubArray(def_rotors[rotor], i, i), i, -1),
-                    Arrays.wasGetSubArray(Arrays.wasDeleteSubArray(def_rotors[rotor], i + 1, -1), 0, i - 1));
+                def_rotors[rotor] = Arrays.ConcatenateArrays(new[] {plug},
+                    Arrays.GetSubArray(Arrays.DeleteSubArray(def_rotors[rotor], i, i), i, -1),
+                    Arrays.GetSubArray(Arrays.DeleteSubArray(def_rotors[rotor], i + 1, -1), 0, i - 1));
             }
 
             StringBuilder result = new StringBuilder();
@@ -209,14 +209,14 @@ namespace wasSharp
                     int i = o.Length - 1;
                     do
                     {
-                        def_rotors[o[0]] = Arrays.wasForwardPermuteArrayElements(def_rotors[o[0]], 1);
+                        def_rotors[o[0]] = Arrays.ForwardPermuteArrayElements(def_rotors[o[0]], 1);
                         if (i.Equals(0))
                         {
-                            rotors = Arrays.wasReversePermuteArrayElements(o, 1);
+                            rotors = Arrays.ReversePermuteArrayElements(o, 1);
                             continue;
                         }
-                        l = Arrays.wasGetElementAt(def_rotors[o[1]], Array.IndexOf(def_rotors[o[0]], l) - 1);
-                        o = Arrays.wasReversePermuteArrayElements(o, 1);
+                        l = Arrays.GetElementAt(def_rotors[o[1]], Array.IndexOf(def_rotors[o[0]], l) - 1);
+                        o = Arrays.ReversePermuteArrayElements(o, 1);
                     } while (--i > -1);
                 };
 
@@ -252,7 +252,7 @@ namespace wasSharp
         /// <param name="input">the input to expand to</param>
         /// <param name="enc_key">the key to expand</param>
         /// <returns>the expanded key</returns>
-        public static string wasVigenereExpandKey(string input, string enc_key)
+        public static string VIGENEREExpandKey(string input, string enc_key)
         {
             string exp_key = string.Empty;
             int i = 0, j = 0;
@@ -282,7 +282,7 @@ namespace wasSharp
         /// <param name="input">the input to encrypt</param>
         /// <param name="enc_key">the key to encrypt with</param>
         /// <returns>the encrypted input</returns>
-        public static string wasEncryptVIGENERE(string input, string enc_key)
+        public static string EncryptVIGENERE(string input, string enc_key)
         {
             char[] a =
             {
@@ -290,7 +290,7 @@ namespace wasSharp
                 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
             };
 
-            enc_key = wasVigenereExpandKey(input, enc_key);
+            enc_key = VIGENEREExpandKey(input, enc_key);
             string result = string.Empty;
             int i = 0;
             do
@@ -303,7 +303,7 @@ namespace wasSharp
                     continue;
                 }
                 char q =
-                    Arrays.wasReversePermuteArrayElements(a, Array.IndexOf(a, enc_key[i]))[
+                    Arrays.ReversePermuteArrayElements(a, Array.IndexOf(a, enc_key[i]))[
                         Array.IndexOf(a, char.ToLowerInvariant(p))];
                 if (char.IsUpper(p))
                 {
@@ -324,7 +324,7 @@ namespace wasSharp
         /// <param name="input">the input to decrypt</param>
         /// <param name="enc_key">the key to decrypt with</param>
         /// <returns>the decrypted input</returns>
-        public static string wasDecryptVIGENERE(string input, string enc_key)
+        public static string DecryptVIGENERE(string input, string enc_key)
         {
             char[] a =
             {
@@ -332,7 +332,7 @@ namespace wasSharp
                 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
             };
 
-            enc_key = wasVigenereExpandKey(input, enc_key);
+            enc_key = VIGENEREExpandKey(input, enc_key);
             string result = string.Empty;
             int i = 0;
             do
@@ -346,7 +346,7 @@ namespace wasSharp
                 }
                 char q =
                     a[
-                        Array.IndexOf(Arrays.wasReversePermuteArrayElements(a, Array.IndexOf(a, enc_key[i])),
+                        Array.IndexOf(Arrays.ReversePermuteArrayElements(a, Array.IndexOf(a, enc_key[i])),
                             char.ToLowerInvariant(p))];
                 if (char.IsUpper(p))
                 {
@@ -366,7 +366,7 @@ namespace wasSharp
         /// </summary>
         /// <param name="data">the data to encrypt or decrypt</param>
         /// <returns>the encrypted or decrypted data</returns>
-        public static string wasATBASH(string data)
+        public static string ATBASH(string data)
         {
             char[] a =
             {

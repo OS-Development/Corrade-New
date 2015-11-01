@@ -29,8 +29,8 @@ namespace Corrade
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
                     {

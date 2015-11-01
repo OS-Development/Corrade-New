@@ -47,9 +47,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
-                    Action action = Reflection.wasGetEnumValueFromName<Action>(
+                    Action action = Reflection.GetEnumValueFromName<Action>(
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     object LockObject = new object();
@@ -62,10 +62,10 @@ namespace Corrade
                             Dictionary<UUID, string> avatars = new Dictionary<UUID, string>();
                             HashSet<string> data = new HashSet<string>();
                             Parallel.ForEach(
-                                CSV.wasCSVToEnumerable(
+                                CSV.ToEnumerable(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AVATARS)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AVATARS)),
                                             corradeCommandParameters.Message)))
                                     .AsParallel()
                                     .Where(o => !string.IsNullOrEmpty(o)), o =>
@@ -123,8 +123,8 @@ namespace Corrade
                                     bool alsoeject;
                                     if (bool.TryParse(
                                         wasInput(
-                                            KeyValue.wasKeyValueGet(
-                                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.EJECT)),
+                                            KeyValue.Get(
+                                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.EJECT)),
                                                 corradeCommandParameters.Message)),
                                         out alsoeject) && alsoeject)
                                     {
@@ -242,8 +242,8 @@ namespace Corrade
                             }
                             if (data.Any())
                             {
-                                result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                                    CSV.wasEnumerableToCSV(data));
+                                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                    CSV.FromEnumerable(data));
                             }
                             break;
                         case Action.LIST:
@@ -294,8 +294,8 @@ namespace Corrade
                             }
                             if (csv.Any())
                             {
-                                result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                                    CSV.wasEnumerableToCSV(csv));
+                                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                    CSV.FromEnumerable(csv));
                             }
                             break;
                         default:

@@ -28,15 +28,15 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string file =
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FILE)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FILE)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(file))
                     {
                         throw new ScriptException(ScriptError.NO_EXECUTABLE_FILE_PROVIDED);
                     }
                     ProcessStartInfo p = new ProcessStartInfo(file,
-                        wasInput(KeyValue.wasKeyValueGet(
-                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PARAMETER)),
+                        wasInput(KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PARAMETER)),
                             corradeCommandParameters.Message)))
                     {
                         RedirectStandardOutput = true,
@@ -86,11 +86,11 @@ namespace Corrade
                     }
                     if (StdEvent[0].WaitOne((int) corradeConfiguration.ServicesTimeout) && !stdout.Length.Equals(0))
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), stdout.ToString());
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), stdout.ToString());
                     }
                     if (StdEvent[1].WaitOne((int) corradeConfiguration.ServicesTimeout) && !stderr.Length.Equals(0))
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), stderr.ToString());
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), stderr.ToString());
                     }
                 };
         }

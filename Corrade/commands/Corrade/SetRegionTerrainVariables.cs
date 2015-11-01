@@ -30,8 +30,8 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.WATERHEIGHT)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.WATERHEIGHT)),
                                     corradeCommandParameters.Message)), out waterHeight))
                     {
                         waterHeight = LINDEN_CONSTANTS.REGION.DEFAULT_WATER_HEIGHT;
@@ -40,8 +40,8 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TERRAINRAISELIMIT)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TERRAINRAISELIMIT)),
                                     corradeCommandParameters.Message)), out terrainRaiseLimit))
                     {
                         terrainRaiseLimit = LINDEN_CONSTANTS.REGION.DEFAULT_TERRAIN_RAISE_LIMIT;
@@ -50,8 +50,8 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TERRAINLOWERLIMIT)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TERRAINLOWERLIMIT)),
                                     corradeCommandParameters.Message)), out terrainLowerLimit))
                     {
                         terrainLowerLimit = LINDEN_CONSTANTS.REGION.DEFAULT_TERRAIN_LOWER_LIMIT;
@@ -60,8 +60,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.USEESTATESUN)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.USEESTATESUN)),
                                     corradeCommandParameters.Message)), out useEstateSun))
                     {
                         useEstateSun = LINDEN_CONSTANTS.REGION.DEFAULT_USE_ESTATE_SUN;
@@ -70,8 +70,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIXEDSUN)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIXEDSUN)),
                                     corradeCommandParameters.Message)), out fixedSun))
                     {
                         fixedSun = LINDEN_CONSTANTS.REGION.DEFAULT_FIXED_SUN;
@@ -80,8 +80,8 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.SUNPOSITION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SUNPOSITION)),
                                     corradeCommandParameters.Message)), out sunPosition))
                     {
                         sunPosition = LINDEN_CONSTANTS.REGION.SUNRISE;

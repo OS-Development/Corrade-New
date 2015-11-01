@@ -38,9 +38,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
-                    switch (Reflection.wasGetEnumValueFromName<Action>(
+                    switch (Reflection.GetEnumValueFromName<Action>(
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
@@ -69,8 +69,8 @@ namespace Corrade
                                 o =>
                                     o.Key.Equals(
                                         wasInput(
-                                            KeyValue.wasKeyValueGet(
-                                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TITLE)),
+                                            KeyValue.Get(
+                                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TITLE)),
                                                 corradeCommandParameters.Message)),
                                         StringComparison.Ordinal));
                             switch (!role.Equals(default(KeyValuePair<string, UUID>)))
@@ -107,7 +107,7 @@ namespace Corrade
                             }
                             if (!title.Equals(string.Empty))
                             {
-                                result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), title);
+                                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), title);
                             }
                             break;
                         default:

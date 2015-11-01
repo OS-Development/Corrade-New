@@ -48,10 +48,10 @@ namespace Corrade
                     HashSet<UUID> roleUUIDs = new HashSet<UUID>();
                     foreach (
                         string role in
-                            CSV.wasCSVToEnumerable(
+                            CSV.ToEnumerable(
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ROLE)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
                                         corradeCommandParameters.Message)))
                                 .AsParallel().Where(o => !string.IsNullOrEmpty(o)))
                     {
@@ -101,10 +101,10 @@ namespace Corrade
                     HashSet<string> data = new HashSet<string>();
                     object LockObject = new object();
                     Parallel.ForEach(
-                        CSV.wasCSVToEnumerable(
+                        CSV.ToEnumerable(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AVATARS)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AVATARS)),
                                     corradeCommandParameters.Message)))
                             .AsParallel()
                             .Where(o => !string.IsNullOrEmpty(o)),
@@ -144,8 +144,8 @@ namespace Corrade
                         });
                     if (data.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(data));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(data));
                     }
                 };
         }

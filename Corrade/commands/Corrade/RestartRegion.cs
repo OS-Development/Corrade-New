@@ -30,18 +30,18 @@ namespace Corrade
                     uint delay;
                     if (
                         !uint.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DELAY)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DELAY)),
                                 corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out delay))
                     {
                         delay = LINDEN_CONSTANTS.ESTATE.REGION_RESTART_DELAY;
                     }
                     switch (
-                        Reflection.wasGetEnumValueFromName<Action>(
+                        Reflection.GetEnumValueFromName<Action>(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.RESTART:

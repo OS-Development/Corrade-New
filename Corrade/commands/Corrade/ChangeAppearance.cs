@@ -31,7 +31,7 @@ namespace Corrade
 
                     string folder =
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FOLDER)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FOLDER)),
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(folder))
                     {
@@ -66,7 +66,7 @@ namespace Corrade
                     // stop non default animations if requested
                     bool deanimate;
                     switch (!bool.TryParse(wasInput(
-                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DEANIMATE)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DEANIMATE)),
                             corradeCommandParameters.Message)), out deanimate) && deanimate)
                     {
                         case true:

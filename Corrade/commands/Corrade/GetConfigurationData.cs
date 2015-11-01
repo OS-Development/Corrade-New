@@ -30,14 +30,14 @@ namespace Corrade
                     {
                         data.AddRange(GetStructuredData(corradeConfiguration,
                             wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                     corradeCommandParameters.Message)))
                             );
                     }
                     if (data.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(data));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(data));
                     }
                 };
         }

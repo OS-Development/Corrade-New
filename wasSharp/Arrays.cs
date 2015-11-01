@@ -20,7 +20,7 @@ namespace wasSharp
         /// <param name="index">a positive or negative index of the element</param>
         /// <param name="data">the array</param>
         /// <return>an array element</return>
-        public static T wasGetElementAt<T>(T[] data, int index)
+        public static T GetElementAt<T>(T[] data, int index)
         {
             switch (index < 0)
             {
@@ -42,7 +42,7 @@ namespace wasSharp
         /// <param name="start">the start index</param>
         /// <param name="stop">the stop index (-1 denotes the end)</param>
         /// <returns>the array slice between start and stop</returns>
-        public static T[] wasGetSubArray<T>(T[] data, int start, int stop)
+        public static T[] GetSubArray<T>(T[] data, int start, int stop)
         {
             if (stop.Equals(-1))
                 stop = data.Length - 1;
@@ -62,7 +62,7 @@ namespace wasSharp
         /// <param name="start">the start index</param>
         /// <param name="stop">the stop index (-1 denotes the end)</param>
         /// <returns>the array without elements between start and stop</returns>
-        public static T[] wasDeleteSubArray<T>(T[] data, int start, int stop)
+        public static T[] DeleteSubArray<T>(T[] data, int start, int stop)
         {
             if (stop.Equals(-1))
                 stop = data.Length - 1;
@@ -81,7 +81,7 @@ namespace wasSharp
         /// <typeparam name="T">the array type</typeparam>
         /// <param name="arrays">multiple arrays</param>
         /// <returns>a flat array with all arrays concatenated</returns>
-        public static T[] wasConcatenateArrays<T>(params T[][] arrays)
+        public static T[] ConcatenateArrays<T>(params T[][] arrays)
         {
             int resultLength = 0;
             foreach (T[] o in arrays)
@@ -108,13 +108,13 @@ namespace wasSharp
         /// <param name="input">the array</param>
         /// <param name="times">the number of times to permute</param>
         /// <returns>the array with the elements permuted</returns>
-        public static T[] wasReversePermuteArrayElements<T>(T[] input, int times)
+        public static T[] ReversePermuteArrayElements<T>(T[] input, int times)
         {
             if (times.Equals(0)) return input;
             T[] slice = new T[input.Length];
             Array.Copy(input, 1, slice, 0, input.Length - 1);
             Array.Copy(input, 0, slice, input.Length - 1, 1);
-            return wasReversePermuteArrayElements(slice, --times);
+            return ReversePermuteArrayElements(slice, --times);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -127,13 +127,13 @@ namespace wasSharp
         /// <param name="input">the array</param>
         /// <param name="times">the number of times to permute</param>
         /// <returns>the array with the elements permuted</returns>
-        public static T[] wasForwardPermuteArrayElements<T>(T[] input, int times)
+        public static T[] ForwardPermuteArrayElements<T>(T[] input, int times)
         {
             if (times.Equals(0)) return input;
             T[] slice = new T[input.Length];
             Array.Copy(input, input.Length - 1, slice, 0, 1);
             Array.Copy(input, 0, slice, 1, input.Length - 1);
-            return wasForwardPermuteArrayElements(slice, --times);
+            return ForwardPermuteArrayElements(slice, --times);
         }
     }
 }

@@ -17,8 +17,8 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> ping =
                 (corradeCommandParameters, result) =>
                 {
-                    result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                        Reflection.wasGetNameFromEnumValue(ScriptKeys.PONG));
+                    result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        Reflection.GetNameFromEnumValue(ScriptKeys.PONG));
                 };
         }
     }

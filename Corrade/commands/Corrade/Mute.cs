@@ -39,10 +39,10 @@ namespace Corrade
                     string name;
                     IEnumerable<MuteEntry> mutes = Enumerable.Empty<MuteEntry>();
                     switch (
-                        Reflection.wasGetEnumValueFromName<Action>(
+                        Reflection.GetEnumValueFromName<Action>(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.MUTE:
@@ -50,8 +50,8 @@ namespace Corrade
                             if (
                                 !UUID.TryParse(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                                             corradeCommandParameters.Message)),
                                     out targetUUID))
                             {
@@ -60,8 +60,8 @@ namespace Corrade
 
                             name =
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                                         corradeCommandParameters.Message));
 
                             if (string.IsNullOrEmpty(name))
@@ -81,8 +81,8 @@ namespace Corrade
                                     o =>
                                         o.Name.Equals(
                                             wasInput(
-                                                KeyValue.wasKeyValueGet(
-                                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
+                                                KeyValue.Get(
+                                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                                     corradeCommandParameters.Message)),
                                             StringComparison.Ordinal));
                             // ...or assume "Default" mute type from MuteType
@@ -93,10 +93,10 @@ namespace Corrade
                                 : MuteType.ByName;
                             // Get the mute flags - default is "Default" equivalent to 0
                             int muteFlags = 0;
-                            Parallel.ForEach(CSV.wasCSVToEnumerable(
+                            Parallel.ForEach(CSV.ToEnumerable(
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FLAGS)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FLAGS)),
                                         corradeCommandParameters.Message)))
                                 .AsParallel()
                                 .Where(o => !string.IsNullOrEmpty(o)),
@@ -129,12 +129,12 @@ namespace Corrade
                             break;
                         case Action.UNMUTE:
                             UUID.TryParse(
-                                wasInput(KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET)),
+                                wasInput(KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                                     corradeCommandParameters.Message)),
                                 out targetUUID);
                             name = wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                                     corradeCommandParameters.Message));
 
                             if (string.IsNullOrEmpty(name) && targetUUID.Equals(UUID.Zero))

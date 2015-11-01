@@ -29,8 +29,8 @@ namespace Corrade
                     float range;
                     if (
                         !float.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RANGE)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
@@ -39,8 +39,8 @@ namespace Corrade
                     Primitive primitive = null;
                     if (
                         !FindPrimitive(
-                            StringOrUUID(wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                            StringOrUUID(wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
                             range,
                             ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
@@ -57,7 +57,7 @@ namespace Corrade
                     if (
                         !uint.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FACE)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FACE)),
                                     corradeCommandParameters.Message)), out face))
                         throw new ScriptException(ScriptError.INVALID_FACE_SPECIFIED);
                     MediaEntry[] faceMediaEntries = null;
@@ -78,7 +78,7 @@ namespace Corrade
                             }
                         });
                     wasCSVToStructure(
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message)),
                         ref faceMediaEntries[face]);
                     Client.Objects.UpdateObjectMedia(primitive.ID, faceMediaEntries,

@@ -29,7 +29,7 @@ namespace Corrade
                     object item =
                         StringOrUUID(
                             wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                     corradeCommandParameters.Message)));
                     InventoryItem inventoryItem;
                     switch (item != null)

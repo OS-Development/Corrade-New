@@ -25,8 +25,8 @@ namespace Corrade
                     UUID itemUUID;
                     if (
                         !UUID.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message)),
                             out itemUUID))
                     {
@@ -35,8 +35,8 @@ namespace Corrade
                     UUID taskUUID;
                     if (
                         !UUID.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TASK)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TASK)),
                                 corradeCommandParameters.Message)),
                             out taskUUID))
                     {
@@ -55,10 +55,10 @@ namespace Corrade
                     }
                     bool succeeded = true;
                     int permissionMask = 0;
-                    Parallel.ForEach(CSV.wasCSVToEnumerable(
+                    Parallel.ForEach(CSV.ToEnumerable(
                         wasInput(
-                            KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
                                 corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                         o =>
                             Parallel.ForEach(
@@ -129,7 +129,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string region = wasInput(
-                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.REGION)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                             corradeCommandParameters.Message));
                     Simulator simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
                         o => o.Name.Equals(region, StringComparison.OrdinalIgnoreCase));

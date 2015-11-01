@@ -39,7 +39,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NOT_IN_GROUP);
                     }
                     string role =
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ROLE)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(role))
                     {
@@ -88,8 +88,8 @@ namespace Corrade
                     });
                     if (csv.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(csv));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(csv));
                     }
                 };
         }

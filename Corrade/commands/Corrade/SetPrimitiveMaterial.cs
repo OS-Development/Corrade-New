@@ -30,8 +30,8 @@ namespace Corrade
                     float range;
                     if (
                         !float.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RANGE)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
@@ -40,8 +40,8 @@ namespace Corrade
                     Primitive primitive = null;
                     if (
                         !FindPrimitive(
-                            StringOrUUID(wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                            StringOrUUID(wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
                             range,
                             ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
@@ -52,8 +52,8 @@ namespace Corrade
                                                                               BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
                             o =>
-                                string.Equals(o.Name, wasInput(KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.MATERIAL)),
+                                string.Equals(o.Name, wasInput(KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MATERIAL)),
                                     corradeCommandParameters.Message)),
                                     StringComparison.OrdinalIgnoreCase));
                     if (materialFieldInfo == null)

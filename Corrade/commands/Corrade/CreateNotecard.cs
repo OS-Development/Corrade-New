@@ -29,7 +29,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string text =
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TEXT)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TEXT)),
                             corradeCommandParameters.Message));
                     if (IsSecondLife() &&
                         Encoding.UTF8.GetByteCount(text) >
@@ -38,7 +38,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NOTECARD_MESSAGE_BODY_TOO_LARGE);
                     }
                     string name =
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
@@ -50,8 +50,8 @@ namespace Corrade
                     Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(AssetType.Notecard),
                         name,
                         wasInput(
-                            KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                                 corradeCommandParameters.Message)),
                         AssetType.Notecard,
                         UUID.Random(), InventoryType.Notecard, PermissionMask.All,

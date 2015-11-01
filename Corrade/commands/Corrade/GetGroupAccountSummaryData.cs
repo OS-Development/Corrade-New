@@ -29,8 +29,8 @@ namespace Corrade
                     int days;
                     if (
                         !int.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DAYS)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DAYS)),
                                 corradeCommandParameters.Message)),
                             out days))
                     {
@@ -40,8 +40,8 @@ namespace Corrade
                     if (
                         !int.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.INTERVAL)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.INTERVAL)),
                                     corradeCommandParameters.Message)),
                             out interval))
                     {
@@ -69,12 +69,12 @@ namespace Corrade
                         Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
                     }
                     List<string> data = GetStructuredData(summary,
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
                     if (data.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(data));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(data));
                     }
                 };
         }

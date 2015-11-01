@@ -29,8 +29,8 @@ namespace Corrade
                     float range;
                     if (
                         !float.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RANGE)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
@@ -39,8 +39,8 @@ namespace Corrade
                     Primitive primitive = null;
                     if (
                         !FindPrimitive(
-                            StringOrUUID(wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                            StringOrUUID(wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
                             range,
                             ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
@@ -48,7 +48,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                     }
                     string face =
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FACE)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FACE)),
                             corradeCommandParameters.Message));
                     int i;
                     switch (!int.TryParse(face, out i))
@@ -67,8 +67,8 @@ namespace Corrade
                                         }
                                         wasCSVToStructure(
                                             wasInput(
-                                                KeyValue.wasKeyValueGet(
-                                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                                KeyValue.Get(
+                                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                                     corradeCommandParameters.Message)),
                                             ref primitive.Textures.FaceTextures[i]);
                                     } while (--i > -1);
@@ -76,8 +76,8 @@ namespace Corrade
                                 case "default":
                                     wasCSVToStructure(
                                         wasInput(
-                                            KeyValue.wasKeyValueGet(
-                                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                            KeyValue.Get(
+                                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                                 corradeCommandParameters.Message)),
                                         ref primitive.Textures.DefaultTexture);
                                     break;
@@ -94,8 +94,8 @@ namespace Corrade
                             }
                             wasCSVToStructure(
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
                                 ref primitive.Textures.FaceTextures[i]);
                             break;

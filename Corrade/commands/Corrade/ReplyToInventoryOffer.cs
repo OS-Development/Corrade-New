@@ -31,8 +31,8 @@ namespace Corrade
                     if (
                         !UUID.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.SESSION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION)),
                                     corradeCommandParameters.Message)),
                             out session))
                     {
@@ -52,8 +52,8 @@ namespace Corrade
                     object folder =
                         StringOrUUID(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FOLDER)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FOLDER)),
                                     corradeCommandParameters.Message)));
                     InventoryFolder inventoryFolder;
                     switch (folder != null)
@@ -80,10 +80,10 @@ namespace Corrade
                             break;
                     }
                     switch (
-                        Reflection.wasGetEnumValueFromName<Action>(
+                        Reflection.GetEnumValueFromName<Action>(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.ACCEPT:

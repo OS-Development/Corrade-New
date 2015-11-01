@@ -29,8 +29,8 @@ namespace Corrade
                     float range;
                     if (
                         !float.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RANGE)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
@@ -39,8 +39,8 @@ namespace Corrade
                     Primitive primitive = null;
                     if (
                         !FindPrimitive(
-                            StringOrUUID(wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                            StringOrUUID(wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
                             range,
                             ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
@@ -169,7 +169,7 @@ namespace Corrade
                     particleSystem.Append("PSYS_SRC_TEXTURE, (key)\"" + primitive.ParticleSys.Texture + "\"" +
                                           ",");
                     particleSystem.Append("PSYS_SRC_TARGET_KEY, (key)\"" + primitive.ParticleSys.Target + "\"");
-                    result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), particleSystem.ToString());
+                    result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), particleSystem.ToString());
                 };
         }
     }

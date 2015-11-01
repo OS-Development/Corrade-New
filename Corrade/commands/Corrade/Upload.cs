@@ -32,17 +32,17 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string name =
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
                         throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
                     }
                     uint permissions = 0;
-                    Parallel.ForEach(CSV.wasCSVToEnumerable(
+                    Parallel.ForEach(CSV.ToEnumerable(
                         wasInput(
-                            KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
                                 corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                         o =>
                             Parallel.ForEach(
@@ -54,8 +54,8 @@ namespace Corrade
                         .AsParallel().FirstOrDefault(o =>
                             o.Name.Equals(
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        Reflection.wasGetNameFromEnumValue(
+                                    KeyValue.Get(
+                                        Reflection.GetNameFromEnumValue(
                                             ScriptKeys.TYPE),
                                         corradeCommandParameters.Message)),
                                 StringComparison.Ordinal));
@@ -69,7 +69,7 @@ namespace Corrade
                     {
                         data = Convert.FromBase64String(
                             wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                     corradeCommandParameters.Message)));
                     }
                     catch (Exception)
@@ -118,7 +118,7 @@ namespace Corrade
                                         catch (Exception)
                                         {
                                             throw new Exception(
-                                                Reflection.wasGetNameFromEnumValue(
+                                                Reflection.GetNameFromEnumValue(
                                                     ScriptError.UNKNOWN_IMAGE_FORMAT_PROVIDED));
                                         }
                                     }
@@ -128,8 +128,8 @@ namespace Corrade
                             ManualResetEvent CreateItemFromAssetEvent = new ManualResetEvent(false);
                             Client.Inventory.RequestCreateItemFromAsset(data, name,
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                                         corradeCommandParameters.Message)),
                                 assetType,
                                 (InventoryType)
@@ -156,8 +156,8 @@ namespace Corrade
                                     o =>
                                         o.Name.Equals(
                                             wasInput(
-                                                KeyValue.wasKeyValueGet(
-                                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.WEAR)),
+                                                KeyValue.Get(
+                                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.WEAR)),
                                                     corradeCommandParameters.Message)),
                                             StringComparison.Ordinal));
                             if (wearTypeInfo == null)
@@ -173,8 +173,8 @@ namespace Corrade
                             Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
                                 name,
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                                         corradeCommandParameters.Message)),
                                 assetType,
                                 wearableUUID, InventoryType.Wearable, (WearableType) wearTypeInfo.GetValue(null),
@@ -199,8 +199,8 @@ namespace Corrade
                             Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
                                 name,
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                                         corradeCommandParameters.Message)),
                                 assetType,
                                 landmarkUUID, InventoryType.Landmark, PermissionMask.All,
@@ -220,8 +220,8 @@ namespace Corrade
                             Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
                                 name,
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                                         corradeCommandParameters.Message)),
                                 assetType,
                                 UUID.Random(), InventoryType.Gesture,
@@ -258,8 +258,8 @@ namespace Corrade
                             Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
                                 name,
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                                         corradeCommandParameters.Message)),
                                 assetType,
                                 UUID.Random(), InventoryType.Notecard,
@@ -296,8 +296,8 @@ namespace Corrade
                             Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(assetType),
                                 name,
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                                         corradeCommandParameters.Message)),
                                 assetType,
                                 UUID.Random(), InventoryType.LSL,

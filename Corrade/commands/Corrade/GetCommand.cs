@@ -21,22 +21,22 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     string name =
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
                     {
                         throw new ScriptException(ScriptError.NO_NAME_PROVIDED);
                     }
                     IsCorradeCommandAttribute isCommandAttribute =
-                        Reflection.wasGetAttributeFromEnumValue<IsCorradeCommandAttribute>(
-                            Reflection.wasGetEnumValueFromName<ScriptKeys>(name));
+                        Reflection.GetAttributeFromEnumValue<IsCorradeCommandAttribute>(
+                            Reflection.GetEnumValueFromName<ScriptKeys>(name));
                     if (isCommandAttribute == null || isCommandAttribute.IsCorradeCorradeCommand.Equals(false))
                     {
                         throw new ScriptException(ScriptError.COMMAND_NOT_FOUND);
                     }
                     CommandPermissionMaskAttribute commandPermissionMaskAttribute =
-                        Reflection.wasGetAttributeFromEnumValue<CommandPermissionMaskAttribute>(
-                            Reflection.wasGetEnumValueFromName<ScriptKeys>(name));
+                        Reflection.GetAttributeFromEnumValue<CommandPermissionMaskAttribute>(
+                            Reflection.GetEnumValueFromName<ScriptKeys>(name));
                     if (commandPermissionMaskAttribute == null)
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
@@ -47,29 +47,29 @@ namespace Corrade
                             throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                     }
                     switch (
-                        Reflection.wasGetEnumValueFromName<Entity>(
+                        Reflection.GetEnumValueFromName<Entity>(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Entity.SYNTAX:
                             switch (
-                                Reflection.wasGetEnumValueFromName<Type>(
+                                Reflection.GetEnumValueFromName<Type>(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                             corradeCommandParameters.Message)).ToLowerInvariant()))
                             {
                                 case Type.INPUT:
                                     CommandInputSyntaxAttribute commandInputSyntaxAttribute = Reflection
-                                        .wasGetAttributeFromEnumValue
+                                        .GetAttributeFromEnumValue
                                         <CommandInputSyntaxAttribute>(
-                                            Reflection.wasGetEnumValueFromName<ScriptKeys>(name));
+                                            Reflection.GetEnumValueFromName<ScriptKeys>(name));
                                     if (commandInputSyntaxAttribute != null &&
                                         !string.IsNullOrEmpty(commandInputSyntaxAttribute.Syntax))
                                     {
-                                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
                                             commandInputSyntaxAttribute.Syntax);
                                     }
                                     break;
@@ -80,10 +80,10 @@ namespace Corrade
                         case Entity.PERMISSION:
                             HashSet<string> data = new HashSet<string>();
                             object LockObject = new object();
-                            Parallel.ForEach(Reflection.wasGetEnumNames<Configuration.Permissions>(), o =>
+                            Parallel.ForEach(Reflection.GetEnumNames<Configuration.Permissions>(), o =>
                             {
                                 Configuration.Permissions permission =
-                                    Reflection.wasGetEnumValueFromName<Configuration.Permissions>(o);
+                                    Reflection.GetEnumValueFromName<Configuration.Permissions>(o);
                                 if ((commandPermissionMaskAttribute.PermissionMask & (uint) permission).Equals(0))
                                     return;
                                 lock (LockObject)
@@ -93,8 +93,8 @@ namespace Corrade
                             });
                             if (data.Any())
                             {
-                                result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                                    CSV.wasEnumerableToCSV(data));
+                                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                    CSV.FromEnumerable(data));
                             }
                             break;
                         default:

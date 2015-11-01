@@ -31,8 +31,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.SCRIPTS)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SCRIPTS)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out scripts))
                     {
@@ -42,8 +42,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.COLLISIONS)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.COLLISIONS)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out collisions))
                     {
@@ -53,8 +53,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PHYSICS)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PHYSICS)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out physics))
                     {

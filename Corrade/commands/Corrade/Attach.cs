@@ -30,8 +30,8 @@ namespace Corrade
                     }
                     string attachments =
                         wasInput(
-                            KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ATTACHMENTS)),
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ATTACHMENTS)),
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(attachments))
                     {
@@ -41,15 +41,15 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.REPLACE)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REPLACE)),
                                     corradeCommandParameters.Message)),
                             out replace))
                     {
                         replace = true;
                     }
                     Dictionary<string, string> items =
-                        new Dictionary<string, string>(CSV.wasCSVToEnumerable(attachments)
+                        new Dictionary<string, string>(CSV.ToEnumerable(attachments)
                             .AsParallel()
                             .Select((o, p) => new {o, p})
                             .GroupBy(q => q.p/2, q => q.o)
@@ -73,7 +73,7 @@ namespace Corrade
                                     LINDEN_CONSTANTS.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
                                 {
                                     throw new Exception(
-                                        Reflection.wasGetNameFromEnumValue(
+                                        Reflection.GetNameFromEnumValue(
                                             ScriptError.ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT));
                                 }
                                 break;
@@ -85,7 +85,7 @@ namespace Corrade
                                     LINDEN_CONSTANTS.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
                                 {
                                     throw new Exception(
-                                        Reflection.wasGetNameFromEnumValue(
+                                        Reflection.GetNameFromEnumValue(
                                             ScriptError.ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT));
                                 }
                                 break;

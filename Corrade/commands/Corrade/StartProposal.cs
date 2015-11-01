@@ -47,8 +47,8 @@ namespace Corrade
                     if (
                         !int.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DURATION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DURATION)),
                                     corradeCommandParameters.Message)),
                             out duration))
                     {
@@ -58,8 +58,8 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.MAJORITY)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MAJORITY)),
                                     corradeCommandParameters.Message)),
                             out majority))
                     {
@@ -69,15 +69,15 @@ namespace Corrade
                     if (
                         !int.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.QUORUM)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.QUORUM)),
                                     corradeCommandParameters.Message)),
                             out quorum))
                     {
                         throw new ScriptException(ScriptError.INVALID_PROPOSAL_QUORUM);
                     }
                     string text =
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TEXT)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TEXT)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(text))
                     {

@@ -29,14 +29,14 @@ namespace Corrade
                     }
                     string attachments =
                         wasInput(
-                            KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ATTACHMENTS)),
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ATTACHMENTS)),
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(attachments))
                     {
                         throw new ScriptException(ScriptError.EMPTY_ATTACHMENTS);
                     }
-                    Parallel.ForEach(CSV.wasCSVToEnumerable(
+                    Parallel.ForEach(CSV.ToEnumerable(
                         attachments).AsParallel().Where(o => !string.IsNullOrEmpty(o)), o =>
                         {
                             InventoryBase inventoryBaseItem =

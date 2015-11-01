@@ -28,8 +28,8 @@ namespace Corrade
                     {
                         wasCSVToStructure(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                     corradeCommandParameters.Message)), ref corradeConfiguration);
                         UpdateDynamicConfiguration(corradeConfiguration);
                         ConfigurationWatcher.EnableRaisingEvents = false;

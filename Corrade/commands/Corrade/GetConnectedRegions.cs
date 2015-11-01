@@ -23,8 +23,8 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                        CSV.wasEnumerableToCSV(Client.Network.Simulators.Select(o => o.Name)));
+                    result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        CSV.FromEnumerable(Client.Network.Simulators.Select(o => o.Name)));
                 };
         }
     }

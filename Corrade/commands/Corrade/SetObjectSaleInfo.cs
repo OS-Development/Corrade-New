@@ -30,8 +30,8 @@ namespace Corrade
                     int price;
                     if (
                         !int.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PRICE)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PRICE)),
                                 corradeCommandParameters.Message)),
                             out price))
                     {
@@ -44,8 +44,8 @@ namespace Corrade
                     float range;
                     if (
                         !float.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RANGE)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
@@ -54,8 +54,8 @@ namespace Corrade
                     Primitive primitive = null;
                     if (
                         !FindPrimitive(
-                            StringOrUUID(wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                            StringOrUUID(wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
                             range,
                             ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
@@ -73,8 +73,8 @@ namespace Corrade
                         .AsParallel().FirstOrDefault(o =>
                             o.Name.Equals(
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                         corradeCommandParameters.Message)),
                                 StringComparison.Ordinal));
                     Client.Objects.SetSaleInfo(

@@ -32,20 +32,20 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ALL)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ALL)),
                                     corradeCommandParameters.Message)),
                             out allEstates))
                     {
                         allEstates = false;
                     }
                     List<UUID> estateList = new List<UUID>();
-                    Time.wasAdaptiveAlarm EstateListReceivedAlarm =
-                        new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+                    Time.DecayingAlarm EstateListReceivedAlarm =
+                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
                     UUID targetUUID;
                     switch (
-                        Reflection.wasGetEnumValueFromName<Type>(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
+                        Reflection.GetEnumValueFromName<Type>(
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
                                 .ToLowerInvariant()))
                     {
@@ -53,17 +53,17 @@ namespace Corrade
                             if (
                                 !UUID.TryParse(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
                                             corradeCommandParameters.Message)), out targetUUID) && !AgentNameToUUID(
                                                 wasInput(
-                                                    KeyValue.wasKeyValueGet(
+                                                    KeyValue.Get(
                                                         wasOutput(
-                                                            Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                                            Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 wasInput(
-                                                    KeyValue.wasKeyValueGet(
-                                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                                    KeyValue.Get(
+                                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
@@ -72,10 +72,10 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
                             switch (
-                                Reflection.wasGetEnumValueFromName<Action>(
+                                Reflection.GetEnumValueFromName<Action>(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                             corradeCommandParameters.Message))
                                         .ToLowerInvariant()))
                             {
@@ -108,7 +108,7 @@ namespace Corrade
                                             {
                                                 Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
                                                 throw new Exception(
-                                                    Reflection.wasGetNameFromEnumValue(
+                                                    Reflection.GetNameFromEnumValue(
                                                         ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST));
                                             }
                                             Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
@@ -118,7 +118,7 @@ namespace Corrade
                                             if (estateList.Count >= LINDEN_CONSTANTS.ESTATE.MAXIMUM_BAN_LIST_LENGTH)
                                             {
                                                 throw new Exception(
-                                                    Reflection.wasGetNameFromEnumValue(
+                                                    Reflection.GetNameFromEnumValue(
                                                         ScriptError.MAXIMUM_BAN_LIST_LENGTH_REACHED));
                                             }
                                         }
@@ -136,13 +136,13 @@ namespace Corrade
                             if (
                                 !UUID.TryParse(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                                             corradeCommandParameters.Message)),
                                     out targetUUID) && !GroupNameToUUID(
                                         wasInput(
-                                            KeyValue.wasKeyValueGet(
-                                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET)),
+                                            KeyValue.Get(
+                                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                                                 corradeCommandParameters.Message)),
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                         ref targetUUID))
@@ -150,10 +150,10 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                             }
                             switch (
-                                Reflection.wasGetEnumValueFromName<Action>(
+                                Reflection.GetEnumValueFromName<Action>(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                             corradeCommandParameters.Message))
                                         .ToLowerInvariant()))
                             {
@@ -184,7 +184,7 @@ namespace Corrade
                                             {
                                                 Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
                                                 throw new Exception(
-                                                    Reflection.wasGetNameFromEnumValue(
+                                                    Reflection.GetNameFromEnumValue(
                                                         ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST));
                                             }
                                             Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
@@ -195,7 +195,7 @@ namespace Corrade
                                                 LINDEN_CONSTANTS.ESTATE.MAXIMUM_GROUP_LIST_LENGTH)
                                             {
                                                 throw new Exception(
-                                                    Reflection.wasGetNameFromEnumValue(
+                                                    Reflection.GetNameFromEnumValue(
                                                         ScriptError.MAXIMUM_GROUP_LIST_LENGTH_REACHED));
                                             }
                                         }
@@ -213,17 +213,17 @@ namespace Corrade
                             if (
                                 !UUID.TryParse(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
                                             corradeCommandParameters.Message)), out targetUUID) && !AgentNameToUUID(
                                                 wasInput(
-                                                    KeyValue.wasKeyValueGet(
+                                                    KeyValue.Get(
                                                         wasOutput(
-                                                            Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                                            Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 wasInput(
-                                                    KeyValue.wasKeyValueGet(
-                                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                                    KeyValue.Get(
+                                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
@@ -232,10 +232,10 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
                             switch (
-                                Reflection.wasGetEnumValueFromName<Action>(
+                                Reflection.GetEnumValueFromName<Action>(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                             corradeCommandParameters.Message))
                                         .ToLowerInvariant()))
                             {
@@ -266,7 +266,7 @@ namespace Corrade
                                             {
                                                 Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
                                                 throw new Exception(
-                                                    Reflection.wasGetNameFromEnumValue(
+                                                    Reflection.GetNameFromEnumValue(
                                                         ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST));
                                             }
                                             Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
@@ -276,7 +276,7 @@ namespace Corrade
                                             if (estateList.Count >= LINDEN_CONSTANTS.ESTATE.MAXIMUM_USER_LIST_LENGTH)
                                             {
                                                 throw new Exception(
-                                                    Reflection.wasGetNameFromEnumValue(
+                                                    Reflection.GetNameFromEnumValue(
                                                         ScriptError.MAXIMUM_USER_LIST_LENGTH_REACHED));
                                             }
                                         }
@@ -294,17 +294,17 @@ namespace Corrade
                             if (
                                 !UUID.TryParse(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
                                             corradeCommandParameters.Message)), out targetUUID) && !AgentNameToUUID(
                                                 wasInput(
-                                                    KeyValue.wasKeyValueGet(
+                                                    KeyValue.Get(
                                                         wasOutput(
-                                                            Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                                            Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 wasInput(
-                                                    KeyValue.wasKeyValueGet(
-                                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                                    KeyValue.Get(
+                                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
@@ -313,10 +313,10 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                             }
                             switch (
-                                Reflection.wasGetEnumValueFromName<Action>(
+                                Reflection.GetEnumValueFromName<Action>(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                             corradeCommandParameters.Message))
                                         .ToLowerInvariant()))
                             {
@@ -347,7 +347,7 @@ namespace Corrade
                                             {
                                                 Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
                                                 throw new Exception(
-                                                    Reflection.wasGetNameFromEnumValue(
+                                                    Reflection.GetNameFromEnumValue(
                                                         ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST));
                                             }
                                             Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
@@ -358,7 +358,7 @@ namespace Corrade
                                                 LINDEN_CONSTANTS.ESTATE.MAXIMUM_MANAGER_LIST_LENGTH)
                                             {
                                                 throw new Exception(
-                                                    Reflection.wasGetNameFromEnumValue(
+                                                    Reflection.GetNameFromEnumValue(
                                                         ScriptError.MAXIMUM_MANAGER_LIST_LENGTH_REACHED));
                                             }
                                         }

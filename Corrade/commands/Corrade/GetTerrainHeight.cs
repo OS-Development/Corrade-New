@@ -28,7 +28,7 @@ namespace Corrade
                     }
                     string region =
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator =
                         Client.Network.Simulators.AsParallel().FirstOrDefault(
@@ -63,8 +63,8 @@ namespace Corrade
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.SOUTHWEST)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SOUTHWEST)),
                                     corradeCommandParameters.Message)),
                             out southwest))
                     {
@@ -74,8 +74,8 @@ namespace Corrade
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NORTHEAST)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NORTHEAST)),
                                     corradeCommandParameters.Message)),
                             out northeast))
                     {
@@ -89,11 +89,11 @@ namespace Corrade
 
                     if (x1 > x2)
                     {
-                        BitTwiddling.wasXORSwap(ref x1, ref x2);
+                        BitTwiddling.XORSwap(ref x1, ref x2);
                     }
                     if (y1 > y2)
                     {
-                        BitTwiddling.wasXORSwap(ref y1, ref y2);
+                        BitTwiddling.XORSwap(ref y1, ref y2);
                     }
 
                     int sx = x2 - x1 + 1;
@@ -109,8 +109,8 @@ namespace Corrade
                     }));
                     if (csv.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(csv.Select(o => o.ToString(Utils.EnUsCulture))));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(csv.Select(o => o.ToString(Utils.EnUsCulture))));
                     }
                 };
         }

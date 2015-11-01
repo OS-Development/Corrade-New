@@ -26,8 +26,8 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
 
-                    Action action = Reflection.wasGetEnumValueFromName<Action>(wasInput(
-                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                    Action action = Reflection.GetEnumValueFromName<Action>(wasInput(
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                             corradeCommandParameters.Message))
                         .ToLowerInvariant());
 
@@ -38,7 +38,7 @@ namespace Corrade
                             {
                                 lock (ConfigurationFileLock)
                                 {
-                                    result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                                    result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
                                         corradeConfiguration.Read(CORRADE_CONSTANTS.CONFIGURATION_FILE));
                                 }
                             }
@@ -53,8 +53,8 @@ namespace Corrade
                                 lock (ConfigurationFileLock)
                                 {
                                     corradeConfiguration.Write(CORRADE_CONSTANTS.CONFIGURATION_FILE,
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                             corradeCommandParameters.Message));
                                 }
                             }
@@ -67,8 +67,8 @@ namespace Corrade
                         case Action.GET:
                             string path =
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PATH)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATH)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(path))
                             {
@@ -100,14 +100,14 @@ namespace Corrade
                                     }
                                     if (!string.IsNullOrEmpty(data))
                                     {
-                                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), data);
+                                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), data);
                                     }
                                     break;
                                 case Action.SET:
                                     data =
                                         wasInput(
-                                            KeyValue.wasKeyValueGet(
-                                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                            KeyValue.Get(
+                                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                                 corradeCommandParameters.Message));
                                     if (string.IsNullOrEmpty(data))
                                     {

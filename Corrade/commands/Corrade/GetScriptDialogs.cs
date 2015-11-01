@@ -35,29 +35,29 @@ namespace Corrade
                         {
                             lock (LockObject)
                             {
-                                csv.AddRange(new[] {Reflection.wasGetStructureMemberName(o, o.Message), o.Message});
+                                csv.AddRange(new[] {Reflection.GetStructureMemberName(o, o.Message), o.Message});
                                 csv.AddRange(new[]
-                                {Reflection.wasGetStructureMemberName(o.Agent, o.Agent.FirstName), o.Agent.FirstName});
+                                {Reflection.GetStructureMemberName(o.Agent, o.Agent.FirstName), o.Agent.FirstName});
                                 csv.AddRange(new[]
-                                {Reflection.wasGetStructureMemberName(o.Agent, o.Agent.LastName), o.Agent.LastName});
+                                {Reflection.GetStructureMemberName(o.Agent, o.Agent.LastName), o.Agent.LastName});
                                 csv.AddRange(new[]
-                                {Reflection.wasGetStructureMemberName(o.Agent, o.Agent.UUID), o.Agent.UUID.ToString()});
+                                {Reflection.GetStructureMemberName(o.Agent, o.Agent.UUID), o.Agent.UUID.ToString()});
                                 csv.AddRange(new[]
                                 {
-                                    Reflection.wasGetStructureMemberName(o, o.Channel),
+                                    Reflection.GetStructureMemberName(o, o.Channel),
                                     o.Channel.ToString(Utils.EnUsCulture)
                                 });
-                                csv.AddRange(new[] {Reflection.wasGetStructureMemberName(o, o.Name), o.Name});
-                                csv.AddRange(new[] {Reflection.wasGetStructureMemberName(o, o.Item), o.Item.ToString()});
-                                csv.Add(Reflection.wasGetStructureMemberName(o, o.Button));
+                                csv.AddRange(new[] {Reflection.GetStructureMemberName(o, o.Name), o.Name});
+                                csv.AddRange(new[] {Reflection.GetStructureMemberName(o, o.Item), o.Item.ToString()});
+                                csv.Add(Reflection.GetStructureMemberName(o, o.Button));
                                 csv.AddRange(o.Button.ToArray());
                             }
                         });
                     }
                     if (csv.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(csv));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(csv));
                     }
                 };
         }

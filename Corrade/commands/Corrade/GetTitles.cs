@@ -79,8 +79,8 @@ namespace Corrade
                     });
                     if (csv.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(csv));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(csv));
                     }
                 };
         }

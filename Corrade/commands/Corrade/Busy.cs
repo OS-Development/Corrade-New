@@ -25,9 +25,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    switch (Reflection.wasGetEnumValueFromName<Action>(
+                    switch (Reflection.GetEnumValueFromName<Action>(
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
@@ -38,7 +38,7 @@ namespace Corrade
                             Client.Self.AnimationStop(Animations.BUSY, true);
                             break;
                         case Action.GET:
-                            result.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
+                            result.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
                                 Client.Self.SignaledAnimations.ContainsKey(Animations.BUSY).ToString());
                             break;
                         default:

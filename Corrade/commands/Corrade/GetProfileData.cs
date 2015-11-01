@@ -29,25 +29,25 @@ namespace Corrade
                     UUID agentUUID;
                     if (
                         !UUID.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
                                 corradeCommandParameters.Message)),
                             out agentUUID) && !AgentNameToUUID(
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
                                         corradeCommandParameters.Message)),
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
                                         corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 ref agentUUID))
                     {
                         throw new ScriptException(ScriptError.AGENT_NOT_FOUND);
                     }
-                    Time.wasAdaptiveAlarm ProfileDataReceivedAlarm =
-                        new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+                    Time.DecayingAlarm ProfileDataReceivedAlarm =
+                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
                     Avatar.AvatarProperties properties = new Avatar.AvatarProperties();
                     Avatar.Interests interests = new Avatar.Interests();
                     List<AvatarGroup> groups = new List<AvatarGroup>();
@@ -113,7 +113,7 @@ namespace Corrade
                         Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
                     }
                     string fields =
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
                     List<string> csv = new List<string>();
                     csv.AddRange(GetStructuredData(properties, fields));
@@ -129,8 +129,8 @@ namespace Corrade
                     }
                     if (csv.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(csv));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(csv));
                     }
                 };
         }

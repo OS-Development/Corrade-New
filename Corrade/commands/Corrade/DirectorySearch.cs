@@ -27,22 +27,22 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    Time.wasAdaptiveAlarm DirectorySearchResultsAlarm =
-                        new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+                    Time.DecayingAlarm DirectorySearchResultsAlarm =
+                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
                     string name =
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     string fields =
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
                     object LockObject = new object();
                     List<string> csv = new List<string>();
                     int handledEvents = 0;
                     int counter = 1;
                     switch (
-                        Reflection.wasGetEnumValueFromName<Type>(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
+                        Reflection.GetEnumValueFromName<Type>(
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
                                 .ToLowerInvariant()))
                     {
@@ -50,8 +50,8 @@ namespace Corrade
                             DirectoryManager.Classified searchClassified = new DirectoryManager.Classified();
                             wasCSVToStructure(
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
                                 ref searchClassified);
                             Dictionary<DirectoryManager.Classified, int> classifieds =
@@ -112,8 +112,8 @@ namespace Corrade
                             DirectoryManager.EventsSearchData searchEvent = new DirectoryManager.EventsSearchData();
                             wasCSVToStructure(
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
                                 ref searchEvent);
                             Dictionary<DirectoryManager.EventsSearchData, int> events =
@@ -188,8 +188,8 @@ namespace Corrade
                             DirectoryManager.GroupSearchData searchGroup = new DirectoryManager.GroupSearchData();
                             wasCSVToStructure(
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
                                 ref searchGroup);
                             Dictionary<DirectoryManager.GroupSearchData, int> groups =
@@ -259,8 +259,8 @@ namespace Corrade
                             DirectoryManager.DirectoryParcel searchLand = new DirectoryManager.DirectoryParcel();
                             wasCSVToStructure(
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
                                 ref searchLand);
                             Dictionary<DirectoryManager.DirectoryParcel, int> lands =
@@ -406,8 +406,8 @@ namespace Corrade
                             DirectoryManager.PlacesSearchData searchPlaces = new DirectoryManager.PlacesSearchData();
                             wasCSVToStructure(
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)),
                                 ref searchPlaces);
                             Dictionary<DirectoryManager.PlacesSearchData, int> places =
@@ -467,8 +467,8 @@ namespace Corrade
                     }
                     if (csv.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(csv));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(csv));
                     }
                 };
         }

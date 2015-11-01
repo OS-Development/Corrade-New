@@ -50,7 +50,7 @@ namespace Corrade
                         Name = corradeCommandParameters.Group.Name
                     };
                     wasCSVToStructure(
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message)),
                         ref targetGroup);
                     bool succeeded = false;

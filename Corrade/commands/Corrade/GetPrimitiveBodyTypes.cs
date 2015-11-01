@@ -32,11 +32,11 @@ namespace Corrade
                                                                      BindingFlags.Static)
                         .AsParallel().Select(
                             o =>
-                                Reflection.wasGetStructureMemberName(primitiveBodies, o)).ToList();
+                                Reflection.GetStructureMemberName(primitiveBodies, o)).ToList();
                     if (data.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(data));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(data));
                     }
                 };
         }

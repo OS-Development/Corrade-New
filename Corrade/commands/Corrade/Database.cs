@@ -37,17 +37,17 @@ namespace Corrade
                         File.Create(corradeCommandParameters.Group.DatabaseFile).Close();
                     }
                     switch (
-                        Reflection.wasGetEnumValueFromName<Action>(
+                        Reflection.GetEnumValueFromName<Action>(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.GET:
                             string databaseGetkey =
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.KEY)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.KEY)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(databaseGetkey))
                             {
@@ -62,7 +62,7 @@ namespace Corrade
                             }
                             lock (DatabaseLocks[corradeCommandParameters.Group.Name])
                             {
-                                string databaseGetValue = KeyValue.wasKeyValueGet(databaseGetkey,
+                                string databaseGetValue = KeyValue.Get(databaseGetkey,
                                     File.ReadAllText(corradeCommandParameters.Group.DatabaseFile, Encoding.UTF8));
                                 if (!string.IsNullOrEmpty(databaseGetValue))
                                 {
@@ -81,8 +81,8 @@ namespace Corrade
                         case Action.SET:
                             string databaseSetKey =
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.KEY)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.KEY)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(databaseSetKey))
                             {
@@ -90,8 +90,8 @@ namespace Corrade
                             }
                             string databaseSetValue =
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.VALUE)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.VALUE)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(databaseSetValue))
                             {
@@ -113,7 +113,7 @@ namespace Corrade
                                         new StreamWriter(corradeCommandParameters.Group.DatabaseFile,
                                             false, Encoding.UTF8))
                                 {
-                                    recreateDatabase.Write(KeyValue.wasKeyValueSet(databaseSetKey,
+                                    recreateDatabase.Write(KeyValue.Set(databaseSetKey,
                                         databaseSetValue, contents));
                                     recreateDatabase.Flush();
                                     //recreateDatabase.Close();
@@ -130,8 +130,8 @@ namespace Corrade
                         case Action.DELETE:
                             string databaseDeleteKey =
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.KEY)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.KEY)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(databaseDeleteKey))
                             {
@@ -153,7 +153,7 @@ namespace Corrade
                                         new StreamWriter(corradeCommandParameters.Group.DatabaseFile,
                                             false, Encoding.UTF8))
                                 {
-                                    recreateDatabase.Write(KeyValue.wasKeyValueDelete(databaseDeleteKey, contents));
+                                    recreateDatabase.Write(KeyValue.Delete(databaseDeleteKey, contents));
                                     recreateDatabase.Flush();
                                     //recreateDatabase.Close();
                                 }

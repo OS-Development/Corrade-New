@@ -17,7 +17,7 @@ namespace Corrade
             public static Action<CorradeCommandParameters, Dictionary<string, string>> version =
                 (corradeCommandParameters, result) =>
                 {
-                    result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                    result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
                         CORRADE_CONSTANTS.CORRADE_VERSION);
                 };
         }

@@ -30,17 +30,17 @@ namespace Corrade
                     UUID agentUUID;
                     if (
                         !UUID.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
                                 corradeCommandParameters.Message)),
                             out agentUUID) && !AgentNameToUUID(
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
                                         corradeCommandParameters.Message)),
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
                                         corradeCommandParameters.Message)),
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 ref agentUUID))
@@ -49,7 +49,7 @@ namespace Corrade
                     }
                     string region =
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator =
                         Client.Network.Simulators.AsParallel().FirstOrDefault(
@@ -62,13 +62,13 @@ namespace Corrade
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
                     string type =
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                             corradeCommandParameters.Message));
                     switch (
-                        Reflection.wasGetEnumValueFromName<Entity>(
+                        Reflection.GetEnumValueFromName<Entity>(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Entity.PARCEL:
@@ -76,8 +76,8 @@ namespace Corrade
                             HashSet<Parcel> parcels = new HashSet<Parcel>();
                             switch (Vector3.TryParse(
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
                                         corradeCommandParameters.Message)),
                                 out position))
                             {
@@ -135,7 +135,7 @@ namespace Corrade
                                         if (!o.IsGroupOwned || !o.GroupID.Equals(corradeCommandParameters.Group.UUID))
                                         {
                                             throw new Exception(
-                                                Reflection.wasGetNameFromEnumValue(
+                                                Reflection.GetNameFromEnumValue(
                                                     ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                         }
                                         GroupPowers power = new GroupPowers();
@@ -157,7 +157,7 @@ namespace Corrade
                                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
                                         {
                                             throw new Exception(
-                                                Reflection.wasGetNameFromEnumValue(
+                                                Reflection.GetNameFromEnumValue(
                                                     ScriptError.NO_GROUP_POWER_FOR_COMMAND));
                                         }
                                     });
@@ -178,8 +178,8 @@ namespace Corrade
                             if (
                                 !bool.TryParse(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ALL)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ALL)),
                                             corradeCommandParameters.Message)),
                                     out allEstates))
                             {

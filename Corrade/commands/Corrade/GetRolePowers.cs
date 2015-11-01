@@ -46,7 +46,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
                     string role =
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ROLE)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
                             corradeCommandParameters.Message));
                     UUID roleUUID;
                     if (!UUID.TryParse(role, out roleUUID) && !RoleNameToUUID(role, corradeCommandParameters.Group.UUID,
@@ -82,8 +82,8 @@ namespace Corrade
                     }
                     if (data.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(data));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(data));
                     }
                 };
         }

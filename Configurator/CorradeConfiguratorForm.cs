@@ -66,7 +66,7 @@ namespace Configurator
             {
                 mainForm.ActiveInputFilters.Items.Add(new ListViewItem
                 {
-                    Text = Reflection.wasGetNameFromEnumValue(filter),
+                    Text = Reflection.GetNameFromEnumValue(filter),
                     Tag = filter
                 });
             }
@@ -76,7 +76,7 @@ namespace Configurator
             {
                 mainForm.ActiveOutputFilters.Items.Add(new ListViewItem
                 {
-                    Text = Reflection.wasGetNameFromEnumValue(filter),
+                    Text = Reflection.GetNameFromEnumValue(filter),
                     Tag = filter
                 });
             }
@@ -140,7 +140,7 @@ namespace Configurator
             mainForm.HTTPServerEnabled.Checked = corradeConfiguration.EnableHTTPServer;
             mainForm.HTTPServerPrefix.Text = corradeConfiguration.HTTPServerPrefix;
             mainForm.HTTPServerCompression.Text =
-                Reflection.wasGetNameFromEnumValue(corradeConfiguration.HTTPServerCompression);
+                Reflection.GetNameFromEnumValue(corradeConfiguration.HTTPServerCompression);
             mainForm.HTTPServerKeepAliveEnabled.Checked = corradeConfiguration.HTTPServerKeepAlive;
 
             // TCP
@@ -178,7 +178,7 @@ namespace Configurator
             mainForm.LimitsServicesRebake.Text = corradeConfiguration.RebakeDelay.ToString();
             mainForm.LimitsServicesActivate.Text = corradeConfiguration.ActivateDelay.ToString();
             mainForm.LimitsDataTimeout.Text = corradeConfiguration.DataTimeout.ToString();
-            mainForm.LimitsDataDecay.Text = Reflection.wasGetNameFromEnumValue(corradeConfiguration.DataDecayType);
+            mainForm.LimitsDataDecay.Text = Reflection.GetNameFromEnumValue(corradeConfiguration.DataDecayType);
             mainForm.LimitsMembershipSweep.Text = corradeConfiguration.MembershipSweepInterval.ToString();
             mainForm.LimitsLogoutTimeout.Text = corradeConfiguration.LogoutGrace.ToString();
 
@@ -337,7 +337,7 @@ namespace Configurator
             corradeConfiguration.EnableHTTPServer = mainForm.HTTPServerEnabled.Checked;
             corradeConfiguration.HTTPServerPrefix = mainForm.HTTPServerPrefix.Text;
             corradeConfiguration.HTTPServerCompression =
-                Reflection.wasGetEnumValueFromName<Configuration.HTTPCompressionMethod>(
+                Reflection.GetEnumValueFromName<Configuration.HTTPCompressionMethod>(
                     mainForm.HTTPServerCompression.Text);
             corradeConfiguration.HTTPServerKeepAlive = mainForm.HTTPServerKeepAliveEnabled.Checked;
 
@@ -467,7 +467,7 @@ namespace Configurator
                 corradeConfiguration.DataTimeout = outUint;
             }
             corradeConfiguration.DataDecayType =
-                Reflection.wasGetEnumValueFromName<Time.wasAdaptiveAlarm.DECAY_TYPE>(mainForm.LimitsDataDecay.Text);
+                Reflection.GetEnumValueFromName<Time.DecayingAlarm.DECAY_TYPE>(mainForm.LimitsDataDecay.Text);
             if (uint.TryParse(mainForm.LimitsMembershipSweep.Text, out outUint))
             {
                 corradeConfiguration.MembershipSweepInterval = outUint;
@@ -643,7 +643,7 @@ namespace Configurator
                     switch (
                         !(group.PermissionMask &
                           (uint)
-                              Reflection.wasGetEnumValueFromName<Configuration.Permissions>(
+                              Reflection.GetEnumValueFromName<Configuration.Permissions>(
                                   (string) GroupPermissions.Items[i]))
                             .Equals
                             (0))
@@ -663,7 +663,7 @@ namespace Configurator
                     switch (
                         !(group.NotificationMask &
                           (uint)
-                              Reflection.wasGetEnumValueFromName<Configuration.Notifications>(
+                              Reflection.GetEnumValueFromName<Configuration.Notifications>(
                                   (string) GroupNotifications.Items[i]))
                             .Equals(0))
                     {
@@ -689,7 +689,7 @@ namespace Configurator
                 corradeConfiguration.Groups.Remove(group);
 
                 Configuration.Permissions permission =
-                    Reflection.wasGetEnumValueFromName<Configuration.Permissions>(
+                    Reflection.GetEnumValueFromName<Configuration.Permissions>(
                         (string) GroupPermissions.Items[e.Index]);
 
                 switch (e.NewValue)
@@ -720,7 +720,7 @@ namespace Configurator
                 corradeConfiguration.Groups.Remove(group);
 
                 Configuration.Notifications notification =
-                    Reflection.wasGetEnumValueFromName<Configuration.Notifications>(
+                    Reflection.GetEnumValueFromName<Configuration.Notifications>(
                         (string) GroupNotifications.Items[e.Index]);
 
                 switch (e.NewValue)
@@ -876,7 +876,7 @@ namespace Configurator
                     {
                         case CheckState.Checked:
                             permissions.Add(
-                                Reflection.wasGetEnumValueFromName<Configuration.Permissions>(
+                                Reflection.GetEnumValueFromName<Configuration.Permissions>(
                                     (string) GroupPermissions.Items[i]));
                             break;
                     }
@@ -890,7 +890,7 @@ namespace Configurator
                     {
                         case CheckState.Checked:
                             notifications.Add(
-                                Reflection.wasGetEnumValueFromName<Configuration.Notifications>(
+                                Reflection.GetEnumValueFromName<Configuration.Notifications>(
                                     (string) GroupNotifications.Items[i]));
                             break;
                     }
@@ -982,7 +982,7 @@ namespace Configurator
                     {
                         case CheckState.Checked:
                             permissions.Add(
-                                Reflection.wasGetEnumValueFromName<Configuration.Permissions>(
+                                Reflection.GetEnumValueFromName<Configuration.Permissions>(
                                     (string) GroupPermissions.Items[i]));
                             break;
                     }
@@ -996,7 +996,7 @@ namespace Configurator
                     {
                         case CheckState.Checked:
                             notifications.Add(
-                                Reflection.wasGetEnumValueFromName<Configuration.Notifications>(
+                                Reflection.GetEnumValueFromName<Configuration.Notifications>(
                                     (string) GroupNotifications.Items[i]));
                             break;
                     }
@@ -1034,7 +1034,7 @@ namespace Configurator
                 ActiveInputFilters.Items.Add(new ListViewItem
                 {
                     Text = InputDecode.Text,
-                    Tag = Reflection.wasGetEnumValueFromName<Configuration.Filter>(InputDecode.Text)
+                    Tag = Reflection.GetEnumValueFromName<Configuration.Filter>(InputDecode.Text)
                 });
             }));
         }
@@ -1052,7 +1052,7 @@ namespace Configurator
                 ActiveInputFilters.Items.Add(new ListViewItem
                 {
                     Text = InputDecryption.Text,
-                    Tag = Reflection.wasGetEnumValueFromName<Configuration.Filter>(InputDecryption.Text)
+                    Tag = Reflection.GetEnumValueFromName<Configuration.Filter>(InputDecryption.Text)
                 });
             }));
         }
@@ -1070,7 +1070,7 @@ namespace Configurator
                 ActiveOutputFilters.Items.Add(new ListViewItem
                 {
                     Text = OutputEncrypt.Text,
-                    Tag = Reflection.wasGetEnumValueFromName<Configuration.Filter>(OutputEncrypt.Text)
+                    Tag = Reflection.GetEnumValueFromName<Configuration.Filter>(OutputEncrypt.Text)
                 });
             }));
         }
@@ -1088,7 +1088,7 @@ namespace Configurator
                 ActiveOutputFilters.Items.Add(new ListViewItem
                 {
                     Text = OutputEncode.Text,
-                    Tag = Reflection.wasGetEnumValueFromName<Configuration.Filter>(OutputEncode.Text)
+                    Tag = Reflection.GetEnumValueFromName<Configuration.Filter>(OutputEncode.Text)
                 });
             }));
         }
@@ -1600,7 +1600,7 @@ namespace Configurator
                                     case ConfigurationKeys.ENCRYPT:
                                     case ConfigurationKeys.DECRYPT:
                                         corradeConfiguration.InputFilters.Add(Reflection
-                                            .wasGetEnumValueFromName<Configuration.Filter>(
+                                            .GetEnumValueFromName<Configuration.Filter>(
                                                 inputFilterNode.InnerText));
                                         break;
                                     default:
@@ -1624,7 +1624,7 @@ namespace Configurator
                                     case ConfigurationKeys.ENCRYPT:
                                     case ConfigurationKeys.DECRYPT:
                                         corradeConfiguration.OutputFilters.Add(Reflection
-                                            .wasGetEnumValueFromName<Configuration.Filter>(
+                                            .GetEnumValueFromName<Configuration.Filter>(
                                                 outputFilterNode.InnerText));
                                         break;
                                     default:
@@ -1769,7 +1769,7 @@ namespace Configurator
                             break;
                         case ConfigurationKeys.COMPRESSION:
                             corradeConfiguration.HTTPServerCompression =
-                                Reflection.wasGetEnumValueFromName<Configuration.HTTPCompressionMethod>(
+                                Reflection.GetEnumValueFromName<Configuration.HTTPCompressionMethod>(
                                     serverNode.InnerText);
                             break;
                         case ConfigurationKeys.KEEP_ALIVE:
@@ -2343,7 +2343,7 @@ namespace Configurator
                                         break;
                                     case ConfigurationKeys.DECAY:
                                         corradeConfiguration.DataDecayType =
-                                            Reflection.wasGetEnumValueFromName<Time.wasAdaptiveAlarm.DECAY_TYPE>(
+                                            Reflection.GetEnumValueFromName<Time.DecayingAlarm.DECAY_TYPE>(
                                                 dataLimitNode.InnerText);
                                         break;
                                 }
@@ -2537,7 +2537,7 @@ namespace Configurator
                                     XmlNode node = permissioNode;
                                     object LockObject = new object();
                                     Parallel.ForEach(
-                                        Reflection.wasGetEnumNames<Configuration.Permissions>()
+                                        Reflection.GetEnumNames<Configuration.Permissions>()
                                             .AsParallel().Where(name => name.Equals(node.Name,
                                                 StringComparison.Ordinal)), name =>
                                                 {
@@ -2553,7 +2553,7 @@ namespace Configurator
                                                         {
                                                             permissions.Add(
                                                                 Reflection
-                                                                    .wasGetEnumValueFromName<Configuration.Permissions>(
+                                                                    .GetEnumValueFromName<Configuration.Permissions>(
                                                                         name));
                                                         }
                                                     }
@@ -2574,7 +2574,7 @@ namespace Configurator
                                     XmlNode node = notificationNode;
                                     object LockObject = new object();
                                     Parallel.ForEach(
-                                        Reflection.wasGetEnumNames<Configuration.Notifications>()
+                                        Reflection.GetEnumNames<Configuration.Notifications>()
                                             .AsParallel().Where(name => name.Equals(node.Name,
                                                 StringComparison.Ordinal)), name =>
                                                 {
@@ -2590,7 +2590,7 @@ namespace Configurator
                                                         {
                                                             notifications.Add(
                                                                 Reflection
-                                                                    .wasGetEnumValueFromName
+                                                                    .GetEnumValueFromName
                                                                     <Configuration.Notifications>(
                                                                         name));
                                                         }

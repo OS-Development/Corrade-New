@@ -20,15 +20,15 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     uint status;
-                    if (!uint.TryParse(wasInput(KeyValue.wasKeyValueGet(
-                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.STATUS)),
+                    if (!uint.TryParse(wasInput(KeyValue.Get(
+                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.STATUS)),
                         corradeCommandParameters.Message)), out status))
                     {
                         throw new ScriptException(ScriptError.INVALID_STATUS_SUPPLIED);
                     }
-                    switch (Reflection.wasGetEnumValueFromName<Entity>(
+                    switch (Reflection.GetEnumValueFromName<Entity>(
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY)),
                                 corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Entity.DESCRIPTION:
@@ -37,16 +37,16 @@ namespace Corrade
                                 .AsParallel()
                                 .FirstOrDefault(
                                     o =>
-                                        Reflection.wasGetAttributeFromEnumValue<StatusAttribute>(
+                                        Reflection.GetAttributeFromEnumValue<StatusAttribute>(
                                             (ScriptError) o.GetValue(null))
                                             .Status.Equals(status));
                             if (scriptErrorFieldInfo == null)
                                 throw new ScriptException(ScriptError.STATUS_NOT_FOUND);
                             string description =
-                                Reflection.wasGetNameFromEnumValue((ScriptError) scriptErrorFieldInfo.GetValue(null));
+                                Reflection.GetNameFromEnumValue((ScriptError) scriptErrorFieldInfo.GetValue(null));
                             if (string.IsNullOrEmpty(description))
                                 throw new ScriptException(ScriptError.NO_DESCRIPTION_FOR_STATUS);
-                            result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), description);
+                            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), description);
                             break;
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ENTITY);

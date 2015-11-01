@@ -30,7 +30,7 @@ namespace Corrade
 
                     Vector3 position;
                     if (!Vector3.TryParse(wasInput(
-                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
                             corradeCommandParameters.Message)),
                         out position))
                     {
@@ -38,7 +38,7 @@ namespace Corrade
                     }
                     uint duration;
                     if (!uint.TryParse(wasInput(
-                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DURATION)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DURATION)),
                             corradeCommandParameters.Message)),
                         out duration))
                     {
@@ -46,7 +46,7 @@ namespace Corrade
                     }
                     float vicinity;
                     if (!float.TryParse(wasInput(
-                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.VICINITY)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.VICINITY)),
                             corradeCommandParameters.Message)),
                         out vicinity))
                     {
@@ -54,7 +54,7 @@ namespace Corrade
                     }
                     int affinity;
                     if (!int.TryParse(wasInput(
-                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AFFINITY)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AFFINITY)),
                             corradeCommandParameters.Message)),
                         out affinity))
                     {
@@ -147,7 +147,7 @@ namespace Corrade
                     // perform the post-action
                     bool fly;
                     switch (bool.TryParse(wasInput(
-                        KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FLY)),
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FLY)),
                             corradeCommandParameters.Message)), out fly))
                     {
                         case true:

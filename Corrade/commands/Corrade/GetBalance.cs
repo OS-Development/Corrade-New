@@ -29,7 +29,7 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
                     }
-                    result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                    result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
                         Client.Self.Balance.ToString(Utils.EnUsCulture));
                 };
         }

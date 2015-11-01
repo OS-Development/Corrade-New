@@ -35,20 +35,20 @@ namespace Corrade
                             lock (LockObject)
                             {
                                 csv.AddRange(new[]
-                                {Reflection.wasGetStructureMemberName(o.Agent, o.Agent.FirstName), o.Agent.FirstName});
+                                {Reflection.GetStructureMemberName(o.Agent, o.Agent.FirstName), o.Agent.FirstName});
                                 csv.AddRange(new[]
-                                {Reflection.wasGetStructureMemberName(o.Agent, o.Agent.LastName), o.Agent.LastName});
+                                {Reflection.GetStructureMemberName(o.Agent, o.Agent.LastName), o.Agent.LastName});
                                 csv.AddRange(new[]
-                                {Reflection.wasGetStructureMemberName(o.Agent, o.Agent.UUID), o.Agent.UUID.ToString()});
+                                {Reflection.GetStructureMemberName(o.Agent, o.Agent.UUID), o.Agent.UUID.ToString()});
                                 csv.AddRange(new[]
-                                {Reflection.wasGetStructureMemberName(o, o.Session), o.Session.ToString()});
+                                {Reflection.GetStructureMemberName(o, o.Session), o.Session.ToString()});
                             }
                         });
                     }
                     if (csv.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(csv));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(csv));
                     }
                 };
         }

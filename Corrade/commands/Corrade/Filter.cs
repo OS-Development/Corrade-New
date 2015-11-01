@@ -25,23 +25,23 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    switch (Reflection.wasGetEnumValueFromName<Action>(
+                    switch (Reflection.GetEnumValueFromName<Action>(
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.SET:
                             List<Configuration.Filter> inputFilters = new List<Configuration.Filter>();
                             string input =
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.INPUT)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.INPUT)),
                                         corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(input))
                             {
                                 foreach (
                                     KeyValuePair<string, string> i in
-                                        CSV.wasCSVToEnumerable(input).AsParallel().Select((o, p) => new {o, p})
+                                        CSV.ToEnumerable(input).AsParallel().Select((o, p) => new {o, p})
                                             .GroupBy(q => q.p/2, q => q.o)
                                             .Select(o => o.ToList())
                                             .TakeWhile(o => o.Count%2 == 0)
@@ -51,8 +51,8 @@ namespace Corrade
                                                     !string.IsNullOrEmpty(o.Last()))
                                             .ToDictionary(o => o.First(), p => p.Last()))
                                 {
-                                    inputFilters.Add(Reflection.wasGetEnumValueFromName<Configuration.Filter>(i.Key));
-                                    inputFilters.Add(Reflection.wasGetEnumValueFromName<Configuration.Filter>(i.Value));
+                                    inputFilters.Add(Reflection.GetEnumValueFromName<Configuration.Filter>(i.Key));
+                                    inputFilters.Add(Reflection.GetEnumValueFromName<Configuration.Filter>(i.Value));
                                 }
                                 lock (InputFiltersLock)
                                 {
@@ -61,14 +61,14 @@ namespace Corrade
                             }
                             List<Configuration.Filter> outputFilters = new List<Configuration.Filter>();
                             string output =
-                                wasInput(KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.OUTPUT)),
+                                wasInput(KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.OUTPUT)),
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(output))
                             {
                                 foreach (
                                     KeyValuePair<string, string> i in
-                                        CSV.wasCSVToEnumerable(output).AsParallel().Select((o, p) => new {o, p})
+                                        CSV.ToEnumerable(output).AsParallel().Select((o, p) => new {o, p})
                                             .GroupBy(q => q.p/2, q => q.o)
                                             .Select(o => o.ToList())
                                             .TakeWhile(o => o.Count%2 == 0)
@@ -78,8 +78,8 @@ namespace Corrade
                                                     !string.IsNullOrEmpty(o.Last()))
                                             .ToDictionary(o => o.First(), p => p.Last()))
                                 {
-                                    outputFilters.Add(Reflection.wasGetEnumValueFromName<Configuration.Filter>(i.Key));
-                                    outputFilters.Add(Reflection.wasGetEnumValueFromName<Configuration.Filter>(i.Value));
+                                    outputFilters.Add(Reflection.GetEnumValueFromName<Configuration.Filter>(i.Key));
+                                    outputFilters.Add(Reflection.GetEnumValueFromName<Configuration.Filter>(i.Value));
                                 }
                                 lock (OutputFiltersLock)
                                 {
@@ -88,10 +88,10 @@ namespace Corrade
                             }
                             break;
                         case Action.GET:
-                            switch (Reflection.wasGetEnumValueFromName<Type>(
+                            switch (Reflection.GetEnumValueFromName<Type>(
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                         corradeCommandParameters.Message)).ToLowerInvariant()))
                             {
                                 case Type.INPUT:
@@ -99,9 +99,9 @@ namespace Corrade
                                     {
                                         if (corradeConfiguration.InputFilters.Any())
                                         {
-                                            result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                                                CSV.wasEnumerableToCSV(corradeConfiguration.InputFilters.Select(
-                                                    o => Reflection.wasGetNameFromEnumValue(o))));
+                                            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                                CSV.FromEnumerable(corradeConfiguration.InputFilters.Select(
+                                                    o => Reflection.GetNameFromEnumValue(o))));
                                         }
                                     }
                                     break;
@@ -110,9 +110,9 @@ namespace Corrade
                                     {
                                         if (corradeConfiguration.OutputFilters.Any())
                                         {
-                                            result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                                                CSV.wasEnumerableToCSV(corradeConfiguration.OutputFilters.Select(
-                                                    o => Reflection.wasGetNameFromEnumValue(o))));
+                                            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                                CSV.FromEnumerable(corradeConfiguration.OutputFilters.Select(
+                                                    o => Reflection.GetNameFromEnumValue(o))));
                                         }
                                     }
                                     break;

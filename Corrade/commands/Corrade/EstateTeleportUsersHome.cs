@@ -31,7 +31,7 @@ namespace Corrade
                     }
                     string avatars =
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AVATARS)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AVATARS)),
                                 corradeCommandParameters.Message));
                     // if no avatars were specified, teleport all users home
                     if (string.IsNullOrEmpty(avatars))
@@ -40,7 +40,7 @@ namespace Corrade
                         return;
                     }
                     HashSet<string> data = new HashSet<string>();
-                    Parallel.ForEach(CSV.wasCSVToEnumerable(avatars).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
+                    Parallel.ForEach(CSV.ToEnumerable(avatars).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                         o =>
                         {
                             UUID agentUUID;
@@ -68,8 +68,8 @@ namespace Corrade
                         });
                     if (data.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(data));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(data));
                     }
                 };
         }

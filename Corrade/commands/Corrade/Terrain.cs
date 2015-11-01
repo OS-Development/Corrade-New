@@ -27,7 +27,7 @@ namespace Corrade
                     }
                     string region =
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator =
                         Client.Network.Simulators.AsParallel().FirstOrDefault(
@@ -40,9 +40,9 @@ namespace Corrade
                         throw new ScriptException(ScriptError.REGION_NOT_FOUND);
                     }
                     byte[] data = null;
-                    switch (Reflection.wasGetEnumValueFromName<Action>(
+                    switch (Reflection.GetEnumValueFromName<Action>(
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
@@ -87,15 +87,15 @@ namespace Corrade
                             {
                                 throw new ScriptException(ScriptError.EMPTY_ASSET_DATA);
                             }
-                            result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), Convert.ToBase64String(data));
+                            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), Convert.ToBase64String(data));
                             break;
                         case Action.SET:
                             try
                             {
                                 data = Convert.FromBase64String(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                             corradeCommandParameters.Message)));
                             }
                             catch (Exception)

@@ -36,16 +36,16 @@ namespace Corrade
                         {
                             lock (LockObject)
                             {
-                                csv.AddRange(new[] {Reflection.wasGetStructureMemberName(o, o.Name), o.Name});
+                                csv.AddRange(new[] {Reflection.GetStructureMemberName(o, o.Name), o.Name});
                                 csv.AddRange(new[]
-                                {Reflection.wasGetStructureMemberName(o.Agent, o.Agent.FirstName), o.Agent.FirstName});
+                                {Reflection.GetStructureMemberName(o.Agent, o.Agent.FirstName), o.Agent.FirstName});
                                 csv.AddRange(new[]
-                                {Reflection.wasGetStructureMemberName(o.Agent, o.Agent.LastName), o.Agent.LastName});
+                                {Reflection.GetStructureMemberName(o.Agent, o.Agent.LastName), o.Agent.LastName});
                                 csv.AddRange(new[]
-                                {Reflection.wasGetStructureMemberName(o.Agent, o.Agent.UUID), o.Agent.UUID.ToString()});
-                                csv.AddRange(new[] {Reflection.wasGetStructureMemberName(o, o.Item), o.Item.ToString()});
-                                csv.AddRange(new[] {Reflection.wasGetStructureMemberName(o, o.Task), o.Task.ToString()});
-                                csv.Add(Reflection.wasGetStructureMemberName(o, o.Permission));
+                                {Reflection.GetStructureMemberName(o.Agent, o.Agent.UUID), o.Agent.UUID.ToString()});
+                                csv.AddRange(new[] {Reflection.GetStructureMemberName(o, o.Item), o.Item.ToString()});
+                                csv.AddRange(new[] {Reflection.GetStructureMemberName(o, o.Task), o.Task.ToString()});
+                                csv.Add(Reflection.GetStructureMemberName(o, o.Permission));
                                 csv.AddRange(typeof (ScriptPermission).GetFields(BindingFlags.Public |
                                                                                  BindingFlags.Static)
                                     .AsParallel().Where(
@@ -53,14 +53,14 @@ namespace Corrade
                                             !(((int) p.GetValue(null) &
                                                (int) o.Permission)).Equals(0))
                                     .Select(p => p.Name).ToArray());
-                                csv.AddRange(new[] {Reflection.wasGetStructureMemberName(o, o.Region), o.Region});
+                                csv.AddRange(new[] {Reflection.GetStructureMemberName(o, o.Region), o.Region});
                             }
                         });
                     }
                     if (csv.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(csv));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(csv));
                     }
                 };
         }

@@ -45,7 +45,7 @@ namespace Corrade
                     }
                     string body =
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
                                 corradeCommandParameters.Message));
                     if (IsSecondLife() && body.Length > LINDEN_CONSTANTS.NOTICES.MAXIMUM_NOTICE_MESSAGE_LENGTH)
                     {
@@ -56,15 +56,15 @@ namespace Corrade
                         Message = body,
                         Subject =
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.SUBJECT)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SUBJECT)),
                                     corradeCommandParameters.Message)),
                         OwnerID = Client.Self.AgentID
                     };
                     object item =
                         StringOrUUID(
                             wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                     corradeCommandParameters.Message)));
                     if (item != null)
                     {
@@ -88,8 +88,8 @@ namespace Corrade
                         }
                         // Set requested permissions if any on the item.
                         string permissions = wasInput(
-                            KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
                                 corradeCommandParameters.Message));
                         if (!string.IsNullOrEmpty(permissions))
                         {

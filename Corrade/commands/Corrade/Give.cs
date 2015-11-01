@@ -29,7 +29,7 @@ namespace Corrade
                     object item =
                         StringOrUUID(
                             wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                     corradeCommandParameters.Message)));
                     InventoryItem inventoryItem;
                     switch (item != null)
@@ -54,8 +54,8 @@ namespace Corrade
                             }
                             // Set requested permissions if any on the item.
                             string permissions = wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(permissions))
                             {
@@ -69,10 +69,10 @@ namespace Corrade
                             throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
                     }
                     switch (
-                        Reflection.wasGetEnumValueFromName<Entity>(
+                        Reflection.GetEnumValueFromName<Entity>(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Entity.AVATAR:
@@ -80,17 +80,17 @@ namespace Corrade
                             if (
                                 !UUID.TryParse(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
                                             corradeCommandParameters.Message)), out agentUUID) && !AgentNameToUUID(
                                                 wasInput(
-                                                    KeyValue.wasKeyValueGet(
+                                                    KeyValue.Get(
                                                         wasOutput(
-                                                            Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                                            Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 wasInput(
-                                                    KeyValue.wasKeyValueGet(
-                                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                                    KeyValue.Get(
+                                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
@@ -106,8 +106,8 @@ namespace Corrade
                             if (
                                 !float.TryParse(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RANGE)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
                                             corradeCommandParameters.Message)),
                                     out range))
                             {
@@ -117,8 +117,8 @@ namespace Corrade
                             if (
                                 !FindPrimitive(
                                     StringOrUUID(wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                                             corradeCommandParameters.Message))),
                                     range,
                                     ref primitive, corradeConfiguration.ServicesTimeout,

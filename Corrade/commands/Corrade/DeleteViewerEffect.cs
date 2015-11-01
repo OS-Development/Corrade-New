@@ -27,15 +27,15 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     UUID effectUUID;
-                    if (!UUID.TryParse(wasInput(KeyValue.wasKeyValueGet(
-                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID)), corradeCommandParameters.Message)),
+                    if (!UUID.TryParse(wasInput(KeyValue.Get(
+                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ID)), corradeCommandParameters.Message)),
                         out effectUUID))
                     {
                         throw new ScriptException(ScriptError.NO_EFFECT_UUID_PROVIDED);
                     }
-                    ViewerEffectType viewerEffectType = Reflection.wasGetEnumValueFromName<ViewerEffectType>(
+                    ViewerEffectType viewerEffectType = Reflection.GetEnumValueFromName<ViewerEffectType>(
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.EFFECT)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.EFFECT)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     switch (viewerEffectType)

@@ -30,8 +30,8 @@ namespace Corrade
                     if (
                         !int.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.CHANNEL)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.CHANNEL)),
                                     corradeCommandParameters.Message)),
                             out channel))
                     {
@@ -40,8 +40,8 @@ namespace Corrade
                     int index;
                     if (
                         !int.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.INDEX)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.INDEX)),
                                 corradeCommandParameters.Message)),
                             out index))
                     {
@@ -49,7 +49,7 @@ namespace Corrade
                     }
                     string label =
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.BUTTON)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.BUTTON)),
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(label))
                     {
@@ -58,8 +58,8 @@ namespace Corrade
                     UUID itemUUID;
                     if (
                         !UUID.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message)),
                             out itemUUID))
                     {

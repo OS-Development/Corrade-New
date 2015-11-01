@@ -109,14 +109,14 @@ namespace wasSharp
         ///     another lined-up event. This is mostly used to check that throttles
         ///     are being respected.
         /// </summary>
-        public class wasTimedThrottle : IDisposable
+        public class TimedThrottle : IDisposable
         {
             private readonly uint EventsAllowed;
             private readonly object LockObject = new object();
             private Timer timer;
             private uint TriggeredEvents;
 
-            public wasTimedThrottle(uint events, uint seconds)
+            public TimedThrottle(uint events, uint seconds)
             {
                 EventsAllowed = events;
                 if (timer == null)
@@ -168,7 +168,7 @@ namespace wasSharp
         /// <remarks>
         ///     (C) Wizardry and Steamworks 2013 - License: GNU GPLv3
         /// </remarks>
-        public class wasAdaptiveAlarm : IDisposable
+        public class DecayingAlarm : IDisposable
         {
             [Flags]
             public enum DECAY_TYPE
@@ -189,16 +189,16 @@ namespace wasSharp
             /// <summary>
             ///     The default constructor using no decay.
             /// </summary>
-            public wasAdaptiveAlarm()
+            public DecayingAlarm()
             {
                 Signal = new ManualResetEvent(false);
             }
 
             /// <summary>
-            ///     The constructor for the wasAdaptiveAlarm class taking as parameter a decay type.
+            ///     The constructor for the DecayingAlarm class taking as parameter a decay type.
             /// </summary>
             /// <param name="decay">the type of decay: arithmetic, geometric, harmonic, heronian or quadratic</param>
-            public wasAdaptiveAlarm(DECAY_TYPE decay)
+            public DecayingAlarm(DECAY_TYPE decay)
             {
                 Signal = new ManualResetEvent(false);
                 this.decay = decay;

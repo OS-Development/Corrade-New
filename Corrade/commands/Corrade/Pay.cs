@@ -29,8 +29,8 @@ namespace Corrade
                     if (
                         !int.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AMOUNT)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AMOUNT)),
                                     corradeCommandParameters.Message)),
                             out amount))
                     {
@@ -50,34 +50,34 @@ namespace Corrade
                     }
                     UUID targetUUID;
                     switch (
-                        Reflection.wasGetEnumValueFromName<Entity>(
+                        Reflection.GetEnumValueFromName<Entity>(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Entity.GROUP:
                             Client.Self.GiveGroupMoney(corradeCommandParameters.Group.UUID, amount,
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                                         corradeCommandParameters.Message)));
                             break;
                         case Entity.AVATAR:
                             if (
                                 !UUID.TryParse(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT)),
                                             corradeCommandParameters.Message)), out targetUUID) && !AgentNameToUUID(
                                                 wasInput(
-                                                    KeyValue.wasKeyValueGet(
+                                                    KeyValue.Get(
                                                         wasOutput(
-                                                            Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
+                                                            Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 wasInput(
-                                                    KeyValue.wasKeyValueGet(
-                                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME)),
+                                                    KeyValue.Get(
+                                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME)),
                                                         corradeCommandParameters.Message)),
                                                 corradeConfiguration.ServicesTimeout,
                                                 corradeConfiguration.DataTimeout,
@@ -87,16 +87,16 @@ namespace Corrade
                             }
                             Client.Self.GiveAvatarMoney(targetUUID, amount,
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                                         corradeCommandParameters.Message)));
                             break;
                         case Entity.OBJECT:
                             if (
                                 !UUID.TryParse(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                                             corradeCommandParameters.Message)),
                                     out targetUUID))
                             {
@@ -104,8 +104,8 @@ namespace Corrade
                             }
                             Client.Self.GiveObjectMoney(targetUUID, amount,
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                                         corradeCommandParameters.Message)));
                             break;
                         default:

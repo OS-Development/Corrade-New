@@ -43,8 +43,8 @@ namespace Corrade
                     float range;
                     if (
                         !float.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RANGE)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
@@ -53,8 +53,8 @@ namespace Corrade
                     Primitive primitive = null;
                     if (
                         !FindPrimitive(
-                            StringOrUUID(wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                            StringOrUUID(wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
                             range,
                             ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
@@ -123,8 +123,8 @@ namespace Corrade
 
                     // Get the destination format to convert the downloaded textures to.
                     string format =
-                        wasInput(KeyValue.wasKeyValueGet(
-                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FORMAT)),
+                        wasInput(KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FORMAT)),
                             corradeCommandParameters.Message));
                     PropertyInfo formatProperty = null;
                     if (!string.IsNullOrEmpty(format))
@@ -180,7 +180,7 @@ namespace Corrade
                                 if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
                                 {
                                     throw new Exception(
-                                        Reflection.wasGetNameFromEnumValue(
+                                        Reflection.GetNameFromEnumValue(
                                             ScriptError.UNABLE_TO_DECODE_ASSET_DATA));
                                 }
                                 using (MemoryStream imageStream = new MemoryStream())
@@ -209,7 +209,7 @@ namespace Corrade
                                     catch (Exception)
                                     {
                                         throw new Exception(
-                                            Reflection.wasGetNameFromEnumValue(
+                                            Reflection.GetNameFromEnumValue(
                                                 ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT));
                                     }
                                     lock (LockObject)
@@ -327,12 +327,12 @@ namespace Corrade
 
                         // If no path was specificed, then send the data.
                         string path =
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PATH)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATH)),
                                 corradeCommandParameters.Message));
                         if (string.IsNullOrEmpty(path))
                         {
-                            result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
                                 Convert.ToBase64String(zipMemoryStream.ToArray()));
                             return;
                         }

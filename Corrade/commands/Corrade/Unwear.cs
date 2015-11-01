@@ -28,14 +28,14 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     string wearables =
-                        wasInput(KeyValue.wasKeyValueGet(
-                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.WEARABLES)),
+                        wasInput(KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.WEARABLES)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(wearables))
                     {
                         throw new ScriptException(ScriptError.EMPTY_WEARABLES);
                     }
-                    Parallel.ForEach(CSV.wasCSVToEnumerable(
+                    Parallel.ForEach(CSV.ToEnumerable(
                         wearables).AsParallel().Where(o => !string.IsNullOrEmpty(o)), o =>
                         {
                             InventoryBase inventoryBaseItem =

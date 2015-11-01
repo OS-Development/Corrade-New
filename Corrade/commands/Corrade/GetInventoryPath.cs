@@ -31,8 +31,8 @@ namespace Corrade
                     }
                     HashSet<AssetType> assetTypes = new HashSet<AssetType>();
                     object LockObject = new object();
-                    Parallel.ForEach(CSV.wasCSVToEnumerable(
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
+                    Parallel.ForEach(CSV.ToEnumerable(
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                             corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                         o => Parallel.ForEach(
                             typeof (AssetType).GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -46,7 +46,7 @@ namespace Corrade
                             }));
                     string pattern =
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PATTERN)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATTERN)),
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(pattern))
                     {
@@ -73,8 +73,8 @@ namespace Corrade
                         });
                     if (csv.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(csv));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(csv));
                     }
                 };
         }

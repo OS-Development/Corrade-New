@@ -123,7 +123,7 @@ namespace CorradeConfiguration
         private string _clientLogFile = @"logs/Corrade.log";
         private uint _connectionIdleTime = 900000;
         private uint _connectionLimit = 100;
-        private Time.wasAdaptiveAlarm.DECAY_TYPE _dataDecayType = Time.wasAdaptiveAlarm.DECAY_TYPE.ARITHMETIC;
+        private Time.DecayingAlarm.DECAY_TYPE _dataDecayType = Time.DecayingAlarm.DECAY_TYPE.ARITHMETIC;
         private uint _dataTimeout = 2500;
         private string _driveIdentifierHash = string.Empty;
         private bool _enableAIML;
@@ -1189,7 +1189,7 @@ namespace CorradeConfiguration
             }
         }
 
-        public Time.wasAdaptiveAlarm.DECAY_TYPE DataDecayType
+        public Time.DecayingAlarm.DECAY_TYPE DataDecayType
         {
             get
             {

@@ -36,7 +36,7 @@ namespace Corrade
                         }
                     }
                     string path =
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PATH)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATH)),
                             corradeCommandParameters.Message));
                     Func<string, InventoryBase, InventoryBase> findPath = null;
                     findPath = (o, p) =>
@@ -92,9 +92,9 @@ namespace Corrade
                     };
                     InventoryBase item;
                     List<string> csv = new List<string>();
-                    Action action = Reflection.wasGetEnumValueFromName<Action>(
+                    Action action = Reflection.GetEnumValueFromName<Action>(
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     switch (action)
@@ -126,40 +126,40 @@ namespace Corrade
                                             o => DirItem.FromInventoryBase(o)))
                                     {
                                         csv.AddRange(new[]
-                                        {Reflection.wasGetStructureMemberName(dirItem, dirItem.Name), dirItem.Name});
+                                        {Reflection.GetStructureMemberName(dirItem, dirItem.Name), dirItem.Name});
                                         csv.AddRange(new[]
                                         {
-                                            Reflection.wasGetStructureMemberName(dirItem, dirItem.Item),
+                                            Reflection.GetStructureMemberName(dirItem, dirItem.Item),
                                             dirItem.Item.ToString()
                                         });
                                         csv.AddRange(new[]
                                         {
-                                            Reflection.wasGetStructureMemberName(dirItem, dirItem.Type),
-                                            Reflection.wasGetNameFromEnumValue(dirItem.Type)
+                                            Reflection.GetStructureMemberName(dirItem, dirItem.Type),
+                                            Reflection.GetNameFromEnumValue(dirItem.Type)
                                         });
                                         csv.AddRange(new[]
                                         {
-                                            Reflection.wasGetStructureMemberName(dirItem, dirItem.Permissions),
+                                            Reflection.GetStructureMemberName(dirItem, dirItem.Permissions),
                                             dirItem.Permissions
                                         });
                                     }
                                     break;
                                 case false:
                                     DirItem dir = DirItem.FromInventoryBase(item);
-                                    csv.AddRange(new[] {Reflection.wasGetStructureMemberName(dir, dir.Name), dir.Name});
+                                    csv.AddRange(new[] {Reflection.GetStructureMemberName(dir, dir.Name), dir.Name});
                                     csv.AddRange(new[]
                                     {
-                                        Reflection.wasGetStructureMemberName(dir, dir.Item),
+                                        Reflection.GetStructureMemberName(dir, dir.Item),
                                         dir.Item.ToString()
                                     });
                                     csv.AddRange(new[]
                                     {
-                                        Reflection.wasGetStructureMemberName(dir, dir.Type),
-                                        Reflection.wasGetNameFromEnumValue(dir.Type)
+                                        Reflection.GetStructureMemberName(dir, dir.Type),
+                                        Reflection.GetNameFromEnumValue(dir.Type)
                                     });
                                     csv.AddRange(new[]
                                     {
-                                        Reflection.wasGetStructureMemberName(dir, dir.Permissions),
+                                        Reflection.GetStructureMemberName(dir, dir.Permissions),
                                         dir.Permissions
                                     });
                                     break;
@@ -172,17 +172,17 @@ namespace Corrade
                                     DirItem.FromInventoryBase(
                                         GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] as InventoryBase);
                                 csv.AddRange(new[]
-                                {Reflection.wasGetStructureMemberName(dirItem, dirItem.Name), dirItem.Name});
+                                {Reflection.GetStructureMemberName(dirItem, dirItem.Name), dirItem.Name});
                                 csv.AddRange(new[]
-                                {Reflection.wasGetStructureMemberName(dirItem, dirItem.Item), dirItem.Item.ToString()});
+                                {Reflection.GetStructureMemberName(dirItem, dirItem.Item), dirItem.Item.ToString()});
                                 csv.AddRange(new[]
                                 {
-                                    Reflection.wasGetStructureMemberName(dirItem, dirItem.Type),
-                                    Reflection.wasGetNameFromEnumValue(dirItem.Type)
+                                    Reflection.GetStructureMemberName(dirItem, dirItem.Type),
+                                    Reflection.GetNameFromEnumValue(dirItem.Type)
                                 });
                                 csv.AddRange(new[]
                                 {
-                                    Reflection.wasGetStructureMemberName(dirItem, dirItem.Permissions),
+                                    Reflection.GetStructureMemberName(dirItem, dirItem.Permissions),
                                     dirItem.Permissions
                                 });
                             }
@@ -218,8 +218,8 @@ namespace Corrade
                         case Action.MKDIR:
                             string mkdirName =
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(mkdirName))
                             {
@@ -256,8 +256,8 @@ namespace Corrade
                         case Action.CHMOD:
                             string itemPermissions =
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(itemPermissions))
                             {
@@ -339,8 +339,8 @@ namespace Corrade
                         case Action.MV:
                         case Action.LN:
                             string lnSourcePath =
-                                wasInput(KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.SOURCE)),
+                                wasInput(KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SOURCE)),
                                     corradeCommandParameters.Message));
                             InventoryBase sourceItem;
                             switch (!string.IsNullOrEmpty(lnSourcePath))
@@ -372,8 +372,8 @@ namespace Corrade
                                     break;
                             }
                             string lnTargetPath =
-                                wasInput(KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET)),
+                                wasInput(KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET)),
                                     corradeCommandParameters.Message));
                             InventoryBase targetItem;
                             switch (!string.IsNullOrEmpty(lnTargetPath))
@@ -440,8 +440,8 @@ namespace Corrade
                     }
                     if (csv.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(csv));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(csv));
                     }
                 };
         }

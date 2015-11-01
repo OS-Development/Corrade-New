@@ -385,8 +385,8 @@ namespace Corrade
         private static readonly object InstantMessageLogFileLock = new object();
         private static readonly object DatabaseFileLock = new object();
 
-        private static readonly Time.wasTimedThrottle TimedTeleportThrottle =
-            new Time.wasTimedThrottle(LINDEN_CONSTANTS.TELEPORTS.THROTTLE.MAX_TELEPORTS,
+        private static readonly Time.TimedThrottle TimedTeleportThrottle =
+            new Time.TimedThrottle(LINDEN_CONSTANTS.TELEPORTS.THROTTLE.MAX_TELEPORTS,
                 LINDEN_CONSTANTS.TELEPORTS.THROTTLE.GRACE_SECONDS);
 
         private static readonly Dictionary<string, object> DatabaseLocks = new Dictionary<string, object>();
@@ -508,10 +508,10 @@ namespace Corrade
         private static readonly Timer ConfigurationChangedTimer =
             new Timer(ConfigurationChanged =>
             {
-                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.CONFIGURATION_FILE_MODIFIED));
                 lock (ConfigurationFileLock)
                 {
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.READING_CORRADE_CONFIGURATION));
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.READING_CORRADE_CONFIGURATION));
                     try
                     {
                         corradeConfiguration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE, ref corradeConfiguration);
@@ -519,12 +519,12 @@ namespace Corrade
                     catch (Exception ex)
                     {
                         Feedback(
-                            Reflection.wasGetDescriptionFromEnumValue(
+                            Reflection.GetDescriptionFromEnumValue(
                                 ConsoleError.UNABLE_TO_LOAD_CORRADE_CONFIGURATION),
                             ex.Message);
                         return;
                     }
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
                 }
                 if (!corradeConfiguration.Equals(default(Configuration)))
                 {
@@ -538,7 +538,7 @@ namespace Corrade
         private static readonly Timer NotificationsChangedTimer =
             new Timer(NotificationsChanged =>
             {
-                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATIONS_FILE_MODIFIED));
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.NOTIFICATIONS_FILE_MODIFIED));
                 lock (GroupNotificationsLock)
                 {
                     LoadNotificationState.Invoke();
@@ -551,7 +551,7 @@ namespace Corrade
         private static readonly Timer AIMLConfigurationChangedTimer =
             new Timer(AIMLConfigurationChanged =>
             {
-                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.AIML_CONFIGURATION_MODIFIED));
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.AIML_CONFIGURATION_MODIFIED));
                 new Thread(
                     () =>
                     {
@@ -569,7 +569,7 @@ namespace Corrade
         private static readonly Timer GroupSchedulesChangedTimer =
             new Timer(GroupSchedulesChanged =>
             {
-                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.GROUP_SCHEDULES_FILE_MODIFIED));
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.GROUP_SCHEDULES_FILE_MODIFIED));
                 lock (GroupSchedulesLock)
                 {
                     LoadGroupSchedulesState.Invoke();
@@ -625,21 +625,21 @@ namespace Corrade
                 switch (filter)
                 {
                     case Configuration.Filter.RFC1738:
-                        o = Web.wasURLUnescapeDataString(o);
+                        o = Web.URLUnescapeDataString(o);
                         break;
                     case Configuration.Filter.RFC3986:
-                        o = Web.wasURIUnescapeDataString(o);
+                        o = Web.URIUnescapeDataString(o);
                         break;
                     case Configuration.Filter.ENIGMA:
-                        o = Cryptography.wasEnigma(o, corradeConfiguration.ENIGMAConfiguration.rotors.ToArray(),
+                        o = Cryptography.ENIGMA(o, corradeConfiguration.ENIGMAConfiguration.rotors.ToArray(),
                             corradeConfiguration.ENIGMAConfiguration.plugs.ToArray(),
                             corradeConfiguration.ENIGMAConfiguration.reflector);
                         break;
                     case Configuration.Filter.VIGENERE:
-                        o = Cryptography.wasDecryptVIGENERE(o, corradeConfiguration.VIGENERESecret);
+                        o = Cryptography.DecryptVIGENERE(o, corradeConfiguration.VIGENERESecret);
                         break;
                     case Configuration.Filter.ATBASH:
-                        o = Cryptography.wasATBASH(o);
+                        o = Cryptography.ATBASH(o);
                         break;
                     case Configuration.Filter.AES:
                         o = wasAESDecrypt(o, corradeConfiguration.AESKey, corradeConfiguration.AESIV);
@@ -669,21 +669,21 @@ namespace Corrade
                 switch (filter)
                 {
                     case Configuration.Filter.RFC1738:
-                        o = Web.wasURLEscapeDataString(o);
+                        o = Web.URLEscapeDataString(o);
                         break;
                     case Configuration.Filter.RFC3986:
-                        o = Web.wasURIEscapeDataString(o);
+                        o = Web.URIEscapeDataString(o);
                         break;
                     case Configuration.Filter.ENIGMA:
-                        o = Cryptography.wasEnigma(o, corradeConfiguration.ENIGMAConfiguration.rotors.ToArray(),
+                        o = Cryptography.ENIGMA(o, corradeConfiguration.ENIGMAConfiguration.rotors.ToArray(),
                             corradeConfiguration.ENIGMAConfiguration.plugs.ToArray(),
                             corradeConfiguration.ENIGMAConfiguration.reflector);
                         break;
                     case Configuration.Filter.VIGENERE:
-                        o = Cryptography.wasEncryptVIGENERE(o, corradeConfiguration.VIGENERESecret);
+                        o = Cryptography.EncryptVIGENERE(o, corradeConfiguration.VIGENERESecret);
                         break;
                     case Configuration.Filter.ATBASH:
-                        o = Cryptography.wasATBASH(o);
+                        o = Cryptography.ATBASH(o);
                         break;
                     case Configuration.Filter.AES:
                         o = wasAESEncrypt(o, corradeConfiguration.AESKey, corradeConfiguration.AESIV);
@@ -702,10 +702,10 @@ namespace Corrade
         /// <returns>true if the string is a Corrade command</returns>
         private static readonly Func<string, bool> IsCorradeCommand = o =>
         {
-            Dictionary<string, string> data = KeyValue.wasKeyValueDecode(o);
-            return data.Any() && data.ContainsKey(Reflection.wasGetNameFromEnumValue(ScriptKeys.COMMAND)) &&
-                   data.ContainsKey(Reflection.wasGetNameFromEnumValue(ScriptKeys.GROUP)) &&
-                   data.ContainsKey(Reflection.wasGetNameFromEnumValue(ScriptKeys.PASSWORD));
+            Dictionary<string, string> data = KeyValue.Decode(o);
+            return data.Any() && data.ContainsKey(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND)) &&
+                   data.ContainsKey(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)) &&
+                   data.ContainsKey(Reflection.GetNameFromEnumValue(ScriptKeys.PASSWORD));
         };
 
         /// <summary>
@@ -847,7 +847,7 @@ namespace Corrade
                 }
                 catch (Exception)
                 {
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_UPDATING_INVENTORY));
                 }
             })
             {IsBackground = true};
@@ -868,7 +868,7 @@ namespace Corrade
                     CORRADE_CONSTANTS.INVENTORY_CACHE_FILE));
             }
 
-            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_LOADED),
+            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_LOADED),
                 itemsLoaded < 0 ? "0" : itemsLoaded.ToString(Utils.EnUsCulture));
         };
 
@@ -886,7 +886,7 @@ namespace Corrade
                 Client.Inventory.Store.SaveToDisk(path);
             }
 
-            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_SAVED),
+            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.INVENTORY_CACHE_ITEMS_SAVED),
                 itemsSaved.ToString(Utils.EnUsCulture));
         };
 
@@ -939,7 +939,7 @@ namespace Corrade
             }
             catch (Exception e)
             {
-                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_GROUP_MEMBERS_STATE),
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_GROUP_MEMBERS_STATE),
                     e.Message);
             }
         };
@@ -978,7 +978,7 @@ namespace Corrade
                 catch (Exception ex)
                 {
                     Feedback(
-                        Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_GROUP_MEMBERS_STATE),
+                        Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_GROUP_MEMBERS_STATE),
                         ex.Message);
                 }
             }
@@ -1008,7 +1008,7 @@ namespace Corrade
             catch (Exception e)
             {
                 Feedback(
-                    Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_GROUP_SCHEDULES_STATE),
+                    Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_GROUP_SCHEDULES_STATE),
                     e.Message);
             }
             SchedulesWatcher.EnableRaisingEvents = true;
@@ -1052,7 +1052,7 @@ namespace Corrade
                 catch (Exception ex)
                 {
                     Feedback(
-                        Reflection.wasGetDescriptionFromEnumValue(
+                        Reflection.GetDescriptionFromEnumValue(
                             ConsoleError.UNABLE_TO_LOAD_CORRADE_GROUP_SCHEDULES_STATE),
                         ex.Message);
                 }
@@ -1083,7 +1083,7 @@ namespace Corrade
             catch (Exception e)
             {
                 Feedback(
-                    Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE),
+                    Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE),
                     e.Message);
             }
             NotificationsWatcher.EnableRaisingEvents = true;
@@ -1121,7 +1121,7 @@ namespace Corrade
                 catch (Exception ex)
                 {
                     Feedback(
-                        Reflection.wasGetDescriptionFromEnumValue(
+                        Reflection.GetDescriptionFromEnumValue(
                             ConsoleError.UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE),
                         ex.Message);
                 }
@@ -1165,7 +1165,7 @@ namespace Corrade
             }
             catch (Exception e)
             {
-                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_MOVEMENT_STATE),
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_MOVEMENT_STATE),
                     e.Message);
             }
         };
@@ -1205,7 +1205,7 @@ namespace Corrade
                 catch (Exception ex)
                 {
                     Feedback(
-                        Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_MOVEMENT_STATE),
+                        Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_MOVEMENT_STATE),
                         ex.Message);
                 }
             }
@@ -1216,7 +1216,7 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action LoadChatBotFiles = () =>
         {
-            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.READING_AIML_BOT_CONFIGURATION));
+            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.READING_AIML_BOT_CONFIGURATION));
             try
             {
                 AIMLBot.isAcceptingUserInput = false;
@@ -1249,7 +1249,7 @@ namespace Corrade
             }
             catch (Exception ex)
             {
-                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_LOADING_AIML_BOT_FILES),
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_LOADING_AIML_BOT_FILES),
                     ex.Message);
                 return;
             }
@@ -1257,7 +1257,7 @@ namespace Corrade
             {
                 AIMLBotBrainCompiled = true;
             }
-            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.READ_AIML_BOT_CONFIGURATION));
+            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.READ_AIML_BOT_CONFIGURATION));
         };
 
         /// <summary>
@@ -1265,7 +1265,7 @@ namespace Corrade
         /// </summary>
         private static readonly System.Action SaveChatBotFiles = () =>
         {
-            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.WRITING_AIML_BOT_CONFIGURATION));
+            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.WRITING_AIML_BOT_CONFIGURATION));
             try
             {
                 AIMLBot.isAcceptingUserInput = false;
@@ -1276,10 +1276,10 @@ namespace Corrade
             }
             catch (Exception ex)
             {
-                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SAVING_AIML_BOT_FILES), ex.Message);
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_SAVING_AIML_BOT_FILES), ex.Message);
                 return;
             }
-            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.WROTE_AIML_BOT_CONFIGURATION));
+            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.WROTE_AIML_BOT_CONFIGURATION));
         };
 
         private static volatile bool runHTTPServer;
@@ -2114,7 +2114,7 @@ namespace Corrade
                 {
                     case true:
                         Parallel.ForEach(
-                            CSV.wasCSVToEnumerable(setting).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
+                            CSV.ToEnumerable(setting).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                             o =>
                             {
                                 Parallel.ForEach(
@@ -2134,7 +2134,7 @@ namespace Corrade
                 {
                     case true:
                         Parallel.ForEach(
-                            CSV.wasCSVToEnumerable(setting).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
+                            CSV.ToEnumerable(setting).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                             o =>
                             {
                                 Parallel.ForEach(
@@ -2657,8 +2657,8 @@ namespace Corrade
             uint dataTimeout)
         {
             List<AvatarGroup> avatarGroups = new List<AvatarGroup>();
-            Time.wasAdaptiveAlarm AvatarGroupsReceivedAlarm =
-                new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+            Time.DecayingAlarm AvatarGroupsReceivedAlarm =
+                new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
             object LockObject = new object();
             EventHandler<AvatarGroupsReplyEventArgs> AvatarGroupsReplyEventHandler = (sender, args) =>
             {
@@ -2797,7 +2797,7 @@ namespace Corrade
         private static Configuration.Group GetCorradeGroupFromMessage(string message)
         {
             string group =
-                wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.GROUP)),
+                wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
                     message));
             UUID groupUUID;
             return UUID.TryParse(group, out groupUUID)
@@ -3143,7 +3143,7 @@ namespace Corrade
                 image.Attributes.Append(Doc.CreateAttribute("id")).InnerText = colladaName;
                 image.Attributes.Append(Doc.CreateAttribute("name")).InnerText = colladaName;
                 image.AppendChild(Doc.CreateElement("init_from")).InnerText =
-                    Web.wasURIUnescapeDataString(name + "." + imageFormat.ToLower());
+                    Web.URIUnescapeDataString(name + "." + imageFormat.ToLower());
             }
 
             Func<XmlNode, string, string, List<float>, bool> addSource = (mesh, src_id, param, vals) =>
@@ -3541,8 +3541,8 @@ namespace Corrade
             {
                 case true:
                     IEnumerable<Avatar> avatars;
-                    Time.wasAdaptiveAlarm RangeUpdateAlarm =
-                        new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+                    Time.DecayingAlarm RangeUpdateAlarm =
+                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
                     EventHandler<AvatarUpdateEventArgs> AvatarUpdateEventHandler =
                         (sender, args) =>
                         {
@@ -3593,8 +3593,8 @@ namespace Corrade
             {
                 case true:
                     IEnumerable<Primitive> primitives;
-                    Time.wasAdaptiveAlarm RangeUpdateAlarm =
-                        new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+                    Time.DecayingAlarm RangeUpdateAlarm =
+                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
                     EventHandler<PrimEventArgs> ObjectUpdateEventHandler =
                         (sender, args) =>
                         {
@@ -3720,9 +3720,9 @@ namespace Corrade
             uint dataTimeout)
         {
             HashSet<Avatar> scansAvatars = new HashSet<Avatar>(avatars);
-            Dictionary<UUID, Time.wasAdaptiveAlarm> avatarAlarms =
-                new Dictionary<UUID, Time.wasAdaptiveAlarm>(scansAvatars.AsParallel()
-                    .ToDictionary(o => o.ID, p => new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType)));
+            Dictionary<UUID, Time.DecayingAlarm> avatarAlarms =
+                new Dictionary<UUID, Time.DecayingAlarm>(scansAvatars.AsParallel()
+                    .ToDictionary(o => o.ID, p => new Time.DecayingAlarm(corradeConfiguration.DataDecayType)));
             Dictionary<UUID, Avatar> avatarUpdates = new Dictionary<UUID, Avatar>(scansAvatars.AsParallel()
                 .ToDictionary(o => o.ID, p => p));
             object LockObject = new object();
@@ -3779,7 +3779,7 @@ namespace Corrade
                     Client.Avatars.RequestAvatarProperties(o.ID);
                     Client.Avatars.RequestAvatarPicks(o.ID);
                     Client.Avatars.RequestAvatarClassified(o.ID);
-                    Time.wasAdaptiveAlarm avatarAlarm;
+                    Time.DecayingAlarm avatarAlarm;
                     lock (LockObject)
                     {
                         avatarAlarm = avatarAlarms[o.ID];
@@ -3948,7 +3948,7 @@ namespace Corrade
             }
             Dictionary<UUID, uint> primitiveQueue = primitives.ToDictionary(o => o.ID, o => o.LocalID);
             object LockObject = new object();
-            Time.wasAdaptiveAlarm ObjectPropertiesAlarm = new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+            Time.DecayingAlarm ObjectPropertiesAlarm = new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
             EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler = (sender, args) =>
             {
                 ObjectPropertiesAlarm.Alarm(dataTimeout);
@@ -4147,7 +4147,7 @@ namespace Corrade
                         {
                             // or fail and append the fail message.
                             output.Add(string.Format(Utils.EnUsCulture, "{0} {1}",
-                                Reflection.wasGetDescriptionFromEnumValue(
+                                Reflection.GetDescriptionFromEnumValue(
                                     ConsoleError.COULD_NOT_WRITE_TO_CLIENT_LOG_FILE),
                                 ex.Message));
                         }
@@ -4220,7 +4220,7 @@ namespace Corrade
                         {
                             // or fail and append the fail message.
                             output.Add(string.Format(Utils.EnUsCulture, "{0} {1}",
-                                Reflection.wasGetDescriptionFromEnumValue(
+                                Reflection.GetDescriptionFromEnumValue(
                                     ConsoleError.COULD_NOT_WRITE_TO_CLIENT_LOG_FILE),
                                 ex.Message));
                         }
@@ -4359,7 +4359,7 @@ namespace Corrade
             // Load the configuration file.
             lock (ConfigurationFileLock)
             {
-                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.READING_CORRADE_CONFIGURATION));
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.READING_CORRADE_CONFIGURATION));
                 try
                 {
                     corradeConfiguration.Load(CORRADE_CONSTANTS.CONFIGURATION_FILE, ref corradeConfiguration);
@@ -4367,12 +4367,12 @@ namespace Corrade
                 catch (Exception ex)
                 {
                     Feedback(
-                        Reflection.wasGetDescriptionFromEnumValue(
+                        Reflection.GetDescriptionFromEnumValue(
                             ConsoleError.UNABLE_TO_LOAD_CORRADE_CONFIGURATION),
                         ex.Message);
                     return;
                 }
-                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.READ_CORRADE_CONFIGURATION));
             }
             if (!corradeConfiguration.Equals(default(Configuration)))
             {
@@ -4411,7 +4411,7 @@ namespace Corrade
             catch (Exception ex)
             {
                 Feedback(
-                    Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_CONFIGURATION_WATCHER),
+                    Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_CONFIGURATION_WATCHER),
                     ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
@@ -4430,7 +4430,7 @@ namespace Corrade
             catch (Exception ex)
             {
                 Feedback(
-                    Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_NOTIFICATIONS_WATCHER),
+                    Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_NOTIFICATIONS_WATCHER),
                     ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
@@ -4448,7 +4448,7 @@ namespace Corrade
             }
             catch (Exception ex)
             {
-                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_SCHEDULES_WATCHER),
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_SCHEDULES_WATCHER),
                     ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
@@ -4465,7 +4465,7 @@ namespace Corrade
             catch (Exception ex)
             {
                 Feedback(
-                    Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER),
+                    Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER),
                     ex.Message);
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
@@ -4507,7 +4507,7 @@ namespace Corrade
             // Check TOS
             if (!corradeConfiguration.TOSAccepted)
             {
-                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.TOS_NOT_ACCEPTED));
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.TOS_NOT_ACCEPTED));
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
             // Proceed to log-in.
@@ -4534,7 +4534,7 @@ namespace Corrade
                 }
                 catch (Exception ex)
                 {
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNKNOWN_IP_ADDRESS), ex.Message);
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNKNOWN_IP_ADDRESS), ex.Message);
                     Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
                 }
             }
@@ -4575,7 +4575,7 @@ namespace Corrade
                     }
                     catch (Exception ex)
                     {
-                        Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.CALLBACK_ERROR),
+                        Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.CALLBACK_ERROR),
                             ex.Message);
                     }
                 } while (runCallbackThread);
@@ -4600,7 +4600,7 @@ namespace Corrade
                     }
                     catch (Exception ex)
                     {
-                        Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_ERROR),
+                        Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_ERROR),
                             ex.Message);
                     }
                 } while (runNotificationThread);
@@ -4624,7 +4624,7 @@ namespace Corrade
                 () => HandleSelfIM(sender, args),
                 corradeConfiguration.MaximumInstantMessageThreads);
             // Log-in to the grid.
-            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.LOGGING_IN));
+            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.LOGGING_IN));
             Client.Network.BeginLogin(login);
             /*
              * The main thread spins around waiting for the semaphores to become invalidated,
@@ -4634,7 +4634,7 @@ namespace Corrade
              */
             WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => (WaitHandle) o).ToArray());
             // Now log-out.
-            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.LOGGING_OUT));
+            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.LOGGING_OUT));
             // Uninstall all installed handlers
             Client.Self.IM -= HandleSelfIM;
             Client.Network.SimChanged -= HandleRadarObjects;
@@ -4758,7 +4758,7 @@ namespace Corrade
             // Close HTTP server
             if (HttpListener.IsSupported && corradeConfiguration.EnableHTTPServer)
             {
-                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.STOPPING_HTTP_SERVER));
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.STOPPING_HTTP_SERVER));
                 runHTTPServer = false;
                 try
                 {
@@ -4854,7 +4854,7 @@ namespace Corrade
                 if (!LoggedOutEvent.WaitOne((int) corradeConfiguration.LogoutGrace, false))
                 {
                     Client.Network.LoggedOut -= LoggedOutEventHandler;
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.TIMEOUT_LOGGING_OUT));
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.TIMEOUT_LOGGING_OUT));
                 }
                 Client.Network.LoggedOut -= LoggedOutEventHandler;
             }
@@ -4951,10 +4951,10 @@ namespace Corrade
             switch (e.Success)
             {
                 case true:
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.APPEARANCE_SET_SUCCEEDED));
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.APPEARANCE_SET_SUCCEEDED));
                     break;
                 default:
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.APPEARANCE_SET_FAILED));
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.APPEARANCE_SET_FAILED));
                     break;
             }
         }
@@ -5061,7 +5061,7 @@ namespace Corrade
             }
             catch (Exception ex)
             {
-                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_PROCESSING_ABORTED),
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_PROCESSING_ABORTED),
                     ex.Message);
                 return;
             }
@@ -5101,7 +5101,7 @@ namespace Corrade
                         }
                         byte[] data =
                             Encoding.UTF8.GetBytes(
-                                KeyValue.wasKeyValueEncode(KeyValue.wasKeyValueEscape(result, wasOutput)));
+                                KeyValue.Encode(KeyValue.Escape(result, wasOutput)));
                         using (MemoryStream outputStream = new MemoryStream())
                         {
                             switch (corradeConfiguration.HTTPServerCompression)
@@ -5147,7 +5147,7 @@ namespace Corrade
                 }
                 catch (Exception ex)
                 {
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_PROCESSING_ABORTED),
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_PROCESSING_ABORTED),
                         ex.Message);
                 }
                 finally
@@ -5204,27 +5204,27 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(scriptDialogEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(scriptDialogEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 scriptDialogEventArgs.Message);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                 scriptDialogEventArgs.FirstName);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                 scriptDialogEventArgs.LastName);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.CHANNEL),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.CHANNEL),
                                 scriptDialogEventArgs.Channel.ToString(Utils.EnUsCulture));
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
                                 scriptDialogEventArgs.ObjectName);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
                                 scriptDialogEventArgs.ObjectID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OWNER),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
                                 scriptDialogEventArgs.OwnerID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.BUTTON),
-                                CSV.wasEnumerableToCSV(scriptDialogEventArgs.ButtonLabels));
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.BUTTON),
+                                CSV.FromEnumerable(scriptDialogEventArgs.ButtonLabels));
                         };
                         break;
                     case Configuration.Notifications.LocalChat:
@@ -5234,9 +5234,9 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(localChatEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(localChatEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
                             IEnumerable<string> name = GetAvatarNames(localChatEventArgs.FromName);
@@ -5245,25 +5245,25 @@ namespace Corrade
                                 List<string> fullName = new List<string>(name);
                                 if (fullName.Count.Equals(2))
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                         fullName.First());
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                         fullName.Last());
                                 }
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 localChatEventArgs.Message);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OWNER),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
                                 localChatEventArgs.OwnerID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
                                 localChatEventArgs.SourceID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
                                 localChatEventArgs.Position.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
                                 Enum.GetName(typeof (ChatSourceType), localChatEventArgs.SourceType));
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AUDIBLE),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AUDIBLE),
                                 Enum.GetName(typeof (ChatAudibleLevel), localChatEventArgs.AudibleLevel));
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.VOLUME),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.VOLUME),
                                 Enum.GetName(typeof (ChatType), localChatEventArgs.Type));
                         };
                         break;
@@ -5274,12 +5274,12 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(balanceEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(balanceEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.BALANCE),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.BALANCE),
                                 balanceEventArgs.Balance.ToString(Utils.EnUsCulture));
                         };
                         break;
@@ -5290,12 +5290,12 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(alertMessageEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(alertMessageEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 alertMessageEventArgs.Message);
                         };
                         break;
@@ -5309,9 +5309,9 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.wasEnumerableToCSV(GetStructuredData(inventoryOfferEventArgs,
-                                            CSV.wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.FromEnumerable(GetStructuredData(inventoryOfferEventArgs,
+                                            CSV.FromEnumerable(z.Data))));
                                     return;
                                 }
                                 List<string> inventoryObjectOfferedName =
@@ -5335,27 +5335,27 @@ namespace Corrade
                                 switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
                                 {
                                     case true:
-                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                             inventoryObjectOfferedName.First());
-                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                             inventoryObjectOfferedName.Last());
                                         break;
                                     default:
-                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
+                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
                                             inventoryObjectOfferedName.First());
                                         break;
                                 }
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
                                     inventoryOfferEventArgs.IM.FromAgentID.ToString());
                                 switch (inventoryOfferEventArgs.IM.Dialog)
                                 {
                                     case InstantMessageDialog.InventoryAccepted:
-                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
-                                            Reflection.wasGetNameFromEnumValue(Action.ACCEPT));
+                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
+                                            Reflection.GetNameFromEnumValue(Action.ACCEPT));
                                         break;
                                     case InstantMessageDialog.InventoryDeclined:
-                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
-                                            Reflection.wasGetNameFromEnumValue(Action.DECLINE));
+                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
+                                            Reflection.GetNameFromEnumValue(Action.DECLINE));
                                         break;
                                     case InstantMessageDialog.TaskInventoryOffered:
                                     case InstantMessageDialog.InventoryOffered:
@@ -5376,13 +5376,13 @@ namespace Corrade
                                                 {
                                                     case true:
                                                         notificationData.Add(
-                                                            Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
-                                                            Reflection.wasGetNameFromEnumValue(Action.ACCEPT));
+                                                            Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
+                                                            Reflection.GetNameFromEnumValue(Action.ACCEPT));
                                                         break;
                                                     default:
                                                         notificationData.Add(
-                                                            Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
-                                                            Reflection.wasGetNameFromEnumValue(Action.DECLINE));
+                                                            Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
+                                                            Reflection.GetNameFromEnumValue(Action.DECLINE));
                                                         break;
                                                 }
                                             }
@@ -5392,15 +5392,15 @@ namespace Corrade
                                             if (groups.Count > 0)
                                             {
                                                 notificationData.Add(
-                                                    Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
+                                                    Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
                                                     groups[1].Value);
                                             }
                                             InventoryOffers.Remove(inventoryObjectOfferedEventArgs.Key);
                                         }
                                         break;
                                 }
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DIRECTION),
-                                    Reflection.wasGetNameFromEnumValue(Action.REPLY));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DIRECTION),
+                                    Reflection.GetNameFromEnumValue(Action.REPLY));
                                 return;
                             }
                             if (inventoryOfferedType == typeof (InventoryObjectOfferedEventArgs))
@@ -5410,9 +5410,9 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.wasEnumerableToCSV(GetStructuredData(inventoryObjectOfferedEventArgs,
-                                            CSV.wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.FromEnumerable(GetStructuredData(inventoryObjectOfferedEventArgs,
+                                            CSV.FromEnumerable(z.Data))));
                                     return;
                                 }
                                 List<string> inventoryObjectOfferedName =
@@ -5436,32 +5436,32 @@ namespace Corrade
                                 switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
                                 {
                                     case true:
-                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                             inventoryObjectOfferedName.First());
-                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                             inventoryObjectOfferedName.Last());
                                         break;
                                     default:
-                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
+                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
                                             inventoryObjectOfferedName.First());
                                         break;
                                 }
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
                                     inventoryObjectOfferedEventArgs.Offer.FromAgentID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ASSET),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ASSET),
                                     inventoryObjectOfferedEventArgs.AssetType.ToString());
                                 GroupCollection groups =
                                     CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
                                         inventoryObjectOfferedEventArgs.Offer.Message).Groups;
                                 if (groups.Count > 0)
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
                                         groups[1].Value);
                                 }
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SESSION),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION),
                                     inventoryObjectOfferedEventArgs.Offer.IMSessionID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DIRECTION),
-                                    Reflection.wasGetNameFromEnumValue(Action.OFFER));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DIRECTION),
+                                    Reflection.GetNameFromEnumValue(Action.OFFER));
                             }
                         };
                         break;
@@ -5472,24 +5472,24 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(scriptQuestionEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(scriptQuestionEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
                                 scriptQuestionEventArgs.ItemID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TASK),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TASK),
                                 scriptQuestionEventArgs.TaskID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.PERMISSIONS),
-                                CSV.wasEnumerableToCSV(typeof (ScriptPermission).GetFields(BindingFlags.Public |
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS),
+                                CSV.FromEnumerable(typeof (ScriptPermission).GetFields(BindingFlags.Public |
                                                                                            BindingFlags.Static)
                                     .AsParallel().Where(
                                         p =>
                                             !(((int) p.GetValue(null) &
                                                (int) scriptQuestionEventArgs.Questions)).Equals(0))
                                     .Select(p => p.Name)));
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.REGION),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.REGION),
                                 scriptQuestionEventArgs.Simulator.Name);
                         };
                         break;
@@ -5503,9 +5503,9 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.wasEnumerableToCSV(GetStructuredData(friendInfoEventArgs,
-                                            CSV.wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.FromEnumerable(GetStructuredData(friendInfoEventArgs,
+                                            CSV.FromEnumerable(z.Data))));
                                     return;
                                 }
                                 IEnumerable<string> name = GetAvatarNames(friendInfoEventArgs.Friend.Name);
@@ -5514,21 +5514,21 @@ namespace Corrade
                                     List<string> fullName = new List<string>(name);
                                     if (fullName.Count.Equals(2))
                                     {
-                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                             fullName.First());
-                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                             fullName.Last());
                                     }
                                 }
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
                                     friendInfoEventArgs.Friend.UUID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.STATUS),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.STATUS),
                                     friendInfoEventArgs.Friend.IsOnline
-                                        ? Reflection.wasGetNameFromEnumValue(Action.ONLINE)
-                                        : Reflection.wasGetNameFromEnumValue(Action.OFFLINE));
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.RIGHTS),
+                                        ? Reflection.GetNameFromEnumValue(Action.ONLINE)
+                                        : Reflection.GetNameFromEnumValue(Action.OFFLINE));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.RIGHTS),
                                     // Return the friend rights as a nice CSV string.
-                                    CSV.wasEnumerableToCSV(typeof (FriendRights).GetFields(BindingFlags.Public |
+                                    CSV.FromEnumerable(typeof (FriendRights).GetFields(BindingFlags.Public |
                                                                                            BindingFlags.Static)
                                         .AsParallel().Where(
                                             p =>
@@ -5537,8 +5537,8 @@ namespace Corrade
                                                     .Equals(
                                                         0))
                                         .Select(p => p.Name)));
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.wasGetNameFromEnumValue(Action.UPDATE));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.GetNameFromEnumValue(Action.UPDATE));
                                 return;
                             }
                             if (friendshipNotificationType == typeof (FriendshipResponseEventArgs))
@@ -5548,9 +5548,9 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.wasEnumerableToCSV(GetStructuredData(friendshipResponseEventArgs,
-                                            CSV.wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.FromEnumerable(GetStructuredData(friendshipResponseEventArgs,
+                                            CSV.FromEnumerable(z.Data))));
                                     return;
                                 }
                                 IEnumerable<string> name = GetAvatarNames(friendshipResponseEventArgs.AgentName);
@@ -5559,16 +5559,16 @@ namespace Corrade
                                     List<string> fullName = new List<string>(name);
                                     if (fullName.Count.Equals(2))
                                     {
-                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                             fullName.First());
-                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                             fullName.Last());
                                     }
                                 }
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
                                     friendshipResponseEventArgs.AgentID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.wasGetNameFromEnumValue(Action.RESPONSE));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.GetNameFromEnumValue(Action.RESPONSE));
                                 return;
                             }
                             if (friendshipNotificationType == typeof (FriendshipOfferedEventArgs))
@@ -5578,9 +5578,9 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.wasEnumerableToCSV(GetStructuredData(friendshipOfferedEventArgs,
-                                            CSV.wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.FromEnumerable(GetStructuredData(friendshipOfferedEventArgs,
+                                            CSV.FromEnumerable(z.Data))));
                                     return;
                                 }
                                 IEnumerable<string> name = GetAvatarNames(friendshipOfferedEventArgs.AgentName);
@@ -5589,16 +5589,16 @@ namespace Corrade
                                     List<string> fullName = new List<string>(name);
                                     if (fullName.Count.Equals(2))
                                     {
-                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                             fullName.First());
-                                        notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                             fullName.Last());
                                     }
                                 }
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
                                     friendshipOfferedEventArgs.AgentID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.wasGetNameFromEnumValue(Action.REQUEST));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.GetNameFromEnumValue(Action.REQUEST));
                             }
                         };
                         break;
@@ -5609,9 +5609,9 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(teleportLureEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(teleportLureEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
                             IEnumerable<string> name = GetAvatarNames(teleportLureEventArgs.IM.FromAgentName);
@@ -5620,15 +5620,15 @@ namespace Corrade
                                 List<string> fullName = new List<string>(name);
                                 if (fullName.Count.Equals(2))
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                         fullName.First());
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                         fullName.Last());
                                 }
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
                                 teleportLureEventArgs.IM.FromAgentID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SESSION),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION),
                                 teleportLureEventArgs.IM.IMSessionID.ToString());
                         };
                         break;
@@ -5640,9 +5640,9 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(notificationGroupNoticeEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(notificationGroupNoticeEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
                             IEnumerable<string> name = GetAvatarNames(notificationGroupNoticeEventArgs.IM.FromAgentName);
@@ -5651,38 +5651,38 @@ namespace Corrade
                                 List<string> fullName = new List<string>(name);
                                 if (fullName.Count.Equals(2))
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                         fullName.First());
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                         fullName.Last());
                                 }
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
                                 notificationGroupNoticeEventArgs.IM.FromAgentID.ToString());
                             string[] noticeData = notificationGroupNoticeEventArgs.IM.Message.Split('|');
                             if (noticeData.Length > 0 && !string.IsNullOrEmpty(noticeData[0]))
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SUBJECT),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SUBJECT),
                                     noticeData[0]);
                             }
                             if (noticeData.Length > 1 && !string.IsNullOrEmpty(noticeData[1]))
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
                                     noticeData[1]);
                             }
                             switch (notificationGroupNoticeEventArgs.IM.Dialog)
                             {
                                 case InstantMessageDialog.GroupNoticeInventoryAccepted:
                                 case InstantMessageDialog.GroupNoticeInventoryDeclined:
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
                                         !notificationGroupNoticeEventArgs.IM.Dialog.Equals(
                                             InstantMessageDialog.GroupNoticeInventoryAccepted)
-                                            ? Reflection.wasGetNameFromEnumValue(Action.DECLINE)
-                                            : Reflection.wasGetNameFromEnumValue(Action.ACCEPT));
+                                            ? Reflection.GetNameFromEnumValue(Action.DECLINE)
+                                            : Reflection.GetNameFromEnumValue(Action.ACCEPT));
                                     break;
                                 case InstantMessageDialog.GroupNotice:
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
-                                        Reflection.wasGetNameFromEnumValue(Action.RECEIVED));
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
+                                        Reflection.GetNameFromEnumValue(Action.RECEIVED));
                                     break;
                             }
                         };
@@ -5695,9 +5695,9 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(notificationInstantMessage,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(notificationInstantMessage,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
                             IEnumerable<string> name = GetAvatarNames(notificationInstantMessage.IM.FromAgentName);
@@ -5706,15 +5706,15 @@ namespace Corrade
                                 List<string> fullName = new List<string>(name);
                                 if (fullName.Count.Equals(2))
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                         fullName.First());
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                         fullName.Last());
                                 }
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
                                 notificationInstantMessage.IM.FromAgentID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 notificationInstantMessage.IM.Message);
                         };
                         break;
@@ -5726,9 +5726,9 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(notificationRegionMessage,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(notificationRegionMessage,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
                             IEnumerable<string> name = GetAvatarNames(notificationRegionMessage.IM.FromAgentName);
@@ -5737,15 +5737,15 @@ namespace Corrade
                                 List<string> fullName = new List<string>(name);
                                 if (fullName.Count.Equals(2))
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                         fullName.First());
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                         fullName.Last());
                                 }
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
                                 notificationRegionMessage.IM.FromAgentID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 notificationRegionMessage.IM.Message);
                         };
                         break;
@@ -5758,20 +5758,20 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(notificationGroupMessage,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(notificationGroupMessage,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                 notificationGroupMessage.FirstName);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                 notificationGroupMessage.LastName);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
                                 notificationGroupMessage.AgentUUID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.GROUP),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
                                 notificationGroupMessage.GroupName);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 notificationGroupMessage.Message);
                         };
                         break;
@@ -5786,26 +5786,26 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.wasEnumerableToCSV(GetStructuredData(notificationViewerEffectEventArgs,
-                                            CSV.wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.FromEnumerable(GetStructuredData(notificationViewerEffectEventArgs,
+                                            CSV.FromEnumerable(z.Data))));
                                     return;
                                 }
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.EFFECT),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.EFFECT),
                                     notificationViewerEffectEventArgs.Type.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SOURCE),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SOURCE),
                                     notificationViewerEffectEventArgs.SourceID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET),
                                     notificationViewerEffectEventArgs.TargetID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
                                     notificationViewerEffectEventArgs.TargetPosition.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DURATION),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DURATION),
                                     notificationViewerEffectEventArgs.Duration.ToString(
                                         Utils.EnUsCulture));
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
                                     notificationViewerEffectEventArgs.EffectID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.wasGetNameFromEnumValue(Action.GENERIC));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.GetNameFromEnumValue(Action.GENERIC));
                                 return;
                             }
                             if (viewerEffectType == typeof (ViewerEffectPointAtEventArgs))
@@ -5815,24 +5815,24 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.wasEnumerableToCSV(GetStructuredData(notificationViewerPointAtEventArgs,
-                                            CSV.wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.FromEnumerable(GetStructuredData(notificationViewerPointAtEventArgs,
+                                            CSV.FromEnumerable(z.Data))));
                                     return;
                                 }
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SOURCE),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SOURCE),
                                     notificationViewerPointAtEventArgs.SourceID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET),
                                     notificationViewerPointAtEventArgs.TargetID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
                                     notificationViewerPointAtEventArgs.TargetPosition.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DURATION),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DURATION),
                                     notificationViewerPointAtEventArgs.Duration.ToString(
                                         Utils.EnUsCulture));
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
                                     notificationViewerPointAtEventArgs.EffectID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.wasGetNameFromEnumValue(Action.POINT));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.GetNameFromEnumValue(Action.POINT));
                                 return;
                             }
                             if (viewerEffectType == typeof (ViewerEffectLookAtEventArgs))
@@ -5842,24 +5842,24 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.wasEnumerableToCSV(GetStructuredData(notificationViewerLookAtEventArgs,
-                                            CSV.wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.FromEnumerable(GetStructuredData(notificationViewerLookAtEventArgs,
+                                            CSV.FromEnumerable(z.Data))));
                                     return;
                                 }
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SOURCE),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SOURCE),
                                     notificationViewerLookAtEventArgs.SourceID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET),
                                     notificationViewerLookAtEventArgs.TargetID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
                                     notificationViewerLookAtEventArgs.TargetPosition.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DURATION),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DURATION),
                                     notificationViewerLookAtEventArgs.Duration.ToString(
                                         Utils.EnUsCulture));
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
                                     notificationViewerLookAtEventArgs.EffectID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.wasGetNameFromEnumValue(Action.LOOK));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.GetNameFromEnumValue(Action.LOOK));
                             }
                         };
                         break;
@@ -5871,20 +5871,20 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(meanCollisionEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(meanCollisionEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGGRESSOR),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGGRESSOR),
                                 meanCollisionEventArgs.Aggressor.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MAGNITUDE),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MAGNITUDE),
                                 meanCollisionEventArgs.Magnitude.ToString(Utils.EnUsCulture));
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TIME),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
                                 meanCollisionEventArgs.Time.ToLongDateString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
                                 meanCollisionEventArgs.Type.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.VICTIM),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.VICTIM),
                                 meanCollisionEventArgs.Victim.ToString());
                         };
                         break;
@@ -5898,20 +5898,20 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.wasEnumerableToCSV(GetStructuredData(simChangedEventArgs,
-                                            CSV.wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.FromEnumerable(GetStructuredData(simChangedEventArgs,
+                                            CSV.FromEnumerable(z.Data))));
                                     return;
                                 }
                                 if (simChangedEventArgs.PreviousSimulator != null)
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OLD),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OLD),
                                         simChangedEventArgs.PreviousSimulator.Name);
                                 }
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NEW),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NEW),
                                     Client.Network.CurrentSim.Name);
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.wasGetNameFromEnumValue(Action.CHANGED));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.GetNameFromEnumValue(Action.CHANGED));
                                 return;
                             }
                             if (regionChangeType == typeof (RegionCrossedEventArgs))
@@ -5921,20 +5921,20 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.wasEnumerableToCSV(GetStructuredData(regionCrossedEventArgs,
-                                            CSV.wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.FromEnumerable(GetStructuredData(regionCrossedEventArgs,
+                                            CSV.FromEnumerable(z.Data))));
                                     return;
                                 }
                                 if (regionCrossedEventArgs.OldSimulator != null)
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OLD),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OLD),
                                         regionCrossedEventArgs.OldSimulator.Name);
                                 }
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NEW),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NEW),
                                     regionCrossedEventArgs.NewSimulator.Name);
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.wasGetNameFromEnumValue(Action.CROSSED));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.GetNameFromEnumValue(Action.CROSSED));
                             }
                         };
                         break;
@@ -5946,18 +5946,18 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(terseObjectUpdateEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(terseObjectUpdateEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
                                 terseObjectUpdateEventArgs.Prim.ID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
                                 terseObjectUpdateEventArgs.Prim.Position.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ROTATION),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION),
                                 terseObjectUpdateEventArgs.Prim.Rotation.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
                                 terseObjectUpdateEventArgs.Prim.PrimData.PCode.ToString());
                         };
                         break;
@@ -5969,9 +5969,9 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(notificationTypingMessageEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(notificationTypingMessageEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
                             IEnumerable<string> name =
@@ -5981,23 +5981,23 @@ namespace Corrade
                                 List<string> fullName = new List<string>(name);
                                 if (fullName.Count.Equals(2))
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                         fullName.First());
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                         fullName.Last());
                                 }
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
                                 notificationTypingMessageEventArgs.IM.FromAgentID.ToString());
                             switch (notificationTypingMessageEventArgs.IM.Dialog)
                             {
                                 case InstantMessageDialog.StartTyping:
                                 case InstantMessageDialog.StopTyping:
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
                                         !notificationTypingMessageEventArgs.IM.Dialog.Equals(
                                             InstantMessageDialog.StartTyping)
-                                            ? Reflection.wasGetNameFromEnumValue(Action.STOP)
-                                            : Reflection.wasGetNameFromEnumValue(Action.START));
+                                            ? Reflection.GetNameFromEnumValue(Action.STOP)
+                                            : Reflection.GetNameFromEnumValue(Action.START));
                                     break;
                             }
                         };
@@ -6010,9 +6010,9 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(notificationGroupInviteEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(notificationGroupInviteEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
                             IEnumerable<string> name = GetAvatarNames(notificationGroupInviteEventArgs.IM.FromAgentName);
@@ -6021,22 +6021,22 @@ namespace Corrade
                                 List<string> fullName = new List<string>(name);
                                 if (fullName.Count.Equals(2))
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                         fullName.First());
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                         fullName.Last());
                                 }
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
                                 notificationGroupInviteEventArgs.IM.FromAgentID.ToString());
                             lock (GroupInviteLock)
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.GROUP),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
                                     GroupInvites.AsParallel().FirstOrDefault(
                                         p => p.Session.Equals(notificationGroupInviteEventArgs.IM.IMSessionID))
                                         .Group);
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SESSION),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION),
                                 notificationGroupInviteEventArgs.IM.IMSessionID.ToString());
                         };
                         break;
@@ -6048,34 +6048,34 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(notificationMoneyBalanceEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(notificationMoneyBalanceEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.BALANCE),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.BALANCE),
                                 notificationMoneyBalanceEventArgs.Balance.ToString(
                                     Utils.EnUsCulture));
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DESCRIPTION),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION),
                                 notificationMoneyBalanceEventArgs.Description);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.COMMITTED),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.COMMITTED),
                                 notificationMoneyBalanceEventArgs.MetersCommitted.ToString(
                                     Utils.EnUsCulture));
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.CREDIT),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.CREDIT),
                                 notificationMoneyBalanceEventArgs.MetersCredit.ToString(
                                     Utils.EnUsCulture));
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SUCCESS),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SUCCESS),
                                 notificationMoneyBalanceEventArgs.Success.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
                                 notificationMoneyBalanceEventArgs.TransactionID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AMOUNT),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AMOUNT),
                                 notificationMoneyBalanceEventArgs.TransactionInfo.Amount.ToString(
                                     Utils.EnUsCulture));
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TARGET),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET),
                                 notificationMoneyBalanceEventArgs.TransactionInfo.DestID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.SOURCE),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SOURCE),
                                 notificationMoneyBalanceEventArgs.TransactionInfo.SourceID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TRANSACTION),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TRANSACTION),
                                 Enum.GetName(typeof (MoneyTransactionType),
                                     notificationMoneyBalanceEventArgs.TransactionInfo.TransactionType));
                         };
@@ -6089,9 +6089,9 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(groupMembershipEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(groupMembershipEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
                             IEnumerable<string> name = GetAvatarNames(groupMembershipEventArgs.AgentName);
@@ -6100,25 +6100,25 @@ namespace Corrade
                                 List<string> fullName = new List<string>(name);
                                 if (fullName.Count.Equals(2))
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                         fullName.First());
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                         fullName.Last());
                                 }
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.AGENT),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
                                 groupMembershipEventArgs.AgentUUID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.GROUP),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
                                 groupMembershipEventArgs.GroupName);
                             switch (groupMembershipEventArgs.Action)
                             {
                                 case Action.JOINED:
                                 case Action.PARTED:
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
                                         !groupMembershipEventArgs.Action.Equals(
                                             Action.JOINED)
-                                            ? Reflection.wasGetNameFromEnumValue(Action.PARTED)
-                                            : Reflection.wasGetNameFromEnumValue(Action.JOINED));
+                                            ? Reflection.GetNameFromEnumValue(Action.PARTED)
+                                            : Reflection.GetNameFromEnumValue(Action.JOINED));
                                     break;
                             }
                         };
@@ -6130,22 +6130,22 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(loadURLEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(loadURLEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
                                 loadURLEventArgs.ObjectName);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
                                 loadURLEventArgs.ObjectID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OWNER),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
                                 loadURLEventArgs.OwnerID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.GROUP),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
                                 loadURLEventArgs.OwnerIsGroup.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 loadURLEventArgs.Message);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.URL),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.URL),
                                 loadURLEventArgs.URL);
                         };
                         break;
@@ -6156,18 +6156,18 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(ownerSayEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(ownerSayEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 ownerSayEventArgs.Message);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
                                 ownerSayEventArgs.SourceID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
                                 ownerSayEventArgs.FromName);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
                                 ownerSayEventArgs.Position.ToString());
                         };
                         break;
@@ -6178,20 +6178,20 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(regionSayToEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(regionSayToEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 regionSayToEventArgs.Message);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OWNER),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
                                 regionSayToEventArgs.OwnerID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
                                 regionSayToEventArgs.SourceID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
                                 regionSayToEventArgs.FromName);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
                                 regionSayToEventArgs.Position.ToString());
                         };
                         break;
@@ -6203,18 +6203,18 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(notificationObjectInstantMessage,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(notificationObjectInstantMessage,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OWNER),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
                                 notificationObjectInstantMessage.IM.FromAgentID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
                                 notificationObjectInstantMessage.IM.IMSessionID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
                                 notificationObjectInstantMessage.IM.FromAgentName);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 notificationObjectInstantMessage.IM.Message);
                         };
                         break;
@@ -6225,19 +6225,19 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(RLVEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(RLVEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
                                 RLVEventArgs.SourceID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
                                 RLVEventArgs.FromName);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
                                 RLVEventArgs.Position.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.RLV),
-                                CSV.wasEnumerableToCSV(wasRLVToString(RLVEventArgs.Message)));
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.RLV),
+                                CSV.FromEnumerable(wasRLVToString(RLVEventArgs.Message)));
                         };
                         break;
                     case Configuration.Notifications.DebugMessage:
@@ -6247,18 +6247,18 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(DebugEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(DebugEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
                                 DebugEventArgs.SourceID.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
                                 DebugEventArgs.FromName);
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
                                 DebugEventArgs.Position.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
                                 DebugEventArgs.Message);
                         };
                         break;
@@ -6278,25 +6278,25 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.wasEnumerableToCSV(GetStructuredData(avatarUpdateEventArgs,
-                                            CSV.wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.FromEnumerable(GetStructuredData(avatarUpdateEventArgs,
+                                            CSV.FromEnumerable(z.Data))));
                                     return;
                                 }
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                     avatarUpdateEventArgs.Avatar.FirstName);
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                     avatarUpdateEventArgs.Avatar.LastName);
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
                                     avatarUpdateEventArgs.Avatar.ID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
                                     avatarUpdateEventArgs.Avatar.Position.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ROTATION),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION),
                                     avatarUpdateEventArgs.Avatar.Rotation.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
                                     avatarUpdateEventArgs.Avatar.PrimData.PCode.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.wasGetNameFromEnumValue(Action.APPEAR));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.GetNameFromEnumValue(Action.APPEAR));
                                 return;
                             }
                             if (radarAvatarsType == typeof (KillObjectEventArgs))
@@ -6323,25 +6323,25 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.wasEnumerableToCSV(GetStructuredData(killObjectEventArgs,
-                                            CSV.wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.FromEnumerable(GetStructuredData(killObjectEventArgs,
+                                            CSV.FromEnumerable(z.Data))));
                                     return;
                                 }
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
                                     avatar.FirstName);
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.LASTNAME),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
                                     avatar.LastName);
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
                                     avatar.ID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
                                     avatar.Position.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ROTATION),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION),
                                     avatar.Rotation.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
                                     avatar.PrimData.PCode.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.wasGetNameFromEnumValue(Action.VANISH));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.GetNameFromEnumValue(Action.VANISH));
                             }
                         };
                         break;
@@ -6361,23 +6361,23 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.wasEnumerableToCSV(GetStructuredData(primEventArgs,
-                                            CSV.wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.FromEnumerable(GetStructuredData(primEventArgs,
+                                            CSV.FromEnumerable(z.Data))));
                                     return;
                                 }
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OWNER),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
                                     primEventArgs.Prim.OwnerID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
                                     primEventArgs.Prim.ID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
                                     primEventArgs.Prim.Position.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ROTATION),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION),
                                     primEventArgs.Prim.Rotation.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
                                     primEventArgs.Prim.PrimData.PCode.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.wasGetNameFromEnumValue(Action.APPEAR));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.GetNameFromEnumValue(Action.APPEAR));
                                 return;
                             }
                             if (radarPrimitivesType == typeof (KillObjectEventArgs))
@@ -6403,23 +6403,23 @@ namespace Corrade
                                 // In case we should send specific data then query the structure and return.
                                 if (z.Data != null && z.Data.Any())
                                 {
-                                    notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.wasEnumerableToCSV(GetStructuredData(killObjectEventArgs,
-                                            CSV.wasEnumerableToCSV(z.Data))));
+                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                        CSV.FromEnumerable(GetStructuredData(killObjectEventArgs,
+                                            CSV.FromEnumerable(z.Data))));
                                     return;
                                 }
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.OWNER),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
                                     prim.OwnerID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ID),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
                                     prim.ID.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
                                     prim.Position.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ROTATION),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION),
                                     prim.Rotation.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ENTITY),
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
                                     prim.PrimData.PCode.ToString());
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.wasGetNameFromEnumValue(Action.VANISH));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
+                                    Reflection.GetNameFromEnumValue(Action.VANISH));
                             }
                         };
                         break;
@@ -6431,22 +6431,22 @@ namespace Corrade
                             // In case we should send specific data then query the structure and return.
                             if (z.Data != null && z.Data.Any())
                             {
-                                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.wasEnumerableToCSV(GetStructuredData(scriptControlEventArgs,
-                                        CSV.wasEnumerableToCSV(z.Data))));
+                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
+                                    CSV.FromEnumerable(GetStructuredData(scriptControlEventArgs,
+                                        CSV.FromEnumerable(z.Data))));
                                 return;
                             }
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.CONTROLS),
-                                CSV.wasEnumerableToCSV(typeof (ScriptControlChange).GetFields(BindingFlags.Public |
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.CONTROLS),
+                                CSV.FromEnumerable(typeof (ScriptControlChange).GetFields(BindingFlags.Public |
                                                                                               BindingFlags.Static)
                                     .AsParallel().Where(
                                         p =>
                                             !(((uint) p.GetValue(null) &
                                                (uint) scriptControlEventArgs.Controls)).Equals(0))
                                     .Select(p => p.Name)));
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.PASS),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.PASS),
                                 scriptControlEventArgs.Pass.ToString());
-                            notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TAKE),
+                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TAKE),
                                 scriptControlEventArgs.Take.ToString());
                         };
                         break;
@@ -6454,7 +6454,7 @@ namespace Corrade
                         execute = () =>
                         {
                             throw new Exception(
-                                Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNKNOWN_NOTIFICATION_TYPE));
+                                Reflection.GetDescriptionFromEnumValue(ConsoleError.UNKNOWN_NOTIFICATION_TYPE));
                         };
                         break;
                 }
@@ -6465,7 +6465,7 @@ namespace Corrade
                 }
                 catch (Exception ex)
                 {
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_ERROR), ex.Message);
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_ERROR), ex.Message);
                     return;
                 }
 
@@ -6473,8 +6473,8 @@ namespace Corrade
                 if (!notificationData.Any()) return;
 
                 // Add the notification type.
-                notificationData.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE),
-                    Reflection.wasGetNameFromEnumValue(notification));
+                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE),
+                    Reflection.GetNameFromEnumValue(notification));
 
                 // Build the afterburn.
                 if (z.Afterburn != null && z.Afterburn.Any())
@@ -6504,12 +6504,12 @@ namespace Corrade
                                         NotificationQueue.Enqueue(new NotificationQueueElement
                                         {
                                             URL = p,
-                                            message = KeyValue.wasKeyValueEscape(notificationData, wasOutput)
+                                            message = KeyValue.Escape(notificationData, wasOutput)
                                         });
                                         break;
                                     default:
                                         Feedback(
-                                            Reflection.wasGetDescriptionFromEnumValue(
+                                            Reflection.GetDescriptionFromEnumValue(
                                                 ConsoleError.NOTIFICATION_THROTTLED));
                                         break;
                                 }
@@ -6529,13 +6529,13 @@ namespace Corrade
                                     case true:
                                         NotificationTCPQueue.Enqueue(new NotificationTCPQueueElement
                                         {
-                                            message = KeyValue.wasKeyValueEscape(notificationData, wasOutput),
+                                            message = KeyValue.Escape(notificationData, wasOutput),
                                             IPEndPoint = p
                                         });
                                         break;
                                     default:
                                         Feedback(
-                                            Reflection.wasGetDescriptionFromEnumValue(
+                                            Reflection.GetDescriptionFromEnumValue(
                                                 ConsoleError.TCP_NOTIFICATION_THROTTLED));
                                         break;
                                 }
@@ -6670,7 +6670,7 @@ namespace Corrade
                             {
                                 // or fail and append the fail message.
                                 Feedback(
-                                    Reflection.wasGetDescriptionFromEnumValue(
+                                    Reflection.GetDescriptionFromEnumValue(
                                         ConsoleError.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
                                     ex.Message);
                             }
@@ -6852,7 +6852,7 @@ namespace Corrade
             {
                 if (
                     !RLVRules.AsParallel()
-                        .Any(o => o.Behaviour.Equals(Reflection.wasGetNameFromEnumValue(RLVBehaviour.ACCEPTPERMISSION))))
+                        .Any(o => o.Behaviour.Equals(Reflection.GetNameFromEnumValue(RLVBehaviour.ACCEPTPERMISSION))))
                     return;
                 lock (ClientInstanceSelfLock)
                 {
@@ -6863,25 +6863,25 @@ namespace Corrade
 
         private static void HandleDisconnected(object sender, DisconnectedEventArgs e)
         {
-            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.DISCONNECTED));
+            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.DISCONNECTED));
             ConnectionSemaphores['l'].Set();
         }
 
         private static void HandleEventQueueRunning(object sender, EventQueueRunningEventArgs e)
         {
-            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.EVENT_QUEUE_STARTED));
+            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.EVENT_QUEUE_STARTED));
         }
 
         private static void HandleSimulatorConnected(object sender, SimConnectedEventArgs e)
         {
-            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.SIMULATOR_CONNECTED));
+            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.SIMULATOR_CONNECTED));
         }
 
         private static void HandleSimulatorDisconnected(object sender, SimDisconnectedEventArgs e)
         {
             // if any simulators are still connected, we are not disconnected
             if (Client.Network.Simulators.Any()) return;
-            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ALL_SIMULATORS_DISCONNECTED));
+            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ALL_SIMULATORS_DISCONNECTED));
             ConnectionSemaphores['s'].Set();
         }
 
@@ -6891,7 +6891,7 @@ namespace Corrade
             {
                 case LoginStatus.Success:
                     // Login succeeded so start all the updates.
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_SUCCEEDED));
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.LOGIN_SUCCEEDED));
 
 
                     // Start inventory update thread.
@@ -6938,7 +6938,7 @@ namespace Corrade
 
                     break;
                 case LoginStatus.Failed:
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.LOGIN_FAILED), e.FailReason);
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.LOGIN_FAILED), e.FailReason);
                     ConnectionSemaphores['l'].Set();
                     break;
             }
@@ -6978,7 +6978,7 @@ namespace Corrade
             switch (e.Status)
             {
                 case TeleportStatus.Finished:
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_SUCCEEDED));
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.TELEPORT_SUCCEEDED));
                     // Set current group to land group.
                     new Thread(() =>
                     {
@@ -6993,7 +6993,7 @@ namespace Corrade
                         );
                     break;
                 case TeleportStatus.Failed:
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_FAILED));
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.TELEPORT_FAILED));
                     break;
             }
         }
@@ -7028,7 +7028,7 @@ namespace Corrade
                                 o.FirstName.Equals(fullName.First(), StringComparison.OrdinalIgnoreCase) &&
                                 o.LastName.Equals(fullName.Last(), StringComparison.OrdinalIgnoreCase)))
                         return;
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ACCEPTED_FRIENDSHIP),
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ACCEPTED_FRIENDSHIP),
                         args.IM.FromAgentName);
                     Client.Friends.AcceptFriendship(args.IM.FromAgentID, args.IM.IMSessionID);
                     break;
@@ -7051,12 +7051,12 @@ namespace Corrade
                     {
                         if (
                             RLVRules.AsParallel()
-                                .Any(o => o.Behaviour.Equals(Reflection.wasGetNameFromEnumValue(RLVBehaviour.ACCEPTTP))))
+                                .Any(o => o.Behaviour.Equals(Reflection.GetNameFromEnumValue(RLVBehaviour.ACCEPTTP))))
                         {
                             if (IsSecondLife() && !TimedTeleportThrottle.IsSafe)
                             {
                                 // or fail and append the fail message.
-                                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_THROTTLED));
+                                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.TELEPORT_THROTTLED));
                                 return;
                             }
                             lock (ClientInstanceSelfLock)
@@ -7098,7 +7098,7 @@ namespace Corrade
                     if (IsSecondLife() && !TimedTeleportThrottle.IsSafe)
                     {
                         // or fail and append the fail message.
-                        Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.TELEPORT_THROTTLED));
+                        Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.TELEPORT_THROTTLED));
                         return;
                     }
                     lock (ClientInstanceSelfLock)
@@ -7248,7 +7248,7 @@ namespace Corrade
                                         {
                                             // or fail and append the fail message.
                                             Feedback(
-                                                Reflection.wasGetDescriptionFromEnumValue(
+                                                Reflection.GetDescriptionFromEnumValue(
                                                     ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
                                                 ex.Message);
                                         }
@@ -7310,7 +7310,7 @@ namespace Corrade
                                     {
                                         // or fail and append the fail message.
                                         Feedback(
-                                            Reflection.wasGetDescriptionFromEnumValue(
+                                            Reflection.GetDescriptionFromEnumValue(
                                                 ConsoleError.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
                                             ex.Message);
                                     }
@@ -7358,7 +7358,7 @@ namespace Corrade
                                     {
                                         // or fail and append the fail message.
                                         Feedback(
-                                            Reflection.wasGetDescriptionFromEnumValue(
+                                            Reflection.GetDescriptionFromEnumValue(
                                                 ConsoleError.COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE),
                                             ex.Message);
                                     }
@@ -7471,24 +7471,24 @@ namespace Corrade
             try
             {
                 // Find command.
-                RLVBehaviour RLVBehaviour = Reflection.wasGetEnumValueFromName<RLVBehaviour>(RLVrule.Behaviour);
+                RLVBehaviour RLVBehaviour = Reflection.GetEnumValueFromName<RLVBehaviour>(RLVrule.Behaviour);
                 IsRLVBehaviourAttribute isRLVBehaviourAttribute =
-                    Reflection.wasGetAttributeFromEnumValue<IsRLVBehaviourAttribute>(RLVBehaviour);
+                    Reflection.GetAttributeFromEnumValue<IsRLVBehaviourAttribute>(RLVBehaviour);
                 if (isRLVBehaviourAttribute == null || !isRLVBehaviourAttribute.IsRLVBehaviour)
                 {
                     throw new Exception(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR,
-                        Reflection.wasGetDescriptionFromEnumValue(ConsoleError.BEHAVIOUR_NOT_IMPLEMENTED),
+                        Reflection.GetDescriptionFromEnumValue(ConsoleError.BEHAVIOUR_NOT_IMPLEMENTED),
                         RLVrule.Behaviour));
                 }
                 RLVBehaviourAttribute execute =
-                    Reflection.wasGetAttributeFromEnumValue<RLVBehaviourAttribute>(RLVBehaviour);
+                    Reflection.GetAttributeFromEnumValue<RLVBehaviourAttribute>(RLVBehaviour);
 
                 // Execute the command.
                 execute.RLVBehaviour.Invoke(message, RLVrule, senderUUID);
             }
             catch (Exception ex)
             {
-                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.FAILED_TO_MANIFEST_RLV_BEHAVIOUR),
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.FAILED_TO_MANIFEST_RLV_BEHAVIOUR),
                     ex.Message);
             }
 
@@ -7501,18 +7501,18 @@ namespace Corrade
         {
             // Get password.
             string password =
-                wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PASSWORD)),
+                wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PASSWORD)),
                     message));
             // Bail if no password set.
             if (string.IsNullOrEmpty(password)) return null;
             // Authenticate the request against the group password.
             if (!Authenticate(commandGroup.Name, password))
             {
-                Feedback(commandGroup.Name, Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ACCESS_DENIED));
+                Feedback(commandGroup.Name, Reflection.GetDescriptionFromEnumValue(ConsoleError.ACCESS_DENIED));
                 return null;
             }
             // Censor password.
-            message = KeyValue.wasKeyValueSet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PASSWORD)),
+            message = KeyValue.Set(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PASSWORD)),
                 CORRADE_CONSTANTS.PASSWORD_CENSOR, message);
             /*
              * OpenSim sends the primitive UUID through args.IM.FromAgentID while Second Life properly sends
@@ -7529,7 +7529,7 @@ namespace Corrade
                         !AgentUUIDToName(fromAgentID, corradeConfiguration.ServicesTimeout,
                             ref sender))
                     {
-                        Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.AGENT_NOT_FOUND),
+                        Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.AGENT_NOT_FOUND),
                             fromAgentID.ToString());
                         return null;
                     }
@@ -7558,7 +7558,7 @@ namespace Corrade
                         o => o.Name.Equals(commandGroup.Name, StringComparison.OrdinalIgnoreCase)).Workers)
                 {
                     // And refuse to proceed if they have.
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.WORKERS_EXCEEDED),
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.WORKERS_EXCEEDED),
                         commandGroup.Name);
                     return null;
                 }
@@ -7585,19 +7585,19 @@ namespace Corrade
             // do not send a callback if the callback queue is saturated
             if (CallbackQueue.Count >= corradeConfiguration.CallbackQueueLength)
             {
-                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.CALLBACK_THROTTLED));
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.CALLBACK_THROTTLED));
                 return result;
             }
             // send callback if registered
             string url =
-                wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.CALLBACK)),
+                wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.CALLBACK)),
                     message));
             // if no url was provided, do not send the callback
             if (string.IsNullOrEmpty(url)) return result;
             CallbackQueue.Enqueue(new CallbackQueueElement
             {
                 URL = url,
-                message = KeyValue.wasKeyValueEscape(result, wasOutput)
+                message = KeyValue.Escape(result, wasOutput)
             });
             return result;
         }
@@ -7612,16 +7612,16 @@ namespace Corrade
             Dictionary<string, string> result = new Dictionary<string, string>
             {
                 // add the command group to the response.
-                {Reflection.wasGetNameFromEnumValue(ScriptKeys.GROUP), corradeCommandParameters.Group.Name}
+                {Reflection.GetNameFromEnumValue(ScriptKeys.GROUP), corradeCommandParameters.Group.Name}
             };
 
             // retrieve the command from the message.
             string command =
-                wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.COMMAND)),
+                wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND)),
                     corradeCommandParameters.Message));
             if (!string.IsNullOrEmpty(command))
             {
-                result.Add(Reflection.wasGetNameFromEnumValue(ScriptKeys.COMMAND), command);
+                result.Add(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND), command);
             }
 
             // execute command, sift data and check for errors
@@ -7629,31 +7629,31 @@ namespace Corrade
             try
             {
                 // Find command.
-                ScriptKeys scriptKey = Reflection.wasGetEnumValueFromName<ScriptKeys>(command);
+                ScriptKeys scriptKey = Reflection.GetEnumValueFromName<ScriptKeys>(command);
                 IsCorradeCommandAttribute isCommandAttribute =
-                    Reflection.wasGetAttributeFromEnumValue<IsCorradeCommandAttribute>(scriptKey);
+                    Reflection.GetAttributeFromEnumValue<IsCorradeCommandAttribute>(scriptKey);
                 if (isCommandAttribute == null || !isCommandAttribute.IsCorradeCorradeCommand)
                 {
                     throw new ScriptException(ScriptError.COMMAND_NOT_FOUND);
                 }
                 CorradeCommandAttribute execute =
-                    Reflection.wasGetAttributeFromEnumValue<CorradeCommandAttribute>(scriptKey);
+                    Reflection.GetAttributeFromEnumValue<CorradeCommandAttribute>(scriptKey);
 
                 // Execute the command.
                 execute.CorradeCommand.Invoke(corradeCommandParameters, result);
 
                 // Sift the results
                 string pattern =
-                    wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.SIFT)),
+                    wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SIFT)),
                         corradeCommandParameters.Message));
                 string data = string.Empty;
                 switch (
                     !string.IsNullOrEmpty(pattern) &&
-                    result.TryGetValue(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), out data) &&
+                    result.TryGetValue(Reflection.GetNameFromEnumValue(ResultKeys.DATA), out data) &&
                     !string.IsNullOrEmpty(data))
                 {
                     case true:
-                        data = CSV.wasEnumerableToCSV((((new Regex(pattern, RegexOptions.Compiled)).Matches(data)
+                        data = CSV.FromEnumerable((((new Regex(pattern, RegexOptions.Compiled)).Matches(data)
                             .AsParallel()
                             .Cast<Match>()
                             .Select(m => m.Groups)).SelectMany(
@@ -7664,10 +7664,10 @@ namespace Corrade
                         switch (!string.IsNullOrEmpty(data))
                         {
                             case true:
-                                result[Reflection.wasGetNameFromEnumValue(ResultKeys.DATA)] = data;
+                                result[Reflection.GetNameFromEnumValue(ResultKeys.DATA)] = data;
                                 break;
                             default:
-                                result.Remove(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA));
+                                result.Remove(Reflection.GetNameFromEnumValue(ResultKeys.DATA));
                                 break;
                         }
                         break;
@@ -7678,29 +7678,29 @@ namespace Corrade
             catch (ScriptException sx)
             {
                 // we have a script error so return a status as well
-                result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.ERROR), sx.Message);
-                result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.STATUS),
+                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.ERROR), sx.Message);
+                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.STATUS),
                     sx.Status.ToString());
             }
             catch (Exception ex)
             {
                 // we have a generic exception so return the message
-                result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.ERROR), ex.Message);
+                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.ERROR), ex.Message);
             }
 
             // add the final success status
-            result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.SUCCESS),
+            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.SUCCESS),
                 success.ToString(Utils.EnUsCulture));
 
             // add the time stamp
-            result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.TIME),
+            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.TIME),
                 DateTime.Now.ToUniversalTime().ToString(LINDEN_CONSTANTS.LSL.DATE_TIME_STAMP));
 
             // build afterburn
             object AfterBurnLock = new object();
-            HashSet<string> resultKeys = new HashSet<string>(Reflection.wasGetEnumNames<ResultKeys>());
-            HashSet<string> scriptKeys = new HashSet<string>(Reflection.wasGetEnumNames<ScriptKeys>());
-            Parallel.ForEach(KeyValue.wasKeyValueDecode(corradeCommandParameters.Message), o =>
+            HashSet<string> resultKeys = new HashSet<string>(Reflection.GetEnumNames<ResultKeys>());
+            HashSet<string> scriptKeys = new HashSet<string>(Reflection.GetEnumNames<ScriptKeys>());
+            Parallel.ForEach(KeyValue.Decode(corradeCommandParameters.Message), o =>
             {
                 // remove keys that are script keys, result keys or invalid key-value pairs
                 if (string.IsNullOrEmpty(o.Key) || resultKeys.Contains(wasInput(o.Key)) ||
@@ -7736,7 +7736,7 @@ namespace Corrade
             }
             List<string> data;
             object LockObject = new object();
-            Parallel.ForEach(CSV.wasCSVToEnumerable(query).AsParallel().Where(o => !string.IsNullOrEmpty(o)), name =>
+            Parallel.ForEach(CSV.ToEnumerable(query).AsParallel().Where(o => !string.IsNullOrEmpty(o)), name =>
             {
                 KeyValuePair<FieldInfo, object> fi =
                     wasGetFields(structure, structure.GetType().Name).AsParallel()
@@ -7783,7 +7783,7 @@ namespace Corrade
         {
             foreach (
                 KeyValuePair<string, string> match in
-                    CSV.wasCSVToEnumerable(data).AsParallel().Select((o, p) => new {o, p})
+                    CSV.ToEnumerable(data).AsParallel().Select((o, p) => new {o, p})
                         .GroupBy(q => q.p/2, q => q.o)
                         .Select(o => o.ToList())
                         .TakeWhile(o => o.Count%2 == 0)
@@ -7850,7 +7850,7 @@ namespace Corrade
                 {
                     using (StreamWriter dataStream = new StreamWriter(requestStream))
                     {
-                        dataStream.Write(KeyValue.wasKeyValueEncode(message));
+                        dataStream.Write(KeyValue.Encode(message));
                     }
                 }
                 // read response
@@ -7870,7 +7870,7 @@ namespace Corrade
             }
             catch (Exception ex)
             {
-                Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_MAKING_POST_REQUEST), URL,
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_MAKING_POST_REQUEST), URL,
                     ex.Message);
             }
         }
@@ -8029,12 +8029,12 @@ namespace Corrade
             catch (Exception ex)
             {
                 Feedback(
-                    Reflection.wasGetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER),
+                    Reflection.GetDescriptionFromEnumValue(ConsoleError.ERROR_SETTING_UP_AIML_CONFIGURATION_WATCHER),
                     ex.Message);
             }
 
             // Dynamically disable or enable notifications.
-            Parallel.ForEach(Reflection.wasGetEnumValues<Configuration.Notifications>(), o =>
+            Parallel.ForEach(Reflection.GetEnumValues<Configuration.Notifications>(), o =>
             {
                 bool enabled = configuration.Groups.AsParallel().Any(
                     p =>
@@ -8289,7 +8289,7 @@ namespace Corrade
                 case true:
                     // Don't start if the TCP notifications server is already started.
                     if (TCPNotificationsThread != null) return;
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.STARTING_TCP_NOTIFICATIONS_SERVER));
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.STARTING_TCP_NOTIFICATIONS_SERVER));
                     runTCPNotificationsServer = true;
                     // Start the TCP notifications server.
                     TCPNotificationsThread = new Thread(() =>
@@ -8327,19 +8327,19 @@ namespace Corrade
                                                 switch (!commandGroup.Equals(default(Configuration.Group)) &&
                                                         Authenticate(commandGroup.Name,
                                                             wasInput(
-                                                                KeyValue.wasKeyValueGet(
+                                                                KeyValue.Get(
                                                                     wasOutput(
-                                                                        Reflection.wasGetNameFromEnumValue(
+                                                                        Reflection.GetNameFromEnumValue(
                                                                             ScriptKeys.PASSWORD)),
                                                                     receiveLine))))
                                                 {
                                                     case false:
                                                         streamWriter.WriteLine(
-                                                            KeyValue.wasKeyValueEncode(new Dictionary
+                                                            KeyValue.Encode(new Dictionary
                                                                 <string, string>
                                                             {
                                                                 {
-                                                                    Reflection.wasGetNameFromEnumValue(
+                                                                    Reflection.GetNameFromEnumValue(
                                                                         ScriptKeys.SUCCESS),
                                                                     false.ToString()
                                                                 }
@@ -8351,8 +8351,8 @@ namespace Corrade
 
                                                 string notificationTypes =
                                                     wasInput(
-                                                        KeyValue.wasKeyValueGet(
-                                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
+                                                        KeyValue.Get(
+                                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                                             receiveLine));
                                                 Notification notification;
                                                 lock (GroupNotificationsLock)
@@ -8366,15 +8366,15 @@ namespace Corrade
                                                 // Build any requested data for raw notifications.
                                                 string fields =
                                                     wasInput(
-                                                        KeyValue.wasKeyValueGet(
-                                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                                        KeyValue.Get(
+                                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                                             receiveLine));
                                                 HashSet<string> data = new HashSet<string>();
                                                 object LockObject = new object();
                                                 if (!string.IsNullOrEmpty(fields))
                                                 {
                                                     Parallel.ForEach(
-                                                        CSV.wasCSVToEnumerable(fields)
+                                                        CSV.ToEnumerable(fields)
                                                             .AsParallel()
                                                             .Where(o => !string.IsNullOrEmpty(o)),
                                                         o =>
@@ -8418,7 +8418,7 @@ namespace Corrade
                                                 }
 
                                                 bool succeeded = true;
-                                                Parallel.ForEach(CSV.wasCSVToEnumerable(
+                                                Parallel.ForEach(CSV.ToEnumerable(
                                                     notificationTypes)
                                                     .AsParallel()
                                                     .Where(o => !string.IsNullOrEmpty(o)),
@@ -8427,7 +8427,7 @@ namespace Corrade
                                                         uint notificationValue =
                                                             (uint)
                                                                 Reflection
-                                                                    .wasGetEnumValueFromName
+                                                                    .GetEnumValueFromName
                                                                     <Configuration.Notifications>(o);
                                                         if (
                                                             !GroupHasNotification(commandGroup.Name,
@@ -8476,11 +8476,11 @@ namespace Corrade
                                                         // Save the notifications state.
                                                         SaveNotificationState.Invoke();
                                                         streamWriter.WriteLine(
-                                                            KeyValue.wasKeyValueEncode(new Dictionary
+                                                            KeyValue.Encode(new Dictionary
                                                                 <string, string>
                                                             {
                                                                 {
-                                                                    Reflection.wasGetNameFromEnumValue(
+                                                                    Reflection.GetNameFromEnumValue(
                                                                         ScriptKeys.SUCCESS),
                                                                     true.ToString()
                                                                 }
@@ -8489,11 +8489,11 @@ namespace Corrade
                                                         break;
                                                     default:
                                                         streamWriter.WriteLine(
-                                                            KeyValue.wasKeyValueEncode(new Dictionary
+                                                            KeyValue.Encode(new Dictionary
                                                                 <string, string>
                                                             {
                                                                 {
-                                                                    Reflection.wasGetNameFromEnumValue(
+                                                                    Reflection.GetNameFromEnumValue(
                                                                         ScriptKeys.SUCCESS),
                                                                     false.ToString()
                                                                 }
@@ -8518,7 +8518,7 @@ namespace Corrade
                                                                 remoteEndPoint))
                                                         {
                                                             streamWriter.WriteLine(
-                                                                KeyValue.wasKeyValueEncode(
+                                                                KeyValue.Encode(
                                                                     notificationTCPQueueElement.message));
                                                             streamWriter.Flush();
                                                         }
@@ -8531,7 +8531,7 @@ namespace Corrade
                                 catch (Exception ex)
                                 {
                                     Feedback(
-                                        Reflection.wasGetDescriptionFromEnumValue(
+                                        Reflection.GetDescriptionFromEnumValue(
                                             ConsoleError.TCP_NOTIFICATIONS_SERVER_ERROR),
                                         ex.Message);
                                 }
@@ -8591,7 +8591,7 @@ namespace Corrade
                     TCPNotificationsThread.Start();
                     break;
                 default:
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.STOPPING_TCP_NOTIFICATIONS_SERVER));
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.STOPPING_TCP_NOTIFICATIONS_SERVER));
                     runTCPNotificationsServer = false;
                     try
                     {
@@ -8630,7 +8630,7 @@ namespace Corrade
                         case true:
                             // Don't start if the HTTP server is already started.
                             if (HTTPListenerThread != null) return;
-                            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.STARTING_HTTP_SERVER));
+                            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.STARTING_HTTP_SERVER));
                             runHTTPServer = true;
                             HTTPListenerThread = new Thread(() =>
                             {
@@ -8686,7 +8686,7 @@ namespace Corrade
                                 }
                                 catch (Exception ex)
                                 {
-                                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR),
+                                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR),
                                         ex.Message);
                                 }
                             })
@@ -8694,7 +8694,7 @@ namespace Corrade
                             HTTPListenerThread.Start();
                             break;
                         default:
-                            Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.STOPPING_HTTP_SERVER));
+                            Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.STOPPING_HTTP_SERVER));
                             runHTTPServer = false;
                             try
                             {
@@ -8725,8 +8725,8 @@ namespace Corrade
                     }
                     break;
                 default:
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR),
-                        Reflection.wasGetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_NOT_SUPPORTED));
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_ERROR),
+                        Reflection.GetDescriptionFromEnumValue(ConsoleError.HTTP_SERVER_NOT_SUPPORTED));
                     break;
             }
 
@@ -9499,7 +9499,7 @@ namespace Corrade
                 }
                 catch (Exception e)
                 {
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_CACHE),
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_SAVE_CORRADE_CACHE),
                         e.Message);
                 }
             }
@@ -9523,7 +9523,7 @@ namespace Corrade
                 }
                 catch (Exception ex)
                 {
-                    Feedback(Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CACHE),
+                    Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.UNABLE_TO_LOAD_CORRADE_CACHE),
                         ex.Message);
                 }
                 return o;
@@ -9704,8 +9704,8 @@ namespace Corrade
                     catch (Exception ex)
                     {
                         Feedback(
-                            Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            Reflection.wasGetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message);
+                            Reflection.GetDescriptionFromEnumValue(ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
+                            Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message);
                     }
                     // Thread has completed.
                     ThreadCompletedEvent.Set();
@@ -9749,8 +9749,8 @@ namespace Corrade
                     catch (Exception ex)
                     {
                         Feedback(
-                            Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            Reflection.wasGetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message);
+                            Reflection.GetDescriptionFromEnumValue(ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
+                            Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message);
                     }
                     lock (WorkSetLock)
                     {
@@ -9859,8 +9859,8 @@ namespace Corrade
                     catch (Exception ex)
                     {
                         Feedback(
-                            Reflection.wasGetDescriptionFromEnumValue(ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                            Reflection.wasGetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message,
+                            Reflection.GetDescriptionFromEnumValue(ConsoleError.UNCAUGHT_EXCEPTION_FOR_THREAD),
+                            Reflection.GetNameFromEnumValue(threadType), ex.Message, ex.InnerException?.Message,
                             ex.StackTrace);
                     }
                     lock (WorkSetLock)
@@ -10467,9 +10467,9 @@ namespace Corrade
         public class ScriptException : Exception
         {
             public ScriptException(ScriptError error)
-                : base(Reflection.wasGetDescriptionFromEnumValue(error))
+                : base(Reflection.GetDescriptionFromEnumValue(error))
             {
-                Status = Reflection.wasGetAttributeFromEnumValue<StatusAttribute>(error).Status;
+                Status = Reflection.GetAttributeFromEnumValue<StatusAttribute>(error).Status;
             }
 
             protected ScriptException(SerializationInfo info, StreamingContext context)
@@ -11729,7 +11729,7 @@ namespace Corrade
             ref UUID groupUUID)
         {
             UUID localGroupUUID = UUID.Zero;
-            Time.wasAdaptiveAlarm DirGroupsReceivedAlarm = new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+            Time.DecayingAlarm DirGroupsReceivedAlarm = new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
             EventHandler<DirGroupsReplyEventArgs> DirGroupsReplyDelegate = (sender, args) =>
             {
                 DirGroupsReceivedAlarm.Alarm(dataTimeout);
@@ -11876,7 +11876,7 @@ namespace Corrade
             ref UUID agentUUID)
         {
             UUID localAgentUUID = UUID.Zero;
-            Time.wasAdaptiveAlarm DirPeopleReceivedAlarm = new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+            Time.DecayingAlarm DirPeopleReceivedAlarm = new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
             EventHandler<DirPeopleReplyEventArgs> DirPeopleReplyDelegate = (sender, args) =>
             {
                 DirPeopleReceivedAlarm.Alarm(dataTimeout);

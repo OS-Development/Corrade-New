@@ -31,9 +31,9 @@ namespace Corrade
                     }
                     Dictionary<UUID, EstateTask> topTasks = new Dictionary<UUID, EstateTask>();
                     switch (
-                        Reflection.wasGetEnumValueFromName<Type>(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
+                        Reflection.GetEnumValueFromName<Type>(
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
                                 .ToLowerInvariant()))
                     {
@@ -89,8 +89,8 @@ namespace Corrade
                     if (
                         !int.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AMOUNT)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AMOUNT)),
                                     corradeCommandParameters.Message)),
                             out amount))
                     {
@@ -106,8 +106,8 @@ namespace Corrade
                     }).SelectMany(o => o));
                     if (data.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(data));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(data));
                     }
                 };
         }

@@ -32,8 +32,8 @@ namespace Corrade
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
                     {
@@ -43,15 +43,15 @@ namespace Corrade
                         position.Z > LINDEN_CONSTANTS.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
                     {
                         throw new Exception(
-                            Reflection.wasGetNameFromEnumValue(
+                            Reflection.GetNameFromEnumValue(
                                 ScriptError.POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE));
                     }
                     Quaternion rotation;
                     if (
                         !Quaternion.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ROTATION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION)),
                                     corradeCommandParameters.Message)),
                             out rotation))
                     {
@@ -59,7 +59,7 @@ namespace Corrade
                     }
                     string region =
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator =
                         Client.Network.Simulators.AsParallel().FirstOrDefault(
@@ -100,7 +100,7 @@ namespace Corrade
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.SCALE)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SCALE)),
                                     corradeCommandParameters.Message)),
                             out scale))
                     {
@@ -124,8 +124,8 @@ namespace Corrade
                             o =>
                                 o.Name.Equals(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                             corradeCommandParameters.Message)),
                                     StringComparison.OrdinalIgnoreCase));
                     Primitive.ConstructionData constructionData;
@@ -141,14 +141,14 @@ namespace Corrade
                     }
                     // ... and overwrite with manual data settings.
                     wasCSVToStructure(
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message)),
                         ref constructionData);
                     // Get any primitive flags.
                     uint primFlags = 0;
-                    Parallel.ForEach(CSV.wasCSVToEnumerable(
+                    Parallel.ForEach(CSV.ToEnumerable(
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FLAGS)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FLAGS)),
                                 corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                         o =>
                             Parallel.ForEach(

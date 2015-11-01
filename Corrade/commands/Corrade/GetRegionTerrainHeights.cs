@@ -35,8 +35,8 @@ namespace Corrade
                         Client.Network.CurrentSim.TerrainStartHeight11, // Low NE
                         Client.Network.CurrentSim.TerrainHeightRange11 // High NE
                     };
-                    result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                        CSV.wasEnumerableToCSV(data.Select(o => o.ToString(Utils.EnUsCulture))));
+                    result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        CSV.FromEnumerable(data.Select(o => o.ToString(Utils.EnUsCulture))));
                 };
         }
     }

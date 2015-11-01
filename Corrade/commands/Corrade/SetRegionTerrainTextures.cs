@@ -37,8 +37,8 @@ namespace Corrade
                         Client.Network.CurrentSim.TerrainDetail3
                     };
                     UUID[] setTextures = new UUID[4];
-                    List<string> data = CSV.wasCSVToEnumerable(
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                    List<string> data = CSV.ToEnumerable(
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
                     Parallel.ForEach(Enumerable.Range(0, 4),
                         o =>

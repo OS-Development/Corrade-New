@@ -16,7 +16,7 @@ namespace wasSharp
         /// </summary>
         /// <param name="q">first integer to swap</param>
         /// <param name="p">second integer to swap</param>
-        public static void wasXORSwap(ref int q, ref int p)
+        public static void XORSwap(ref int q, ref int p)
         {
             q ^= p;
             p ^= q;

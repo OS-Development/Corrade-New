@@ -38,7 +38,7 @@ namespace Corrade
                     object item =
                         StringOrUUID(
                             wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                     corradeCommandParameters.Message)));
                     if (item == null)
                         throw new ScriptException(ScriptError.NO_ITEM_SPECIFIED);
@@ -48,8 +48,8 @@ namespace Corrade
                             o =>
                                 o.Name.Equals(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                             corradeCommandParameters.Message)),
                                     StringComparison.Ordinal));
                     switch (assetTypeInfo != null)
@@ -194,8 +194,8 @@ namespace Corrade
                     {
                         case true:
                             string format =
-                                wasInput(KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FORMAT)),
+                                wasInput(KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FORMAT)),
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(format))
                             {
@@ -208,14 +208,14 @@ namespace Corrade
                                 if (formatProperty == null)
                                 {
                                     throw new Exception(
-                                        Reflection.wasGetNameFromEnumValue(
+                                        Reflection.GetNameFromEnumValue(
                                             ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED));
                                 }
                                 ManagedImage managedImage;
                                 if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
                                 {
                                     throw new Exception(
-                                        Reflection.wasGetNameFromEnumValue(
+                                        Reflection.GetNameFromEnumValue(
                                             ScriptError.UNABLE_TO_DECODE_ASSET_DATA));
                                 }
                                 using (MemoryStream imageStream = new MemoryStream())
@@ -242,7 +242,7 @@ namespace Corrade
                                     catch (Exception)
                                     {
                                         throw new Exception(
-                                            Reflection.wasGetNameFromEnumValue(
+                                            Reflection.GetNameFromEnumValue(
                                                 ScriptError.UNABLE_TO_CONVERT_TO_REQUESTED_FORMAT));
                                     }
                                     assetData = imageStream.ToArray();
@@ -252,12 +252,12 @@ namespace Corrade
                     }
                     // If no path was specificed, then send the data.
                     string path =
-                        wasInput(KeyValue.wasKeyValueGet(
-                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PATH)),
+                        wasInput(KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PATH)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(path))
                     {
-                        result.Add(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                        result.Add(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             Convert.ToBase64String(assetData));
                         return;
                     }

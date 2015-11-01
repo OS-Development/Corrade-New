@@ -27,9 +27,9 @@ namespace Corrade
                     }
                     List<GroupSchedule> groupSchedules = new List<GroupSchedule>();
                     uint index;
-                    switch (Reflection.wasGetEnumValueFromName<Action>(
+                    switch (Reflection.GetEnumValueFromName<Action>(
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
@@ -41,13 +41,13 @@ namespace Corrade
                             }
                             DateTime at;
                             if (!DateTime.TryParse(wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TIME)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TIME)),
                                     corradeCommandParameters.Message)), out at))
                             {
                                 throw new ScriptException(ScriptError.UNKNOWN_DATE_TIME_STAMP);
                             }
                             string data = wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                     corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(data))
                             {
@@ -69,7 +69,7 @@ namespace Corrade
                             break;
                         case Action.GET:
                             if (!uint.TryParse(wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.INDEX)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.INDEX)),
                                     corradeCommandParameters.Message)), out index))
                             {
                                 index = 0;
@@ -83,7 +83,7 @@ namespace Corrade
                                 throw new ScriptException(ScriptError.NO_SCHEDULE_FOUND);
                             }
                             GroupSchedule groupSchedule = groupSchedules[(int) index];
-                            result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), CSV.wasEnumerableToCSV(new[]
+                            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), CSV.FromEnumerable(new[]
                             {
                                 groupSchedule.Sender,
                                 groupSchedule.Identifier,
@@ -93,7 +93,7 @@ namespace Corrade
                             break;
                         case Action.REMOVE:
                             if (!uint.TryParse(wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.INDEX)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.INDEX)),
                                     corradeCommandParameters.Message)), out index))
                             {
                                 throw new ScriptException(ScriptError.NO_INDEX_PROVIDED);
@@ -129,8 +129,8 @@ namespace Corrade
                             }
                             if (csv.Any())
                             {
-                                result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                                    CSV.wasEnumerableToCSV(csv));
+                                result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                                    CSV.FromEnumerable(csv));
                             }
                             break;
                         default:

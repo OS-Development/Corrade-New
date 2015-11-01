@@ -51,7 +51,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.GROUP_NOT_FOUND);
                     }
                     wasCSVToStructure(
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message)),
                         ref targetGroup);
                     Client.Groups.UpdateGroup(corradeCommandParameters.Group.UUID, targetGroup);

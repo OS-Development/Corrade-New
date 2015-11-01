@@ -35,9 +35,9 @@ namespace Corrade
                     EventHandler<EventArgs> MuteListUpdatedEventHandler =
                         (sender, args) => MuteListUpdatedEvent.Set();
 
-                    Parallel.ForEach(CSV.wasCSVToEnumerable(
-                        wasInput(KeyValue.wasKeyValueGet(
-                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.MUTES)),
+                    Parallel.ForEach(CSV.ToEnumerable(
+                        wasInput(KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MUTES)),
                             corradeCommandParameters.Message)))
                         .AsParallel()
                         .Select((o, p) => new {o, p})
@@ -51,10 +51,10 @@ namespace Corrade
                             UUID targetUUID;
                             bool succeeded;
                             switch (
-                                Reflection.wasGetEnumValueFromName<Action>(
+                                Reflection.GetEnumValueFromName<Action>(
                                     wasInput(
-                                        KeyValue.wasKeyValueGet(
-                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                             corradeCommandParameters.Message)).ToLowerInvariant()))
                             {
                                 case Action.MUTE:
@@ -90,8 +90,8 @@ namespace Corrade
                                             p =>
                                                 p.Name.Equals(
                                                     wasInput(
-                                                        KeyValue.wasKeyValueGet(
-                                                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
+                                                        KeyValue.Get(
+                                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                                             corradeCommandParameters.Message)),
                                                     StringComparison.Ordinal));
                                     // ...or assume "Default" mute type from MuteType
@@ -102,10 +102,10 @@ namespace Corrade
                                         : MuteType.ByName;
                                     // Get the mute flags - default is "Default" equivalent to 0
                                     int muteFlags = 0;
-                                    Parallel.ForEach(CSV.wasCSVToEnumerable(
+                                    Parallel.ForEach(CSV.ToEnumerable(
                                         wasInput(
-                                            KeyValue.wasKeyValueGet(
-                                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FLAGS)),
+                                            KeyValue.Get(
+                                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FLAGS)),
                                                 corradeCommandParameters.Message)))
                                         .AsParallel()
                                         .Where(p => !string.IsNullOrEmpty(p)),
@@ -217,8 +217,8 @@ namespace Corrade
                         });
                     if (data.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(data));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(data));
                     }
                 };
         }

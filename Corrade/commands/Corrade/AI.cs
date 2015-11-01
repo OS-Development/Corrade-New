@@ -25,17 +25,17 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    switch (Reflection.wasGetEnumValueFromName<Action>(
+                    switch (Reflection.GetEnumValueFromName<Action>(
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {
                         case Action.PROCESS:
                             string request =
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(request))
                             {
@@ -45,7 +45,7 @@ namespace Corrade
                             {
                                 lock (AIMLBotLock)
                                 {
-                                    result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
+                                    result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
                                         AIMLBot.Chat(new Request(request, AIMLBotUser, AIMLBot)).Output);
                                 }
                             }

@@ -62,7 +62,7 @@ namespace Corrade
                         Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
                     }
                     string fields =
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
                     wasCSVToStructure(fields, ref properties);
                     if (IsSecondLife())

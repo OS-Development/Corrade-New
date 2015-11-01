@@ -29,8 +29,8 @@ namespace Corrade
                     float range;
                     if (
                         !float.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RANGE)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
@@ -39,8 +39,8 @@ namespace Corrade
                     Primitive primitive = null;
                     if (
                         !FindPrimitive(
-                            StringOrUUID(wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                            StringOrUUID(wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message))),
                             range,
                             ref primitive, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout))
@@ -48,24 +48,24 @@ namespace Corrade
                         throw new ScriptException(ScriptError.PRIMITIVE_NOT_FOUND);
                     }
                     Vector3 uvCoord;
-                    if (!Vector3.TryParse(wasInput(KeyValue.wasKeyValueGet(
-                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TEXTURE)),
+                    if (!Vector3.TryParse(wasInput(KeyValue.Get(
+                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TEXTURE)),
                         corradeCommandParameters.Message)),
                         out uvCoord))
                     {
                         throw new ScriptException(ScriptError.INVALID_TEXTURE_COORDINATES);
                     }
                     Vector3 stCoord;
-                    if (!Vector3.TryParse(wasInput(KeyValue.wasKeyValueGet(
-                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.SURFACE)),
+                    if (!Vector3.TryParse(wasInput(KeyValue.Get(
+                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SURFACE)),
                         corradeCommandParameters.Message)),
                         out stCoord))
                     {
                         throw new ScriptException(ScriptError.INVALID_SURFACE_COORDINATES);
                     }
                     int faceIndex;
-                    if (!int.TryParse(wasInput(KeyValue.wasKeyValueGet(
-                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FACE)), corradeCommandParameters.Message)),
+                    if (!int.TryParse(wasInput(KeyValue.Get(
+                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FACE)), corradeCommandParameters.Message)),
                         out faceIndex))
                     {
                         throw new ScriptException(ScriptError.INVALID_FACE_SPECIFIED);
@@ -74,8 +74,8 @@ namespace Corrade
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)), out position))
                     {
                         throw new ScriptException(ScriptError.INVALID_POSITION);
@@ -84,8 +84,8 @@ namespace Corrade
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NORMAL)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NORMAL)),
                                     corradeCommandParameters.Message)), out normal))
                     {
                         throw new ScriptException(ScriptError.INVALID_NORMAL_VECTOR);
@@ -94,8 +94,8 @@ namespace Corrade
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.BINORMAL)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.BINORMAL)),
                                     corradeCommandParameters.Message)), out binormal))
                     {
                         throw new ScriptException(ScriptError.INVALID_BINORMAL_VECTOR);

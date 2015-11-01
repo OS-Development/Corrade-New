@@ -30,12 +30,12 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_LAND_RIGHTS);
                     }
                     List<UUID> estateList = new List<UUID>();
-                    Time.wasAdaptiveAlarm EstateListReceivedAlarm =
-                        new Time.wasAdaptiveAlarm(corradeConfiguration.DataDecayType);
+                    Time.DecayingAlarm EstateListReceivedAlarm =
+                        new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
                     Type type =
-                        Reflection.wasGetEnumValueFromName<Type>(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE)),
+                        Reflection.GetEnumValueFromName<Type>(
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
                                 .ToLowerInvariant());
                     switch (type)
@@ -198,8 +198,8 @@ namespace Corrade
                     }
                     if (csv.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(csv));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(csv));
                     }
                 };
         }

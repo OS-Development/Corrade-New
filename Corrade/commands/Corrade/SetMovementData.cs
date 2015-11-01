@@ -29,7 +29,7 @@ namespace Corrade
                     }
                     AgentManager.AgentMovement movement = Client.Self.Movement;
                     wasCSVToStructure(
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message)),
                         ref movement);
                     lock (ClientInstanceSelfLock)

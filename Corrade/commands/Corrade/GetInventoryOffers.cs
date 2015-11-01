@@ -38,19 +38,19 @@ namespace Corrade
                             lock (LockObject)
                             {
                                 csv.AddRange(new[]
-                                {Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME), name.First()});
+                                {Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME), name.First()});
                                 csv.AddRange(new[]
-                                {Reflection.wasGetNameFromEnumValue(ScriptKeys.FIRSTNAME), name.Last()});
+                                {Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME), name.Last()});
                                 csv.AddRange(new[]
                                 {
-                                    Reflection.wasGetNameFromEnumValue(ScriptKeys.TYPE),
+                                    Reflection.GetNameFromEnumValue(ScriptKeys.TYPE),
                                     o.Key.AssetType.ToString()
                                 });
                                 csv.AddRange(new[]
-                                {Reflection.wasGetNameFromEnumValue(ScriptKeys.MESSAGE), o.Key.Offer.Message});
+                                {Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE), o.Key.Offer.Message});
                                 csv.AddRange(new[]
                                 {
-                                    Reflection.wasGetNameFromEnumValue(ScriptKeys.SESSION),
+                                    Reflection.GetNameFromEnumValue(ScriptKeys.SESSION),
                                     o.Key.Offer.IMSessionID.ToString()
                                 });
                             }
@@ -58,8 +58,8 @@ namespace Corrade
                     }
                     if (csv.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(csv));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(csv));
                     }
                 };
         }

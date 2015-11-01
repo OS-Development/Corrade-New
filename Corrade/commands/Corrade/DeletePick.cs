@@ -29,7 +29,7 @@ namespace Corrade
                     }
                     ManualResetEvent AvatarPicksReplyEvent = new ManualResetEvent(false);
                     string input =
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(input))
                     {

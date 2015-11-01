@@ -26,10 +26,10 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     uint action =
-                        (uint) Reflection.wasGetEnumValueFromName<Action>(
+                        (uint) Reflection.GetEnumValueFromName<Action>(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant());
                     IEnumerable<UUID> currentGroups = Enumerable.Empty<UUID>();
@@ -47,8 +47,8 @@ namespace Corrade
                     if (
                         !UUID.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.SESSION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION)),
                                     corradeCommandParameters.Message)),
                             out sessionUUID))
                     {

@@ -37,20 +37,20 @@ namespace Corrade
                             previous = names[0].DisplayName;
                         });
                     switch (
-                        Reflection.wasGetEnumValueFromName<Action>(
+                        Reflection.GetEnumValueFromName<Action>(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message)).ToLowerInvariant()))
                     {
                         case Action.GET:
-                            result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA), previous);
+                            result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA), previous);
                             break;
                         case Action.SET:
                             string name =
                                 wasInput(
-                                    KeyValue.wasKeyValueGet(
-                                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.NAME)),
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.NAME)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(name))
                             {
@@ -61,7 +61,7 @@ namespace Corrade
                                  name.Length < LINDEN_CONSTANTS.AVATARS.MINIMUM_DISPLAY_NAME_CHARACTERS))
                             {
                                 throw new Exception(
-                                    Reflection.wasGetNameFromEnumValue(
+                                    Reflection.GetNameFromEnumValue(
                                         ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_FOR_DISPLAY_NAME));
                             }
                             bool succeeded = true;

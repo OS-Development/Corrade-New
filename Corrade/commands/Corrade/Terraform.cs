@@ -29,31 +29,31 @@ namespace Corrade
                     }
                     int amount;
                     if (!int.TryParse(wasInput(
-                        KeyValue.wasKeyValueGet(
-                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.AMOUNT)),
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.AMOUNT)),
                             corradeCommandParameters.Message)), out amount))
                     {
                         throw new ScriptException(ScriptError.INVALID_AMOUNT);
                     }
                     float width;
                     if (!float.TryParse(wasInput(
-                        KeyValue.wasKeyValueGet(
-                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.WIDTH)),
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.WIDTH)),
                             corradeCommandParameters.Message)), out width))
                     {
                         throw new ScriptException(ScriptError.INVALID_WIDTH);
                     }
                     float height;
                     if (!float.TryParse(wasInput(
-                        KeyValue.wasKeyValueGet(
-                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.HEIGHT)),
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.HEIGHT)),
                             corradeCommandParameters.Message)), out height))
                     {
                         throw new ScriptException(ScriptError.INVALID_HEIGHT);
                     }
                     string action = wasInput(
-                        KeyValue.wasKeyValueGet(
-                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(action))
                     {
@@ -72,8 +72,8 @@ namespace Corrade
                     }
                     TerraformAction terraformAction = (TerraformAction) terraformActionFieldInfo.GetValue(null);
                     string brush = wasInput(
-                        KeyValue.wasKeyValueGet(
-                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.BRUSH)),
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.BRUSH)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(brush))
                     {
@@ -95,8 +95,8 @@ namespace Corrade
                     if (
                         !Vector3.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.POSITION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
                     {
@@ -104,7 +104,7 @@ namespace Corrade
                     }
                     string region =
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.REGION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Simulator simulator =
                         Client.Network.Simulators.AsParallel().FirstOrDefault(

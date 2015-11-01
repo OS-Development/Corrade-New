@@ -31,8 +31,8 @@ namespace Corrade
                         Client.Network.CurrentSim.TerrainDetail2,
                         Client.Network.CurrentSim.TerrainDetail3
                     };
-                    result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                        CSV.wasEnumerableToCSV(data.Select(o => o.ToString())));
+                    result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                        CSV.FromEnumerable(data.Select(o => o.ToString())));
                 };
         }
     }

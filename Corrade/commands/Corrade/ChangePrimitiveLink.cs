@@ -31,16 +31,16 @@ namespace Corrade
                     float range;
                     if (
                         !float.TryParse(
-                            wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RANGE)),
+                            wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)),
                             out range))
                     {
                         range = corradeConfiguration.Range;
                     }
-                    Action action = Reflection.wasGetEnumValueFromName<Action>(
+                    Action action = Reflection.GetEnumValueFromName<Action>(
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ACTION)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
                             .ToLowerInvariant());
                     switch (action)
@@ -51,8 +51,8 @@ namespace Corrade
                         default:
                             throw new ScriptException(ScriptError.UNKNOWN_ACTION);
                     }
-                    List<string> items = new List<string>(CSV.wasCSVToEnumerable(wasInput(KeyValue.wasKeyValueGet(
-                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)), corradeCommandParameters.Message)))
+                    List<string> items = new List<string>(CSV.ToEnumerable(wasInput(KeyValue.Get(
+                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)), corradeCommandParameters.Message)))
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o)));
                     if (!items.Any() || (action.Equals(Action.LINK) && items.Count < 2))

@@ -25,9 +25,9 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    switch (Reflection.wasGetEnumValueFromName<Direction>(
-                        wasInput(KeyValue.wasKeyValueGet(
-                            wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DIRECTION)),
+                    switch (Reflection.GetEnumValueFromName<Direction>(
+                        wasInput(KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DIRECTION)),
                             corradeCommandParameters.Message))
                             .ToLowerInvariant()))
                     {

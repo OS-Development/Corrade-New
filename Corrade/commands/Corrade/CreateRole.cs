@@ -68,16 +68,16 @@ namespace Corrade
                         throw new ScriptException(ScriptError.MAXIMUM_NUMBER_OF_ROLES_EXCEEDED);
                     }
                     string role =
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ROLE)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ROLE)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(role))
                     {
                         throw new ScriptException(ScriptError.NO_ROLE_NAME_SPECIFIED);
                     }
                     ulong powers = 0;
-                    Parallel.ForEach(CSV.wasCSVToEnumerable(
+                    Parallel.ForEach(CSV.ToEnumerable(
                         wasInput(
-                            KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.POWERS)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.POWERS)),
                                 corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                         o =>
                             Parallel.ForEach(
@@ -91,8 +91,8 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     }
-                    string title = wasInput(KeyValue.wasKeyValueGet(
-                        wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TITLE)),
+                    string title = wasInput(KeyValue.Get(
+                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TITLE)),
                         corradeCommandParameters.Message));
                     if (IsSecondLife() && title.Length > LINDEN_CONSTANTS.GROUPS.MAXIMUM_GROUP_TITLE_LENGTH)
                     {
@@ -103,8 +103,8 @@ namespace Corrade
                         Name = role,
                         Description =
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION)),
                                     corradeCommandParameters.Message)),
                         GroupID = corradeCommandParameters.Group.UUID,
                         ID = UUID.Random(),

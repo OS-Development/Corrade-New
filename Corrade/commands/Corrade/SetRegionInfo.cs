@@ -31,8 +31,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.TERRAFORM)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TERRAFORM)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out terraform))
                     {
@@ -42,7 +42,7 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.FLY)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.FLY)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out fly))
                     {
@@ -52,8 +52,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DAMAGE)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DAMAGE)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out damage))
                     {
@@ -63,8 +63,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.RESELL)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.RESELL)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out resell))
                     {
@@ -74,7 +74,7 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PUSH)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PUSH)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out push))
                     {
@@ -84,8 +84,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.PARCEL)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.PARCEL)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out parcel))
                     {
@@ -95,7 +95,7 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.LIMIT)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.LIMIT)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out limit))
                     {
@@ -105,7 +105,7 @@ namespace Corrade
                     if (
                         !float.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.BONUS)),
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.BONUS)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out bonus))
                     {
@@ -115,8 +115,8 @@ namespace Corrade
                     if (
                         !bool.TryParse(
                             wasInput(
-                                KeyValue.wasKeyValueGet(
-                                    wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.MATURE)),
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.MATURE)),
                                     corradeCommandParameters.Message))
                                 .ToLowerInvariant(), out mature))
                     {

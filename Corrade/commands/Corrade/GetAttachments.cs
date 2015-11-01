@@ -36,8 +36,8 @@ namespace Corrade
                         }).SelectMany(o => o).ToList();
                     if (attachments.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(attachments));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(attachments));
                     }
                 };
         }

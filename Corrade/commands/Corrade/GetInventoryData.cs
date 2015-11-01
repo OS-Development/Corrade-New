@@ -28,8 +28,8 @@ namespace Corrade
                     }
                     InventoryBase inventoryBaseItem =
                         FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                            StringOrUUID(wasInput(KeyValue.wasKeyValueGet(
-                                wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.ITEM)),
+                            StringOrUUID(wasInput(KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message)))
                             ).FirstOrDefault();
                     if (inventoryBaseItem == null)
@@ -37,12 +37,12 @@ namespace Corrade
                         throw new ScriptException(ScriptError.INVENTORY_ITEM_NOT_FOUND);
                     }
                     List<string> data = GetStructuredData(inventoryBaseItem as InventoryItem,
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
                     if (data.Any())
                     {
-                        result.Add(Reflection.wasGetNameFromEnumValue(ResultKeys.DATA),
-                            CSV.wasEnumerableToCSV(data));
+                        result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),
+                            CSV.FromEnumerable(data));
                     }
                 };
         }

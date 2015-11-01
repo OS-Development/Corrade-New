@@ -40,8 +40,8 @@ namespace Corrade
                         Client.Network.CurrentSim.TerrainHeightRange11 // High NE
                     };
                     float[] setHeights = new float[8];
-                    List<string> data = CSV.wasCSVToEnumerable(
-                        wasInput(KeyValue.wasKeyValueGet(wasOutput(Reflection.wasGetNameFromEnumValue(ScriptKeys.DATA)),
+                    List<string> data = CSV.ToEnumerable(
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                             corradeCommandParameters.Message))).ToList();
                     Parallel.ForEach(Enumerable.Range(0, 8),
                         o =>

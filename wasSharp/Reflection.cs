@@ -20,7 +20,7 @@ namespace wasSharp
         ///     Retrieves an attribute of type T from an enumeration.
         /// </summary>
         /// <returns>an attribute of type T</returns>
-        public static T wasGetAttributeFromEnumValue<T>(Enum value) where T : Attribute
+        public static T GetAttributeFromEnumValue<T>(Enum value) where T : Attribute
         {
             return (T) value.GetType()
                 .GetRuntimeField(value.ToString())
@@ -36,11 +36,11 @@ namespace wasSharp
         /// </summary>
         /// <typeparam name="T">the attribute to retrieve</typeparam>
         /// <returns>a list of attributes</returns>
-        public static IEnumerable<T> wasGetEnumAttributes<T>(Enum e) where T : Attribute
+        public static IEnumerable<T> GetEnumAttributes<T>(Enum e) where T : Attribute
         {
             return e.GetType().GetRuntimeFields()
                 .AsParallel()
-                .Select(o => wasGetAttributeFromEnumValue<T>((Enum) o.GetValue(Activator.CreateInstance<T>())));
+                .Select(o => GetAttributeFromEnumValue<T>((Enum) o.GetValue(Activator.CreateInstance<T>())));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -50,7 +50,7 @@ namespace wasSharp
         ///     Returns all the field names of an enumeration.
         /// </summary>
         /// <returns>the field names</returns>
-        public static IEnumerable<string> wasGetEnumNames<T>()
+        public static IEnumerable<string> GetEnumNames<T>()
         {
             return
                 typeof (T).GetRuntimeFields()
@@ -68,7 +68,7 @@ namespace wasSharp
         ///     Returns all the values of an enumeration.
         /// </summary>
         /// <returns>the values of the enumeration</returns>
-        public static IEnumerable<T> wasGetEnumValues<T>()
+        public static IEnumerable<T> GetEnumValues<T>()
         {
             return Enum.GetValues(typeof (T)).Cast<object>().Select(value => (T) value);
         }
@@ -81,7 +81,7 @@ namespace wasSharp
         /// </summary>
         /// <param name="value">an enumeration value</param>
         /// <returns>the description or the empty string</returns>
-        public static string wasGetNameFromEnumValue(Enum value)
+        public static string GetNameFromEnumValue(Enum value)
         {
             NameAttribute attribute = value.GetType()
                 .GetRuntimeField(value.ToString())
@@ -98,7 +98,7 @@ namespace wasSharp
         /// </summary>
         /// <param name="value">an enumeration value</param>
         /// <returns>the description or the empty string</returns>
-        public static string wasGetDescriptionFromEnumValue(Enum value)
+        public static string GetDescriptionFromEnumValue(Enum value)
         {
             DescriptionAttribute attribute = value.GetType()
                 .GetRuntimeField(value.ToString())
@@ -116,7 +116,7 @@ namespace wasSharp
         /// <typeparam name="T">the enumeration type</typeparam>
         /// <param name="name">the description of a member</param>
         /// <returns>the value or the default of T if case no name attribute found</returns>
-        public static T wasGetEnumValueFromName<T>(string name)
+        public static T GetEnumValueFromName<T>(string name)
         {
             var field = typeof (T).GetRuntimeFields()
                 .AsParallel().SelectMany(f => f.GetCustomAttributes(
@@ -136,7 +136,7 @@ namespace wasSharp
         /// <param name="structure">the structure to search</param>
         /// <param name="item">the value of the item to search</param>
         /// <returns>the description or the empty string</returns>
-        public static string wasGetStructureMemberName<T>(T structure, object item) where T : struct
+        public static string GetStructureMemberName<T>(T structure, object item) where T : struct
         {
             var field = typeof (T).GetRuntimeFields()
                 .AsParallel().SelectMany(f => f.GetCustomAttributes(typeof (NameAttribute), false),
