@@ -82,25 +82,18 @@ namespace Corrade
                             {
                                 HashSet<string> results = new HashSet<string>(Reflection.GetEnumNames<ResultKeys>());
                                 HashSet<string> scripts = new HashSet<string>(Reflection.GetEnumNames<ScriptKeys>());
-                                Parallel.ForEach(CSV.ToEnumerable(afterBurnData)
-                                    .AsParallel()
-                                    .Select((o, p) => new {o, p})
-                                    .GroupBy(q => q.p/2, q => q.o)
-                                    .Select(o => o.ToList())
-                                    .TakeWhile(o => o.Count%2 == 0)
-                                    .Where(o => !string.IsNullOrEmpty(o.First()) || !string.IsNullOrEmpty(o.Last()))
-                                    .ToDictionary(o => o.First(), p => p.Last()), o =>
+                                Parallel.ForEach(CSV.ToKeyValue(afterBurnData), o =>
+                                {
+                                    // remove keys that are script keys, result keys or invalid key-value pairs
+                                    if (string.IsNullOrEmpty(o.Key) || results.Contains(wasInput(o.Key)) ||
+                                        scripts.Contains(wasInput(o.Key)) ||
+                                        string.IsNullOrEmpty(o.Value))
+                                        return;
+                                    lock (LockObject)
                                     {
-                                        // remove keys that are script keys, result keys or invalid key-value pairs
-                                        if (string.IsNullOrEmpty(o.Key) || results.Contains(wasInput(o.Key)) ||
-                                            scripts.Contains(wasInput(o.Key)) ||
-                                            string.IsNullOrEmpty(o.Value))
-                                            return;
-                                        lock (LockObject)
-                                        {
-                                            afterburn.Add(o.Key, o.Value);
-                                        }
-                                    });
+                                        afterburn.Add(o.Key, o.Value);
+                                    }
+                                });
                             }
                             // Build any requested data for raw notifications.
                             string fields =

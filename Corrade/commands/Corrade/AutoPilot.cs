@@ -52,15 +52,24 @@ namespace Corrade
                             {
                                 Client.Self.Stand();
                             }
-                            // stop all non-built-in animations
-                            HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetProperties(
-                                BindingFlags.Public |
-                                BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
-                            Parallel.ForEach(
-                                Client.Self.SignaledAnimations.Copy()
-                                    .Keys.AsParallel()
-                                    .Where(o => !lindenAnimations.Contains(o)),
-                                o => { Client.Self.AnimationStop(o, true); });
+                            // stop non default animations if requested
+                            bool deanimate;
+                            switch (!bool.TryParse(wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DEANIMATE)),
+                                    corradeCommandParameters.Message)), out deanimate) && deanimate)
+                            {
+                                case true:
+                                    // stop all non-built-in animations
+                                    HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetFields(
+                                        BindingFlags.Public |
+                                        BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
+                                    Parallel.ForEach(
+                                        Client.Self.SignaledAnimations.Copy()
+                                            .Keys.AsParallel()
+                                            .Where(o => !lindenAnimations.Contains(o)),
+                                        o => { Client.Self.AnimationStop(o, true); });
+                                    break;
+                            }
                             Client.Self.AutoPilotCancel();
                             Client.Self.Movement.TurnToward(position, true);
                             Client.Self.AutoPilot(position.X + moveRegionX, position.Y + moveRegionY, position.Z);

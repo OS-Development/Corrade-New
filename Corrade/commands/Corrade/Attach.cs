@@ -48,15 +48,8 @@ namespace Corrade
                     {
                         replace = true;
                     }
-                    Dictionary<string, string> items =
-                        new Dictionary<string, string>(CSV.ToEnumerable(attachments)
-                            .AsParallel()
-                            .Select((o, p) => new {o, p})
-                            .GroupBy(q => q.p/2, q => q.o)
-                            .Select(o => o.ToList())
-                            .TakeWhile(o => o.Count%2 == 0)
-                            .Where(o => !string.IsNullOrEmpty(o.First()) || !string.IsNullOrEmpty(o.Last()))
-                            .ToDictionary(o => o.First(), p => p.Last()));
+                    Dictionary<string, string> items = CSV.ToKeyValue(attachments)
+                        .ToDictionary(o => o.Key, o => o.Value);
                     // if this is SecondLife, check that the additional attachments would not exceed the maximum attachment limit
                     if (IsSecondLife())
                     {

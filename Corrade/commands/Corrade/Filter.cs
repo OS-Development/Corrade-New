@@ -39,17 +39,7 @@ namespace Corrade
                                         corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(input))
                             {
-                                foreach (
-                                    KeyValuePair<string, string> i in
-                                        CSV.ToEnumerable(input).AsParallel().Select((o, p) => new {o, p})
-                                            .GroupBy(q => q.p/2, q => q.o)
-                                            .Select(o => o.ToList())
-                                            .TakeWhile(o => o.Count%2 == 0)
-                                            .Where(
-                                                o =>
-                                                    !string.IsNullOrEmpty(o.First()) ||
-                                                    !string.IsNullOrEmpty(o.Last()))
-                                            .ToDictionary(o => o.First(), p => p.Last()))
+                                foreach (KeyValuePair<string, string> i in CSV.ToKeyValue(input))
                                 {
                                     inputFilters.Add(Reflection.GetEnumValueFromName<Configuration.Filter>(i.Key));
                                     inputFilters.Add(Reflection.GetEnumValueFromName<Configuration.Filter>(i.Value));
@@ -66,17 +56,7 @@ namespace Corrade
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(output))
                             {
-                                foreach (
-                                    KeyValuePair<string, string> i in
-                                        CSV.ToEnumerable(output).AsParallel().Select((o, p) => new {o, p})
-                                            .GroupBy(q => q.p/2, q => q.o)
-                                            .Select(o => o.ToList())
-                                            .TakeWhile(o => o.Count%2 == 0)
-                                            .Where(
-                                                o =>
-                                                    !string.IsNullOrEmpty(o.First()) ||
-                                                    !string.IsNullOrEmpty(o.Last()))
-                                            .ToDictionary(o => o.First(), p => p.Last()))
+                                foreach (KeyValuePair<string, string> i in CSV.ToKeyValue(output))
                                 {
                                     outputFilters.Add(Reflection.GetEnumValueFromName<Configuration.Filter>(i.Key));
                                     outputFilters.Add(Reflection.GetEnumValueFromName<Configuration.Filter>(i.Value));

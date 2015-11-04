@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 
 namespace wasSharp
 {
@@ -18,24 +19,15 @@ namespace wasSharp
         /// <summary>
         ///     Returns the value of a key from a key-value data string.
         /// </summary>
-        /// <param name="key">the key of the value</param>
-        /// <param name="data">the key-value data segment</param>
         /// <returns>true if the key was found in data</returns>
-        public static string Get(string key, string data)
-        {
-            return data.Split('&')
+        public static Func<string, string, string> Get =
+            ((Expression<Func<string, string, string>>) ((key, data) => data.Split('&')
                 .AsParallel()
-                .Select(o => o.Split('=').ToList())
-                .Where(o => o.Count.Equals(2))
-                .Select(o => new
-                {
-                    k = o.First(),
-                    v = o.Last()
-                })
-                .Where(o => o.k.Equals(key))
-                .Select(o => o.v)
-                .FirstOrDefault();
-        }
+                .Select(o => o.Split('='))
+                .Where(o => o.Length.Equals(2))
+                .Where(o => o[0].Equals(key))
+                .Select(o => o[1])
+                .FirstOrDefault())).Compile();
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
@@ -43,31 +35,18 @@ namespace wasSharp
         /// <summary>
         ///     Returns a key-value data string with a key set to a given value.
         /// </summary>
-        /// <param name="key">the key of the value</param>
-        /// <param name="value">the value to set the key to</param>
-        /// <param name="data">the key-value data segment</param>
         /// <returns>
         ///     a key-value data string or the empty string if either key or
         ///     value are empty
         /// </returns>
-        public static string Set(string key, string value, string data)
-        {
-            HashSet<string> output = new HashSet<string>(data.Split('&')
-                .AsParallel()
-                .Select(o => o.Split('=').ToList())
-                .Where(o => o.Count.Equals(2))
-                .Select(o => new
-                {
-                    k = o.First(),
-                    v = !o.First().Equals(key) ? o.Last() : value
-                }).Select(o => string.Join("=", o.k, o.v)));
-            string append = string.Join("=", key, value);
-            if (!output.Contains(append))
-            {
-                output.Add(append);
-            }
-            return string.Join("&", output.ToArray());
-        }
+        public static Func<string, string, string, string> Set =
+            ((Expression<Func<string, string, string, string>>)
+                ((key, value, data) => string.Join("&", string.Join("&", data.Split('&')
+                    .AsParallel()
+                    .Select(o => o.Split('='))
+                    .Where(o => o.Length.Equals(2))
+                    .Where(o => !o[0].Equals(key))
+                    .Select(o => string.Join("=", o[0], o[1]))), string.Join("=", key, value)))).Compile();
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
@@ -75,24 +54,15 @@ namespace wasSharp
         /// <summary>
         ///     Deletes a key-value pair from a string referenced by a key.
         /// </summary>
-        /// <param name="key">the key to search for</param>
-        /// <param name="data">the key-value data segment</param>
         /// <returns>a key-value pair string</returns>
-        public static string Delete(string key, string data)
-        {
-            return string.Join("&", data.Split('&')
+        public static Func<string, string, string> Delete =
+            ((Expression<Func<string, string, string>>) ((key, data) => string.Join("&", data.Split('&')
                 .AsParallel()
-                .Select(o => o.Split('=').ToList())
-                .Where(o => o.Count.Equals(2))
-                .Select(o => new
-                {
-                    k = o.First(),
-                    v = o.Last()
-                })
-                .Where(o => !o.k.Equals(key))
-                .Select(o => string.Join("=", o.k, o.v))
-                .ToArray());
-        }
+                .Select(o => o.Split('='))
+                .Where(o => o.Length.Equals(2))
+                .Where(o => !o[0].Equals(key))
+                .Select(o => string.Join("=", o[0], o[1]))
+                .ToArray()))).Compile();
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
@@ -100,22 +70,19 @@ namespace wasSharp
         /// <summary>
         ///     Decodes key-value pair data to a dictionary.
         /// </summary>
-        /// <param name="data">the key-value pair data</param>
         /// <returns>a dictionary containing the keys and values</returns>
-        public static Dictionary<string, string> Decode(string data)
-        {
-            return data.Split('&')
+        public static Func<string, Dictionary<string, string>> Decode =
+            ((Expression<Func<string, Dictionary<string, string>>>) (data => data.Split('&')
                 .AsParallel()
-                .Select(o => o.Split('=').ToList())
-                .Where(o => o.Count.Equals(2))
+                .Select(o => o.Split('='))
+                .Where(o => o.Length.Equals(2))
                 .Select(o => new
                 {
-                    k = o.First(),
-                    v = o.Last()
+                    k = o[0],
+                    v = o[1]
                 })
                 .GroupBy(o => o.k)
-                .ToDictionary(o => o.Key, p => p.First().v);
-        }
+                .ToDictionary(o => o.Key, p => p.First().v))).Compile();
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
@@ -123,23 +90,19 @@ namespace wasSharp
         /// <summary>
         ///     Serialises a dictionary to key-value data.
         /// </summary>
-        /// <param name="data">a dictionary</param>
         /// <returns>a key-value data encoded string</returns>
-        public static string Encode(Dictionary<string, string> data)
-        {
-            return string.Join("&", data.AsParallel().Select(o => string.Join("=", o.Key, o.Value)));
-        }
+        public static Func<Dictionary<string, string>, string> Encode =
+            ((Expression<Func<Dictionary<string, string>, string>>)
+                (data => string.Join("&", data.AsParallel().Select(o => string.Join("=", o.Key, o.Value))))).Compile();
 
         ///////////////////////////////////////////////////////////////////////////
         //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
         ///////////////////////////////////////////////////////////////////////////
-        /// <summary>Escapes a dictionary's keys and values for sending as POST data.</summary>
-        /// <param name="data">A dictionary containing keys and values to be escaped</param>
-        /// <param name="func">The function to use to escape the keys and values in the dictionary.</param>
-        public static Dictionary<string, string> Escape(Dictionary<string, string> data,
-            Func<string, string> func)
-        {
-            return data.AsParallel().ToDictionary(o => func(o.Key), p => func(p.Value));
-        }
+        /// <summary>
+        ///     Escapes a dictionary's keys and values for sending as POST data.
+        /// </summary>
+        public static Func<Dictionary<string, string>, Func<string, string>, Dictionary<string, string>> Escape =
+            ((Expression<Func<Dictionary<string, string>, Func<string, string>, Dictionary<string, string>>>)
+                ((data, func) => data.AsParallel().ToDictionary(o => func(o.Key), p => func(p.Value)))).Compile();
     }
 }

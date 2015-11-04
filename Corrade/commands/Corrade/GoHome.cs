@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using CorradeConfiguration;
 using OpenMetaverse;
+using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
@@ -31,17 +32,25 @@ namespace Corrade
                     {
                         Client.Self.Stand();
                     }
-                    // stop all non-built-in animations
-                    HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetProperties(
-                        BindingFlags.Public |
-                        BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
-                    Parallel.ForEach(
-                        Client.Self.SignaledAnimations.Copy()
-                            .Keys.AsParallel()
-                            .Where(o => !lindenAnimations.Contains(o)),
-                        o => { Client.Self.AnimationStop(o, true); });
-                    bool succeeded = Client.Self.GoHome();
-                    if (!succeeded)
+                    // stop non default animations if requested
+                    bool deanimate;
+                    switch (!bool.TryParse(wasInput(
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DEANIMATE)),
+                            corradeCommandParameters.Message)), out deanimate) && deanimate)
+                    {
+                        case true:
+                            // stop all non-built-in animations
+                            HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetFields(
+                                BindingFlags.Public |
+                                BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
+                            Parallel.ForEach(
+                                Client.Self.SignaledAnimations.Copy()
+                                    .Keys.AsParallel()
+                                    .Where(o => !lindenAnimations.Contains(o)),
+                                o => { Client.Self.AnimationStop(o, true); });
+                            break;
+                    }
+                    if (!Client.Self.GoHome())
                     {
                         throw new ScriptException(ScriptError.UNABLE_TO_GO_HOME);
                     }

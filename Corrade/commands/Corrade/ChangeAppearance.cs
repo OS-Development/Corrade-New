@@ -71,7 +71,7 @@ namespace Corrade
                     {
                         case true:
                             // stop all non-built-in animations
-                            HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetProperties(
+                            HashSet<UUID> lindenAnimations = new HashSet<UUID>(typeof (Animations).GetFields(
                                 BindingFlags.Public |
                                 BindingFlags.Static).AsParallel().Select(o => (UUID) o.GetValue(null)));
                             Parallel.ForEach(
