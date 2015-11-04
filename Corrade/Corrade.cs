@@ -11341,7 +11341,7 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Configuration.Permissions.Talk)] [CorradeCommand("tell")] [Reflection.NameAttribute("tell")] TELL,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=notice>&<group=<UUID|STRING>>&<password=<STRING>>&<message=<STRING>>&[subject=<STRING>]&[item=<UUID|STRING>]&[callback=<STRING>]"
+                "<command=notice>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<send|list|accept|decline>>&action=send:<message=<STRING>>&action=send:[subject=<STRING>]&action=send:[item=<UUID|STRING>]&action=send:[permissions=<STRING>]&action=accept,decline:<<notice=<UUID>>|<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<session=<UUID>>&<folder=<UUID>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("notice")] [Reflection.NameAttribute("notice")] NOTICE,
             [Reflection.NameAttribute("message")] MESSAGE,
             [Reflection.NameAttribute("subject")] SUBJECT,
