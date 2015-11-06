@@ -86,7 +86,7 @@ namespace Corrade
                             {
                                 AIMLBotConfigurationWatcher.EnableRaisingEvents = false;
                                 string AIMLBotBrain =
-                                    wasPathCombine(
+                                    IO.PathCombine(
                                         Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
                                         AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_FILE);
                                 if (File.Exists(AIMLBotBrain))

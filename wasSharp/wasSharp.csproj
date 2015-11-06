@@ -42,6 +42,7 @@
     <Compile Include="Collections.cs" />
     <Compile Include="Cryptography.cs" />
     <Compile Include="CSV.cs" />
+    <Compile Include="IO.cs" />
     <Compile Include="KeyValue.cs" />
     <Compile Include="Numerics.cs" />
     <Compile Include="Reflection.cs" />

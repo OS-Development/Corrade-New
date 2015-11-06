@@ -1228,11 +1228,11 @@ namespace Corrade
             try
             {
                 AIMLBot.isAcceptingUserInput = false;
-                AIMLBot.loadSettings(wasPathCombine(
+                AIMLBot.loadSettings(IO.PathCombine(
                     Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
                     AIML_BOT_CONSTANTS.CONFIG.DIRECTORY, AIML_BOT_CONSTANTS.CONFIG.SETTINGS_FILE));
                 string AIMLBotBrain =
-                    wasPathCombine(
+                    IO.PathCombine(
                         Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
                         AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_FILE);
                 switch (File.Exists(AIMLBotBrain))
@@ -1246,7 +1246,7 @@ namespace Corrade
                         break;
                 }
                 string AIMLBotUserBrain =
-                    wasPathCombine(
+                    IO.PathCombine(
                         Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
                         AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_SESSION_FILE);
                 if (File.Exists(AIMLBotUserBrain))
@@ -1277,7 +1277,7 @@ namespace Corrade
             try
             {
                 AIMLBot.isAcceptingUserInput = false;
-                AIMLBotUser.Predicates.DictionaryAsXML.Save(wasPathCombine(
+                AIMLBotUser.Predicates.DictionaryAsXML.Save(IO.PathCombine(
                     Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
                     AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_SESSION_FILE));
                 AIMLBot.isAcceptingUserInput = true;
@@ -1584,23 +1584,6 @@ namespace Corrade
             {
                 yield return slice;
             }
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2015 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Combine multiple paths.
-        /// </summary>
-        /// <param name="paths">an array of paths</param>
-        /// <returns>a combined path</returns>
-        private static string wasPathCombine(params string[] paths)
-        {
-            return paths.Any()
-                ? paths.Length < 2
-                    ? paths[0]
-                    : Path.Combine(Path.Combine(paths[0], paths[1]), wasPathCombine(paths.Skip(2).ToArray()))
-                : string.Empty;
         }
 
         /// <summary>
@@ -2978,33 +2961,34 @@ namespace Corrade
                 do
                 {
                     Primitive ancestor = null;
-                    if (objectsPrimitives.ContainsKey(parent.ParentID))
+                    Primitive ancestorPrimitive;
+                    if (objectsPrimitives.TryGetValue(parent.ParentID, out ancestorPrimitive))
                     {
-                        ancestor = objectsPrimitives[parent.ParentID];
+                        ancestor = ancestorPrimitive;
                     }
-                    if (objectsAvatars.ContainsKey(parent.ParentID))
+                    Avatar ancestorAvatar;
+                    if (objectsAvatars.TryGetValue(parent.ParentID, out ancestorAvatar))
                     {
-                        ancestor = objectsAvatars[parent.ParentID];
+                        ancestor = ancestorAvatar;
                     }
                     if (ancestor == null) break;
                     parent = ancestor;
                 } while (!parent.ParentID.Equals(0));
-                if (Vector3.Distance(parent.Position, Client.Self.SimPosition) <= range)
+                // Ignore the object if the parent is out of range.
+                if (!(Vector3.Distance(parent.Position, Client.Self.SimPosition) <= range)) return;
+                if (item is UUID && o.ID.Equals(item))
                 {
-                    if (item is UUID && o.ID.Equals(item))
+                    lock (LockObject)
                     {
-                        lock (LockObject)
-                        {
-                            selectedPrimitives.Add(o);
-                        }
-                        return;
+                        selectedPrimitives.Add(o);
                     }
-                    if (item is string)
+                    return;
+                }
+                if (item is string)
+                {
+                    lock (LockObject)
                     {
-                        lock (LockObject)
-                        {
-                            selectedPrimitives.Add(o);
-                        }
+                        selectedPrimitives.Add(o);
                     }
                 }
             });
@@ -4189,14 +4173,15 @@ namespace Corrade
         /// <param name="messages">a list of messages</param>
         private static void Feedback(bool multiline, params string[] messages)
         {
-            if (!multiline)
-            {
-                Feedback(messages);
-                return;
-            }
             CorradeThreadPool[CorradeThreadType.LOG].Spawn(
                 () =>
                 {
+                    if (!multiline)
+                    {
+                        Feedback(messages);
+                        return;
+                    }
+
                     List<string> output =
                         new List<string>(
                             messages.Select(
@@ -4431,7 +4416,7 @@ namespace Corrade
             FileSystemEventHandler HandleNotificationsFileChanged = null;
             try
             {
-                NotificationsWatcher.Path = wasPathCombine(Directory.GetCurrentDirectory(),
+                NotificationsWatcher.Path = IO.PathCombine(Directory.GetCurrentDirectory(),
                     CORRADE_CONSTANTS.STATE_DIRECTORY);
                 NotificationsWatcher.Filter = CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE;
                 NotificationsWatcher.NotifyFilter = NotifyFilters.LastWrite;
@@ -4450,7 +4435,7 @@ namespace Corrade
             FileSystemEventHandler HandleGroupSchedulesFileChanged = null;
             try
             {
-                SchedulesWatcher.Path = wasPathCombine(Directory.GetCurrentDirectory(),
+                SchedulesWatcher.Path = IO.PathCombine(Directory.GetCurrentDirectory(),
                     CORRADE_CONSTANTS.STATE_DIRECTORY);
                 SchedulesWatcher.Filter = CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE;
                 SchedulesWatcher.NotifyFilter = NotifyFilters.LastWrite;
@@ -4468,7 +4453,7 @@ namespace Corrade
             FileSystemEventHandler HandleAIMLBotConfigurationChanged = null;
             try
             {
-                AIMLBotConfigurationWatcher.Path = wasPathCombine(Directory.GetCurrentDirectory(),
+                AIMLBotConfigurationWatcher.Path = IO.PathCombine(Directory.GetCurrentDirectory(),
                     AIML_BOT_CONSTANTS.DIRECTORY);
                 AIMLBotConfigurationWatcher.NotifyFilter = NotifyFilters.LastWrite;
                 HandleAIMLBotConfigurationChanged = (sender, args) => AIMLConfigurationChangedTimer.Change(1000, 0);
@@ -5182,20 +5167,48 @@ namespace Corrade
             List<Notification> notifyGroups = new List<Notification>();
             lock (GroupNotificationsLock)
             {
-                if (GroupNotifications.Any())
+                switch (GroupNotifications.Any())
                 {
-                    notifyGroups.AddRange(GroupNotifications.AsParallel()
-                        .Where(
-                            o =>
-                                !(o.NotificationMask & (uint) notification).Equals(0) &&
-                                corradeConfiguration.Groups.AsParallel().Any(
-                                    p => p.Name.Equals(o.GroupName, StringComparison.OrdinalIgnoreCase) &&
-                                         !(p.NotificationMask & (uint) notification).Equals(0))));
+                    case true:
+                        notifyGroups.AddRange(GroupNotifications.AsParallel()
+                            .Where(
+                                o =>
+                                    !(o.NotificationMask & (uint) notification).Equals(0) &&
+                                    corradeConfiguration.Groups.AsParallel().Any(
+                                        p => p.Name.Equals(o.GroupName, StringComparison.OrdinalIgnoreCase) &&
+                                             !(p.NotificationMask & (uint) notification).Equals(0))));
+                        break;
+                    default:
+                        return;
                 }
             }
 
             // No groups to notify so bail directly.
             if (!notifyGroups.Any()) return;
+
+            // Find the notification action.
+            Action<CorradeNotificationParameters, Dictionary<string, string>> CorradeNotification = null;
+            try
+            {
+                FieldInfo fi =
+                    typeof (CorradeNotifications).GetFields(BindingFlags.Static | BindingFlags.Public)
+                        .AsParallel()
+                        .Where(
+                            o =>
+                                o.FieldType ==
+                                typeof (Action<CorradeNotificationParameters, Dictionary<string, string>>))
+                        .SingleOrDefault(o => o.Name.Equals(Reflection.GetNameFromEnumValue(notification)));
+                CorradeNotification =
+                    (Action<CorradeNotificationParameters, Dictionary<string, string>>) fi?.GetValue(null);
+                if (CorradeNotification == null)
+                    throw new Exception(
+                        Reflection.GetDescriptionFromEnumValue(ConsoleError.UNKNOWN_NOTIFICATION_TYPE));
+            }
+            catch (Exception ex)
+            {
+                Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.NOTIFICATION_ERROR), ex.Message);
+                return;
+            }
 
             // For each group build the notification.
             Parallel.ForEach(notifyGroups, z =>
@@ -5203,1276 +5216,13 @@ namespace Corrade
                 // Create the notification data storage for this notification.
                 Dictionary<string, string> notificationData = new Dictionary<string, string>();
 
-                // Create the executable delegate.
-                System.Action execute;
-
-                // Build the notification data
-                switch (notification)
-                {
-                    case Configuration.Notifications.ScriptDialog:
-                        execute = () =>
-                        {
-                            ScriptDialogEventArgs scriptDialogEventArgs = (ScriptDialogEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(scriptDialogEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                                scriptDialogEventArgs.Message);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                scriptDialogEventArgs.FirstName);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                scriptDialogEventArgs.LastName);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.CHANNEL),
-                                scriptDialogEventArgs.Channel.ToString(Utils.EnUsCulture));
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
-                                scriptDialogEventArgs.ObjectName);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                                scriptDialogEventArgs.ObjectID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
-                                scriptDialogEventArgs.OwnerID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.BUTTON),
-                                CSV.FromEnumerable(scriptDialogEventArgs.ButtonLabels));
-                        };
-                        break;
-                    case Configuration.Notifications.LocalChat:
-                        execute = () =>
-                        {
-                            ChatEventArgs localChatEventArgs = (ChatEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(localChatEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            IEnumerable<string> name = GetAvatarNames(localChatEventArgs.FromName);
-                            if (name != null)
-                            {
-                                List<string> fullName = new List<string>(name);
-                                if (fullName.Count.Equals(2))
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                        fullName.First());
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                        fullName.Last());
-                                }
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                                localChatEventArgs.Message);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
-                                localChatEventArgs.OwnerID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                                localChatEventArgs.SourceID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                                localChatEventArgs.Position.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
-                                Enum.GetName(typeof (ChatSourceType), localChatEventArgs.SourceType));
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AUDIBLE),
-                                Enum.GetName(typeof (ChatAudibleLevel), localChatEventArgs.AudibleLevel));
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.VOLUME),
-                                Enum.GetName(typeof (ChatType), localChatEventArgs.Type));
-                        };
-                        break;
-                    case Configuration.Notifications.Balance:
-                        execute = () =>
-                        {
-                            BalanceEventArgs balanceEventArgs = (BalanceEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(balanceEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.BALANCE),
-                                balanceEventArgs.Balance.ToString(Utils.EnUsCulture));
-                        };
-                        break;
-                    case Configuration.Notifications.AlertMessage:
-                        execute = () =>
-                        {
-                            AlertMessageEventArgs alertMessageEventArgs = (AlertMessageEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(alertMessageEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                                alertMessageEventArgs.Message);
-                        };
-                        break;
-                    case Configuration.Notifications.Inventory:
-                        execute = () =>
-                        {
-                            System.Type inventoryOfferedType = args.GetType();
-                            if (inventoryOfferedType == typeof (InstantMessageEventArgs))
-                            {
-                                InstantMessageEventArgs inventoryOfferEventArgs = (InstantMessageEventArgs) args;
-                                // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && z.Data.Any())
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.FromEnumerable(GetStructuredData(inventoryOfferEventArgs,
-                                            CSV.FromEnumerable(z.Data))));
-                                    return;
-                                }
-                                List<string> inventoryObjectOfferedName =
-                                    new List<string>(CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(
-                                        inventoryOfferEventArgs.IM.FromAgentName)
-                                        .Cast<Match>()
-                                        .ToDictionary(p => new[]
-                                        {
-                                            p.Groups["first"].Value,
-                                            p.Groups["last"].Value
-                                        })
-                                        .SelectMany(
-                                            p =>
-                                                new[]
-                                                {
-                                                    p.Key[0].Trim(),
-                                                    !string.IsNullOrEmpty(p.Key[1])
-                                                        ? p.Key[1].Trim()
-                                                        : string.Empty
-                                                }));
-                                switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
-                                {
-                                    case true:
-                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                            inventoryObjectOfferedName.First());
-                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                            inventoryObjectOfferedName.Last());
-                                        break;
-                                    default:
-                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
-                                            inventoryObjectOfferedName.First());
-                                        break;
-                                }
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                                    inventoryOfferEventArgs.IM.FromAgentID.ToString());
-                                switch (inventoryOfferEventArgs.IM.Dialog)
-                                {
-                                    case InstantMessageDialog.InventoryAccepted:
-                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                            Reflection.GetNameFromEnumValue(Action.ACCEPT));
-                                        break;
-                                    case InstantMessageDialog.InventoryDeclined:
-                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                            Reflection.GetNameFromEnumValue(Action.DECLINE));
-                                        break;
-                                    case InstantMessageDialog.TaskInventoryOffered:
-                                    case InstantMessageDialog.InventoryOffered:
-                                        lock (InventoryOffersLock)
-                                        {
-                                            KeyValuePair<InventoryObjectOfferedEventArgs, ManualResetEvent>
-                                                inventoryObjectOfferedEventArgs =
-                                                    InventoryOffers.AsParallel().FirstOrDefault(p =>
-                                                        p.Key.Offer.IMSessionID.Equals(
-                                                            inventoryOfferEventArgs.IM.IMSessionID));
-                                            if (
-                                                !inventoryObjectOfferedEventArgs.Equals(
-                                                    default(
-                                                        KeyValuePair
-                                                            <InventoryObjectOfferedEventArgs, ManualResetEvent>)))
-                                            {
-                                                switch (inventoryObjectOfferedEventArgs.Key.Accept)
-                                                {
-                                                    case true:
-                                                        notificationData.Add(
-                                                            Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                                            Reflection.GetNameFromEnumValue(Action.ACCEPT));
-                                                        break;
-                                                    default:
-                                                        notificationData.Add(
-                                                            Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                                            Reflection.GetNameFromEnumValue(Action.DECLINE));
-                                                        break;
-                                                }
-                                            }
-                                            GroupCollection groups =
-                                                CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
-                                                    inventoryObjectOfferedEventArgs.Key.Offer.Message).Groups;
-                                            if (groups.Count > 0)
-                                            {
-                                                notificationData.Add(
-                                                    Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                                                    groups[1].Value);
-                                            }
-                                            InventoryOffers.Remove(inventoryObjectOfferedEventArgs.Key);
-                                        }
-                                        break;
-                                }
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DIRECTION),
-                                    Reflection.GetNameFromEnumValue(Action.REPLY));
-                                return;
-                            }
-                            if (inventoryOfferedType == typeof (InventoryObjectOfferedEventArgs))
-                            {
-                                InventoryObjectOfferedEventArgs inventoryObjectOfferedEventArgs =
-                                    (InventoryObjectOfferedEventArgs) args;
-                                // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && z.Data.Any())
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.FromEnumerable(GetStructuredData(inventoryObjectOfferedEventArgs,
-                                            CSV.FromEnumerable(z.Data))));
-                                    return;
-                                }
-                                List<string> inventoryObjectOfferedName =
-                                    new List<string>(CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(
-                                        inventoryObjectOfferedEventArgs.Offer.FromAgentName)
-                                        .Cast<Match>()
-                                        .ToDictionary(p => new[]
-                                        {
-                                            p.Groups["first"].Value,
-                                            p.Groups["last"].Value
-                                        })
-                                        .SelectMany(
-                                            p =>
-                                                new[]
-                                                {
-                                                    p.Key[0],
-                                                    !string.IsNullOrEmpty(p.Key[1])
-                                                        ? p.Key[1]
-                                                        : string.Empty
-                                                }));
-                                switch (!string.IsNullOrEmpty(inventoryObjectOfferedName.Last()))
-                                {
-                                    case true:
-                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                            inventoryObjectOfferedName.First());
-                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                            inventoryObjectOfferedName.Last());
-                                        break;
-                                    default:
-                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
-                                            inventoryObjectOfferedName.First());
-                                        break;
-                                }
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                                    inventoryObjectOfferedEventArgs.Offer.FromAgentID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ASSET),
-                                    inventoryObjectOfferedEventArgs.AssetType.ToString());
-                                GroupCollection groups =
-                                    CORRADE_CONSTANTS.InventoryOfferObjectNameRegEx.Match(
-                                        inventoryObjectOfferedEventArgs.Offer.Message).Groups;
-                                if (groups.Count > 0)
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                                        groups[1].Value);
-                                }
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION),
-                                    inventoryObjectOfferedEventArgs.Offer.IMSessionID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DIRECTION),
-                                    Reflection.GetNameFromEnumValue(Action.OFFER));
-                            }
-                        };
-                        break;
-                    case Configuration.Notifications.ScriptPermission:
-                        execute = () =>
-                        {
-                            ScriptQuestionEventArgs scriptQuestionEventArgs = (ScriptQuestionEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(scriptQuestionEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                                scriptQuestionEventArgs.ItemID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TASK),
-                                scriptQuestionEventArgs.TaskID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.PERMISSIONS),
-                                CSV.FromEnumerable(typeof (ScriptPermission).GetFields(BindingFlags.Public |
-                                                                                       BindingFlags.Static)
-                                    .AsParallel().Where(
-                                        p =>
-                                            !(((int) p.GetValue(null) &
-                                               (int) scriptQuestionEventArgs.Questions)).Equals(0))
-                                    .Select(p => p.Name)));
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.REGION),
-                                scriptQuestionEventArgs.Simulator.Name);
-                        };
-                        break;
-                    case Configuration.Notifications.Friendship:
-                        execute = () =>
-                        {
-                            System.Type friendshipNotificationType = args.GetType();
-                            if (friendshipNotificationType == typeof (FriendInfoEventArgs))
-                            {
-                                FriendInfoEventArgs friendInfoEventArgs = (FriendInfoEventArgs) args;
-                                // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && z.Data.Any())
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.FromEnumerable(GetStructuredData(friendInfoEventArgs,
-                                            CSV.FromEnumerable(z.Data))));
-                                    return;
-                                }
-                                IEnumerable<string> name = GetAvatarNames(friendInfoEventArgs.Friend.Name);
-                                if (name != null)
-                                {
-                                    List<string> fullName = new List<string>(name);
-                                    if (fullName.Count.Equals(2))
-                                    {
-                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                            fullName.First());
-                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                            fullName.Last());
-                                    }
-                                }
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                                    friendInfoEventArgs.Friend.UUID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.STATUS),
-                                    friendInfoEventArgs.Friend.IsOnline
-                                        ? Reflection.GetNameFromEnumValue(Action.ONLINE)
-                                        : Reflection.GetNameFromEnumValue(Action.OFFLINE));
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.RIGHTS),
-                                    // Return the friend rights as a nice CSV string.
-                                    CSV.FromEnumerable(typeof (FriendRights).GetFields(BindingFlags.Public |
-                                                                                       BindingFlags.Static)
-                                        .AsParallel().Where(
-                                            p =>
-                                                !(((int) p.GetValue(null) &
-                                                   (int) friendInfoEventArgs.Friend.MyFriendRights))
-                                                    .Equals(
-                                                        0))
-                                        .Select(p => p.Name)));
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.GetNameFromEnumValue(Action.UPDATE));
-                                return;
-                            }
-                            if (friendshipNotificationType == typeof (FriendshipResponseEventArgs))
-                            {
-                                FriendshipResponseEventArgs friendshipResponseEventArgs =
-                                    (FriendshipResponseEventArgs) args;
-                                // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && z.Data.Any())
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.FromEnumerable(GetStructuredData(friendshipResponseEventArgs,
-                                            CSV.FromEnumerable(z.Data))));
-                                    return;
-                                }
-                                IEnumerable<string> name = GetAvatarNames(friendshipResponseEventArgs.AgentName);
-                                if (name != null)
-                                {
-                                    List<string> fullName = new List<string>(name);
-                                    if (fullName.Count.Equals(2))
-                                    {
-                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                            fullName.First());
-                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                            fullName.Last());
-                                    }
-                                }
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                                    friendshipResponseEventArgs.AgentID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.GetNameFromEnumValue(Action.RESPONSE));
-                                return;
-                            }
-                            if (friendshipNotificationType == typeof (FriendshipOfferedEventArgs))
-                            {
-                                FriendshipOfferedEventArgs friendshipOfferedEventArgs =
-                                    (FriendshipOfferedEventArgs) args;
-                                // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && z.Data.Any())
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.FromEnumerable(GetStructuredData(friendshipOfferedEventArgs,
-                                            CSV.FromEnumerable(z.Data))));
-                                    return;
-                                }
-                                IEnumerable<string> name = GetAvatarNames(friendshipOfferedEventArgs.AgentName);
-                                if (name != null)
-                                {
-                                    List<string> fullName = new List<string>(name);
-                                    if (fullName.Count.Equals(2))
-                                    {
-                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                            fullName.First());
-                                        notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                            fullName.Last());
-                                    }
-                                }
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                                    friendshipOfferedEventArgs.AgentID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.GetNameFromEnumValue(Action.REQUEST));
-                            }
-                        };
-                        break;
-                    case Configuration.Notifications.TeleportLure:
-                        execute = () =>
-                        {
-                            InstantMessageEventArgs teleportLureEventArgs = (InstantMessageEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(teleportLureEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            IEnumerable<string> name = GetAvatarNames(teleportLureEventArgs.IM.FromAgentName);
-                            if (name != null)
-                            {
-                                List<string> fullName = new List<string>(name);
-                                if (fullName.Count.Equals(2))
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                        fullName.First());
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                        fullName.Last());
-                                }
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                                teleportLureEventArgs.IM.FromAgentID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION),
-                                teleportLureEventArgs.IM.IMSessionID.ToString());
-                        };
-                        break;
-                    case Configuration.Notifications.GroupNotice:
-                        execute = () =>
-                        {
-                            InstantMessageEventArgs notificationGroupNoticeEventArgs =
-                                (InstantMessageEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(notificationGroupNoticeEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            // Retrieve the stored notice.
-                            GroupNotice notice;
-                            lock (GroupNoticeLock)
-                            {
-                                notice = GroupNotices.AsParallel()
-                                    .FirstOrDefault(
-                                        o => o.Session.Equals(notificationGroupNoticeEventArgs.IM.IMSessionID));
-                            }
-                            // If the notice could not be retrieved, then abort.
-                            if (notice.Equals(default(GroupNotice))) return;
-                            // Only send notices to the same group that requested notifications.
-                            if (!notice.Group.ID.Equals(z.GroupUUID)) return;
-                            lock (GroupNoticeLock)
-                            {
-                                GroupNotices.Remove(notice);
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
-                                notice.Group.Name);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION),
-                                notice.Session.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                                notice.Agent.UUID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                notice.Agent.FirstName);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                notice.Agent.LastName);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SUBJECT),
-                                notice.Subject);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                                notice.Message);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ATTACHMENTS),
-                                notice.Attachment.ToString());
-                            if (notice.Attachment)
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ASSET),
-                                    notice.Asset.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FOLDER),
-                                    notice.Folder.ToString());
-                            }
-                        };
-                        break;
-                    case Configuration.Notifications.InstantMessage:
-                        execute = () =>
-                        {
-                            InstantMessageEventArgs notificationInstantMessage =
-                                (InstantMessageEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(notificationInstantMessage,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            IEnumerable<string> name = GetAvatarNames(notificationInstantMessage.IM.FromAgentName);
-                            if (name != null)
-                            {
-                                List<string> fullName = new List<string>(name);
-                                if (fullName.Count.Equals(2))
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                        fullName.First());
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                        fullName.Last());
-                                }
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                                notificationInstantMessage.IM.FromAgentID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                                notificationInstantMessage.IM.Message);
-                        };
-                        break;
-                    case Configuration.Notifications.RegionMessage:
-                        execute = () =>
-                        {
-                            InstantMessageEventArgs notificationRegionMessage =
-                                (InstantMessageEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(notificationRegionMessage,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            IEnumerable<string> name = GetAvatarNames(notificationRegionMessage.IM.FromAgentName);
-                            if (name != null)
-                            {
-                                List<string> fullName = new List<string>(name);
-                                if (fullName.Count.Equals(2))
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                        fullName.First());
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                        fullName.Last());
-                                }
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                                notificationRegionMessage.IM.FromAgentID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                                notificationRegionMessage.IM.Message);
-                        };
-                        break;
-                    case Configuration.Notifications.GroupMessage:
-                        execute = () =>
-                        {
-                            GroupMessageEventArgs notificationGroupMessage = (GroupMessageEventArgs) args;
-                            // Set-up filters.
-                            if (!notificationGroupMessage.GroupUUID.Equals(z.GroupUUID)) return;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(notificationGroupMessage,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                notificationGroupMessage.FirstName);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                notificationGroupMessage.LastName);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                                notificationGroupMessage.AgentUUID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
-                                notificationGroupMessage.GroupName);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                                notificationGroupMessage.Message);
-                        };
-                        break;
-                    case Configuration.Notifications.ViewerEffect:
-                        execute = () =>
-                        {
-                            System.Type viewerEffectType = args.GetType();
-                            if (viewerEffectType == typeof (ViewerEffectEventArgs))
-                            {
-                                ViewerEffectEventArgs notificationViewerEffectEventArgs =
-                                    (ViewerEffectEventArgs) args;
-                                // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && z.Data.Any())
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.FromEnumerable(GetStructuredData(notificationViewerEffectEventArgs,
-                                            CSV.FromEnumerable(z.Data))));
-                                    return;
-                                }
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.EFFECT),
-                                    notificationViewerEffectEventArgs.Type.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SOURCE),
-                                    notificationViewerEffectEventArgs.SourceID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET),
-                                    notificationViewerEffectEventArgs.TargetID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                                    notificationViewerEffectEventArgs.TargetPosition.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DURATION),
-                                    notificationViewerEffectEventArgs.Duration.ToString(
-                                        Utils.EnUsCulture));
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
-                                    notificationViewerEffectEventArgs.EffectID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.GetNameFromEnumValue(Action.GENERIC));
-                                return;
-                            }
-                            if (viewerEffectType == typeof (ViewerEffectPointAtEventArgs))
-                            {
-                                ViewerEffectPointAtEventArgs notificationViewerPointAtEventArgs =
-                                    (ViewerEffectPointAtEventArgs) args;
-                                // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && z.Data.Any())
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.FromEnumerable(GetStructuredData(notificationViewerPointAtEventArgs,
-                                            CSV.FromEnumerable(z.Data))));
-                                    return;
-                                }
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SOURCE),
-                                    notificationViewerPointAtEventArgs.SourceID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET),
-                                    notificationViewerPointAtEventArgs.TargetID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                                    notificationViewerPointAtEventArgs.TargetPosition.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DURATION),
-                                    notificationViewerPointAtEventArgs.Duration.ToString(
-                                        Utils.EnUsCulture));
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
-                                    notificationViewerPointAtEventArgs.EffectID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.GetNameFromEnumValue(Action.POINT));
-                                return;
-                            }
-                            if (viewerEffectType == typeof (ViewerEffectLookAtEventArgs))
-                            {
-                                ViewerEffectLookAtEventArgs notificationViewerLookAtEventArgs =
-                                    (ViewerEffectLookAtEventArgs) args;
-                                // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && z.Data.Any())
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.FromEnumerable(GetStructuredData(notificationViewerLookAtEventArgs,
-                                            CSV.FromEnumerable(z.Data))));
-                                    return;
-                                }
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SOURCE),
-                                    notificationViewerLookAtEventArgs.SourceID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET),
-                                    notificationViewerLookAtEventArgs.TargetID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                                    notificationViewerLookAtEventArgs.TargetPosition.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DURATION),
-                                    notificationViewerLookAtEventArgs.Duration.ToString(
-                                        Utils.EnUsCulture));
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
-                                    notificationViewerLookAtEventArgs.EffectID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.GetNameFromEnumValue(Action.LOOK));
-                            }
-                        };
-                        break;
-                    case Configuration.Notifications.MeanCollision:
-                        execute = () =>
-                        {
-                            MeanCollisionEventArgs meanCollisionEventArgs =
-                                (MeanCollisionEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(meanCollisionEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGGRESSOR),
-                                meanCollisionEventArgs.Aggressor.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MAGNITUDE),
-                                meanCollisionEventArgs.Magnitude.ToString(Utils.EnUsCulture));
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TIME),
-                                meanCollisionEventArgs.Time.ToLongDateString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
-                                meanCollisionEventArgs.Type.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.VICTIM),
-                                meanCollisionEventArgs.Victim.ToString());
-                        };
-                        break;
-                    case Configuration.Notifications.RegionCrossed:
-                        execute = () =>
-                        {
-                            System.Type regionChangeType = args.GetType();
-                            if (regionChangeType == typeof (SimChangedEventArgs))
-                            {
-                                SimChangedEventArgs simChangedEventArgs = (SimChangedEventArgs) args;
-                                // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && z.Data.Any())
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.FromEnumerable(GetStructuredData(simChangedEventArgs,
-                                            CSV.FromEnumerable(z.Data))));
-                                    return;
-                                }
-                                if (simChangedEventArgs.PreviousSimulator != null)
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OLD),
-                                        simChangedEventArgs.PreviousSimulator.Name);
-                                }
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NEW),
-                                    Client.Network.CurrentSim.Name);
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.GetNameFromEnumValue(Action.CHANGED));
-                                return;
-                            }
-                            if (regionChangeType == typeof (RegionCrossedEventArgs))
-                            {
-                                RegionCrossedEventArgs regionCrossedEventArgs =
-                                    (RegionCrossedEventArgs) args;
-                                // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && z.Data.Any())
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.FromEnumerable(GetStructuredData(regionCrossedEventArgs,
-                                            CSV.FromEnumerable(z.Data))));
-                                    return;
-                                }
-                                if (regionCrossedEventArgs.OldSimulator != null)
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OLD),
-                                        regionCrossedEventArgs.OldSimulator.Name);
-                                }
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NEW),
-                                    regionCrossedEventArgs.NewSimulator.Name);
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.GetNameFromEnumValue(Action.CROSSED));
-                            }
-                        };
-                        break;
-                    case Configuration.Notifications.TerseUpdates:
-                        execute = () =>
-                        {
-                            TerseObjectUpdateEventArgs terseObjectUpdateEventArgs =
-                                (TerseObjectUpdateEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(terseObjectUpdateEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
-                                terseObjectUpdateEventArgs.Prim.ID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                                terseObjectUpdateEventArgs.Prim.Position.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION),
-                                terseObjectUpdateEventArgs.Prim.Rotation.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
-                                terseObjectUpdateEventArgs.Prim.PrimData.PCode.ToString());
-                        };
-                        break;
-                    case Configuration.Notifications.Typing:
-                        execute = () =>
-                        {
-                            InstantMessageEventArgs notificationTypingMessageEventArgs =
-                                (InstantMessageEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(notificationTypingMessageEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            IEnumerable<string> name =
-                                GetAvatarNames(notificationTypingMessageEventArgs.IM.FromAgentName);
-                            if (name != null)
-                            {
-                                List<string> fullName = new List<string>(name);
-                                if (fullName.Count.Equals(2))
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                        fullName.First());
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                        fullName.Last());
-                                }
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                                notificationTypingMessageEventArgs.IM.FromAgentID.ToString());
-                            switch (notificationTypingMessageEventArgs.IM.Dialog)
-                            {
-                                case InstantMessageDialog.StartTyping:
-                                case InstantMessageDialog.StopTyping:
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                        !notificationTypingMessageEventArgs.IM.Dialog.Equals(
-                                            InstantMessageDialog.StartTyping)
-                                            ? Reflection.GetNameFromEnumValue(Action.STOP)
-                                            : Reflection.GetNameFromEnumValue(Action.START));
-                                    break;
-                            }
-                        };
-                        break;
-                    case Configuration.Notifications.GroupInvite:
-                        execute = () =>
-                        {
-                            InstantMessageEventArgs notificationGroupInviteEventArgs =
-                                (InstantMessageEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(notificationGroupInviteEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            IEnumerable<string> name = GetAvatarNames(notificationGroupInviteEventArgs.IM.FromAgentName);
-                            if (name != null)
-                            {
-                                List<string> fullName = new List<string>(name);
-                                if (fullName.Count.Equals(2))
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                        fullName.First());
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                        fullName.Last());
-                                }
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                                notificationGroupInviteEventArgs.IM.FromAgentID.ToString());
-                            lock (GroupInviteLock)
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
-                                    GroupInvites.AsParallel().FirstOrDefault(
-                                        p => p.Session.Equals(notificationGroupInviteEventArgs.IM.IMSessionID))
-                                        .Group);
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SESSION),
-                                notificationGroupInviteEventArgs.IM.IMSessionID.ToString());
-                        };
-                        break;
-                    case Configuration.Notifications.Economy:
-                        execute = () =>
-                        {
-                            MoneyBalanceReplyEventArgs notificationMoneyBalanceEventArgs =
-                                (MoneyBalanceReplyEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(notificationMoneyBalanceEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.BALANCE),
-                                notificationMoneyBalanceEventArgs.Balance.ToString(
-                                    Utils.EnUsCulture));
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DESCRIPTION),
-                                notificationMoneyBalanceEventArgs.Description);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.COMMITTED),
-                                notificationMoneyBalanceEventArgs.MetersCommitted.ToString(
-                                    Utils.EnUsCulture));
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.CREDIT),
-                                notificationMoneyBalanceEventArgs.MetersCredit.ToString(
-                                    Utils.EnUsCulture));
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SUCCESS),
-                                notificationMoneyBalanceEventArgs.Success.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
-                                notificationMoneyBalanceEventArgs.TransactionID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AMOUNT),
-                                notificationMoneyBalanceEventArgs.TransactionInfo.Amount.ToString(
-                                    Utils.EnUsCulture));
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TARGET),
-                                notificationMoneyBalanceEventArgs.TransactionInfo.DestID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.SOURCE),
-                                notificationMoneyBalanceEventArgs.TransactionInfo.SourceID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TRANSACTION),
-                                Enum.GetName(typeof (MoneyTransactionType),
-                                    notificationMoneyBalanceEventArgs.TransactionInfo.TransactionType));
-                        };
-                        break;
-                    case Configuration.Notifications.GroupMembership:
-                        execute = () =>
-                        {
-                            GroupMembershipEventArgs groupMembershipEventArgs = (GroupMembershipEventArgs) args;
-                            // Set-up filters.
-                            if (!groupMembershipEventArgs.GroupUUID.Equals(z.GroupUUID)) return;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(groupMembershipEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            IEnumerable<string> name = GetAvatarNames(groupMembershipEventArgs.AgentName);
-                            if (name != null)
-                            {
-                                List<string> fullName = new List<string>(name);
-                                if (fullName.Count.Equals(2))
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                        fullName.First());
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                        fullName.Last());
-                                }
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.AGENT),
-                                groupMembershipEventArgs.AgentUUID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
-                                groupMembershipEventArgs.GroupName);
-                            switch (groupMembershipEventArgs.Action)
-                            {
-                                case Action.JOINED:
-                                case Action.PARTED:
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                        !groupMembershipEventArgs.Action.Equals(
-                                            Action.JOINED)
-                                            ? Reflection.GetNameFromEnumValue(Action.PARTED)
-                                            : Reflection.GetNameFromEnumValue(Action.JOINED));
-                                    break;
-                            }
-                        };
-                        break;
-                    case Configuration.Notifications.LoadURL:
-                        execute = () =>
-                        {
-                            LoadUrlEventArgs loadURLEventArgs = (LoadUrlEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(loadURLEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
-                                loadURLEventArgs.ObjectName);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                                loadURLEventArgs.ObjectID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
-                                loadURLEventArgs.OwnerID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP),
-                                loadURLEventArgs.OwnerIsGroup.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                                loadURLEventArgs.Message);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.URL),
-                                loadURLEventArgs.URL);
-                        };
-                        break;
-                    case Configuration.Notifications.OwnerSay:
-                        execute = () =>
-                        {
-                            ChatEventArgs ownerSayEventArgs = (ChatEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(ownerSayEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                                ownerSayEventArgs.Message);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                                ownerSayEventArgs.SourceID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
-                                ownerSayEventArgs.FromName);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                                ownerSayEventArgs.Position.ToString());
-                        };
-                        break;
-                    case Configuration.Notifications.RegionSayTo:
-                        execute = () =>
-                        {
-                            ChatEventArgs regionSayToEventArgs = (ChatEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(regionSayToEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                                regionSayToEventArgs.Message);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
-                                regionSayToEventArgs.OwnerID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                                regionSayToEventArgs.SourceID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
-                                regionSayToEventArgs.FromName);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                                regionSayToEventArgs.Position.ToString());
-                        };
-                        break;
-                    case Configuration.Notifications.ObjectInstantMessage:
-                        execute = () =>
-                        {
-                            InstantMessageEventArgs notificationObjectInstantMessage =
-                                (InstantMessageEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(notificationObjectInstantMessage,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
-                                notificationObjectInstantMessage.IM.FromAgentID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                                notificationObjectInstantMessage.IM.IMSessionID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
-                                notificationObjectInstantMessage.IM.FromAgentName);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                                notificationObjectInstantMessage.IM.Message);
-                        };
-                        break;
-                    case Configuration.Notifications.RLVMessage:
-                        execute = () =>
-                        {
-                            ChatEventArgs RLVEventArgs = (ChatEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(RLVEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                                RLVEventArgs.SourceID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
-                                RLVEventArgs.FromName);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                                RLVEventArgs.Position.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.RLV),
-                                CSV.FromEnumerable(wasRLVToString(RLVEventArgs.Message)));
-                        };
-                        break;
-                    case Configuration.Notifications.DebugMessage:
-                        execute = () =>
-                        {
-                            ChatEventArgs DebugEventArgs = (ChatEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(DebugEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ITEM),
-                                DebugEventArgs.SourceID.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.NAME),
-                                DebugEventArgs.FromName);
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                                DebugEventArgs.Position.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.MESSAGE),
-                                DebugEventArgs.Message);
-                        };
-                        break;
-                    case Configuration.Notifications.RadarAvatars:
-                        execute = () =>
-                        {
-                            System.Type radarAvatarsType = args.GetType();
-                            if (radarAvatarsType == typeof (AvatarUpdateEventArgs))
-                            {
-                                AvatarUpdateEventArgs avatarUpdateEventArgs =
-                                    (AvatarUpdateEventArgs) args;
-                                lock (RadarObjectsLock)
-                                {
-                                    if (RadarObjects.ContainsKey(avatarUpdateEventArgs.Avatar.ID)) return;
-                                    RadarObjects.Add(avatarUpdateEventArgs.Avatar.ID, avatarUpdateEventArgs.Avatar);
-                                }
-                                // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && z.Data.Any())
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.FromEnumerable(GetStructuredData(avatarUpdateEventArgs,
-                                            CSV.FromEnumerable(z.Data))));
-                                    return;
-                                }
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                    avatarUpdateEventArgs.Avatar.FirstName);
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                    avatarUpdateEventArgs.Avatar.LastName);
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
-                                    avatarUpdateEventArgs.Avatar.ID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                                    avatarUpdateEventArgs.Avatar.Position.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION),
-                                    avatarUpdateEventArgs.Avatar.Rotation.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
-                                    avatarUpdateEventArgs.Avatar.PrimData.PCode.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.GetNameFromEnumValue(Action.APPEAR));
-                                return;
-                            }
-                            if (radarAvatarsType == typeof (KillObjectEventArgs))
-                            {
-                                KillObjectEventArgs killObjectEventArgs =
-                                    (KillObjectEventArgs) args;
-                                Avatar avatar;
-                                lock (RadarObjectsLock)
-                                {
-                                    KeyValuePair<UUID, Primitive> tracked =
-                                        RadarObjects.AsParallel().FirstOrDefault(
-                                            p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
-                                    switch (!tracked.Equals(default(KeyValuePair<UUID, Primitive>)))
-                                    {
-                                        case true:
-                                            RadarObjects.Remove(tracked.Key);
-                                            break;
-                                        default:
-                                            return;
-                                    }
-                                    if (!(tracked.Value is Avatar)) return;
-                                    avatar = tracked.Value as Avatar;
-                                }
-                                // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && z.Data.Any())
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.FromEnumerable(GetStructuredData(killObjectEventArgs,
-                                            CSV.FromEnumerable(z.Data))));
-                                    return;
-                                }
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.FIRSTNAME),
-                                    avatar.FirstName);
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.LASTNAME),
-                                    avatar.LastName);
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
-                                    avatar.ID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                                    avatar.Position.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION),
-                                    avatar.Rotation.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
-                                    avatar.PrimData.PCode.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.GetNameFromEnumValue(Action.VANISH));
-                            }
-                        };
-                        break;
-                    case Configuration.Notifications.RadarPrimitives:
-                        execute = () =>
-                        {
-                            System.Type radarPrimitivesType = args.GetType();
-                            if (radarPrimitivesType == typeof (PrimEventArgs))
-                            {
-                                PrimEventArgs primEventArgs =
-                                    (PrimEventArgs) args;
-                                lock (RadarObjectsLock)
-                                {
-                                    if (RadarObjects.ContainsKey(primEventArgs.Prim.ID)) return;
-                                    RadarObjects.Add(primEventArgs.Prim.ID, primEventArgs.Prim);
-                                }
-                                // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && z.Data.Any())
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.FromEnumerable(GetStructuredData(primEventArgs,
-                                            CSV.FromEnumerable(z.Data))));
-                                    return;
-                                }
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
-                                    primEventArgs.Prim.OwnerID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
-                                    primEventArgs.Prim.ID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                                    primEventArgs.Prim.Position.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION),
-                                    primEventArgs.Prim.Rotation.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
-                                    primEventArgs.Prim.PrimData.PCode.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.GetNameFromEnumValue(Action.APPEAR));
-                                return;
-                            }
-                            if (radarPrimitivesType == typeof (KillObjectEventArgs))
-                            {
-                                KillObjectEventArgs killObjectEventArgs =
-                                    (KillObjectEventArgs) args;
-                                Primitive prim;
-                                lock (RadarObjectsLock)
-                                {
-                                    KeyValuePair<UUID, Primitive> tracked =
-                                        RadarObjects.AsParallel().FirstOrDefault(
-                                            p => p.Value.LocalID.Equals(killObjectEventArgs.ObjectLocalID));
-                                    switch (!tracked.Equals(default(KeyValuePair<UUID, Primitive>)))
-                                    {
-                                        case true:
-                                            RadarObjects.Remove(tracked.Key);
-                                            prim = tracked.Value;
-                                            break;
-                                        default:
-                                            return;
-                                    }
-                                }
-                                // In case we should send specific data then query the structure and return.
-                                if (z.Data != null && z.Data.Any())
-                                {
-                                    notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                        CSV.FromEnumerable(GetStructuredData(killObjectEventArgs,
-                                            CSV.FromEnumerable(z.Data))));
-                                    return;
-                                }
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.OWNER),
-                                    prim.OwnerID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ID),
-                                    prim.ID.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.POSITION),
-                                    prim.Position.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ROTATION),
-                                    prim.Rotation.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ENTITY),
-                                    prim.PrimData.PCode.ToString());
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.ACTION),
-                                    Reflection.GetNameFromEnumValue(Action.VANISH));
-                            }
-                        };
-                        break;
-                    case Configuration.Notifications.ScriptControl:
-                        execute = () =>
-                        {
-                            ScriptControlEventArgs scriptControlEventArgs =
-                                (ScriptControlEventArgs) args;
-                            // In case we should send specific data then query the structure and return.
-                            if (z.Data != null && z.Data.Any())
-                            {
-                                notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.DATA),
-                                    CSV.FromEnumerable(GetStructuredData(scriptControlEventArgs,
-                                        CSV.FromEnumerable(z.Data))));
-                                return;
-                            }
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.CONTROLS),
-                                CSV.FromEnumerable(typeof (ScriptControlChange).GetFields(BindingFlags.Public |
-                                                                                          BindingFlags.Static)
-                                    .AsParallel().Where(
-                                        p =>
-                                            !(((uint) p.GetValue(null) &
-                                               (uint) scriptControlEventArgs.Controls)).Equals(0))
-                                    .Select(p => p.Name)));
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.PASS),
-                                scriptControlEventArgs.Pass.ToString());
-                            notificationData.Add(Reflection.GetNameFromEnumValue(ScriptKeys.TAKE),
-                                scriptControlEventArgs.Take.ToString());
-                        };
-                        break;
-                    default:
-                        execute = () =>
-                        {
-                            throw new Exception(
-                                Reflection.GetDescriptionFromEnumValue(ConsoleError.UNKNOWN_NOTIFICATION_TYPE));
-                        };
-                        break;
-                }
-
                 try
                 {
-                    execute.Invoke();
+                    CorradeNotification.Invoke(new CorradeNotificationParameters
+                    {
+                        Notification = z,
+                        Event = args
+                    }, notificationData);
                 }
                 catch (Exception ex)
                 {
@@ -6490,18 +5240,11 @@ namespace Corrade
                 // Build the afterburn.
                 if (z.Afterburn != null && z.Afterburn.Any())
                 {
-                    object LockObject = new object();
-                    Parallel.ForEach(z.Afterburn, o =>
-                    {
-                        lock (LockObject)
-                        {
-                            notificationData.Add(o.Key, o.Value);
-                        }
-                    });
+                    notificationData = notificationData.Concat(z.Afterburn).ToDictionary(o => o.Key, o => o.Value);
                 }
 
                 // Enqueue the notification for the group.
-                if (z.NotificationURLDestination.Any())
+                if (z.NotificationURLDestination != null && z.NotificationURLDestination.Any())
                 {
                     Parallel.ForEach(
                         z.NotificationURLDestination.AsParallel()
@@ -6528,7 +5271,7 @@ namespace Corrade
                 }
 
                 // Enqueue the TCP notification for the group.
-                if (z.NotificationTCPDestination.Any())
+                if (z.NotificationTCPDestination != null && z.NotificationTCPDestination.Any())
                 {
                     Parallel.ForEach(
                         z.NotificationTCPDestination.AsParallel()
@@ -6661,7 +5404,7 @@ namespace Corrade
                                     using (
                                         StreamWriter logWriter =
                                             new StreamWriter(
-                                                wasPathCombine(corradeConfiguration.LocalMessageLogDirectory,
+                                                IO.PathCombine(corradeConfiguration.LocalMessageLogDirectory,
                                                     Client.Network.CurrentSim.Name) +
                                                 "." +
                                                 CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
@@ -7362,7 +6105,7 @@ namespace Corrade
                                             using (
                                                 StreamWriter logWriter =
                                                     new StreamWriter(
-                                                        wasPathCombine(corradeConfiguration.InstantMessageLogDirectory,
+                                                        IO.PathCombine(corradeConfiguration.InstantMessageLogDirectory,
                                                             args.IM.FromAgentName) +
                                                         "." + CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8)
                                                 )
@@ -7411,7 +6154,7 @@ namespace Corrade
                                             using (
                                                 StreamWriter logWriter =
                                                     new StreamWriter(
-                                                        wasPathCombine(corradeConfiguration.RegionMessageLogDirectory,
+                                                        IO.PathCombine(corradeConfiguration.RegionMessageLogDirectory,
                                                             Client.Network.CurrentSim.Name) + "." +
                                                         CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
                                             {
@@ -10179,6 +8922,12 @@ namespace Corrade
             [Reflection.NameAttribute("identifier")] public string Identifier;
             [Reflection.NameAttribute("message")] public string Message;
             [Reflection.NameAttribute("sender")] public string Sender;
+        }
+
+        public struct CorradeNotificationParameters
+        {
+            [Reflection.NameAttribute("event")] public object Event;
+            [Reflection.NameAttribute("notification")] public Notification Notification;
         }
 
         /// <summary>

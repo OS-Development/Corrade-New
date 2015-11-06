@@ -830,6 +830,93 @@
     <Compile Include="Corrade.Designer.cs">
       <DependentUpon>Corrade.cs</DependentUpon>
     </Compile>
+    <Compile Include="notifications\Alert.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Avatars.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Balance.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Collision.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Control.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Crossing.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Debug.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Dialog.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Economy.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Effect.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Friendship.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Group.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Inventory.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Invite.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Local.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Lure.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Membership.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Message.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Notice.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\ObjectIM.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\OwnerSay.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Permission.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Primitives.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Region.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\RegionSayTo.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\RLV.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Terse.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\Typing.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="notifications\URL.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="ProjectInstaller.cs">
       <SubType>Component</SubType>
     </Compile>
