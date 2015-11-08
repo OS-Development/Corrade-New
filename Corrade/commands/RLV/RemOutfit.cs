@@ -5,7 +5,6 @@
 ///////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using OpenMetaverse;
@@ -23,7 +22,6 @@ namespace Corrade
                 {
                     return;
                 }
-                InventoryBase inventoryBase;
                 switch (!string.IsNullOrEmpty(rule.Option))
                 {
                     case true: // A single wearable
@@ -35,39 +33,22 @@ namespace Corrade
                         {
                             break;
                         }
-                        KeyValuePair<AppearanceManager.WearableData, WearableType> wearable = GetWearables(
-                            Client.Inventory.Store.RootNode)
-                            .AsParallel().FirstOrDefault(
-                                o => o.Value.Equals((WearableType) wearTypeInfo.GetValue(null)));
-                        switch (
-                            !wearable.Equals(default(KeyValuePair<AppearanceManager.WearableData, WearableType>))
-                            )
+                        InventoryItem wearable =
+                            GetWearables(CurrentOutfitFolder)
+                                .AsParallel()
+                                .FirstOrDefault(
+                                    o =>
+                                        !IsBodyPart(o) &&
+                                        (o as InventoryWearable).WearableType.Equals(
+                                            (WearableType) wearTypeInfo.GetValue(null)));
+                        if (wearable != null)
                         {
-                            case true:
-                                inventoryBase = FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                                    wearable.Value).FirstOrDefault();
-                                if (inventoryBase != null)
-                                    UnWear(inventoryBase as InventoryItem);
-                                break;
+                            UnWear(wearable);
                         }
                         break;
                     default:
-                        Parallel.ForEach(GetWearables(Client.Inventory.Store.RootNode)
-                            .AsParallel().Select(o => new[]
-                            {
-                                o.Key
-                            }).SelectMany(o => o), o =>
-                            {
-                                inventoryBase =
-                                    FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, o.ItemID
-                                        )
-                                        .FirstOrDefault(p => (p is InventoryWearable));
-                                if (inventoryBase == null)
-                                {
-                                    return;
-                                }
-                                UnWear(inventoryBase as InventoryItem);
-                            });
+                        Parallel.ForEach(
+                            GetWearables(CurrentOutfitFolder).Where(o => !IsBodyPart(o as InventoryWearable)), UnWear);
                         break;
                 }
                 RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);

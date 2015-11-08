@@ -22,7 +22,7 @@ namespace Corrade
                     return;
                 }
                 KeyValuePair<Primitive, AttachmentPoint> attachment =
-                    GetAttachments(corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout)
+                    GetAttachments(corradeConfiguration.DataTimeout)
                         .AsParallel().FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
                 switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                 {

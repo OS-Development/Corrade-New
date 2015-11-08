@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenMetaverse;
-using Parallel = System.Threading.Tasks.Parallel;
 
 namespace Corrade
 {
@@ -21,11 +20,6 @@ namespace Corrade
                 int channel;
                 if (!int.TryParse(rule.Param, out channel) || channel < 1)
                 {
-                    return;
-                }
-                if (string.IsNullOrEmpty(rule.Option))
-                {
-                    Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                     return;
                 }
                 InventoryNode RLVFolder =
@@ -66,20 +60,22 @@ namespace Corrade
                         optionFolderNode = RLVFolder;
                         break;
                 }
-                HashSet<string> csv = new HashSet<string>();
-                object LockObject = new object();
-                Parallel.ForEach(
-                    FindInventory<InventoryBase>(optionFolderNode, CORRADE_CONSTANTS.OneOrMoRegex),
-                    o =>
-                    {
-                        if (o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)) return;
-                        lock (LockObject)
-                        {
-                            csv.Add(o.Name);
-                        }
-                    });
-                Client.Self.Chat(string.Join(RLV_CONSTANTS.CSV_DELIMITER, csv.ToArray()), channel,
-                    ChatType.Normal);
+                HashSet<string> csv =
+                    new HashSet<string>(FindInventory<InventoryBase>(optionFolderNode, CORRADE_CONSTANTS.OneOrMoRegex)
+                        .AsParallel()
+                        .Where(o => o is InventoryFolder && !o.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
+                        .Skip(1)
+                        .Select(o => o.Name));
+                switch (!csv.Count.Equals(0))
+                {
+                    case true:
+                        Client.Self.Chat(string.Join(RLV_CONSTANTS.CSV_DELIMITER, csv.ToArray()), channel,
+                            ChatType.Normal);
+                        break;
+                    default:
+                        Client.Self.Chat(string.Empty, channel, ChatType.Normal);
+                        break;
+                }
             };
         }
     }

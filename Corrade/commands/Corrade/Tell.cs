@@ -120,7 +120,7 @@ namespace Corrade
                                                 ConsoleError.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
                                             ex.Message);
                                     }
-                                }, corradeConfiguration.MaximumLogThreads);
+                                }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                             }
                             break;
                         case Entity.GROUP:
@@ -194,7 +194,7 @@ namespace Corrade
                                                     ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
                                                 ex.Message);
                                         }
-                                    }, corradeConfiguration.MaximumLogThreads);
+                                    }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                                 });
                             break;
                         case Entity.LOCAL:
@@ -273,7 +273,7 @@ namespace Corrade
                                                 ConsoleError.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
                                             ex.Message);
                                     }
-                                }, corradeConfiguration.MaximumLogThreads);
+                                }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                             }
                             break;
                         case Entity.ESTATE:

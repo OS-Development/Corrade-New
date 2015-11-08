@@ -34,32 +34,25 @@ namespace Corrade
                 Parallel.ForEach(
                     rule.Option.Split(RLV_CONSTANTS.PATH_SEPARATOR[0])
                         .AsParallel().Select(
-                            folder =>
+                            p =>
                                 FindInventory<InventoryBase>(RLVFolder,
-                                    new Regex(Regex.Escape(folder),
+                                    new Regex(Regex.Escape(p),
                                         RegexOptions.Compiled | RegexOptions.IgnoreCase)
-                                    ).AsParallel().FirstOrDefault(o => (o is InventoryFolder))), o =>
+                                    ).AsParallel().FirstOrDefault(o => (o is InventoryFolder))).Where(o => o != null)
+                        .SelectMany(
+                            o =>
+                                Client.Inventory.Store.GetContents(o as InventoryFolder)
+                                    .AsParallel()
+                                    .Where(CanBeWorn)), o =>
                                     {
-                                        if (o != null)
+                                        if (o is InventoryWearable)
                                         {
-                                            Client.Inventory.Store.GetContents(o as InventoryFolder).
-                                                FindAll(CanBeWorn)
-                                                .ForEach(
-                                                    p =>
-                                                    {
-                                                        if (p is InventoryWearable)
-                                                        {
-                                                            Wear(p as InventoryItem, true);
-                                                            return;
-                                                        }
-                                                        if (p is InventoryObject || p is InventoryAttachment)
-                                                        {
-                                                            // Multiple attachment points not working in libOpenMetaverse, so just replace.
-                                                            Attach(p as InventoryItem,
-                                                                AttachmentPoint.Default,
-                                                                true);
-                                                        }
-                                                    });
+                                            Wear(o as InventoryItem, true);
+                                            return;
+                                        }
+                                        if (o is InventoryObject || o is InventoryAttachment)
+                                        {
+                                            Attach(o as InventoryItem, AttachmentPoint.Default, true);
                                         }
                                     });
                 RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);

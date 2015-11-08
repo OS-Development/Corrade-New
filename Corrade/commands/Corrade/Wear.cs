@@ -46,16 +46,14 @@ namespace Corrade
                     {
                         replace = true;
                     }
-                    Parallel.ForEach(CSV.ToEnumerable(
-                        wearables).AsParallel().Where(o => !string.IsNullOrEmpty(o)), o =>
-                        {
-                            InventoryBase inventoryBaseItem =
-                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, StringOrUUID(o)
-                                    ).AsParallel().FirstOrDefault(p => p is InventoryWearable);
-                            if (inventoryBaseItem == null)
-                                return;
-                            Wear(inventoryBaseItem as InventoryItem, replace);
-                        });
+                    Parallel.ForEach(CSV.ToEnumerable(wearables)
+                        .AsParallel()
+                        .Where(o => !string.IsNullOrEmpty(o))
+                        .Select(o => FindInventory<InventoryBase>(Client.Inventory.Store.RootNode, StringOrUUID(o)
+                            ).AsParallel().FirstOrDefault(p => p is InventoryWearable))
+                        .Where(o => o != null)
+                        .Select(o => o as InventoryItem),
+                        o => { Wear(o, replace); });
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                 };
         }

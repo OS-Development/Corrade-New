@@ -26,7 +26,7 @@ namespace Corrade
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     List<string> attachments = GetAttachments(
-                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout)
+                        corradeConfiguration.DataTimeout)
                         .AsParallel()
                         .Select(o => new[]
                         {

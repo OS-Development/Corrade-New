@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CorradeConfiguration;
+using OpenMetaverse;
 using wasSharp;
 
 namespace Corrade
@@ -25,12 +26,13 @@ namespace Corrade
                     {
                         throw new ScriptException(ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    List<string> csv = GetWearables(Client.Inventory.Store.RootNode)
-                        .Select(o => new[]
-                        {
-                            o.Value.ToString(),
-                            Client.Inventory.Store[o.Key.ItemID].Name
-                        }).SelectMany(o => o).ToList();
+                    List<string> csv =
+                        GetWearables(CurrentOutfitFolder)
+                            .Select(o => new[]
+                            {
+                                (o as InventoryWearable).WearableType.ToString(),
+                                o.Name
+                            }).SelectMany(o => o).ToList();
                     if (csv.Any())
                     {
                         result.Add(Reflection.GetNameFromEnumValue(ResultKeys.DATA),

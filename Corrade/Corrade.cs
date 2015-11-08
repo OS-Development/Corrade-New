@@ -357,6 +357,7 @@ namespace Corrade
         private static readonly Random CorradeRandom = new Random();
         private static readonly EventLog CorradeEventLog = new EventLog();
         private static readonly GridClient Client = new GridClient();
+        private static InventoryFolder CurrentOutfitFolder;
 
         private static readonly Bot AIMLBot = new Bot
         {
@@ -750,108 +751,35 @@ namespace Corrade
                 try
                 {
                     // Create the queue of folders.
-                    // Enqueue the first folder (as the root).
-                    Dictionary<UUID, ManualResetEvent> inventoryFolders = new Dictionary<UUID, ManualResetEvent>
-                    {
-                        {o.UUID, new ManualResetEvent(false)}
-                    };
-                    // Create a stopwatch for the root folder.
-                    Dictionary<UUID, Stopwatch> inventoryStopwatch = new Dictionary<UUID, Stopwatch>
-                    {
-                        {o.UUID, new Stopwatch()}
-                    };
+                    BlockingQueue<InventoryFolder> inventoryFolders = new BlockingQueue<InventoryFolder>();
+                    //object LockObject = new object();
+                    // Enqueue the first folder (root).
+                    inventoryFolders.Enqueue(o);
 
-                    HashSet<long> times = new HashSet<long>(new[] {(long) Client.Settings.CAPS_TIMEOUT});
-
-                    object LockObject = new object();
-
+                    AutoResetEvent FolderUpdatedEvent = new AutoResetEvent(false);
                     EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
                     {
                         // Enqueue all the new folders.
-                        Parallel.ForEach(Client.Inventory.Store.GetContents(q.FolderID), r =>
+                        Client.Inventory.Store.GetContents(q.FolderID).ForEach(r =>
                         {
                             if (r is InventoryFolder)
                             {
-                                UUID inventoryFolderUUID = (r as InventoryFolder).UUID;
-                                if (Client.Inventory.Store.GetNodeFor(inventoryFolderUUID).NeedsUpdate)
-                                {
-                                    lock (LockObject)
-                                    {
-                                        if (!inventoryFolders.ContainsKey(inventoryFolderUUID))
-                                        {
-                                            inventoryFolders.Add(inventoryFolderUUID, new ManualResetEvent(false));
-                                        }
-                                    }
-                                    lock (LockObject)
-                                    {
-                                        if (!inventoryStopwatch.ContainsKey(inventoryFolderUUID))
-                                        {
-                                            inventoryStopwatch.Add(inventoryFolderUUID, new Stopwatch());
-                                        }
-                                    }
-                                }
-                            }
-                            lock (LockObject)
-                            {
-                                inventoryStopwatch[q.FolderID].Stop();
-                                times.Add(inventoryStopwatch[q.FolderID].ElapsedMilliseconds);
-                                inventoryFolders[q.FolderID].Set();
+                                inventoryFolders.Enqueue(r as InventoryFolder);
                             }
                         });
+                        FolderUpdatedEvent.Set();
                     };
 
                     do
                     {
-                        // Don't choke the chicken.
-                        Thread.Yield();
-                        Dictionary<UUID, ManualResetEvent> closureFolders;
-                        lock (LockObject)
-                        {
-                            closureFolders =
-                                new Dictionary<UUID, ManualResetEvent>(
-                                    inventoryFolders.Where(p => !p.Key.Equals(UUID.Zero))
-                                        .ToDictionary(p => p.Key, q => q.Value));
-                        }
-                        lock (ClientInstanceInventoryLock)
-                        {
-                            Parallel.ForEach(closureFolders, p =>
-                            {
-                                Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-                                lock (LockObject)
-                                {
-                                    inventoryStopwatch[p.Key].Start();
-                                }
-                                Client.Inventory.RequestFolderContents(p.Key, Client.Self.AgentID, true, true,
-                                    InventorySortOrder.ByDate);
-                                ManualResetEvent folderEvent;
-                                int averageTime;
-                                lock (LockObject)
-                                {
-                                    folderEvent = closureFolders[p.Key];
-                                    averageTime = (int) times.Average();
-                                }
-                                folderEvent.WaitOne(averageTime, false);
-                                Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-                            });
-                        }
-                        Parallel.ForEach(closureFolders, p =>
-                        {
-                            lock (LockObject)
-                            {
-                                if (inventoryFolders.ContainsKey(p.Key))
-                                {
-                                    inventoryFolders.Remove(p.Key);
-                                }
-                            }
-                            lock (LockObject)
-                            {
-                                if (inventoryStopwatch.ContainsKey(p.Key))
-                                {
-                                    inventoryStopwatch.Remove(p.Key);
-                                }
-                            }
-                        });
-                    } while (inventoryFolders.Any());
+                        InventoryFolder folder = inventoryFolders.Dequeue();
+                        if (folder == null) continue;
+                        Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
+                        Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
+                            InventorySortOrder.ByDate);
+                        FolderUpdatedEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, false);
+                        Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
+                    } while (!inventoryFolders.Count.Equals(0));
                 }
                 catch (Exception)
                 {
@@ -1604,56 +1532,22 @@ namespace Corrade
         /// <returns>the real inventory item</returns>
         private static InventoryItem ResolveItemLink(InventoryItem item)
         {
-            if (item.IsLink() && Client.Inventory.Store.Contains(item.AssetUUID) &&
-                Client.Inventory.Store[item.AssetUUID] is InventoryItem)
-            {
-                return (InventoryItem) Client.Inventory.Store[item.AssetUUID];
-            }
-
-            return item;
+            return item.IsLink() && Client.Inventory.Store.Contains(item.AssetUUID) &&
+                   Client.Inventory.Store[item.AssetUUID] is InventoryItem
+                ? (InventoryItem) Client.Inventory.Store[item.AssetUUID]
+                : item;
         }
 
         /// <summary>
         ///     Get current outfit folder links.
         /// </summary>
         /// <returns>a list of inventory items that can be part of appearance (attachments, wearables)</returns>
-        private static List<InventoryItem> GetCurrentOutfitFolderLinks(InventoryFolder outfitFolder)
+        private static IEnumerable<InventoryItem> GetCurrentOutfitFolderLinks(InventoryFolder outfitFolder)
         {
-            List<InventoryItem> ret = new List<InventoryItem>();
-            if (outfitFolder == null) return ret;
-
-            Client.Inventory.Store.GetContents(outfitFolder)
-                .FindAll(b => CanBeWorn(b) && ((InventoryItem) b).AssetType == AssetType.Link)
-                .ForEach(item => ret.Add((InventoryItem) item));
-
-            return ret;
-        }
-
-        ///////////////////////////////////////////////////////////////////////////
-        //    Copyright (C) 2014 Wizardry and Steamworks - License: GNU GPLv3    //
-        ///////////////////////////////////////////////////////////////////////////
-        /// <summary>
-        ///     Gets all the items from an inventory folder and returns the items.
-        /// </summary>
-        /// <param name="folder">the folder to search for</param>
-        /// <param name="millisecondsTimeout">the timeout in milliseconds</param>
-        /// <returns>a list of items from the folder</returns>
-        private static IEnumerable<InventoryBase> GetInventoryFolderContents(InventoryFolder folder,
-            uint millisecondsTimeout)
-        {
-            List<InventoryBase> inventoryItems = new List<InventoryBase>();
-            ManualResetEvent FolderUpdatedEvent = new ManualResetEvent(false);
-            EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
-            {
-                inventoryItems.AddRange(Client.Inventory.Store.GetContents(q.FolderID));
-                FolderUpdatedEvent.Set();
-            };
-            Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
-            Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
-                InventorySortOrder.ByDate);
-            FolderUpdatedEvent.WaitOne((int) millisecondsTimeout, false);
-            Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
-            return inventoryItems;
+            return Client.Inventory.Store.GetContents(outfitFolder)
+                .AsParallel()
+                .Where(o => CanBeWorn(o) && ((InventoryItem) o).AssetType == AssetType.Link)
+                .Select(o => o as InventoryItem);
         }
 
         private static void Attach(InventoryItem item, AttachmentPoint point, bool replace)
@@ -1663,9 +1557,8 @@ namespace Corrade
                 InventoryItem realItem = ResolveItemLink(item);
                 if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
                 Client.Appearance.Attach(realItem, point, replace);
-                AddLink(realItem,
-                    Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
-                        InventoryFolder);
+                AddLink(realItem, CurrentOutfitFolder);
+                UpdateInventoryRecursive(CurrentOutfitFolder);
             }
         }
 
@@ -1675,10 +1568,9 @@ namespace Corrade
             {
                 InventoryItem realItem = ResolveItemLink(item);
                 if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
-                RemoveLink(realItem,
-                    Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
-                        InventoryFolder);
+                RemoveLink(realItem, CurrentOutfitFolder);
                 Client.Appearance.Detach(realItem);
+                UpdateInventoryRecursive(CurrentOutfitFolder);
             }
         }
 
@@ -1689,9 +1581,8 @@ namespace Corrade
                 InventoryItem realItem = ResolveItemLink(item);
                 if (!(realItem is InventoryWearable)) return;
                 Client.Appearance.AddToOutfit(realItem, replace);
-                AddLink(realItem,
-                    Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
-                        InventoryFolder);
+                AddLink(realItem, CurrentOutfitFolder);
+                UpdateInventoryRecursive(CurrentOutfitFolder);
             }
         }
 
@@ -1702,15 +1593,8 @@ namespace Corrade
                 InventoryItem realItem = ResolveItemLink(item);
                 if (!(realItem is InventoryWearable)) return;
                 Client.Appearance.RemoveFromOutfit(realItem);
-                InventoryItem link = GetCurrentOutfitFolderLinks(
-                    Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
-                        InventoryFolder)
-                    .AsParallel()
-                    .FirstOrDefault(o => o.AssetType.Equals(AssetType.Link) && o.AssetUUID.Equals(item.UUID));
-                if (link == null) return;
-                RemoveLink(link,
-                    Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
-                        InventoryFolder);
+                RemoveLink(realItem, CurrentOutfitFolder);
+                UpdateInventoryRecursive(CurrentOutfitFolder);
             }
         }
 
@@ -1739,7 +1623,7 @@ namespace Corrade
         {
             if (outfitFolder == null) return;
 
-            if (GetCurrentOutfitFolderLinks(outfitFolder).Find(itemLink => itemLink.AssetUUID.Equals(item.UUID)) == null)
+            if (!GetCurrentOutfitFolderLinks(outfitFolder).AsParallel().Any(o => o.AssetUUID.Equals(item.UUID)))
             {
                 Client.Inventory.CreateLink(outfitFolder.UUID, item.UUID, item.Name,
                     item.InventoryType.Equals(InventoryType.Wearable) && !IsBodyPart(item)
@@ -1763,13 +1647,12 @@ namespace Corrade
         {
             if (outfitFolder == null) return;
 
-            List<UUID> links = new List<UUID>();
-
-            GetCurrentOutfitFolderLinks(outfitFolder)
-                .FindAll(itemLink => itemLink.AssetUUID.Equals(item.UUID))
-                .ForEach(o => links.Add(o.UUID));
-
-            Client.Inventory.Remove(links, null);
+            Client.Inventory.Remove(
+                GetCurrentOutfitFolderLinks(outfitFolder)
+                    .AsParallel()
+                    .Where(o => o.AssetUUID.Equals(item.UUID))
+                    .Select(o => o.UUID)
+                    .ToList(), null);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -3632,70 +3515,30 @@ namespace Corrade
         /// <returns>a list of updated primitives</returns>
         private static bool UpdatePrimitives(ref HashSet<Primitive> primitives, uint dataTimeout)
         {
-            HashSet<Primitive> scansPrimitives = new HashSet<Primitive>(primitives);
-            HashSet<Primitive> localPrimitives = new HashSet<Primitive>();
-            Dictionary<UUID, ManualResetEvent> primitiveEvents =
-                new Dictionary<UUID, ManualResetEvent>(
-                    scansPrimitives
-                        .AsParallel().ToDictionary(o => o.ID, p => new ManualResetEvent(false)));
-            Dictionary<UUID, Stopwatch> stopWatch = new Dictionary<UUID, Stopwatch>(
-                scansPrimitives
-                    .AsParallel().ToDictionary(o => o.ID, p => new Stopwatch()));
-            HashSet<long> times = new HashSet<long>(new[] {(long) dataTimeout});
-            object LockObject = new object();
-            EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler = (sender, args) =>
-            {
-                KeyValuePair<UUID, ManualResetEvent> queueElement =
-                    primitiveEvents.AsParallel().FirstOrDefault(o => o.Key.Equals(args.Properties.ObjectID));
-                switch (!queueElement.Equals(default(KeyValuePair<UUID, ManualResetEvent>)))
+            int primitiveUpdatesCount = 0;
+            ManualResetEvent ObjectPropertiesEvent = new ManualResetEvent(false);
+            EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler =
+                (sender, args) =>
                 {
-                    case true:
-                        Primitive updatedPrimitive =
-                            scansPrimitives.AsParallel().FirstOrDefault(o => o.ID.Equals(args.Properties.ObjectID));
-                        if (updatedPrimitive == null) return;
-                        updatedPrimitive.Properties = args.Properties;
-                        lock (LockObject)
-                        {
-                            localPrimitives.Add(updatedPrimitive);
-                            stopWatch[queueElement.Key].Stop();
-                            times.Add(stopWatch[queueElement.Key].ElapsedMilliseconds);
-                            queueElement.Value.Set();
-                        }
-                        break;
-                }
-            };
-            lock (ClientInstanceObjectsLock)
+                    Interlocked.Increment(ref primitiveUpdatesCount);
+                    ObjectPropertiesEvent.Set();
+                };
+            BlockingQueue<Primitive> primitiveQueue = new BlockingQueue<Primitive>(primitives);
+            do
             {
-                Parallel.ForEach(primitiveEvents, o =>
+                Primitive updatePrimitive = primitiveQueue.Dequeue();
+                lock (ClientInstanceObjectsLock)
                 {
-                    Primitive queryPrimitive =
-                        scansPrimitives.AsParallel().SingleOrDefault(p => p.ID.Equals(o.Key));
-                    if (queryPrimitive == null) return;
-                    lock (LockObject)
-                    {
-                        stopWatch[queryPrimitive.ID].Start();
-                    }
                     Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
-                    Client.Objects.SelectObject(
-                        Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(p => p.Handle.Equals(queryPrimitive.RegionHandle)),
-                        queryPrimitive.LocalID,
+                    ObjectPropertiesEvent.Reset();
+                    Client.Objects.SelectObject(Client.Network.Simulators.AsParallel()
+                        .FirstOrDefault(p => p.Handle.Equals(updatePrimitive.RegionHandle)), updatePrimitive.LocalID,
                         true);
-                    ManualResetEvent primitiveEvent;
-                    int averageTime;
-                    lock (LockObject)
-                    {
-                        primitiveEvent = primitiveEvents[queryPrimitive.ID];
-                        averageTime = (int) times.Average();
-                    }
-                    primitiveEvent.WaitOne(averageTime != 0 ? averageTime : (int) dataTimeout, false);
+                    ObjectPropertiesEvent.WaitOne((int) dataTimeout, false);
                     Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
-                });
-            }
-            if (!scansPrimitives.Count.Equals(localPrimitives.Count))
-                return false;
-            primitives = localPrimitives;
-            return true;
+                }
+            } while (primitiveQueue.Any());
+            return primitiveUpdatesCount.Equals(primitives.Count);
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -3929,46 +3772,22 @@ namespace Corrade
         /// <summary>
         ///     Get all worn attachments.
         /// </summary>
-        /// <param name="millisecondsTimeout">timeout for the search in milliseconds</param>
         /// <param name="dataTimeout">the alarm timeout for receiving object properties</param>
         /// <returns>attachment points by primitives</returns>
-        private static IEnumerable<KeyValuePair<Primitive, AttachmentPoint>> GetAttachments(
-            uint millisecondsTimeout, uint dataTimeout)
+        private static IEnumerable<KeyValuePair<Primitive, AttachmentPoint>> GetAttachments(uint dataTimeout)
         {
-            HashSet<Primitive> primitives;
-            lock (ClientInstanceNetworkLock)
-            {
-                primitives =
-                    new HashSet<Primitive>(Client.Network.CurrentSim.ObjectsPrimitives.FindAll(
-                        o => o.ParentID.Equals(Client.Self.LocalID)));
-            }
-            Dictionary<UUID, uint> primitiveQueue = primitives.ToDictionary(o => o.ID, o => o.LocalID);
-            object LockObject = new object();
-            Time.DecayingAlarm ObjectPropertiesAlarm = new Time.DecayingAlarm(corradeConfiguration.DataDecayType);
-            EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler = (sender, args) =>
-            {
-                ObjectPropertiesAlarm.Alarm(dataTimeout);
-                lock (LockObject)
-                {
-                    primitiveQueue.Remove(args.Properties.ObjectID);
-                    if (!primitiveQueue.Any()) ObjectPropertiesAlarm.Signal.Set();
-                }
-            };
-            lock (ClientInstanceObjectsLock)
-            {
-                Client.Objects.ObjectProperties += ObjectPropertiesEventHandler;
-                Client.Objects.SelectObjects(Client.Network.CurrentSim, primitiveQueue.Values.ToArray(),
-                    true);
-                ObjectPropertiesAlarm.Signal.WaitOne((int) millisecondsTimeout, false);
-                Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
-            }
-            return primitives
+            HashSet<Primitive> selectedPrimitives =
+                new HashSet<Primitive>(Client.Network.CurrentSim.ObjectsPrimitives.Copy()
+                    .Values
+                    .AsParallel()
+                    .Where(o => o.ParentID.Equals(Client.Self.LocalID)));
+            if (!selectedPrimitives.Any() || !UpdatePrimitives(ref selectedPrimitives, dataTimeout))
+                return Enumerable.Empty<KeyValuePair<Primitive, AttachmentPoint>>();
+            return selectedPrimitives
                 .AsParallel()
-                .Select(
-                    o =>
-                        new KeyValuePair<Primitive, AttachmentPoint>(o,
-                            (AttachmentPoint) (((o.PrimData.State & 0xF0) >> 4) |
-                                               ((o.PrimData.State & ~0xF0) << 4))));
+                .Select(o => new KeyValuePair<Primitive, AttachmentPoint>(o,
+                    (AttachmentPoint) (((o.PrimData.State & 0xF0) >> 4) |
+                                       ((o.PrimData.State & ~0xF0) << 4))));
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -3977,39 +3796,17 @@ namespace Corrade
         /// <summary>
         ///     Gets the inventory wearables that are currently being worn.
         /// </summary>
-        /// <param name="root">the folder to start the search from</param>
-        /// <returns>key value pairs of wearables by name</returns>
-        private static IEnumerable<KeyValuePair<AppearanceManager.WearableData, WearableType>> GetWearables(
-            InventoryNode root)
+        /// <param name="outfitFolder">the folder to start the search from</param>
+        /// <returns>the worn inventory itemse</returns>
+        private static IEnumerable<InventoryItem> GetWearables(InventoryFolder outfitFolder)
         {
-            InventoryFolder inventoryFolder = Client.Inventory.Store[root.Data.UUID] as InventoryFolder;
-            if (inventoryFolder == null)
-            {
-                InventoryItem inventoryItem = Client.Inventory.Store[root.Data.UUID] as InventoryItem;
-                if (inventoryItem != null)
-                {
-                    WearableType wearableType = Client.Appearance.IsItemWorn(inventoryItem);
-                    if (!wearableType.Equals(WearableType.Invalid))
-                    {
-                        foreach (
-                            KeyValuePair<WearableType, AppearanceManager.WearableData> wearable in
-                                Client.Appearance.GetWearables()
-                                    .AsParallel().Where(o => o.Value.ItemID.Equals(inventoryItem.UUID)))
-                        {
-                            yield return
-                                new KeyValuePair<AppearanceManager.WearableData, WearableType>(wearable.Value,
-                                    wearable.Key);
-                        }
-                    }
-                    yield break;
-                }
-            }
-            foreach (
-                KeyValuePair<AppearanceManager.WearableData, WearableType> item in
-                    root.Nodes.Values.AsParallel().SelectMany(GetWearables))
-            {
-                yield return item;
-            }
+            return outfitFolder != null
+                ? GetCurrentOutfitFolderLinks(outfitFolder)
+                    .AsParallel()
+                    .Select(ResolveItemLink)
+                    .Where(o => o is InventoryWearable)
+                    .Select(o => o)
+                : Enumerable.Empty<InventoryItem>();
         }
 
         ///////////////////////////////////////////////////////////////////////////
@@ -5347,9 +5144,9 @@ namespace Corrade
                         CorradeThreadPool[CorradeThreadType.NOTIFICATION].Spawn(
                             () => SendNotification(Configuration.Notifications.RLVMessage, e),
                             corradeConfiguration.MaximumNotificationThreads);
-                        CorradeThreadPool[CorradeThreadType.RLV].Spawn(
+                        CorradeThreadPool[CorradeThreadType.RLV].SpawnSequential(
                             () => HandleRLVBehaviour(e.Message.Substring(1, e.Message.Length - 1), e.SourceID),
-                            corradeConfiguration.MaximumRLVThreads);
+                            corradeConfiguration.MaximumRLVThreads, corradeConfiguration.ServicesTimeout);
                         break;
                     }
                     // If this is a Corrade command, process it and terminate.
@@ -5428,7 +5225,7 @@ namespace Corrade
                                         ConsoleError.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
                                     ex.Message);
                             }
-                        }, corradeConfiguration.MaximumLogThreads);
+                        }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                     }
                     break;
                 case (ChatType) 9:
@@ -5647,7 +5444,6 @@ namespace Corrade
                     // Login succeeded so start all the updates.
                     Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.LOGIN_SUCCEEDED));
 
-
                     // Start inventory update thread.
                     new Thread(() =>
                     {
@@ -5655,6 +5451,10 @@ namespace Corrade
                         LoadInventoryCache.Invoke();
                         // Update the inventory.
                         UpdateInventoryRecursive.Invoke(Client.Inventory.Store.RootFolder);
+                        // Get COF.
+                        CurrentOutfitFolder =
+                            Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
+                                InventoryFolder;
                         // Now save the caches.
                         SaveInventoryCache.Invoke();
                     })
@@ -6067,7 +5867,7 @@ namespace Corrade
                                                     ConsoleError.COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
                                                 ex.Message);
                                         }
-                                    }, corradeConfiguration.MaximumLogThreads);
+                                    }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                                 });
                         }
                         return;
@@ -6129,7 +5929,7 @@ namespace Corrade
                                                 ConsoleError.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
                                             ex.Message);
                                     }
-                                }, corradeConfiguration.MaximumLogThreads);
+                                }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                             }
                             return;
                     }
@@ -6177,7 +5977,7 @@ namespace Corrade
                                                 ConsoleError.COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE),
                                             ex.Message);
                                     }
-                                }, corradeConfiguration.MaximumLogThreads);
+                                }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                             }
                             return;
                     }
@@ -6304,6 +6104,7 @@ namespace Corrade
             catch (Exception ex)
             {
                 Feedback(Reflection.GetDescriptionFromEnumValue(ConsoleError.FAILED_TO_MANIFEST_RLV_BEHAVIOUR),
+                    RLVrule.Behaviour,
                     ex.Message);
             }
 
@@ -8494,7 +8295,10 @@ namespace Corrade
             /// </summary>
             /// <param name="s">the code to execute as a ThreadStart delegate</param>
             /// <param name="m">the maximum amount of threads</param>
-            public void SpawnSequential(ThreadStart s, uint m)
+            /// <param name="millisecondsTimeout">
+            ///     the timeout in milliseconds before considering the previous thread as vanished
+            /// </param>
+            public void SpawnSequential(ThreadStart s, uint m, uint millisecondsTimeout)
             {
                 lock (WorkSetLock)
                 {
@@ -8508,7 +8312,7 @@ namespace Corrade
                 t = new Thread(() =>
                 {
                     // Wait for previous sequential thread to complete.
-                    ThreadCompletedEvent.WaitOne(Timeout.Infinite);
+                    ThreadCompletedEvent.WaitOne((int) millisecondsTimeout, false);
                     ThreadCompletedEvent.Reset();
                     // protect inner thread
                     try

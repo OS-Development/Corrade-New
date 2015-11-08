@@ -57,8 +57,7 @@ namespace Corrade
                         {
                             case true:
                                 if (
-                                    GetAttachments(corradeConfiguration.ServicesTimeout,
-                                        corradeConfiguration.DataTimeout)
+                                    GetAttachments(corradeConfiguration.DataTimeout)
                                         .Count() + items.Count() -
                                     typeof (AttachmentPoint).GetFields(
                                         BindingFlags.Public | BindingFlags.Static)
@@ -72,8 +71,7 @@ namespace Corrade
                                 break;
                             default:
                                 if (items.Count +
-                                    GetAttachments(corradeConfiguration.ServicesTimeout,
-                                        corradeConfiguration.DataTimeout)
+                                    GetAttachments(corradeConfiguration.DataTimeout)
                                         .Count() >
                                     LINDEN_CONSTANTS.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
                                 {

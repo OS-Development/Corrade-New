@@ -52,10 +52,10 @@ namespace Corrade
                     List<InventoryItem> equipItems = new List<InventoryItem>();
                     lock (ClientInstanceInventoryLock)
                     {
-                        equipItems.AddRange(GetInventoryFolderContents(inventoryFolder,
-                            corradeConfiguration.ServicesTimeout)
-                            .Select(o => ResolveItemLink(o as InventoryItem))
-                            .Where(CanBeWorn));
+                        equipItems.AddRange(
+                            Client.Inventory.Store.GetContents(inventoryFolder)
+                                .Select(o => ResolveItemLink(o as InventoryItem))
+                                .Where(CanBeWorn));
                     }
                     // Check if any items are left over.
                     if (!equipItems.Any())
@@ -86,30 +86,28 @@ namespace Corrade
                     List<UUID> removeItems = new List<UUID>();
                     object LockObject = new object();
                     Parallel.ForEach(
-                        GetCurrentOutfitFolderLinks(
-                            Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)] as
-                                InventoryFolder), o =>
-                                {
-                                    switch (IsBodyPart(o))
+                        GetCurrentOutfitFolderLinks(CurrentOutfitFolder), o =>
+                        {
+                            switch (IsBodyPart(o))
+                            {
+                                case true:
+                                    if (
+                                        equipItems.AsParallel()
+                                            .Where(IsBodyPart)
+                                            .Any(
+                                                p =>
+                                                    ((InventoryWearable) p).WearableType.Equals(
+                                                        ((InventoryWearable) ResolveItemLink(o)).WearableType)))
+                                        goto default;
+                                    break;
+                                default:
+                                    lock (LockObject)
                                     {
-                                        case true:
-                                            if (
-                                                equipItems.AsParallel()
-                                                    .Where(IsBodyPart)
-                                                    .Any(
-                                                        p =>
-                                                            ((InventoryWearable) p).WearableType.Equals(
-                                                                ((InventoryWearable) ResolveItemLink(o)).WearableType)))
-                                                goto default;
-                                            break;
-                                        default:
-                                            lock (LockObject)
-                                            {
-                                                removeItems.Add(o.UUID);
-                                            }
-                                            break;
+                                        removeItems.Add(o.UUID);
                                     }
-                                });
+                                    break;
+                            }
+                        });
 
                     lock (ClientInstanceInventoryLock)
                     {
@@ -119,9 +117,7 @@ namespace Corrade
                         // Add links to new items.
                         foreach (InventoryItem item in equipItems)
                         {
-                            AddLink(item,
-                                Client.Inventory.Store[Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)
-                                    ] as InventoryFolder);
+                            AddLink(item, CurrentOutfitFolder);
                         }
                     }
 
@@ -130,6 +126,9 @@ namespace Corrade
                     {
                         Client.Appearance.ReplaceOutfit(equipItems, false);
                     }
+
+                    // Update inventory.
+                    UpdateInventoryRecursive(CurrentOutfitFolder);
 
                     // Schedule a rebake.
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);

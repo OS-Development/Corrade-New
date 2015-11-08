@@ -24,9 +24,7 @@ namespace Corrade
                 {
                     return;
                 }
-                HashSet<KeyValuePair<AppearanceManager.WearableData, WearableType>> wearables =
-                    new HashSet<KeyValuePair<AppearanceManager.WearableData, WearableType>>(
-                        GetWearables(Client.Inventory.Store.RootNode));
+                HashSet<InventoryBase> wearables = new HashSet<InventoryBase>(GetWearables(CurrentOutfitFolder));
                 StringBuilder response = new StringBuilder();
                 switch (!string.IsNullOrEmpty(rule.Option))
                 {
@@ -37,7 +35,9 @@ namespace Corrade
                         switch (!RLVwearable.Equals(default(RLVWearable)))
                         {
                             case true:
-                                if (wearables.AsParallel().Any(o => o.Value.Equals(RLVwearable.WearableType)))
+                                if (
+                                    wearables.AsParallel()
+                                        .Any(o => (o as InventoryWearable).WearableType.Equals(RLVwearable.WearableType)))
                                 {
                                     response.Append(RLV_CONSTANTS.TRUE_MARKER);
                                     break;
@@ -52,7 +52,9 @@ namespace Corrade
                         string[] data = new string[RLVWearables.Count];
                         Parallel.ForEach(Enumerable.Range(0, RLVWearables.Count), o =>
                         {
-                            if (!wearables.AsParallel().Any(p => p.Value.Equals(RLVWearables[o].WearableType)))
+                            if (
+                                !wearables.AsParallel()
+                                    .Any(p => (p as InventoryWearable).WearableType.Equals(RLVWearables[o].WearableType)))
                             {
                                 data[o] = RLV_CONSTANTS.FALSE_MARKER;
                                 return;

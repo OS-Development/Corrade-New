@@ -31,7 +31,6 @@ namespace Corrade
                 {
                     return;
                 }
-                InventoryBase inventoryBase;
                 switch (!string.IsNullOrEmpty(rule.Option))
                 {
                     case true:
@@ -42,81 +41,65 @@ namespace Corrade
                         {
                             case true: // detach by attachment point
                                 Parallel.ForEach(
-                                    GetAttachments(corradeConfiguration.ServicesTimeout,
-                                        corradeConfiguration.DataTimeout)
-                                        .AsParallel().Where(o => o.Value.Equals(RLVattachment.AttachmentPoint)),
-                                    o =>
-                                    {
-                                        inventoryBase =
-                                            FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
-                                                o.Key.Properties.Name
-                                                )
-                                                .AsParallel().FirstOrDefault(
-                                                    p =>
-                                                        (p is InventoryItem) &&
-                                                        ((InventoryItem) p).AssetType.Equals(
-                                                            AssetType.Object));
-                                        if (inventoryBase is InventoryAttachment ||
-                                            inventoryBase is InventoryObject)
-                                        {
-                                            Detach(inventoryBase as InventoryItem);
-                                        }
-                                    });
+                                    GetAttachments(corradeConfiguration.DataTimeout)
+                                        .AsParallel()
+                                        .Where(o => o.Value.Equals(RLVattachment.AttachmentPoint))
+                                        .SelectMany(
+                                            p =>
+                                                FindInventory<InventoryBase>(Client.Inventory.Store.RootNode,
+                                                    p.Key.Properties.Name)
+                                                    .AsParallel().Where(
+                                                        o =>
+                                                            o is InventoryAttachment || o is InventoryObject))
+                                        .Where(o => o != null)
+                                        .Select(o => o as InventoryItem),
+                                    Detach);
                                 break;
                             default: // detach by folder(s) name
+                                if (string.IsNullOrEmpty(rule.Option)) break;
                                 Parallel.ForEach(
                                     rule.Option.Split(RLV_CONSTANTS.PATH_SEPARATOR[0])
                                         .AsParallel().Select(
-                                            folder =>
+                                            p =>
                                                 FindInventory<InventoryBase>(RLVFolder,
-                                                    new Regex(Regex.Escape(folder),
+                                                    new Regex(Regex.Escape(p),
                                                         RegexOptions.Compiled | RegexOptions.IgnoreCase)
-                                                    ).AsParallel().FirstOrDefault(o => (o is InventoryFolder))),
-                                    o =>
-                                    {
-                                        if (o != null)
-                                        {
-                                            Client.Inventory.Store.GetContents(
-                                                o as InventoryFolder).FindAll(CanBeWorn)
-                                                .ForEach(
-                                                    p =>
+                                                    ).AsParallel().FirstOrDefault(o => o is InventoryFolder))
+                                        .Where(o => o != null)
+                                        .SelectMany(
+                                            o =>
+                                                Client.Inventory.Store.GetContents(o as InventoryFolder)
+                                                    .AsParallel().Where(CanBeWorn)), o =>
                                                     {
-                                                        if (p is InventoryWearable)
+                                                        if (o is InventoryWearable)
                                                         {
-                                                            UnWear(p as InventoryItem);
+                                                            UnWear(o as InventoryItem);
                                                             return;
                                                         }
-                                                        if (p is InventoryAttachment ||
-                                                            p is InventoryObject)
+                                                        if (o is InventoryAttachment || o is InventoryObject)
                                                         {
-                                                            // Multiple attachment points not working in libOpenMetaverse, so just replace.
-                                                            Detach(p as InventoryItem);
+                                                            Detach(o as InventoryItem);
                                                         }
                                                     });
-                                        }
-                                    });
                                 break;
                         }
                         break;
-                    default: //detach everything from RLV attachmentpoints
+                    default:
                         Parallel.ForEach(
-                            GetAttachments(corradeConfiguration.ServicesTimeout,
-                                corradeConfiguration.DataTimeout)
+                            GetAttachments(corradeConfiguration.DataTimeout)
                                 .AsParallel()
-                                .Where(o => RLVAttachments.Any(p => p.AttachmentPoint.Equals(o.Value))), o =>
-                                {
-                                    inventoryBase = FindInventory<InventoryBase>(
-                                        Client.Inventory.Store.RootNode, o.Key.Properties.Name
-                                        )
-                                        .AsParallel().FirstOrDefault(
-                                            p =>
-                                                p is InventoryItem &&
-                                                ((InventoryItem) p).AssetType.Equals(AssetType.Object));
-                                    if (inventoryBase is InventoryAttachment || inventoryBase is InventoryObject)
-                                    {
-                                        Detach(inventoryBase as InventoryItem);
-                                    }
-                                });
+                                .Where(o => RLVAttachments.Any(p => p.AttachmentPoint.Equals(o.Value)))
+                                .SelectMany(
+                                    o =>
+                                        o.Key.NameValues.AsParallel()
+                                            .Where(p => p.Name.Equals("AttachItemID", StringComparison.Ordinal))), o =>
+                                            {
+                                                UUID itemUUID;
+                                                if (UUID.TryParse(o.Value.ToString(), out itemUUID))
+                                                {
+                                                    Detach(Client.Inventory.Store.Items[itemUUID].Data as InventoryItem);
+                                                }
+                                            });
                         break;
                 }
                 RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);

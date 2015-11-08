@@ -46,8 +46,7 @@ namespace Corrade
                         if (!RLVattachment.Equals(default(RLVAttachment)))
                         {
                             attachment =
-                                GetAttachments(corradeConfiguration.ServicesTimeout,
-                                    corradeConfiguration.DataTimeout)
+                                GetAttachments(corradeConfiguration.DataTimeout)
                                     .AsParallel()
                                     .FirstOrDefault(o => o.Value.Equals(RLVattachment.AttachmentPoint));
                             switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
@@ -81,27 +80,21 @@ namespace Corrade
                             {
                                 return;
                             }
-                            KeyValuePair<AppearanceManager.WearableData, WearableType> wearable = GetWearables(
-                                RLVFolder)
-                                .AsParallel().FirstOrDefault(
-                                    o => o.Value.Equals((WearableType) wearTypeInfo.GetValue(null)));
-                            if (
-                                wearable.Equals(
-                                    default(KeyValuePair<AppearanceManager.WearableData, WearableType>)))
+                            InventoryBase wearable =
+                                GetWearables(RLVFolder.Data as InventoryFolder)
+                                    .AsParallel()
+                                    .FirstOrDefault(
+                                        o =>
+                                            (o as InventoryWearable).Equals((WearableType) wearTypeInfo.GetValue(null)));
+                            if (wearable != null)
                             {
-                                return;
+                                inventoryBase = wearable;
                             }
-                            inventoryBase =
-                                FindInventory<InventoryBase>(RLVFolder,
-                                    wearable
-                                        .Key.ItemID)
-                                    .AsParallel().FirstOrDefault(o => (o is InventoryWearable));
                         }
                         break;
                     default:
                         attachment =
-                            GetAttachments(corradeConfiguration.ServicesTimeout,
-                                corradeConfiguration.DataTimeout)
+                            GetAttachments(corradeConfiguration.DataTimeout)
                                 .AsParallel().FirstOrDefault(o => o.Key.ID.Equals(senderUUID));
                         switch (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
                         {

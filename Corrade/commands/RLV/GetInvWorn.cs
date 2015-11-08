@@ -49,14 +49,13 @@ namespace Corrade
                         Client.Self.Chat(string.Empty, channel, ChatType.Normal);
                         return;
                 }
+
+                HashSet<InventoryItem> currentWearables = new HashSet<InventoryItem>(GetWearables(CurrentOutfitFolder));
+                Dictionary<Primitive, AttachmentPoint> currentAttachments =
+                    GetAttachments(corradeConfiguration.DataTimeout).ToDictionary(o => o.Key, p => p.Value);
+
                 Func<InventoryNode, string> GetWornIndicator = node =>
                 {
-                    Dictionary<AppearanceManager.WearableData, WearableType> currentWearables =
-                        GetWearables(Client.Inventory.Store.RootNode).ToDictionary(o => o.Key, o => o.Value);
-                    Dictionary<Primitive, AttachmentPoint> currentAttachments =
-                        GetAttachments(corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout)
-                            .ToDictionary(o => o.Key, p => p.Value);
-
                     int myItemsCount = 0;
                     int myItemsWornCount = 0;
 
@@ -69,8 +68,8 @@ namespace Corrade
                             {
                                 Interlocked.Increment(ref myItemsCount);
                                 if ((n.Data is InventoryWearable &&
-                                     currentWearables.Keys.AsParallel().Any(
-                                         o => o.ItemID.Equals(ResolveItemLink(n.Data as InventoryItem).UUID))) ||
+                                     currentWearables.AsParallel().Any(
+                                         o => o.UUID.Equals(ResolveItemLink(n.Data as InventoryItem).UUID))) ||
                                     currentAttachments.AsParallel().Any(
                                         o =>
                                             o.Key.Properties.ItemID.Equals(
@@ -94,14 +93,14 @@ namespace Corrade
                             .AsParallel().Where(o => !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER))
                             .Where(
                                 o =>
-                                    o.Data is InventoryItem && CanBeWorn(o.Data) &&
-                                    !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER)), p =>
+                                    !o.Data.Name.StartsWith(RLV_CONSTANTS.DOT_MARKER) && o.Data is InventoryItem &&
+                                    CanBeWorn(o.Data)), p =>
                                     {
                                         Interlocked.Increment(ref allItemsCount);
                                         if ((p.Data is InventoryWearable &&
-                                             currentWearables.Keys.AsParallel().Any(
+                                             currentWearables.AsParallel().Any(
                                                  o =>
-                                                     o.ItemID.Equals(
+                                                     o.UUID.Equals(
                                                          ResolveItemLink(p.Data as InventoryItem).UUID))) ||
                                             currentAttachments.AsParallel().Any(
                                                 o =>
@@ -119,18 +118,16 @@ namespace Corrade
                     return WornIndicator(myItemsCount, myItemsWornCount) +
                            WornIndicator(allItemsCount, allItemsWornCount);
                 };
-                List<string> response = new List<string>
+                List<string> response = new List<string>();
+                lock (ClientInstanceInventoryLock)
                 {
-                    string.Format("{0}{1}", RLV_CONSTANTS.PROPORTION_SEPARATOR,
-                        GetWornIndicator(folderPath.Key))
-                };
-                response.AddRange(
-                    folderPath.Key.Nodes.Values.AsParallel().Where(node => node.Data is InventoryFolder)
-                        .Select(
-                            node =>
-                                string.Format("{0}{1}{2}", node.Data.Name,
-                                    RLV_CONSTANTS.PROPORTION_SEPARATOR, GetWornIndicator(node))));
-
+                    response.Add($"{RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(folderPath.Key)}");
+                    response.AddRange(
+                        folderPath.Key.Nodes.Values.AsParallel().Where(o => o.Data is InventoryFolder)
+                            .Select(
+                                o =>
+                                    $"{o.Data.Name}{RLV_CONSTANTS.PROPORTION_SEPARATOR}{GetWornIndicator(o)}"));
+                }
                 Client.Self.Chat(string.Join(RLV_CONSTANTS.CSV_DELIMITER, response.ToArray()),
                     channel,
                     ChatType.Normal);

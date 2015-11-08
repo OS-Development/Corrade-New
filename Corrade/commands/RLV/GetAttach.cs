@@ -25,7 +25,7 @@ namespace Corrade
                     return;
                 }
                 HashSet<Primitive> attachments = new HashSet<Primitive>(
-                    GetAttachments(corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout)
+                    GetAttachments(corradeConfiguration.DataTimeout)
                         .AsParallel()
                         .Select(o => o.Key));
                 StringBuilder response = new StringBuilder();
