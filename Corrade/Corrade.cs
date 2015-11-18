@@ -60,7 +60,7 @@ namespace Corrade
             [Reflection.NameAttribute("instant message")] INSTANT_MESSAGE = 4,
             [Reflection.NameAttribute("log")] LOG = 5,
             [Reflection.NameAttribute("post")] POST = 6
-        };
+        }
 
         /// <summary>
         ///     Structure containing errors returned to scripts.
@@ -330,7 +330,8 @@ namespace Corrade
             [Status(42240)] [Reflection.DescriptionAttribute("no notice identifier provided")] NO_NOTICE_PROVIDED,
             [Status(42798)] [Reflection.DescriptionAttribute("timeout retrieving notice")] TIMEOUT_RETRIEVING_NOTICE,
             [Status(06330)] [Reflection.DescriptionAttribute("no notice found")] NO_NOTICE_FOUND,
-            [Status(20303)] [Reflection.DescriptionAttribute("notice does not contain attachment")] NOTICE_DOES_NOT_CONTAIN_ATTACHMENT
+            [Status(20303)] [Reflection.DescriptionAttribute("notice does not contain attachment")] NOTICE_DOES_NOT_CONTAIN_ATTACHMENT,
+            [Status(10522)] [Reflection.DescriptionAttribute("failed to read log file")] FAILED_TO_READ_LOG_FILE
         }
 
         /// <summary>
@@ -5206,7 +5207,7 @@ namespace Corrade
                                                 "." +
                                                 CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
                                     {
-                                        logWriter.WriteLine("[{0}] {1} {2} ({3}) : {4}",
+                                        logWriter.WriteLine(CORRADE_CONSTANTS.LOCAL_MESSAGE_LOG_MESSAGE_FORMAT,
                                             DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
                                                 Utils.EnUsCulture.DateTimeFormat),
                                             fullName.First(), fullName.Last(),
@@ -5848,7 +5849,8 @@ namespace Corrade
                                                         Encoding.UTF8)
                                                     )
                                                 {
-                                                    logWriter.WriteLine("[{0}] {1} {2} : {3}",
+                                                    logWriter.WriteLine(
+                                                        CORRADE_CONSTANTS.GROUP_MESSAGE_LOG_MESSAGE_FORMAT,
                                                         DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
                                                             Utils.EnUsCulture.DateTimeFormat),
                                                         fullName.First(),
@@ -5910,7 +5912,8 @@ namespace Corrade
                                                         "." + CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8)
                                                 )
                                             {
-                                                logWriter.WriteLine("[{0}] {1} {2} : {3}",
+                                                logWriter.WriteLine(
+                                                    CORRADE_CONSTANTS.INSTANT_MESSAGE_LOG_MESSAGE_FORMAT,
                                                     DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
                                                         Utils.EnUsCulture.DateTimeFormat),
                                                     fullName.First(),
@@ -5958,7 +5961,7 @@ namespace Corrade
                                                             Client.Network.CurrentSim.Name) + "." +
                                                         CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
                                             {
-                                                logWriter.WriteLine("[{0}] {1} {2} : {3}",
+                                                logWriter.WriteLine(CORRADE_CONSTANTS.REGION_MESSAGE_LOG_MESSAGE_FORMAT,
                                                     DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
                                                         Utils.EnUsCulture.DateTimeFormat),
                                                     fullName.First(),
@@ -7495,7 +7498,8 @@ namespace Corrade
             [Reflection.NameAttribute("delink")] DELINK,
             [Reflection.NameAttribute("ban")] BAN,
             [Reflection.NameAttribute("unban")] UNBAN,
-            [Reflection.NameAttribute("send")] SEND
+            [Reflection.NameAttribute("send")] SEND,
+            [Reflection.NameAttribute("search")] SEARCH
         }
 
         /// <summary>
@@ -7578,6 +7582,26 @@ namespace Corrade
 
             public static readonly Regex EjectedFromGroupRegEx =
                 new Regex(@"You have been ejected from '(.+?)' by .+?\.$", RegexOptions.Compiled);
+
+            public static readonly string GROUP_MESSAGE_LOG_MESSAGE_FORMAT = @"[{0}] {1} {2} : {3}";
+
+            public static readonly Regex GroupMessageLogRegex = new Regex(@"^\[(.+?)\] (.+?) (.+?) : (.+?)$",
+                RegexOptions.Compiled);
+
+            public static readonly string REGION_MESSAGE_LOG_MESSAGE_FORMAT = @"[{0}] {1} {2} : {3}";
+
+            public static readonly Regex RegionMessageLogRegex = new Regex(@"^\[(.+?)\] (.+?) (.+?) : (.+?)$",
+                RegexOptions.Compiled);
+
+            public static readonly string INSTANT_MESSAGE_LOG_MESSAGE_FORMAT = @"[{0}] {1} {2} : {3}";
+
+            public static readonly Regex InstantMessageLogRegex = new Regex(@"^\[(.+?)\] (.+?) (.+?) : (.+?)$",
+                RegexOptions.Compiled);
+
+            public static readonly string LOCAL_MESSAGE_LOG_MESSAGE_FORMAT = @"[{0}] {1} {2} ({3}) : {4}";
+
+            public static readonly Regex LocalMessageLogRegex = new Regex(@"^\[(.+?)\] (.+?) (.+?) \((.+?)\) : (.+?)$",
+                RegexOptions.Compiled);
 
             /// <summary>
             ///     Corrade version.
@@ -8688,7 +8712,8 @@ namespace Corrade
             [Reflection.NameAttribute("range")] RANGE,
             [Reflection.NameAttribute("syntax")] SYNTAX,
             [Reflection.NameAttribute("permission")] PERMISSION,
-            [Reflection.NameAttribute("description")] DESCRIPTION
+            [Reflection.NameAttribute("description")] DESCRIPTION,
+            [Reflection.NameAttribute("message")] MESSAGE
         }
 
         /// <summary>
@@ -8764,6 +8789,56 @@ namespace Corrade
             public bool SitOnGround;
             public bool StandUp;
             public AgentState State;
+        }
+
+        /// <summary>
+        ///     A structure for holding region messages.
+        /// </summary>
+        public struct RegionMessage
+        {
+            public DateTime DateTime;
+            public string FirstName;
+            public string LastName;
+            public string Message;
+            public string RegionName;
+        }
+
+        /// <summary>
+        ///     A structure for holding group messages.
+        /// </summary>
+        [Serializable]
+        public struct GroupMessage
+        {
+            public DateTime DateTime;
+            public string FirstName;
+            public string LastName;
+            public string Message;
+        }
+
+        /// <summary>
+        ///     A structure for holding instant messages.
+        /// </summary>
+        [Serializable]
+        public struct InstantMessage
+        {
+            public DateTime DateTime;
+            public string FirstName;
+            public string LastName;
+            public string Message;
+        }
+
+        /// <summary>
+        ///     A structure for holding local messages.
+        /// </summary>
+        [Serializable]
+        public struct LocalMessage
+        {
+            public DateTime DateTime;
+            public string RegionName;
+            public string FirstName;
+            public string LastName;
+            public string Message;
+            public ChatType ChatType;
         }
 
         /// <summary>
@@ -9124,6 +9199,12 @@ namespace Corrade
         {
             [Reflection.NameAttribute("none")] NONE = 0,
 
+            [IsCorradeCommand(true)] [CommandInputSyntax(
+                "<command=logs>&<group=<UUID|STRING>>&<password=<STRING>>&<entity=<group|message|local|region>>&<action=<get|search>>&entity=group|message|local|region,action=get:[from=<DateTime>]&entity=group|message|local|region,action=get:[to=<DateTime>]&entity=group|message|local|region,action=get:[firstname=<STRING>]&entity=group|message|local|region,action=get:[lastname=<STRING>]&entity=group|message|local|region,action=get:[message=<STRING>]&entity=local|region,action=get:[region=<STRING>]&entity=local:[type=<ChatType>]&action=search:<data=<STRING>>&[callback=<STRING>]"
+                )] [CommandPermissionMask((uint) Configuration.Permissions.Talk)] [CorradeCommand("logs")] [Reflection.NameAttribute("logs")] LOGS,
+
+            [Reflection.NameAttribute("from")] FROM,
+            [Reflection.NameAttribute("to")] TO,
             [Reflection.NameAttribute("deanimate")] DEANIMATE,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
@@ -9198,7 +9279,7 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Configuration.Permissions.Grooming)] [CorradeCommand("getmovementdata")] [Reflection.NameAttribute("getmovementdata")] GETMOVEMENTDATA,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=at>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<add|get|remove|list>>&action=add:<time=<Timestamp>>&action=add:<data=<STRING>>&action=get,remove:<index=<INTEGER>>&[callback=<STRING>]"
+                "<command=at>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<add|get|remove|list>>&action=add:<time=<Timestamp>>&action=add:<data=<STRING>>&action=get|remove:<index=<INTEGER>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Configuration.Permissions.Schedule)] [CorradeCommand("at")] [Reflection.NameAttribute("at")] AT,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
@@ -9894,7 +9975,7 @@ namespace Corrade
                 )] [CommandPermissionMask((uint) Configuration.Permissions.Talk)] [CorradeCommand("tell")] [Reflection.NameAttribute("tell")] TELL,
 
             [IsCorradeCommand(true)] [CommandInputSyntax(
-                "<command=notice>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<send|list|accept|decline>>&action=send:<message=<STRING>>&action=send:[subject=<STRING>]&action=send:[item=<UUID|STRING>]&action=send:[permissions=<STRING>]&action=accept,decline:<<notice=<UUID>>|<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<session=<UUID>>&<folder=<UUID>>&[callback=<STRING>]"
+                "<command=notice>&<group=<UUID|STRING>>&<password=<STRING>>&<action=<send|list|accept|decline>>&action=send:<message=<STRING>>&action=send:[subject=<STRING>]&action=send:[item=<UUID|STRING>]&action=send:[permissions=<STRING>]&action=accept|decline:<<notice=<UUID>>|<agent=<UUID>|firstname=<STRING>&lastname=<STRING>>&<session=<UUID>>&<folder=<UUID>>&[callback=<STRING>]"
                 )] [CommandPermissionMask((uint) Configuration.Permissions.Group)] [CorradeCommand("notice")] [Reflection.NameAttribute("notice")] NOTICE,
             [Reflection.NameAttribute("message")] MESSAGE,
             [Reflection.NameAttribute("subject")] SUBJECT,

@@ -488,6 +488,9 @@
     <Compile Include="commands\Corrade\Logout.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\Logs.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\Lure.cs">
       <SubType>Component</SubType>
     </Compile>

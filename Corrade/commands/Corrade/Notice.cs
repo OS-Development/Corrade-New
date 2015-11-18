@@ -183,7 +183,7 @@ namespace Corrade
                             {
                                 case true:
                                     ManualResetEvent InstantMessageEvent = new ManualResetEvent(false);
-                                    InstantMessage instantMessage = new InstantMessage();
+                                    OpenMetaverse.InstantMessage instantMessage = new OpenMetaverse.InstantMessage();
                                     EventHandler<InstantMessageEventArgs> InstantMessageEventHandler =
                                         (sender, args) =>
                                         {
@@ -211,7 +211,7 @@ namespace Corrade
                                         }
                                         Client.Self.IM -= InstantMessageEventHandler;
                                     }
-                                    if (instantMessage.Equals(default(InstantMessage)))
+                                    if (instantMessage.Equals(default(OpenMetaverse.InstantMessage)))
                                     {
                                         throw new ScriptException(ScriptError.NO_NOTICE_FOUND);
                                     }

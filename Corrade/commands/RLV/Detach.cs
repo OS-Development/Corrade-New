@@ -81,6 +81,7 @@ namespace Corrade
                                                             Detach(o as InventoryItem);
                                                         }
                                                     });
+                                RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                                 break;
                         }
                         break;
@@ -102,7 +103,6 @@ namespace Corrade
                                             });
                         break;
                 }
-                RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
             };
         }
     }
