@@ -95,7 +95,7 @@ namespace Corrade
                                             using (
                                                 StreamWriter logWriter =
                                                     new StreamWriter(
-                                                        IO.PathCombine(
+                                                        Path.Combine(
                                                             corradeConfiguration.InstantMessageLogDirectory,
                                                             string.Join(" ", fullName.First(), fullName.Last())) +
                                                         "." +
@@ -249,7 +249,7 @@ namespace Corrade
                                             using (
                                                 StreamWriter logWriter =
                                                     new StreamWriter(
-                                                        IO.PathCombine(
+                                                        Path.Combine(
                                                             corradeConfiguration.LocalMessageLogDirectory,
                                                             Client.Network.CurrentSim.Name) + "." +
                                                         CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))

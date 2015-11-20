@@ -57,7 +57,7 @@ namespace Corrade
             [Reflection.NameAttribute("command")] COMMAND = 1,
             [Reflection.NameAttribute("rlv")] RLV = 2,
             [Reflection.NameAttribute("notification")] NOTIFICATION = 3,
-            [Reflection.NameAttribute("instant message")] INSTANT_MESSAGE = 4,
+            [Reflection.NameAttribute("im")] INSTANT_MESSAGE = 4,
             [Reflection.NameAttribute("log")] LOG = 5,
             [Reflection.NameAttribute("post")] POST = 6
         }
@@ -722,7 +722,7 @@ namespace Corrade
         ///     Gets the first name and last name from an avatar name.
         /// </summary>
         /// <returns>the firstname and the lastname or Resident</returns>
-        public static Func<string, IEnumerable<string>> GetAvatarNames =
+        private static readonly Func<string, IEnumerable<string>> GetAvatarNames =
             ((Expression<Func<string, IEnumerable<string>>>) (o => !string.IsNullOrEmpty(o)
                 ? CORRADE_CONSTANTS.AvatarFullNameRegex.Matches(o)
                     .Cast<Match>()
@@ -1157,11 +1157,11 @@ namespace Corrade
             try
             {
                 AIMLBot.isAcceptingUserInput = false;
-                AIMLBot.loadSettings(IO.PathCombine(
+                AIMLBot.loadSettings(Path.Combine(
                     Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
                     AIML_BOT_CONSTANTS.CONFIG.DIRECTORY, AIML_BOT_CONSTANTS.CONFIG.SETTINGS_FILE));
                 string AIMLBotBrain =
-                    IO.PathCombine(
+                    Path.Combine(
                         Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
                         AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_FILE);
                 switch (File.Exists(AIMLBotBrain))
@@ -1175,7 +1175,7 @@ namespace Corrade
                         break;
                 }
                 string AIMLBotUserBrain =
-                    IO.PathCombine(
+                    Path.Combine(
                         Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
                         AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_SESSION_FILE);
                 if (File.Exists(AIMLBotUserBrain))
@@ -1206,7 +1206,7 @@ namespace Corrade
             try
             {
                 AIMLBot.isAcceptingUserInput = false;
-                AIMLBotUser.Predicates.DictionaryAsXML.Save(IO.PathCombine(
+                AIMLBotUser.Predicates.DictionaryAsXML.Save(Path.Combine(
                     Directory.GetCurrentDirectory(), AIML_BOT_CONSTANTS.DIRECTORY,
                     AIML_BOT_CONSTANTS.BRAIN.DIRECTORY, AIML_BOT_CONSTANTS.BRAIN_SESSION_FILE));
                 AIMLBot.isAcceptingUserInput = true;
@@ -3906,7 +3906,7 @@ namespace Corrade
         /// <param name="messages">a list of messages</param>
         private static void Feedback(params string[] messages)
         {
-            CorradeThreadPool[CorradeThreadType.LOG].Spawn(
+            CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(
                 () =>
                 {
                     List<string> output = new List<string>
@@ -3947,21 +3947,25 @@ namespace Corrade
                         }
                     }
 
-                    if (!Environment.UserInteractive)
+                    switch (Environment.UserInteractive)
                     {
-                        switch (Environment.OSVersion.Platform)
-                        {
-                            case PlatformID.Win32NT:
-                                CorradeEventLog.WriteEntry(
-                                    string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()),
-                                    EventLogEntryType.Information);
-                                break;
-                        }
-                        return;
+                        case false:
+                            switch (Environment.OSVersion.Platform)
+                            {
+                                case PlatformID.Win32NT:
+                                    CorradeEventLog.WriteEntry(
+                                        string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()),
+                                        EventLogEntryType.Information);
+                                    break;
+                            }
+                            break;
+                        default:
+                            Console.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
+                            break;
                     }
-                    Console.WriteLine(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, output.ToArray()));
+                    
                 },
-                corradeConfiguration.MaximumLogThreads);
+                corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
         }
 
         /// <summary>
@@ -3971,7 +3975,7 @@ namespace Corrade
         /// <param name="messages">a list of messages</param>
         private static void Feedback(bool multiline, params string[] messages)
         {
-            CorradeThreadPool[CorradeThreadType.LOG].Spawn(
+            CorradeThreadPool[CorradeThreadType.LOG].SpawnSequential(
                 () =>
                 {
                     if (!multiline)
@@ -4021,26 +4025,28 @@ namespace Corrade
                         }
                     }
 
-                    if (!Environment.UserInteractive)
+                    switch (Environment.UserInteractive)
                     {
-                        switch (Environment.OSVersion.Platform)
-                        {
-                            case PlatformID.Win32NT:
-                                foreach (string message in output)
-                                {
-                                    CorradeEventLog.WriteEntry(message, EventLogEntryType.Information);
-                                }
-                                break;
-                        }
-                        return;
-                    }
-
-                    foreach (string message in output)
-                    {
-                        Console.WriteLine(message);
+                        case false:
+                            switch (Environment.OSVersion.Platform)
+                            {
+                                case PlatformID.Win32NT:
+                                    foreach (string message in output)
+                                    {
+                                        CorradeEventLog.WriteEntry(message, EventLogEntryType.Information);
+                                    }
+                                    break;
+                            }
+                            break;
+                        default:
+                            foreach (string message in output)
+                            {
+                                Console.WriteLine(message);
+                            }
+                            break;
                     }
                 },
-                corradeConfiguration.MaximumLogThreads);
+                corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
         }
 
         public static int Main(string[] args)
@@ -4214,7 +4220,7 @@ namespace Corrade
             FileSystemEventHandler HandleNotificationsFileChanged = null;
             try
             {
-                NotificationsWatcher.Path = IO.PathCombine(Directory.GetCurrentDirectory(),
+                NotificationsWatcher.Path = Path.Combine(Directory.GetCurrentDirectory(),
                     CORRADE_CONSTANTS.STATE_DIRECTORY);
                 NotificationsWatcher.Filter = CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE;
                 NotificationsWatcher.NotifyFilter = NotifyFilters.LastWrite;
@@ -4233,7 +4239,7 @@ namespace Corrade
             FileSystemEventHandler HandleGroupSchedulesFileChanged = null;
             try
             {
-                SchedulesWatcher.Path = IO.PathCombine(Directory.GetCurrentDirectory(),
+                SchedulesWatcher.Path = Path.Combine(Directory.GetCurrentDirectory(),
                     CORRADE_CONSTANTS.STATE_DIRECTORY);
                 SchedulesWatcher.Filter = CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE;
                 SchedulesWatcher.NotifyFilter = NotifyFilters.LastWrite;
@@ -4251,7 +4257,7 @@ namespace Corrade
             FileSystemEventHandler HandleAIMLBotConfigurationChanged = null;
             try
             {
-                AIMLBotConfigurationWatcher.Path = IO.PathCombine(Directory.GetCurrentDirectory(),
+                AIMLBotConfigurationWatcher.Path = Path.Combine(Directory.GetCurrentDirectory(),
                     AIML_BOT_CONSTANTS.DIRECTORY);
                 AIMLBotConfigurationWatcher.NotifyFilter = NotifyFilters.LastWrite;
                 HandleAIMLBotConfigurationChanged = (sender, args) => AIMLConfigurationChangedTimer.Change(1000, 0);
@@ -5202,7 +5208,7 @@ namespace Corrade
                                     using (
                                         StreamWriter logWriter =
                                             new StreamWriter(
-                                                IO.PathCombine(corradeConfiguration.LocalMessageLogDirectory,
+                                                Path.Combine(corradeConfiguration.LocalMessageLogDirectory,
                                                     Client.Network.CurrentSim.Name) +
                                                 "." +
                                                 CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
@@ -5907,7 +5913,7 @@ namespace Corrade
                                             using (
                                                 StreamWriter logWriter =
                                                     new StreamWriter(
-                                                        IO.PathCombine(corradeConfiguration.InstantMessageLogDirectory,
+                                                        Path.Combine(corradeConfiguration.InstantMessageLogDirectory,
                                                             args.IM.FromAgentName) +
                                                         "." + CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8)
                                                 )
@@ -5957,7 +5963,7 @@ namespace Corrade
                                             using (
                                                 StreamWriter logWriter =
                                                     new StreamWriter(
-                                                        IO.PathCombine(corradeConfiguration.RegionMessageLogDirectory,
+                                                        Path.Combine(corradeConfiguration.RegionMessageLogDirectory,
                                                             Client.Network.CurrentSim.Name) + "." +
                                                         CORRADE_CONSTANTS.LOG_FILE_EXTENSION, true, Encoding.UTF8))
                                             {

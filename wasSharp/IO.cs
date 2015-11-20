@@ -21,11 +21,7 @@ namespace wasSharp
         /// <returns>a combined path</returns>
         public static string PathCombine(params string[] paths)
         {
-            return paths.Any()
-                ? paths.Length < 2
-                    ? paths[0]
-                    : Path.Combine(Path.Combine(paths[0], paths[1]), PathCombine(paths.Skip(2).ToArray()))
-                : string.Empty;
+            return paths.Aggregate((x, y) => Path.Combine(x, y));
         }
     }
 }
