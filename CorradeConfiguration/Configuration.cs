@@ -110,7 +110,7 @@ namespace CorradeConfiguration
         }
 
         private readonly object ClientInstanceConfigurationLock = new object();
-        private uint _activateDelay = 5000;
+        private uint _autoActivateGroupDelay = 5000;
         private byte[] _AESIV;
         private byte[] _AESKey;
         private bool _autoActivateGroup;
@@ -1405,20 +1405,20 @@ namespace CorradeConfiguration
             }
         }
 
-        public uint ActivateDelay
+        public uint AutoActivateGroupDelay
         {
             get
             {
                 lock (ClientInstanceConfigurationLock)
                 {
-                    return _activateDelay;
+                    return _autoActivateGroupDelay;
                 }
             }
             set
             {
                 lock (ClientInstanceConfigurationLock)
                 {
-                    _activateDelay = value;
+                    _autoActivateGroupDelay = value;
                 }
             }
         }

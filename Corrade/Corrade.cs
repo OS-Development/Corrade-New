@@ -5470,7 +5470,7 @@ namespace Corrade
                     new Thread(() =>
                     {
                         if (!corradeConfiguration.AutoActivateGroup) return;
-                        ActivateCurrentLandGroupTimer.Change(corradeConfiguration.ActivateDelay, 0);
+                        ActivateCurrentLandGroupTimer.Change(corradeConfiguration.AutoActivateGroupDelay, 0);
                     })
                     {IsBackground = true}.Start();
                     // Retrieve instant messages.
@@ -5544,7 +5544,7 @@ namespace Corrade
                     new Thread(() =>
                     {
                         if (!corradeConfiguration.AutoActivateGroup) return;
-                        ActivateCurrentLandGroupTimer.Change(corradeConfiguration.ActivateDelay, 0);
+                        ActivateCurrentLandGroupTimer.Change(corradeConfiguration.AutoActivateGroupDelay, 0);
                     })
                     {IsBackground = true}.Start();
                     // Set the camera on the avatar.

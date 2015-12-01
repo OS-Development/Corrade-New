@@ -176,7 +176,7 @@ namespace Configurator
             mainForm.LimitsHTTPServerTimeout.Text = corradeConfiguration.HTTPServerTimeout.ToString();
             mainForm.LimitsServicesTimeout.Text = corradeConfiguration.ServicesTimeout.ToString();
             mainForm.LimitsServicesRebake.Text = corradeConfiguration.RebakeDelay.ToString();
-            mainForm.LimitsServicesActivate.Text = corradeConfiguration.ActivateDelay.ToString();
+            mainForm.LimitsServicesActivate.Text = corradeConfiguration.AutoActivateGroupDelay.ToString();
             mainForm.LimitsDataTimeout.Text = corradeConfiguration.DataTimeout.ToString();
             mainForm.LimitsDataDecay.Text = Reflection.GetNameFromEnumValue(corradeConfiguration.DataDecayType);
             mainForm.LimitsMembershipSweep.Text = corradeConfiguration.MembershipSweepInterval.ToString();
@@ -460,7 +460,7 @@ namespace Configurator
             }
             if (uint.TryParse(mainForm.LimitsServicesActivate.Text, out outUint))
             {
-                corradeConfiguration.ActivateDelay = outUint;
+                corradeConfiguration.AutoActivateGroupDelay = outUint;
             }
             if (uint.TryParse(mainForm.LimitsDataTimeout.Text, out outUint))
             {
@@ -2316,7 +2316,7 @@ namespace Configurator
                                         {
                                             throw new Exception("error in services limits section");
                                         }
-                                        corradeConfiguration.ActivateDelay = activateDelay;
+                                        corradeConfiguration.AutoActivateGroupDelay = activateDelay;
                                         break;
                                 }
                             }
