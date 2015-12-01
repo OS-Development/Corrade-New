@@ -22,7 +22,7 @@ namespace wasSharp
         /// </summary>
         /// <returns>a commma-separated list of values</returns>
         /// <remarks>compliant with RFC 4180</remarks>
-        public static Func<IEnumerable<string>, string> FromEnumerable =
+        public static readonly Func<IEnumerable<string>, string> FromEnumerable =
             ((Expression<Func<IEnumerable<string>, string>>) (data => string.Join(",",
                 data
                     .Select(o => o.Replace("\"", "\"\""))
@@ -36,7 +36,7 @@ namespace wasSharp
         ///     Converts successive comma-separated values to key-value pairs.
         /// </summary>
         /// <returns>key-value pairs of successive comma-separate values</returns>
-        public static Func<string, IEnumerable<KeyValuePair<string, string>>> ToKeyValue =
+        public static readonly Func<string, IEnumerable<KeyValuePair<string, string>>> ToKeyValue =
             ((Expression<Func<string, IEnumerable<KeyValuePair<string, string>>>>)
                 (csv => ToEnumerable(csv).AsParallel().Select((o, p) => new {o, p})
                     .GroupBy(q => q.p/2, q => q.o)
